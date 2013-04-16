@@ -58,7 +58,7 @@ def Main():
 		parser.add_argument("-s", "--symbol",  action="store", type=str, dest="symbol", default="",
 			help="Specify symbol for which data is to be extracted.")
 		parser.add_argument("-o", "--output",  action="store", type=str, dest="output", default="",
-			help="Specify output path. Omit for stdout.")
+			required=True, help="Specify output path. Omit for stdout.")
 		parser.add_argument("-l", "--logging",  action="store", dest="log_level", default="warning",
 			help="logging level: info, debug, warning, error, critical. Default is 'warning'.")
 
@@ -124,7 +124,7 @@ def ExtractSymbolData(start_date, end_date, symbol, output):
 	db_stmt += "ORDER BY date ASC) TO '%s' WITH CSV;" % output_file
 
 	THE_LOGGER.debug(db_stmt)
-
+	
 	db = pyodbc.connect("DSN=%s;UID=postgres" % "pg_finance")
 	cursor = db.cursor()
 	
@@ -140,10 +140,10 @@ def fixup_output_path(output):
 
 	fixed_path_name = ""
 	head, tail = os.path.split(output)
-	if head == "/tmp" and tail:
-		fixed_path_name = output
-	elif head == "/tmp" and not tail:
+	if head == '/' and tail == "tmp":
 		raise RuntimeError("Must specify a file name in output path: %s" % output)
+	elif head == "/tmp" and tail:
+		fixed_path_name = output
 	elif tail:
 		fixed_path_name = os.path.join("/tmp", tail)
 	else:
