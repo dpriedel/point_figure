@@ -49,10 +49,10 @@ def Main():
 			sys.path.insert(0, runtime_dir)
 		
 		parser = argparse.ArgumentParser(description='Extract stock data from DB.')
-		parser.add_argument("-b", "--begin",  action=ConvertDate, dest="start_date", default=datetime.date.today(),
-			help="starting with this date or %s if not specified." % datetime.date.today())
-		parser.add_argument("-e", "--end",  action=ConvertDate, dest="end_date", default=datetime.date.today(),
-			help="going through this date or %s if not specified." % datetime.date.today())
+		parser.add_argument("-b", "--begin",  action=ConvertDate, dest="start_date",
+			help="starting with this date or earliest value in DB if not specified.")
+		parser.add_argument("-e", "--end",  action=ConvertDate, dest="end_date", 
+			help="going through this date or last date in DB if not specified." )
 		parser.add_argument("-s", "--symbol",  action="store", type=str, dest="symbol", default="",
 			help="Specify symbol for which data is to be extracted.")
 		parser.add_argument("-o", "--output",  action="store", type=str, dest="output", default="",
@@ -94,6 +94,34 @@ def makes_sense_to_run(args):
 		raise RuntimeError("Must specify a symbol." )
 	return True
 	
+def ExtractSymbolData(start_date, end_date, symbol, output):
+
+	#	we have a simple job to do.
+	#	extract data from the DB for the specified symbol using optional
+	#	begin and end dates.
+
+	#	let's start by constructing our select statement.
+	#	we need to put it together in pieces based on our arguments.
+
+	db_stmt = "SELECT symbol, date, open_p, high, low, close_p FROM stock_data.current_data "
+	db_stmt += "WHERE symbol = '%s' " % symbol
+	if start_date and end_date:
+		db_stmt += "AND date BETWEEN '%s' AND '%s' " % (start_date, end_date)
+	else:
+		if start_date:
+			db_stmt += "AND date >= '%s' " % start_date
+		if end_date:
+			db_stmt += "AND date <= '%s' " % end_date
+
+	db_stmt += "ORDER BY date ASC"
+	THE_LOGGER.debug(db_stmt)
+
+
+	db = pyodbc.connect("DSN=%s;UID=pg_data_updater" % "pg_finance")
+	cursor = db.cursor()
+
+	pass
+
 	
 if __name__ == '__main__':
 	sys.exit(Main())
