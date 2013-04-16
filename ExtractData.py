@@ -4,10 +4,12 @@
 	this program will extract data for the specified symbol and date range from
 	the current_data stocks DB.
 
+	It will copy the data to a file in /tmp ONLY !
+
 """
 
 
-import os, sys, traceback, datetime, time
+import os, sys, traceback, datetime 
 from operator import attrgetter
 
 import logging
@@ -103,7 +105,9 @@ def ExtractSymbolData(start_date, end_date, symbol, output):
 	#	let's start by constructing our select statement.
 	#	we need to put it together in pieces based on our arguments.
 
-	db_stmt = "SELECT symbol, date, open_p, high, low, close_p FROM stock_data.current_data "
+	#	NOTE: since we are using PostgreSQL, let's take advantage of it.
+
+	db_stmt = "COPY (SELECT symbol, date, open_p, high, low, close_p FROM stock_data.current_data "
 	db_stmt += "WHERE symbol = '%s' " % symbol
 	if start_date and end_date:
 		db_stmt += "AND date BETWEEN '%s' AND '%s' " % (start_date, end_date)
@@ -113,14 +117,39 @@ def ExtractSymbolData(start_date, end_date, symbol, output):
 		if end_date:
 			db_stmt += "AND date <= '%s' " % end_date
 
-	db_stmt += "ORDER BY date ASC"
+	#	one last thing -- our output
+
+	output_file = fixup_output_path(output)
+
+	db_stmt += "ORDER BY date ASC) TO '%s' WITH CSV;" % output_file
+
 	THE_LOGGER.debug(db_stmt)
 
-
-	db = pyodbc.connect("DSN=%s;UID=pg_data_updater" % "pg_finance")
+	db = pyodbc.connect("DSN=%s;UID=postgres" % "pg_finance")
 	cursor = db.cursor()
+	
+	cursor.execute(db_stmt)
+	
+	cursor.close()
+	db.close()
 
-	pass
+def fixup_output_path(output):
+
+	#	we need to write to /tmp because PostgreSQL only allows a complete
+	#	path to be specified and /tmp is alwas a 'safe' destination.
+
+	fixed_path_name = ""
+	head, tail = os.path.split(output)
+	if head == "/tmp" and tail:
+		fixed_path_name = output
+	elif head == "/tmp" and not tail:
+		raise RuntimeError("Must specify a file name in output path: %s" % output)
+	elif tail:
+		fixed_path_name = os.path.join("/tmp", tail)
+	else:
+		raise RuntimeError("Can't decipher output path: %s" % output)
+			
+	return fixed_path_name
 
 	
 if __name__ == '__main__':
