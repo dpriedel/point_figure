@@ -124,7 +124,6 @@ def ExtractSymbolData(start_date, end_date, symbol, output):
 	db_stmt += "ORDER BY date ASC) TO '%s' WITH CSV;" % output_file
 
 	THE_LOGGER.debug(db_stmt)
-	return
 	
 	db = pyodbc.connect("DSN=%s;UID=postgres" % "pg_finance")
 	cursor = db.cursor()
