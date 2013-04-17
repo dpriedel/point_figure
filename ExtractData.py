@@ -55,10 +55,10 @@ def Main():
 			help="starting with this date or earliest value in DB if not specified.")
 		parser.add_argument("-e", "--end",  action=ConvertDate, dest="end_date", 
 			help="going through this date or last date in DB if not specified." )
-		parser.add_argument("-s", "--symbol",  action="store", type=str, dest="symbol", default="",
-			help="Specify symbol for which data is to be extracted.")
+		parser.add_argument("-s", "--symbol",  action="store", type=str, dest="symbol", 
+			required=True, help="Specify symbol for which data is to be extracted.")
 		parser.add_argument("-o", "--output",  action="store", type=str, dest="output", default="",
-			required=True, help="Specify output path. Omit for stdout.")
+			help="Specify output path. Default is '/tmp/<symbol>'.")
 		parser.add_argument("-l", "--logging",  action="store", dest="log_level", default="warning",
 			help="logging level: info, debug, warning, error, critical. Default is 'warning'.")
 
@@ -92,8 +92,8 @@ def Main():
 
 def makes_sense_to_run(args):
 	
-	if args.symbol == "":
-		raise RuntimeError("Must specify a symbol." )
+	# if args.symbol == "":
+	# 	raise RuntimeError("Must specify a symbol." )
 	return True
 	
 def ExtractSymbolData(start_date, end_date, symbol, output):
@@ -119,11 +119,12 @@ def ExtractSymbolData(start_date, end_date, symbol, output):
 
 	#	one last thing -- our output
 
-	output_file = fixup_output_path(output)
+	output_file = fixup_output_path(output, symbol)
 
 	db_stmt += "ORDER BY date ASC) TO '%s' WITH CSV;" % output_file
 
 	THE_LOGGER.debug(db_stmt)
+	return
 	
 	db = pyodbc.connect("DSN=%s;UID=postgres" % "pg_finance")
 	cursor = db.cursor()
@@ -133,21 +134,24 @@ def ExtractSymbolData(start_date, end_date, symbol, output):
 	cursor.close()
 	db.close()
 
-def fixup_output_path(output):
+def fixup_output_path(output, symbol):
 
 	#	we need to write to /tmp because PostgreSQL only allows a complete
 	#	path to be specified and /tmp is alwas a 'safe' destination.
 
 	fixed_path_name = ""
-	head, tail = os.path.split(output)
-	if head == '/' and tail == "tmp":
-		raise RuntimeError("Must specify a file name in output path: %s" % output)
-	elif head == "/tmp" and tail:
-		fixed_path_name = output
-	elif tail:
-		fixed_path_name = os.path.join("/tmp", tail)
+	if not output:
+		fixed_path_name = os.path.join("/tmp", symbol)
 	else:
-		raise RuntimeError("Can't decipher output path: %s" % output)
+		head, tail = os.path.split(output)
+		if head == '/' and tail == "tmp":
+			raise RuntimeError("Must specify a file name in output path: %s" % output)
+		elif head == "/tmp" and tail:
+			fixed_path_name = output
+		elif tail:
+			fixed_path_name = os.path.join("/tmp", tail)
+		else:
+			raise RuntimeError("Can't decipher output path: %s" % output)
 			
 	return fixed_path_name
 
