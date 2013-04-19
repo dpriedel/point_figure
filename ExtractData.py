@@ -10,7 +10,6 @@
 
 
 import os, sys, traceback, datetime 
-from operator import attrgetter
 
 import logging
 THE_LOGGER = logging.getLogger()
@@ -121,7 +120,7 @@ def ExtractSymbolData(start_date, end_date, symbol, output):
 
 	output_file = fixup_output_path(output, symbol)
 
-	db_stmt += "ORDER BY date ASC) TO '%s' WITH CSV;" % output_file
+	db_stmt += "ORDER BY date ASC) TO '%s' ;" % output_file
 
 	THE_LOGGER.debug(db_stmt)
 	
