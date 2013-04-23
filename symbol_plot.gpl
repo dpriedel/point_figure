@@ -1,0 +1,10 @@
+
+set term png size 1000, 600
+set output "/tmp/test.png"
+set xdata time
+set timefmt "%Y-%m-%d"
+set format x "%m-%d-%y"
+set mxtics 12
+set grid
+plot "/tmp/AAPL" using 2:6 with lines lw 2
+
