@@ -1,2 +1,7 @@
 # this is just a test file
 tutorial.cpp
+Debug/*
+makefile_x86_64
+# our executable
+collect_p_f_data
+

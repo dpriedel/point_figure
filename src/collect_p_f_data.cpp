@@ -16,9 +16,12 @@
 // 
 // =====================================================================================
 
-#include	<cstdlib>
+#include <cstdlib>
+#include <iostream>
 
-	int
+#include "CApplication.h"
+
+int
 main ( int argc, char *argv[] )
 {
 	return EXIT_SUCCESS;
