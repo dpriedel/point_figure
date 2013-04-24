@@ -15,15 +15,17 @@
 // 
 // =====================================================================================
 
+#include "CApplication.h"
+
 // =====================================================================================
 //        Class:  CMyApp
 //  Description:  application specific stuff
 // =====================================================================================
-class CMyApp
+class CMyApp : public CApplication
 {
 	public:
 		// ====================  LIFECYCLE     =======================================
-		CMyApp (int argv, const char*[] argv);                             // constructor
+		CMyApp (int argc, char* argv[]);                             // constructor
 		~CMyApp(void);
 
 

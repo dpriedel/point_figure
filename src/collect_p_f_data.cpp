@@ -19,12 +19,12 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "CApplication.h"
+#include "collect_p_f_data.h"
 
 int
 main ( int argc, char *argv[] )
 {
-	CApplication myApp = CApplication(argc, argv);
+	CMyApp myApp = CMyApp(argc, argv);
 
 	myApp.StartUp();
 	myApp.CheckArgs();
@@ -36,4 +36,40 @@ main ( int argc, char *argv[] )
 	
 	return EXIT_SUCCESS;
 }// ----------  end of function main  ----------
+
+
+//--------------------------------------------------------------------------------------
+//       Class:  CMyApp
+//      Method:  CMyApp
+// Description:  constructor
+//--------------------------------------------------------------------------------------
+CMyApp::CMyApp (int argc, char* argv[])
+	: CApplication(argc, argv)
+
+{
+}  // -----  end of method CMyApp::CMyApp  (constructor)  -----
+
+CMyApp::~CMyApp (void)
+{
+	return ;
+}		// -----  end of method CMyApp::~CMyApp  -----
+
+void
+CMyApp::Do_StartUp (void)
+{
+	return ;
+}		// -----  end of method CMyApp::Do_StartUp  -----
+
+
+void
+CMyApp::Do_CheckArgs (void)
+{
+	return ;
+}		// -----  end of method CMyApp::Do_CheckArgs  -----
+
+void
+CMyApp::Do_SetupProgramOptions (void)
+{
+	return ;
+}		// -----  end of method CMyApp::Do_SetupProgramOptions  -----
 
