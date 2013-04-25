@@ -70,6 +70,22 @@ CMyApp::Do_CheckArgs (void)
 void
 CMyApp::Do_SetupProgramOptions (void)
 {
+	mNewOptions.add_options()
+		("help",											"produce help message")
+		("symbol,s",			po::value<std::string>(),	"symbol we are processing")
+		("file,f",				po::value<std::string>(),	"file containing data for symbol")
+		("output,o",			po::value<std::string>(),	"output file name")
+		("destination,d",		po::value<std::string>(),	"output to file or DB")
+		;
+
 	return ;
 }		// -----  end of method CMyApp::Do_SetupProgramOptions  -----
+
+
+void
+CMyApp::Do_ParseProgramOptions (void)
+{
+	return ;
+}		// -----  end of method CMyApp::Do_ParseProgramOptions  -----
+
 

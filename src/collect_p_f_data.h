@@ -39,8 +39,8 @@ class CMyApp : public CApplication
 
 		virtual void Do_StartUp(void);
 		virtual void Do_CheckArgs(void);
-
 		virtual void Do_SetupProgramOptions(void);
+		virtual	void Do_ParseProgramOptions(void);
 
 		// ====================  DATA MEMBERS  =======================================
 
