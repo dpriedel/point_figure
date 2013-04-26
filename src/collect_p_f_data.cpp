@@ -19,22 +19,63 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "TException.h"
 #include "collect_p_f_data.h"
 
 int
 main ( int argc, char *argv[] )
 {
-	CMyApp myApp = CMyApp(argc, argv);
+	int result = EXIT_SUCCESS;
+	 
+	CMyApp* myApp = NULL;
 
-	myApp.StartUp();
-	myApp.CheckArgs();
-
-	std::cout << "we are running from " << myApp.GetAppFolder() << std::endl;
-
-	myApp.Run();
-	myApp.Quit();
+	try
+	{
+		//	first, let's create an instance of our class
 	
-	return EXIT_SUCCESS;
+		myApp = new CMyApp(argc, argv);
+		CApplication::sTheApplication = myApp;
+	}
+	catch (...)
+	{
+		//	If we're here, there is probably no application object
+			
+		std::cerr << "Error creating the Application.  Nothing done!" << std::endl;
+
+		//	any errors on startup and we're outta here
+		
+		return 2;
+	}
+	//	Normal processing...
+	
+	try
+	{
+		myApp->StartUp ();		//	all errors will throw an exception
+		myApp->Run ();
+	}
+
+	catch (std::exception& theProblem)
+	{
+		CApplication::sCErrorHandler->HandleException(theProblem);
+		result = 3;
+		if (myApp)
+			myApp->Done ();				//	base class exceptions are always fatal.
+	}
+	catch (...)
+	{
+		result = 4;
+		std::cerr << "Something totally unexpected happened." << std::endl;
+		if (myApp)
+			myApp->Done ();				//	base class exceptions are always fatal.
+	}
+
+	if (myApp && myApp->IsDone ())
+	{
+		myApp->Quit ();
+		delete myApp;
+	}
+
+	return result;
 }// ----------  end of function main  ----------
 
 
@@ -44,7 +85,8 @@ main ( int argc, char *argv[] )
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
-	: CApplication(argc, argv)
+	: CApplication(argc, argv),
+	mInputIsPath(false), mOutputIsPath(false), mDestination(destination::unknown)
 
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
@@ -64,6 +106,52 @@ CMyApp::Do_StartUp (void)
 void
 CMyApp::Do_CheckArgs (void)
 {
+	//	let's get our input and output set up
+	
+	dfail_if_(! mVariableMap.count("symbol"), "Symbol must be specified.");
+	mSymbol = mVariableMap["symbol"].as<std::string>();
+
+	dfail_if_(! mVariableMap.count("file"), "Input source must be specified.");
+	std::string temp = mVariableMap["file"].as<std::string>();
+	if (temp == "-")
+		mInputIsPath = false;
+	else
+	{
+		mInputPath = temp;
+		dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+	}
+
+	//	if not specified, assume we are sending output to stdout
+	
+	if (mVariableMap.count("destination") == 0)
+	{
+		mDestination = destination::stdout;
+	}
+	else
+	{
+		std::string temp = mVariableMap["destination"].as<std::string>();
+		if (temp == "file")
+		{
+			mDestination = destination::file;
+			dfail_if_(! mVariableMap.count("output"), "Output destination of 'file' specified but no 'output' name provided.");
+			std::string temp = mVariableMap["output"].as<std::string>();
+			if (temp == "-")
+				mOutputIsPath = false;
+			else
+				mOutputPath = temp;
+		}
+		else if (temp == "DB")
+		{
+			mDestination = destination::DB;
+			dfail_if_(! mVariableMap.count("output"), "Output destination of 'DB' specified but no 'output' table name provided.");
+			std::string temp = mVariableMap["output"].as<std::string>();
+			dfail_if_(temp == "-", "Invalid DB table name specified: '-'.");
+			mDBName = temp;
+		}
+		else
+			dfail_msg_("Invalid destination type specified. Must be: 'file' or 'DB'.");
+
+	}
 	return ;
 }		// -----  end of method CMyApp::Do_CheckArgs  -----
 
@@ -72,10 +160,10 @@ CMyApp::Do_SetupProgramOptions (void)
 {
 	mNewOptions.add_options()
 		("help",											"produce help message")
-		("symbol,s",			po::value<std::string>(),	"symbol we are processing")
-		("file,f",				po::value<std::string>(),	"file containing data for symbol")
+		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
+		("file,f",				po::value<std::string>(),	"name of file containing data for symbol")
 		("output,o",			po::value<std::string>(),	"output file name")
-		("destination,d",		po::value<std::string>(),	"output to file or DB")
+		("destination,d",		po::value<std::string>(),	"send data to file or DB")
 		;
 
 	return ;
@@ -88,4 +176,10 @@ CMyApp::Do_ParseProgramOptions (void)
 	return ;
 }		// -----  end of method CMyApp::Do_ParseProgramOptions  -----
 
+
+void
+CMyApp::Do_Run (void)
+{
+	return ;
+}		// -----  end of method CMyApp::Do_Run  -----
 

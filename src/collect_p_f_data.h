@@ -41,11 +41,22 @@ class CMyApp : public CApplication
 		virtual void Do_CheckArgs(void);
 		virtual void Do_SetupProgramOptions(void);
 		virtual	void Do_ParseProgramOptions(void);
+		virtual void Do_Run(void);
 
 		// ====================  DATA MEMBERS  =======================================
 
 	private:
 		// ====================  DATA MEMBERS  =======================================
+	
+	fs::path mInputPath;
+	fs::path mOutputPath;
+	std::string mSymbol;
+	std::string mDBName;
+
+	enum class destination { unknown, DB, file, stdout };
+	destination mDestination;
+	bool mInputIsPath;
+	bool mOutputIsPath;
 
 }; // -----  end of class CMyApp  -----
 
