@@ -53,7 +53,9 @@ class CMyApp : public CApplication
 	std::string mSymbol;
 	std::string mDBName;
 
+	enum class source { unknown, file, stdin };
 	enum class destination { unknown, DB, file, stdout };
+	source mSource;
 	destination mDestination;
 	bool mInputIsPath;
 	bool mOutputIsPath;

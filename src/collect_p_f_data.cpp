@@ -18,6 +18,8 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
+#include <iterator>
 
 #include "TException.h"
 #include "collect_p_f_data.h"
@@ -86,7 +88,7 @@ main ( int argc, char *argv[] )
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
 	: CApplication(argc, argv),
-	mInputIsPath(false), mOutputIsPath(false), mDestination(destination::unknown)
+	mInputIsPath(false), mOutputIsPath(false), mSource(source::unknown), mDestination(destination::unknown)
 
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
@@ -114,9 +116,13 @@ CMyApp::Do_CheckArgs (void)
 	dfail_if_(! mVariableMap.count("file"), "Input source must be specified.");
 	std::string temp = mVariableMap["file"].as<std::string>();
 	if (temp == "-")
+	{
+		mSource = source::stdin;
 		mInputIsPath = false;
+	}
 	else
 	{
+		mSource = source::file;
 		mInputPath = temp;
 		dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
 	}
@@ -136,7 +142,10 @@ CMyApp::Do_CheckArgs (void)
 			dfail_if_(! mVariableMap.count("output"), "Output destination of 'file' specified but no 'output' name provided.");
 			std::string temp = mVariableMap["output"].as<std::string>();
 			if (temp == "-")
+			{
 				mOutputIsPath = false;
+				mDestination = destination::stdout;
+			}
 			else
 				mOutputPath = temp;
 		}
@@ -180,6 +189,19 @@ CMyApp::Do_ParseProgramOptions (void)
 void
 CMyApp::Do_Run (void)
 {
+	//	simple copy code from input to output
+	
+	if (mSource == source::stdin && mDestination == destination::stdout)
+	{
+		std::ostream_iterator<std::string> otor(std::cout, "\n");
+		std::istream_iterator<std::string> itor(std::cin);
+		std::istream_iterator<std::string> itor_end;
+
+		std:copy(itor, itor_end, otor);
+	}
+	else
+		std::cout << "not stdin and stdout." << std::endl;
+
 	return ;
 }		// -----  end of method CMyApp::Do_Run  -----
 
