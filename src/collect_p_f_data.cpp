@@ -22,6 +22,7 @@
 #include <iterator>
 
 #include "TException.h"
+#include "aLine.h"
 #include "collect_p_f_data.h"
 
 int
@@ -193,9 +194,9 @@ CMyApp::Do_Run (void)
 	
 	if (mSource == source::stdin && mDestination == destination::stdout)
 	{
-		std::ostream_iterator<std::string> otor(std::cout, "\n");
-		std::istream_iterator<std::string> itor(std::cin);
-		std::istream_iterator<std::string> itor_end;
+		std::ostream_iterator<aLine> otor(std::cout, "\n");
+		std::istream_iterator<aLine> itor(std::cin);
+		std::istream_iterator<aLine> itor_end;
 
 		std:copy(itor, itor_end, otor);
 	}
