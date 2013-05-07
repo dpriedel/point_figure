@@ -90,7 +90,8 @@ main ( int argc, char *argv[] )
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
 	: CApplication(argc, argv),
-	mInputIsPath(false), mOutputIsPath(false), mSource(source::unknown), mDestination(destination::unknown)
+	mInputIsPath(false), mOutputIsPath(false), mSource(source::unknown), mDestination(destination::unknown),
+	mMode(mode::unknown)
 
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
@@ -127,6 +128,23 @@ CMyApp::Do_CheckArgs (void)
 		mSource = source::file;
 		mInputPath = temp;
 		dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+	}
+
+	//	if not specified, assume we are doing a 'load' operation for symbol.
+	
+	if (mVariableMap.count("mode") == 0)
+	{
+		mMode = mode::load;
+	}
+	else
+	{
+		std::string temp = mVariableMap["mode"].as<std::string>();
+		if (temp == "load")
+			mMode = mode::load;
+		else if (temp == "update")
+			mMode = mode::update;
+		else
+			dfail_msg_("Unkown 'mode': ", temp.c_str());
 	}
 
 	//	if not specified, assume we are sending output to stdout
@@ -173,8 +191,9 @@ CMyApp::Do_SetupProgramOptions (void)
 		("help",											"produce help message")
 		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
 		("file,f",				po::value<std::string>(),	"name of file containing data for symbol")
+		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'.")
 		("output,o",			po::value<std::string>(),	"output file name")
-		("destination,d",		po::value<std::string>(),	"send data to file or DB")
+		("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.")
 		;
 
 	return ;

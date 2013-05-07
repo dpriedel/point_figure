@@ -55,8 +55,11 @@ class CMyApp : public CApplication
 
 	enum class source { unknown, file, stdin };
 	enum class destination { unknown, DB, file, stdout };
+	enum class mode { unknown, load, update };
+
 	source mSource;
 	destination mDestination;
+	mode mMode;
 	bool mInputIsPath;
 	bool mOutputIsPath;
 
