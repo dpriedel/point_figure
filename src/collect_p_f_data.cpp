@@ -20,6 +20,7 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#include <decDouble.h>
 
 #include "TException.h"
 #include "aLine.h"
@@ -192,16 +193,33 @@ CMyApp::Do_Run (void)
 {
 	//	simple copy code from input to output
 	
-	if (mSource == source::stdin && mDestination == destination::stdout)
-	{
-		std::ostream_iterator<aLine> otor(std::cout, "\n");
-		std::istream_iterator<aLine> itor(std::cin);
-		std::istream_iterator<aLine> itor_end;
+	/* if (mSource == source::stdin && mDestination == destination::stdout) */
+	/* { */
+	/* 	std::ostream_iterator<aLine> otor(std::cout, "\n"); */
+	/* 	std::istream_iterator<aLine> itor(std::cin); */
+	/* 	std::istream_iterator<aLine> itor_end; */
 
-		std:copy(itor, itor_end, otor);
-	}
-	else
-		std::cout << "not stdin and stdout." << std::endl;
+	/* 	std:copy(itor, itor_end, otor); */
+	/* } */
+	/* else */
+	/* 	std::cout << "not stdin and stdout." << std::endl; */
+
+	//	play with decimal support in c++11
+	
+	decContext set;
+	decContextDefault(&set, DEC_INIT_DECDOUBLE);
+
+	decDouble a,b,c;
+	decDoubleFromString(&a, "12.3", &set);
+	decDoubleFromString(&b, "0.345", &set);
+	decDoubleAdd(&c, &a, &b, &set);
+
+	char output [DECDOUBLE_String];
+
+	decDoubleToString(&c, output);
+
+	std::cout << "12.3 + 0,345 = " << output << std::endl;
+
 
 	return ;
 }		// -----  end of method CMyApp::Do_Run  -----

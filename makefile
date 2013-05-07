@@ -18,11 +18,13 @@ endif
 ifeq "$(CFG)" "Debug"
 OUTDIR=Debug
 OUTFILE=collect_p_f_data
-CFG_INC=-I/extra/boost/boost-1.53_gcc-4.8/ -I/home/dpriedel/projects/workspace/app_framework/include/
+CFG_INC=-I/extra/boost/boost-1.53_gcc-4.8/ -I/extra/gcc/decNumber -I/home/dpriedel/projects/workspace/app_framework/include/
 CFG_LIB=-liberty -L/extra/boost/boost-1.53_gcc-4.8/lib -lboost_system-d -lboost_filesystem-d -lboost_program_options-d
 RPATH_LIB=-Xlinker -rpath -Xlinker /extra/gcc/gcc-4.8/lib64 -Xlinker -rpath -Xlinker /extra/boost/boost-1.53_gcc-4.8/lib
 CFG_OBJ=
-OBJ=$(OUTDIR)/collect_p_f_data.o $(OUTDIR)/CApplication.o $(OUTDIR)/ErrorHandler.o $(OUTDIR)/TException.o
+OBJ=$(OUTDIR)/collect_p_f_data.o $(OUTDIR)/CApplication.o $(OUTDIR)/ErrorHandler.o $(OUTDIR)/TException.o \
+	$(OUTDIR)/decContext.o $(OUTDIR)/decDouble.o $(OUTDIR)/decQuad.o
+
 #OBJ=$(COMMON_OBJ) $(CFG_OBJ)
 
 COMPILE=/extra/gcc/gcc-4.8/bin/g++ -c  -x c++  -O0  -g3 -std=c++11 -fPIC -o "$(OUTDIR)/$(*F).o" $(CFG_INC) "$<" -march=native -MMD  
@@ -40,6 +42,15 @@ $(OUTDIR)/ErrorHandler.o : ../app_framework/src/ErrorHandler.cpp ../app_framewor
 	$(COMPILE)
 
 $(OUTDIR)/TException.o : ../app_framework/src/TException.cpp ../app_framework/include/TException.h
+	$(COMPILE)
+
+$(OUTDIR)/decDouble.o : /extra/gcc/decNumber/decDouble.c /extra/gcc/decNumber/decDouble.h
+	$(COMPILE)
+
+$(OUTDIR)/decQuad.o : /extra/gcc/decNumber/decQuad.c /extra/gcc/decNumber/decQuad.h
+	$(COMPILE)
+
+$(OUTDIR)/decContext.o : /extra/gcc/decNumber/decContext.c /extra/gcc/decNumber/decContext.h
 	$(COMPILE)
 
 # Build rules
