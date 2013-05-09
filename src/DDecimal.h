@@ -65,6 +65,8 @@ class DDecimal<64>
 		// ====================  MUTATORS      =======================================
 
 		// ====================  OPERATORS     =======================================
+		
+		DDecimal<64>& operator+=(int);
 
 	protected:
 		// ====================  DATA MEMBERS  =======================================
@@ -89,6 +91,11 @@ class DDecimal<64>
 		decDoubleFromString(&this->mDecimal, number, &this->mCtx);
 	}
 
+DDecimal<64> operator+=(int)
+{
+
+}
+
 std::ostream& operator<<(std::ostream& os, const DDecimal<64>& item)
 {
 	char output [DECDOUBLE_String];
@@ -96,6 +103,7 @@ std::ostream& operator<<(std::ostream& os, const DDecimal<64>& item)
 	os << output;
 	return os;
 }
+
 std::istream& operator>>(std::istream& is, DDecimal<64>& item)
 {
 	std::string temp;

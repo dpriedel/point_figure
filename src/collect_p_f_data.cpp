@@ -20,11 +20,15 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
-#include <decDouble.h>
+//#include <decDouble.h>
 
 #include "TException.h"
 #include "aLine.h"
 #include "collect_p_f_data.h"
+#include "DDecimal.h"
+
+//template<64>
+decContext DDecimal<64>::mCtx;
 
 int
 main ( int argc, char *argv[] )
@@ -225,19 +229,27 @@ CMyApp::Do_Run (void)
 
 	//	play with decimal support in c++11
 	
-	decContext set;
-	decContextDefault(&set, DEC_INIT_DECDOUBLE);
+	/* decContext set; */
+	/* decContextDefault(&set, DEC_INIT_DECDOUBLE); */
 
-	decDouble a,b,c;
-	decDoubleFromString(&a, "12.3", &set);
-	decDoubleFromString(&b, "0.345", &set);
-	decDoubleAdd(&c, &a, &b, &set);
+	/* decDouble a,b,c; */
+	/* decDoubleFromString(&a, "12.3", &set); */
+	/* decDoubleFromString(&b, "0.345", &set); */
+	/* decDoubleAdd(&c, &a, &b, &set); */
 
-	char output [DECDOUBLE_String];
+	/* char output [DECDOUBLE_String]; */
 
-	decDoubleToString(&c, output);
+	/* decDoubleToString(&c, output); */
 
-	std::cout << "12.3 + 0,345 = " << output << std::endl;
+	/* std::cout << "12.3 + 0,345 = " << output << std::endl; */
+
+	DDecimal<64> testDec;
+	DDecimal<64> testDec2("123.45");
+
+	std::cout << testDec2 << std::endl;
+
+	std::cin >> testDec;
+	std::cout << "after reading stream " << testDec << std::endl;
 
 
 	return ;
