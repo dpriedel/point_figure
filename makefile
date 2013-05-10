@@ -32,7 +32,7 @@ LINK=/extra/gcc/gcc-4.8/bin/g++  -g -o "$(OUTFILE)" $(OBJ) $(CFG_LIB) -Wl,-E $(R
 
 # Pattern rules
 # $(OUTDIR)/%.o : ./src/%.cpp 
-$(OUTDIR)/collect_p_f_data.o : ./src/collect_p_f_data.cpp ./src/collect_p_f_data.h
+$(OUTDIR)/collect_p_f_data.o : ./src/collect_p_f_data.cpp ./src/collect_p_f_data.h ./src/DDecimal.h
 	$(COMPILE)
 
 $(OUTDIR)/CApplication.o : ../app_framework/src/CApplication.cpp ../app_framework/include/CApplication.h

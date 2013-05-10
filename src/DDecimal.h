@@ -12,7 +12,16 @@
 #include <string>
 #include <decNumber.h>
 
-template < int bits >
+#include <boost/lexical_cast.hpp>
+//#include <boost/algorithm/string/trim.hpp>
+//#include <boost/algorithm/string/classification.hpp>
+
+// =====================================================================================
+//        Class:  DDecimal
+//  Description:  arbitrary number of decimal digits
+// =====================================================================================
+
+template < int ddigits >
 class DDecimal
 {
 	public:
@@ -42,23 +51,27 @@ class DDecimal
 
 
 // =====================================================================================
-//        Class:  DDecimal
-//  Description:  64 bit decimal class
+//        Class:  DDecimal<16>
+//  Description:  16 digit decimal class
 // =====================================================================================
 
 #include <decDouble.h>
 
 template <>
-class DDecimal<64>
+class DDecimal<16>
 {
-	friend std::ostream& operator<<(std::ostream& os, const DDecimal<64>& item);
-	friend std::istream& operator>>(std::istream& is, DDecimal<64>& item);
+	friend std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item);
+	friend std::istream& operator>>(std::istream& is, DDecimal<16>& item);
 
 	public:
 		// ====================  LIFECYCLE     =======================================
 		DDecimal ();                             // constructor
 		DDecimal (const std::string& number);                             // constructor
 		DDecimal (const char* number);                             // constructor
+		DDecimal (int32_t number);                             // constructor
+		DDecimal (uint32_t number);                             // constructor
+
+		DDecimal (double number);
 
 		// ====================  ACCESSORS     =======================================
 
@@ -66,7 +79,10 @@ class DDecimal<64>
 
 		// ====================  OPERATORS     =======================================
 		
-		DDecimal<64>& operator+=(int);
+		DDecimal<16>& operator+=(const DDecimal<16>& rhs);
+		DDecimal<16>& operator-=(const DDecimal<16>& rhs);
+		DDecimal<16>& operator*=(const DDecimal<16>& rhs);
+		DDecimal<16>& operator/=(const DDecimal<16>& rhs);
 
 	protected:
 		// ====================  DATA MEMBERS  =======================================
@@ -77,26 +93,65 @@ class DDecimal<64>
 		decDouble mDecimal;
 		static decContext mCtx;
 
-}; // -----  end of template class DDecimal64  -----
+}; // -----  end of template class DDecimal16  -----
 
 
-	DDecimal<64>::DDecimal()
+	DDecimal<16>::DDecimal()
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 	}
 
-	DDecimal<64>::DDecimal(const char* number)
+	DDecimal<16>::DDecimal(const char* number)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 		decDoubleFromString(&this->mDecimal, number, &this->mCtx);
 	}
 
-DDecimal<64> operator+=(int)
-{
+	DDecimal<16>::DDecimal(int32_t number)
+	{
+		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decDoubleFromInt32(&this->mDecimal, number);
+	}
 
+	DDecimal<16>::DDecimal(uint32_t number)
+	{
+		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decDoubleFromInt32(&this->mDecimal, number);
+	}
+
+	DDecimal<16>::DDecimal(double number)
+	{
+		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		std::string temp = boost::lexical_cast<std::string>(number);
+		decDoubleFromString(&this->mDecimal, temp.c_str(), &this->mCtx);
+		decDoubleReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
+	}
+
+DDecimal<16>& DDecimal<16>::operator+=(const DDecimal<16>& rhs)
+{
+	decDoubleAdd(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	return *this;
 }
 
-std::ostream& operator<<(std::ostream& os, const DDecimal<64>& item)
+DDecimal<16>& DDecimal<16>::operator-=(const DDecimal<16>& rhs)
+{
+	decDoubleSubtract(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	return *this;
+}
+
+DDecimal<16>& DDecimal<16>::operator*=(const DDecimal<16>& rhs)
+{
+	decDoubleMultiply(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	return *this;
+}
+
+DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
+{
+	decDoubleDivide(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	return *this;
+}
+
+std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item)
 {
 	char output [DECDOUBLE_String];
 	decDoubleToString(&item.mDecimal, output);
@@ -104,7 +159,7 @@ std::ostream& operator<<(std::ostream& os, const DDecimal<64>& item)
 	return os;
 }
 
-std::istream& operator>>(std::istream& is, DDecimal<64>& item)
+std::istream& operator>>(std::istream& is, DDecimal<16>& item)
 {
 	std::string temp;
 	is >> temp;

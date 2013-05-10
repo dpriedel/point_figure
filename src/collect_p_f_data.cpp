@@ -12,7 +12,7 @@
 // 
 //         Author:  David P. Riedel (dpr), driedel@cox.net
 //        License:  GNU General Public License v3
-//        Company:  
+//        Company: 
 // 
 // =====================================================================================
 
@@ -27,8 +27,8 @@
 #include "collect_p_f_data.h"
 #include "DDecimal.h"
 
-//template<64>
-decContext DDecimal<64>::mCtx;
+//template<16>
+decContext DDecimal<16>::mCtx;
 
 int
 main ( int argc, char *argv[] )
@@ -243,13 +243,26 @@ CMyApp::Do_Run (void)
 
 	/* std::cout << "12.3 + 0,345 = " << output << std::endl; */
 
-	DDecimal<64> testDec;
-	DDecimal<64> testDec2("123.45");
+	DDecimal<16> testDec;
+	DDecimal<16> testDec2("123.45");
 
 	std::cout << testDec2 << std::endl;
 
 	std::cin >> testDec;
 	std::cout << "after reading stream " << testDec << std::endl;
+
+	testDec += 4.3;
+	std::cout << "after adding 4.3: " << testDec << std::endl;
+
+	testDec -= 4.3;
+	std::cout << "after subtracting 4.3: " << testDec << std::endl;
+
+	testDec *= 4.3;
+	std::cout << "after multiplying by 4.3: " << testDec << std::endl;
+
+	testDec /= 4.3;
+	std::cout << "after dividing by 4.3: " << testDec << std::endl;
+
 
 
 	return ;
