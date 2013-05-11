@@ -23,18 +23,32 @@
 template <>
 class DDecimal<16>
 {
-	friend std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item);
+	friend DDecimal<16> operator+(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend DDecimal<16> operator-(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend DDecimal<16> operator*(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend DDecimal<16> operator/(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+
+	friend bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend bool operator!=(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+
+	friend bool operator<(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend bool operator>(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+
+	friend bool operator<=(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend bool operator>=(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+
 	friend std::istream& operator>>(std::istream& is, DDecimal<16>& item);
+	friend std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item);
 
 	public:
 		// ====================  LIFECYCLE     =======================================
 		DDecimal ();                             // constructor
-		DDecimal (const std::string& number);                             // constructor
-		DDecimal (const char* number);                             // constructor
-		DDecimal (int32_t number);                             // constructor
-		DDecimal (uint32_t number);                             // constructor
+		DDecimal (const std::string& number);    // constructor
+		DDecimal (const char* number);           // constructor
+		DDecimal (int32_t number);               // constructor
+		DDecimal (uint32_t number);              // constructor
 
-		DDecimal (double number);
+		DDecimal (double number);				 // constructor
 
 		// ====================  ACCESSORS     =======================================
 
@@ -123,11 +137,90 @@ DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
 
 DDecimal<16> operator+(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 {
-	DDecimal<16> result = lhs;
-	result += rhs;
+	DDecimal<16> result;
+	decDoubleAdd(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
 	return result;
 }
 
+DDecimal<16> operator-(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+{
+	DDecimal<16> result;
+	decDoubleSubtract(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	return result;
+}
+
+DDecimal<16> operator*(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+{
+	DDecimal<16> result;
+	decDoubleMultiply(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	return result;
+}
+
+DDecimal<16> operator/(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+{
+	DDecimal<16> result;
+	decDoubleDivide(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	return result;
+}
+
+//
+//	comparison operators
+//
+
+bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+{
+	decDouble result;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decDoubleIsZero(&result))
+		return true;
+	else
+		return false;
+}
+
+bool operator!=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+{
+	return ! operator==(lhs, rhs);
+}
+
+bool operator<(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+{
+	decDouble result;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decDoubleIsNegative(&result))
+		return true;
+	else
+		return false;
+}
+
+bool operator>(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+{
+	decDouble result;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decDoubleIsPositive(&result))
+		return true;
+	else
+		return false;
+}
+
+bool operator<=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+{
+	decDouble result;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decDoubleIsPositive(&result))
+		return false;
+	else
+		return true;
+}
+
+bool operator>=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+{
+	decDouble result;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decDoubleIsNegative(&result))
+		return false;
+	else
+		return true;
+}
 
 //
 //	stream inserter/extractor
