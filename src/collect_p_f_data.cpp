@@ -25,7 +25,7 @@
 #include "TException.h"
 #include "aLine.h"
 #include "collect_p_f_data.h"
-#include "DDecimal.h"
+#include "DDecimal_16.h"
 
 //template<16>
 decContext DDecimal<16>::mCtx;
@@ -263,7 +263,17 @@ CMyApp::Do_Run (void)
 	testDec /= 4.3;
 	std::cout << "after dividing by 4.3: " << testDec << std::endl;
 
+	DDecimal<16> a = testDec + testDec2;
+	std::cout << "adding 2 numbers: " << testDec << " and " << testDec2 << " = " << a << std::endl;
 
+	bool xx = testDec == testDec2;
+	std::cout << "test " << testDec << " and " << testDec2 << " for equality.  result is: " << std::boolalpha << xx << std::endl;
+
+	xx = testDec < testDec2;
+	std::cout << "test " << testDec << " and " << testDec2 << " for less than.  result is: " << std::boolalpha << xx << std::endl;
+
+	std::string yy = testDec2.ToStr();
+	std::cout << "convert back to string: " << yy << std::endl;
 
 	return ;
 }		// -----  end of method CMyApp::Do_Run  -----

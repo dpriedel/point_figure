@@ -51,6 +51,8 @@ class DDecimal<16>
 		DDecimal (double number);				 // constructor
 
 		// ====================  ACCESSORS     =======================================
+		
+		std::string ToStr() const;
 
 		// ====================  MUTATORS      =======================================
 
@@ -106,6 +108,17 @@ class DDecimal<16>
 		decDoubleFromString(&this->mDecimal, temp.c_str(), &this->mCtx);
 		decDoubleReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
 	}
+	
+	std::string DDecimal<16>::ToStr() const
+	{
+		char output [DECDOUBLE_String];
+		decDoubleToString(&this->mDecimal, output);
+		return std::string(output);
+	}
+
+//
+//	member arithmetic operators
+//
 
 DDecimal<16>& DDecimal<16>::operator+=(const DDecimal<16>& rhs)
 {
@@ -132,7 +145,7 @@ DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
 }
 
 //
-//	arithmetic operators
+//	non-member arithmetic operators
 //
 
 DDecimal<16> operator+(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
@@ -164,7 +177,7 @@ DDecimal<16> operator/(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 }
 
 //
-//	comparison operators
+//	non member comparison operators
 //
 
 bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
