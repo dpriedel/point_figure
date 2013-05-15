@@ -25,10 +25,11 @@
 #include "TException.h"
 #include "aLine.h"
 #include "collect_p_f_data.h"
-#include "DDecimal_16.h"
+//#include "DDecimal_16.h"
+#include "DDecimal_32.h"
 
-//template<16>
-decContext DDecimal<16>::mCtx;
+//template<32>
+decContext DDecimal<32>::mCtx;
 
 int
 main ( int argc, char *argv[] )
@@ -243,8 +244,8 @@ CMyApp::Do_Run (void)
 
 	/* std::cout << "12.3 + 0,345 = " << output << std::endl; */
 
-	DDecimal<16> testDec;
-	DDecimal<16> testDec2("123.45");
+	DDecimal<32> testDec;
+	DDecimal<32> testDec2("123.45");
 
 	std::cout << testDec2 << std::endl;
 
@@ -263,7 +264,7 @@ CMyApp::Do_Run (void)
 	testDec /= 4.3;
 	std::cout << "after dividing by 4.3: " << testDec << std::endl;
 
-	DDecimal<16> a = testDec + testDec2;
+	DDecimal<32> a = testDec + testDec2;
 	std::cout << "adding 2 numbers: " << testDec << " and " << testDec2 << " = " << a << std::endl;
 
 	bool xx = testDec == testDec2;

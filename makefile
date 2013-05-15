@@ -23,7 +23,7 @@ CFG_LIB=-liberty -L/extra/boost/boost-1.53_gcc-4.8/lib -lboost_system-d -lboost_
 RPATH_LIB=-Xlinker -rpath -Xlinker /extra/gcc/gcc-4.8/lib64 -Xlinker -rpath -Xlinker /extra/boost/boost-1.53_gcc-4.8/lib
 CFG_OBJ=
 OBJ=$(OUTDIR)/collect_p_f_data.o $(OUTDIR)/CApplication.o $(OUTDIR)/ErrorHandler.o $(OUTDIR)/TException.o \
-	$(OUTDIR)/decContext.o $(OUTDIR)/decDouble.o $(OUTDIR)/decQuad.o
+	$(OUTDIR)/decContext.o $(OUTDIR)/decQuad.o
 
 #OBJ=$(COMMON_OBJ) $(CFG_OBJ)
 
@@ -32,7 +32,7 @@ LINK=/extra/gcc/gcc-4.8/bin/g++  -g -o "$(OUTFILE)" $(OBJ) $(CFG_LIB) -Wl,-E $(R
 
 # Pattern rules
 # $(OUTDIR)/%.o : ./src/%.cpp 
-$(OUTDIR)/collect_p_f_data.o : ./src/collect_p_f_data.cpp ./src/collect_p_f_data.h ./src/DDecimal.h ./src/DDecimal_16.h
+$(OUTDIR)/collect_p_f_data.o : ./src/collect_p_f_data.cpp ./src/collect_p_f_data.h ./src/DDecimal.h ./src/DDecimal_16.h ./src/DDecimal_32.h
 	$(COMPILE)
 
 $(OUTDIR)/CApplication.o : ../app_framework/src/CApplication.cpp ../app_framework/include/CApplication.h

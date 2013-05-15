@@ -5,84 +5,63 @@
 //				  code to do what I need right now.
 // =====================================================================================
 
-#ifndef _DDECIMAL_
-#define _DDECIMAL_
+#ifndef _DDECIMAL_32_
+#define _DDECIMAL_32_
 
-#include <iosfwd>
-#include <string>
-#include <decNumber.h>
-
-#include <boost/lexical_cast.hpp>
-//#include <boost/algorithm/string/trim.hpp>
-//#include <boost/algorithm/string/classification.hpp>
-
-// =====================================================================================
-//        Class:  DDecimal
-//  Description:  arbitrary number of decimal digits
-// =====================================================================================
-
-template < int ddigits >
-class DDecimal
-{
-	public:
-		// ====================  LIFECYCLE     =======================================
-		DDecimal ();                             // constructor
-		DDecimal (const std::string& number);                             // constructor
-		DDecimal (const char* number);                             // constructor
-
-		// ====================  ACCESSORS     =======================================
-
-		// ====================  MUTATORS      =======================================
-
-		// ====================  OPERATORS     =======================================
-
-	protected:
-		// ====================  DATA MEMBERS  =======================================
-
-	private:
-		// ====================  DATA MEMBERS  =======================================
-		
-	decNumber mDecimal;
-	static decContext mCtx;
-
-}; // -----  end of template class DDecimal  -----
+#include "DDecimal.h"
 
 //	example specialization
 
 
 // =====================================================================================
-//        Class:  DDecimal<16>
-//  Description:  16 digit decimal class
+//        Class:  DDecimal<32>
+//  Description:  32 digit decimal class
 // =====================================================================================
 
-#include <decDouble.h>
+#include <decQuad.h>
 
 template <>
-class DDecimal<16>
+class DDecimal<32>
 {
-	friend std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item);
-	friend std::istream& operator>>(std::istream& is, DDecimal<16>& item);
+	friend DDecimal<32> operator+(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+	friend DDecimal<32> operator-(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+	friend DDecimal<32> operator*(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+	friend DDecimal<32> operator/(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+
+	friend bool operator==(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+	friend bool operator!=(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+
+	friend bool operator<(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+	friend bool operator>(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+
+	friend bool operator<=(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+	friend bool operator>=(const DDecimal<32>& lhs, const DDecimal<32>& rhs);
+
+	friend std::istream& operator>>(std::istream& is, DDecimal<32>& item);
+	friend std::ostream& operator<<(std::ostream& os, const DDecimal<32>& item);
 
 	public:
 		// ====================  LIFECYCLE     =======================================
 		DDecimal ();                             // constructor
-		DDecimal (const std::string& number);                             // constructor
-		DDecimal (const char* number);                             // constructor
-		DDecimal (int32_t number);                             // constructor
-		DDecimal (uint32_t number);                             // constructor
+		DDecimal (const std::string& number);    // constructor
+		DDecimal (const char* number);           // constructor
+		DDecimal (int32_t number);               // constructor
+		DDecimal (uint32_t number);              // constructor
 
-		DDecimal (double number);
+		DDecimal (double number);				 // constructor
 
 		// ====================  ACCESSORS     =======================================
+		
+		std::string ToStr() const;
 
 		// ====================  MUTATORS      =======================================
 
 		// ====================  OPERATORS     =======================================
 		
-		DDecimal<16>& operator+=(const DDecimal<16>& rhs);
-		DDecimal<16>& operator-=(const DDecimal<16>& rhs);
-		DDecimal<16>& operator*=(const DDecimal<16>& rhs);
-		DDecimal<16>& operator/=(const DDecimal<16>& rhs);
+		DDecimal<32>& operator+=(const DDecimal<32>& rhs);
+		DDecimal<32>& operator-=(const DDecimal<32>& rhs);
+		DDecimal<32>& operator*=(const DDecimal<32>& rhs);
+		DDecimal<32>& operator/=(const DDecimal<32>& rhs);
 
 	protected:
 		// ====================  DATA MEMBERS  =======================================
@@ -90,80 +69,190 @@ class DDecimal<16>
 	private:
 		// ====================  DATA MEMBERS  =======================================
 		
-		decDouble mDecimal;
+		decQuad mDecimal;
 		static decContext mCtx;
 
 }; // -----  end of template class DDecimal16  -----
 
+//
+//	constructions/implicit conversion operators
+//
 
-	DDecimal<16>::DDecimal()
+	DDecimal<32>::DDecimal()
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decContextDefault(&this->mCtx, DEC_INIT_DECQUAD);
 	}
 
-	DDecimal<16>::DDecimal(const char* number)
+	DDecimal<32>::DDecimal(const char* number)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
-		decDoubleFromString(&this->mDecimal, number, &this->mCtx);
+		decContextDefault(&this->mCtx, DEC_INIT_DECQUAD);
+		decQuadFromString(&this->mDecimal, number, &this->mCtx);
 	}
 
-	DDecimal<16>::DDecimal(int32_t number)
+	DDecimal<32>::DDecimal(int32_t number)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
-		decDoubleFromInt32(&this->mDecimal, number);
+		decContextDefault(&this->mCtx, DEC_INIT_DECQUAD);
+		decQuadFromInt32(&this->mDecimal, number);
 	}
 
-	DDecimal<16>::DDecimal(uint32_t number)
+	DDecimal<32>::DDecimal(uint32_t number)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
-		decDoubleFromInt32(&this->mDecimal, number);
+		decContextDefault(&this->mCtx, DEC_INIT_DECQUAD);
+		decQuadFromInt32(&this->mDecimal, number);
 	}
 
-	DDecimal<16>::DDecimal(double number)
+	DDecimal<32>::DDecimal(double number)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decContextDefault(&this->mCtx, DEC_INIT_DECQUAD);
 		std::string temp = boost::lexical_cast<std::string>(number);
-		decDoubleFromString(&this->mDecimal, temp.c_str(), &this->mCtx);
-		decDoubleReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
+		std::cout << "result of lexical cast: " << temp << std::endl;
+		decQuadFromString(&this->mDecimal, temp.c_str(), &this->mCtx);
+		decQuadReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
+	}
+	
+	std::string DDecimal<32>::ToStr() const
+	{
+		char output [DECQUAD_String];
+		decQuadToString(&this->mDecimal, output);
+		return std::string(output);
 	}
 
-DDecimal<16>& DDecimal<16>::operator+=(const DDecimal<16>& rhs)
+//
+//	member arithmetic operators
+//
+
+DDecimal<32>& DDecimal<32>::operator+=(const DDecimal<32>& rhs)
 {
-	decDoubleAdd(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decQuadAdd(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
 }
 
-DDecimal<16>& DDecimal<16>::operator-=(const DDecimal<16>& rhs)
+DDecimal<32>& DDecimal<32>::operator-=(const DDecimal<32>& rhs)
 {
-	decDoubleSubtract(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decQuadSubtract(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
 }
 
-DDecimal<16>& DDecimal<16>::operator*=(const DDecimal<16>& rhs)
+DDecimal<32>& DDecimal<32>::operator*=(const DDecimal<32>& rhs)
 {
-	decDoubleMultiply(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decQuadMultiply(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
 }
 
-DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
+DDecimal<32>& DDecimal<32>::operator/=(const DDecimal<32>& rhs)
 {
-	decDoubleDivide(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decQuadDivide(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
 }
 
-std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item)
+//
+//	non-member arithmetic operators
+//
+
+DDecimal<32> operator+(const DDecimal<32>&lhs, const DDecimal<32>& rhs)
 {
-	char output [DECDOUBLE_String];
-	decDoubleToString(&item.mDecimal, output);
+	DDecimal<32> result;
+	decQuadAdd(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	return result;
+}
+
+DDecimal<32> operator-(const DDecimal<32>&lhs, const DDecimal<32>& rhs)
+{
+	DDecimal<32> result;
+	decQuadSubtract(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	return result;
+}
+
+DDecimal<32> operator*(const DDecimal<32>&lhs, const DDecimal<32>& rhs)
+{
+	DDecimal<32> result;
+	decQuadMultiply(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	return result;
+}
+
+DDecimal<32> operator/(const DDecimal<32>&lhs, const DDecimal<32>& rhs)
+{
+	DDecimal<32> result;
+	decQuadDivide(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	return result;
+}
+
+//
+//	non member comparison operators
+//
+
+bool operator==(const DDecimal<32>& lhs, const DDecimal<32>& rhs)
+{
+	decQuad result;
+	decQuadCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decQuadIsZero(&result))
+		return true;
+	else
+		return false;
+}
+
+bool operator!=(const DDecimal<32>& lhs, const DDecimal<32>& rhs)
+{
+	return ! operator==(lhs, rhs);
+}
+
+bool operator<(const DDecimal<32>& lhs, const DDecimal<32>& rhs)
+{
+	decQuad result;
+	decQuadCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decQuadIsNegative(&result))
+		return true;
+	else
+		return false;
+}
+
+bool operator>(const DDecimal<32>& lhs, const DDecimal<32>& rhs)
+{
+	decQuad result;
+	decQuadCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decQuadIsPositive(&result))
+		return true;
+	else
+		return false;
+}
+
+bool operator<=(const DDecimal<32>& lhs, const DDecimal<32>& rhs)
+{
+	decQuad result;
+	decQuadCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decQuadIsPositive(&result))
+		return false;
+	else
+		return true;
+}
+
+bool operator>=(const DDecimal<32>& lhs, const DDecimal<32>& rhs)
+{
+	decQuad result;
+	decQuadCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
+	if (decQuadIsNegative(&result))
+		return false;
+	else
+		return true;
+}
+
+//
+//	stream inserter/extractor
+//
+
+std::ostream& operator<<(std::ostream& os, const DDecimal<32>& item)
+{
+	char output [DECQUAD_String];
+	decQuadToString(&item.mDecimal, output);
 	os << output;
 	return os;
 }
 
-std::istream& operator>>(std::istream& is, DDecimal<16>& item)
+std::istream& operator>>(std::istream& is, DDecimal<32>& item)
 {
 	std::string temp;
 	is >> temp;
-	decDoubleFromString(&item.mDecimal, temp.c_str(), &item.mCtx);
+	decQuadFromString(&item.mDecimal, temp.c_str(), &item.mCtx);
 	return is;
 }
 
