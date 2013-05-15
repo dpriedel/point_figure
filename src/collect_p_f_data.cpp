@@ -25,11 +25,11 @@
 #include "TException.h"
 #include "aLine.h"
 #include "collect_p_f_data.h"
-//#include "DDecimal_16.h"
-#include "DDecimal_32.h"
+#include "DDecimal_16.h"
+//#include "DDecimal_32.h"
 
 //template<32>
-decContext DDecimal<32>::mCtx;
+decContext DDecimal<16>::mCtx;
 
 int
 main ( int argc, char *argv[] )
@@ -216,17 +216,22 @@ void
 CMyApp::Do_Run (void)
 {
 	//	simple copy code from input to output
+	//	and initialize a DDecimal value from the string input
+	//	and then convert back to a string to see if anything
+	//	gets lost in translation.
 	
-	/* if (mSource == source::stdin && mDestination == destination::stdout) */
-	/* { */
-	/* 	std::ostream_iterator<aLine> otor(std::cout, "\n"); */
-	/* 	std::istream_iterator<aLine> itor(std::cin); */
-	/* 	std::istream_iterator<aLine> itor_end; */
+	if (mSource == source::stdin && mDestination == destination::stdout)
+	{
+		std::ostream_iterator<aLine> otor(std::cout, "\n");
+		std::istream_iterator<aLine> itor(std::cin);
+		std::istream_iterator<aLine> itor_end;
 
-	/* 	std:copy(itor, itor_end, otor); */
-	/* } */
-	/* else */
-	/* 	std::cout << "not stdin and stdout." << std::endl; */
+		//std:copy(itor, itor_end, otor);
+		std:transform(itor, itor_end, otor,
+					[] (aLine data) {DDecimal<16> aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
+	}
+	else
+		std::cout << "not stdin and stdout." << std::endl;
 
 	//	play with decimal support in c++11
 	
@@ -244,37 +249,37 @@ CMyApp::Do_Run (void)
 
 	/* std::cout << "12.3 + 0,345 = " << output << std::endl; */
 
-	DDecimal<32> testDec;
-	DDecimal<32> testDec2("123.45");
+	/* DDecimal<32> testDec; */
+	/* DDecimal<32> testDec2("123.45"); */
 
-	std::cout << testDec2 << std::endl;
+	/* std::cout << testDec2 << std::endl; */
 
-	std::cin >> testDec;
-	std::cout << "after reading stream " << testDec << std::endl;
+	/* std::cin >> testDec; */
+	/* std::cout << "after reading stream " << testDec << std::endl; */
 
-	testDec += 4.3;
-	std::cout << "after adding 4.3: " << testDec << std::endl;
+	/* testDec += 4.3; */
+	/* std::cout << "after adding 4.3: " << testDec << std::endl; */
 
-	testDec -= 4.3;
-	std::cout << "after subtracting 4.3: " << testDec << std::endl;
+	/* testDec -= 4.3; */
+	/* std::cout << "after subtracting 4.3: " << testDec << std::endl; */
 
-	testDec *= 4.3;
-	std::cout << "after multiplying by 4.3: " << testDec << std::endl;
+	/* testDec *= 4.3; */
+	/* std::cout << "after multiplying by 4.3: " << testDec << std::endl; */
 
-	testDec /= 4.3;
-	std::cout << "after dividing by 4.3: " << testDec << std::endl;
+	/* testDec /= 4.3; */
+	/* std::cout << "after dividing by 4.3: " << testDec << std::endl; */
 
-	DDecimal<32> a = testDec + testDec2;
-	std::cout << "adding 2 numbers: " << testDec << " and " << testDec2 << " = " << a << std::endl;
+	/* DDecimal<32> a = testDec + testDec2; */
+	/* std::cout << "adding 2 numbers: " << testDec << " and " << testDec2 << " = " << a << std::endl; */
 
-	bool xx = testDec == testDec2;
-	std::cout << "test " << testDec << " and " << testDec2 << " for equality.  result is: " << std::boolalpha << xx << std::endl;
+	/* bool xx = testDec == testDec2; */
+	/* std::cout << "test " << testDec << " and " << testDec2 << " for equality.  result is: " << std::boolalpha << xx << std::endl; */
 
-	xx = testDec < testDec2;
-	std::cout << "test " << testDec << " and " << testDec2 << " for less than.  result is: " << std::boolalpha << xx << std::endl;
+	/* xx = testDec < testDec2; */
+	/* std::cout << "test " << testDec << " and " << testDec2 << " for less than.  result is: " << std::boolalpha << xx << std::endl; */
 
-	std::string yy = testDec2.ToStr();
-	std::cout << "convert back to string: " << yy << std::endl;
+	/* std::string yy = testDec2.ToStr(); */
+	/* std::cout << "convert back to string: " << yy << std::endl; */
 
 	return ;
 }		// -----  end of method CMyApp::Do_Run  -----

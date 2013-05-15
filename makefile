@@ -23,7 +23,7 @@ CFG_LIB=-liberty -L/extra/boost/boost-1.53_gcc-4.8/lib -lboost_system-d -lboost_
 RPATH_LIB=-Xlinker -rpath -Xlinker /extra/gcc/gcc-4.8/lib64 -Xlinker -rpath -Xlinker /extra/boost/boost-1.53_gcc-4.8/lib
 CFG_OBJ=
 OBJ=$(OUTDIR)/collect_p_f_data.o $(OUTDIR)/CApplication.o $(OUTDIR)/ErrorHandler.o $(OUTDIR)/TException.o \
-	$(OUTDIR)/decContext.o $(OUTDIR)/decQuad.o
+	$(OUTDIR)/decContext.o $(OUTDIR)/decDouble.o $(OUTDIR)/decQuad.o
 
 #OBJ=$(COMMON_OBJ) $(CFG_OBJ)
 
