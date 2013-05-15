@@ -228,7 +228,7 @@ CMyApp::Do_Run (void)
 
 		//std:copy(itor, itor_end, otor);
 		std:transform(itor, itor_end, otor,
-					[] (aLine data) {DDecimal<16> aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
+					[] (const aLine& data) {DDecimal<16> aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
 	}
 	else
 		std::cout << "not stdin and stdout." << std::endl;
