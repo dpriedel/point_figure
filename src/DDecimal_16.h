@@ -43,8 +43,8 @@ class DDecimal<16>
 	public:
 		// ====================  LIFECYCLE     =======================================
 		DDecimal ();                             // constructor
-		DDecimal (const std::string& number);    // constructor
 		DDecimal (const char* number);           // constructor
+		DDecimal (const std::string& number);    // constructor
 		DDecimal (int32_t number);               // constructor
 		DDecimal (uint32_t number);              // constructor
 
@@ -88,6 +88,9 @@ class DDecimal<16>
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 		decDoubleFromString(&this->mDecimal, number, &this->mCtx);
 	}
+
+	DDecimal<16>::DDecimal(const std::string& number)
+		: DDecimal(number.c_str())	{ }
 
 	DDecimal<16>::DDecimal(int32_t number)
 	{
