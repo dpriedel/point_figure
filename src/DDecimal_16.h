@@ -8,6 +8,9 @@
 #ifndef _DDECIMAL_16_
 #define _DDECIMAL_16_
 
+#include <sstream>
+#include <iomanip>
+
 #include "DDecimal.h"
 
 //	example specialization
@@ -48,7 +51,7 @@ class DDecimal<16>
 		DDecimal (int32_t number);               // constructor
 		DDecimal (uint32_t number);              // constructor
 
-		DDecimal (double number);				 // constructor
+		DDecimal (double number, int dec_digits=2);	 // constructor
 
 		// ====================  ACCESSORS     =======================================
 		
@@ -104,12 +107,14 @@ class DDecimal<16>
 		decDoubleFromInt32(&this->mDecimal, number);
 	}
 
-	DDecimal<16>::DDecimal(double number)
+	DDecimal<16>::DDecimal(double number, int dec_digits)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
-		std::string temp = boost::lexical_cast<std::string>(number);
-		decDoubleFromString(&this->mDecimal, temp.c_str(), &this->mCtx);
-		decDoubleReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
+		std::ostringstream temp;
+		temp << std::fixed << std::setprecision(dec_digits) << number;
+
+		decDoubleFromString(&this->mDecimal, temp.str().c_str(), &this->mCtx);
+//		decDoubleReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
 	}
 	
 	std::string DDecimal<16>::ToStr() const
