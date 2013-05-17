@@ -8,6 +8,9 @@
 #ifndef _DDECIMAL_32_
 #define _DDECIMAL_32_
 
+#include <sstream>
+#include <iomanip>
+
 #include "DDecimal.h"
 
 //	example specialization
