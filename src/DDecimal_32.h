@@ -48,7 +48,7 @@ class DDecimal<32>
 		DDecimal (int32_t number);               // constructor
 		DDecimal (uint32_t number);              // constructor
 
-		DDecimal (double number);				 // constructor
+		DDecimal (double number, int dec_digits=4);	 // constructor
 
 		// ====================  ACCESSORS     =======================================
 		
@@ -101,13 +101,13 @@ class DDecimal<32>
 		decQuadFromInt32(&this->mDecimal, number);
 	}
 
-	DDecimal<32>::DDecimal(double number)
+	DDecimal<32>::DDecimal(double number, int dec_digits)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECQUAD);
-		std::string temp = boost::lexical_cast<std::string>(number);
-		std::cout << "result of lexical cast: " << temp << std::endl;
-		decQuadFromString(&this->mDecimal, temp.c_str(), &this->mCtx);
-		decQuadReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
+		std::ostringstream temp;
+		temp << std::fixed << std::setprecision(dec_digits) << number;
+
+		decQuadFromString(&this->mDecimal, temp.str().c_str(), &this->mCtx);
 	}
 	
 	std::string DDecimal<32>::ToStr() const
