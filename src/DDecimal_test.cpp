@@ -94,7 +94,7 @@ main ( int argc, char *argv[] )
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
 	: CApplication(argc, argv),
-	mInputIsPath(false), mOutputIsPath(false), mSource(source::unknown), mDestination(destination::unknown),
+	mInputIsPath(false), mSource(source::unknown), 
 	mMode(mode::unknown)
 
 {
@@ -117,74 +117,41 @@ CMyApp::Do_CheckArgs (void)
 {
 	//	let's get our input and output set up
 	
-	dfail_if_(! mVariableMap.count("symbol"), "Symbol must be specified.");
-	mSymbol = mVariableMap["symbol"].as<std::string>();
-
-	dfail_if_(! mVariableMap.count("file"), "Input source must be specified.");
-	std::string temp = mVariableMap["file"].as<std::string>();
-	if (temp == "-")
+	if(mVariableMap.count("file") > 0)
 	{
-		mSource = source::stdin;
-		mInputIsPath = false;
-	}
-	else
-	{
-		mSource = source::file;
-		mInputPath = temp;
-		dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+		std::string temp = mVariableMap["file"].as<std::string>();
+		if (temp == "-")
+		{
+			mSource = source::stdin;
+			mInputIsPath = false;
+		}
+		else
+		{
+			mSource = source::file;
+			mInputPath = temp;
+			dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+		}
 	}
 
-	//	if not specified, assume we are doing a 'load' operation for symbol.
+	//	if not specified, assume we are testing 16 digit decimal.
 	
 	if (mVariableMap.count("mode") == 0)
 	{
-		mMode = mode::load;
+		mMode = mode::d_16;
 	}
 	else
 	{
 		std::string temp = mVariableMap["mode"].as<std::string>();
-		if (temp == "load")
-			mMode = mode::load;
-		else if (temp == "update")
-			mMode = mode::update;
+		if (temp == "16")
+			mMode = mode::d_16;
+		else if (temp == "32")
+			mMode = mode::d_32;
+		else if (temp == "any")
+			mMode = mode::d_any;
 		else
 			dfail_msg_("Unkown 'mode': ", temp.c_str());
 	}
 
-	//	if not specified, assume we are sending output to stdout
-	
-	if (mVariableMap.count("destination") == 0)
-	{
-		mDestination = destination::stdout;
-	}
-	else
-	{
-		std::string temp = mVariableMap["destination"].as<std::string>();
-		if (temp == "file")
-		{
-			mDestination = destination::file;
-			dfail_if_(! mVariableMap.count("output"), "Output destination of 'file' specified but no 'output' name provided.");
-			std::string temp = mVariableMap["output"].as<std::string>();
-			if (temp == "-")
-			{
-				mOutputIsPath = false;
-				mDestination = destination::stdout;
-			}
-			else
-				mOutputPath = temp;
-		}
-		else if (temp == "DB")
-		{
-			mDestination = destination::DB;
-			dfail_if_(! mVariableMap.count("output"), "Output destination of 'DB' specified but no 'output' table name provided.");
-			std::string temp = mVariableMap["output"].as<std::string>();
-			dfail_if_(temp == "-", "Invalid DB table name specified: '-'.");
-			mDBName = temp;
-		}
-		else
-			dfail_msg_("Invalid destination type specified. Must be: 'file' or 'DB'.");
-
-	}
 	return ;
 }		// -----  end of method CMyApp::Do_CheckArgs  -----
 
@@ -193,11 +160,9 @@ CMyApp::Do_SetupProgramOptions (void)
 {
 	mNewOptions.add_options()
 		("help",											"produce help message")
-		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
-		("file,f",				po::value<std::string>(),	"name of file containing data for symbol")
-		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'.")
-		("output,o",			po::value<std::string>(),	"output file name")
-		("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.")
+		("file,f",				po::value<std::string>(),	"name of file containing test directives")
+		("mode,m",				po::value<std::string>(),	"mode: either '16', '32' or 'any'")
+//		("output,o",			po::value<std::string>(),	"output file name")
 		;
 
 	return ;

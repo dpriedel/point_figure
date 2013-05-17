@@ -50,18 +50,14 @@ class CMyApp : public CApplication
 	
 	fs::path mInputPath;
 	fs::path mOutputPath;
-	std::string mSymbol;
 	std::string mDBName;
 
 	enum class source { unknown, file, stdin };
-	enum class destination { unknown, DB, file, stdout };
-	enum class mode { unknown, load, update };
+	enum class mode { unknown, d_16, d_32, d_any };
 
 	source mSource;
-	destination mDestination;
 	mode mMode;
 	bool mInputIsPath;
-	bool mOutputIsPath;
 
 }; // -----  end of class CMyApp  -----
 
