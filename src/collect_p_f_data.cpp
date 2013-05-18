@@ -196,9 +196,13 @@ CMyApp::Do_SetupProgramOptions (void)
 		("help",											"produce help message")
 		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
 		("file,f",				po::value<std::string>(),	"name of file containing data for symbol")
-		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'.")
+		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
 		("output,o",			po::value<std::string>(),	"output file name")
 		("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.")
+		("step",				po::value<DDecimal<16>>(),	"box step size. 'n', 'm.n'")
+		("reversal,r",			po::value<int>(),			"reversal size in number of boxes")
+		("scale",				po::value<std::string>(),	"'arithmetic', 'log'")
+		("interval,i",			po::value<std::string>(),	"'eod', '1sec', '5sec', '1min', '5min', etc")
 		;
 
 	return ;
@@ -235,52 +239,6 @@ CMyApp::Do_Run (void)
 
 	//	play with decimal support in c++11
 	
-	/* decContext set; */
-	/* decContextDefault(&set, DEC_INIT_DECDOUBLE); */
-
-	/* decDouble a,b,c; */
-	/* decDoubleFromString(&a, "12.3", &set); */
-	/* decDoubleFromString(&b, "0.345", &set); */
-	/* decDoubleAdd(&c, &a, &b, &set); */
-
-	/* char output [DECDOUBLE_String]; */
-
-	/* decDoubleToString(&c, output); */
-
-	/* std::cout << "12.3 + 0,345 = " << output << std::endl; */
-
-	DDecimal<16> testDec;
-	DDecimal<16> testDec2("123.45");
-
-	std::cout << testDec2 << std::endl;
-
-	std::cin >> testDec;
-	std::cout << "after reading stream " << testDec << std::endl;
-
-	testDec += 4.3;
-	std::cout << "after adding 4.3: " << testDec << std::endl;
-
-	testDec -= 4.3;
-	std::cout << "after subtracting 4.3: " << testDec << std::endl;
-
-	testDec *= 4.3;
-	std::cout << "after multiplying by 4.3: " << testDec << std::endl;
-
-	testDec /= 4.3;
-	std::cout << "after dividing by 4.3: " << testDec << std::endl;
-
-	DDecimal<16> a = testDec + testDec2;
-	std::cout << "adding 2 numbers: " << testDec << " and " << testDec2 << " = " << a << std::endl;
-
-	bool xx = testDec == testDec2;
-	std::cout << "test " << testDec << " and " << testDec2 << " for equality.  result is: " << std::boolalpha << xx << std::endl;
-
-	xx = testDec < testDec2;
-	std::cout << "test " << testDec << " and " << testDec2 << " for less than.  result is: " << std::boolalpha << xx << std::endl;
-
-	std::string yy = testDec2.ToStr();
-	std::cout << "convert back to string: " << yy << std::endl;
-
 	return ;
 }		// -----  end of method CMyApp::Do_Run  -----
 
