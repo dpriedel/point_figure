@@ -20,11 +20,15 @@
 //  Description:  class to manage Point & Figure data for a symbol.
 // =====================================================================================
 
+#include <vector>
+
 #include <boost/date_time/gregorian/gregorian.hpp>
 
 #include "DDecimal_16.h"
 
-namespace boost::gregorian greg;
+namespace greg = boost::gregorian;
+
+class P_F_Column;
 
 class P_F_Data
 {
@@ -49,7 +53,9 @@ class P_F_Data
 	private:
 		// ====================  DATA MEMBERS  =======================================
 
-		Symbol mSymbol;
+		std::vector<P_F_Column> mColumns;
+
+		std::string mSymbol;
 
 		greg::date mFirstDate;			//	earliest entry for symbol
 		greg::date mLastChangeDate;		//	date of last change to data

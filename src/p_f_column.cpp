@@ -1,11 +1,11 @@
 // =====================================================================================
 // 
-//       Filename:  p_f_data.cpp
+//       Filename:  p_f_column.cpp
 // 
-//    Description:  Implementation of class which contains Point & Figure data for a symbol.
+//    Description:  implementation of class which implements Point & Figure column data
 // 
 //        Version:  1.0
-//        Created:  05/21/2013 01:58:39 PM
+//        Created:  05/21/2013 02:57:51 PM
 //       Revision:  none
 //       Compiler:  g++
 // 
@@ -16,18 +16,15 @@
 // =====================================================================================
 
 
-#include "p_f_data.h"
 #include "p_f_column.h"
 
+
 //--------------------------------------------------------------------------------------
-//       Class:  P_F_Data
-//      Method:  P_F_Data
+//       Class:  P_F_Column
+//      Method:  P_F_Column
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-
-P_F_Data::P_F_Data ()
-	: mBoxSize(0), mReversalBoxes(0), mCurrentDirection(direction::unknown)
-
+P_F_Column::P_F_Column ()
 {
-}  // -----  end of method P_F_Data::P_F_Data  (constructor)  -----
+}  // -----  end of method P_F_Column::P_F_Column  (constructor)  -----
 
