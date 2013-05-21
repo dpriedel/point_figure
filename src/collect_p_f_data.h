@@ -16,6 +16,7 @@
 // =====================================================================================
 
 #include "CApplication.h"
+#include "DDecimal_16.h"
 
 // =====================================================================================
 //        Class:  CMyApp
@@ -53,13 +54,20 @@ class CMyApp : public CApplication
 	std::string mSymbol;
 	std::string mDBName;
 
-	enum class source { unknown, file, stdin };
+	enum class source { unknown, file, stdin, network };
 	enum class destination { unknown, DB, file, stdout };
 	enum class mode { unknown, load, update };
+	enum class interval { unknown, eod, sec1, sec5, min1, min5 };
+	enum class scale { unknown, arithmetic,log };
 
 	source mSource;
 	destination mDestination;
 	mode mMode;
+	interval mInterval;
+	scale mScale;
+
+	DDecimal<16> mBoxSize;
+	int mReversalBoxes;
 	bool mInputIsPath;
 	bool mOutputIsPath;
 

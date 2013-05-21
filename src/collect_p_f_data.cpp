@@ -95,8 +95,8 @@ main ( int argc, char *argv[] )
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
 	: CApplication(argc, argv),
-	mInputIsPath(false), mOutputIsPath(false), mSource(source::unknown), mDestination(destination::unknown),
-	mMode(mode::unknown)
+	mSource(source::unknown), mDestination(destination::unknown), mMode(mode::unknown), mInterval(interval::unknown), 
+	mScale(scale::unknown), mInputIsPath(false), mOutputIsPath(false) 
 
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
@@ -121,18 +121,25 @@ CMyApp::Do_CheckArgs (void)
 	dfail_if_(! mVariableMap.count("symbol"), "Symbol must be specified.");
 	mSymbol = mVariableMap["symbol"].as<std::string>();
 
-	dfail_if_(! mVariableMap.count("file"), "Input source must be specified.");
-	std::string temp = mVariableMap["file"].as<std::string>();
-	if (temp == "-")
+	if(mVariableMap.count("file") == 0)
 	{
 		mSource = source::stdin;
 		mInputIsPath = false;
 	}
 	else
 	{
-		mSource = source::file;
-		mInputPath = temp;
-		dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+		std::string temp = mVariableMap["file"].as<std::string>();
+		if (temp == "-")
+		{
+			mSource = source::stdin;
+			mInputIsPath = false;
+		}
+		else
+		{
+			mSource = source::file;
+			mInputPath = temp;
+			dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+		}
 	}
 
 	//	if not specified, assume we are doing a 'load' operation for symbol.
@@ -157,6 +164,7 @@ CMyApp::Do_CheckArgs (void)
 	if (mVariableMap.count("destination") == 0)
 	{
 		mDestination = destination::stdout;
+		mOutputIsPath = false;
 	}
 	else
 	{
@@ -172,7 +180,10 @@ CMyApp::Do_CheckArgs (void)
 				mDestination = destination::stdout;
 			}
 			else
+			{
 				mOutputPath = temp;
+				mOutputIsPath = true;
+			}
 		}
 		else if (temp == "DB")
 		{
@@ -195,14 +206,14 @@ CMyApp::Do_SetupProgramOptions (void)
 	mNewOptions.add_options()
 		("help",											"produce help message")
 		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
-		("file,f",				po::value<std::string>(),	"name of file containing data for symbol")
+		("file,f",				po::value<std::string>(),	"name of file containing data for symbol. Default is stdin")
 		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
 		("output,o",			po::value<std::string>(),	"output file name")
 		("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.")
-		("step",				po::value<DDecimal<16>>(),	"box step size. 'n', 'm.n'")
+		("boxsize, b",			po::value<DDecimal<16>>(),	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<int>(),			"reversal size in number of boxes")
-		("scale",				po::value<std::string>(),	"'arithmetic', 'log'")
-		("interval,i",			po::value<std::string>(),	"'eod', '1sec', '5sec', '1min', '5min', etc")
+		("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'")
+		("interval,i",			po::value<std::string>(),	"'eod', 'tic', '1sec', '5sec', '1min', '5min', etc. Default is 'tic'")
 		;
 
 	return ;
