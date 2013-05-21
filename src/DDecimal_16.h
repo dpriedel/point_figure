@@ -81,33 +81,33 @@ class DDecimal<16>
 //	constructions/implicit conversion operators
 //
 
-	DDecimal<16>::DDecimal()
+	inline DDecimal<16>::DDecimal()
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 	}
 
-	DDecimal<16>::DDecimal(const char* number)
+	inline DDecimal<16>::DDecimal(const char* number)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 		decDoubleFromString(&this->mDecimal, number, &this->mCtx);
 	}
 
-	DDecimal<16>::DDecimal(const std::string& number)
+	inline DDecimal<16>::DDecimal(const std::string& number)
 		: DDecimal(number.c_str())	{ }
 
-	DDecimal<16>::DDecimal(int32_t number)
+	inline DDecimal<16>::DDecimal(int32_t number)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 		decDoubleFromInt32(&this->mDecimal, number);
 	}
 
-	DDecimal<16>::DDecimal(uint32_t number)
+	inline DDecimal<16>::DDecimal(uint32_t number)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 		decDoubleFromInt32(&this->mDecimal, number);
 	}
 
-	DDecimal<16>::DDecimal(double number, int dec_digits)
+	inline DDecimal<16>::DDecimal(double number, int dec_digits)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
 		std::ostringstream temp;
@@ -117,7 +117,7 @@ class DDecimal<16>
 //		decDoubleReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
 	}
 	
-	std::string DDecimal<16>::ToStr() const
+	inline std::string DDecimal<16>::ToStr() const
 	{
 		char output [DECDOUBLE_String];
 		decDoubleToString(&this->mDecimal, output);
@@ -128,25 +128,25 @@ class DDecimal<16>
 //	member arithmetic operators
 //
 
-DDecimal<16>& DDecimal<16>::operator+=(const DDecimal<16>& rhs)
+inline DDecimal<16>& DDecimal<16>::operator+=(const DDecimal<16>& rhs)
 {
 	decDoubleAdd(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
 }
 
-DDecimal<16>& DDecimal<16>::operator-=(const DDecimal<16>& rhs)
+inline DDecimal<16>& DDecimal<16>::operator-=(const DDecimal<16>& rhs)
 {
 	decDoubleSubtract(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
 }
 
-DDecimal<16>& DDecimal<16>::operator*=(const DDecimal<16>& rhs)
+inline DDecimal<16>& DDecimal<16>::operator*=(const DDecimal<16>& rhs)
 {
 	decDoubleMultiply(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
 }
 
-DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
+inline DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
 {
 	decDoubleDivide(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
 	return *this;
@@ -156,28 +156,28 @@ DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
 //	non-member arithmetic operators
 //
 
-DDecimal<16> operator+(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<16> operator+(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 {
 	DDecimal<16> result;
 	decDoubleAdd(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
 	return result;
 }
 
-DDecimal<16> operator-(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<16> operator-(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 {
 	DDecimal<16> result;
 	decDoubleSubtract(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
 	return result;
 }
 
-DDecimal<16> operator*(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<16> operator*(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 {
 	DDecimal<16> result;
 	decDoubleMultiply(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
 	return result;
 }
 
-DDecimal<16> operator/(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<16> operator/(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 {
 	DDecimal<16> result;
 	decDoubleDivide(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
@@ -188,7 +188,7 @@ DDecimal<16> operator/(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 //	non member comparison operators
 //
 
-bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 {
 	decDouble result;
 	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
@@ -198,12 +198,12 @@ bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 		return false;
 }
 
-bool operator!=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator!=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 {
 	return ! operator==(lhs, rhs);
 }
 
-bool operator<(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator<(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 {
 	decDouble result;
 	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
@@ -213,7 +213,7 @@ bool operator<(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 		return false;
 }
 
-bool operator>(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator>(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 {
 	decDouble result;
 	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
@@ -223,7 +223,7 @@ bool operator>(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 		return false;
 }
 
-bool operator<=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator<=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 {
 	decDouble result;
 	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
@@ -233,7 +233,7 @@ bool operator<=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 		return true;
 }
 
-bool operator>=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator>=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 {
 	decDouble result;
 	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
@@ -247,7 +247,7 @@ bool operator>=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
 //	stream inserter/extractor
 //
 
-std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item)
+inline std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item)
 {
 	char output [DECDOUBLE_String];
 	decDoubleToString(&item.mDecimal, output);
@@ -255,7 +255,7 @@ std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item)
 	return os;
 }
 
-std::istream& operator>>(std::istream& is, DDecimal<16>& item)
+inline std::istream& operator>>(std::istream& is, DDecimal<16>& item)
 {
 	std::string temp;
 	is >> temp;
