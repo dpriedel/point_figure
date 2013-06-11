@@ -26,7 +26,7 @@
 //--------------------------------------------------------------------------------------
 
 P_F_Data::P_F_Data ()
-	: mBoxSize(0), mReversalBoxes(0), mCurrentDirection(direction::unknown)
+	: mBoxSize{0}, mReversalBoxes{0}, mCurrentDirection{direction::unknown}
 
 {
 }  // -----  end of method P_F_Data::P_F_Data  (constructor)  -----

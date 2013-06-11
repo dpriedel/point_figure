@@ -96,9 +96,9 @@ main ( int argc, char *argv[] )
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
-	: CApplication(argc, argv),
-	mSource(source::unknown), mDestination(destination::unknown), mMode(mode::unknown), mInterval(interval::unknown), 
-	mScale(scale::unknown), mInputIsPath(false), mOutputIsPath(false) 
+	: CApplication{argc, argv},
+	mSource{source::unknown}, mDestination{destination::unknown}, mMode{mode::unknown}, mInterval{interval::unknown}, 
+	mScale{scale::unknown}, mInputIsPath{false}, mOutputIsPath{false} 
 
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
