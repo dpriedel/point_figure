@@ -12,6 +12,10 @@
 #include <iomanip>
 
 #include "DDecimal.h"
+#include <decDouble.h>
+
+namespace DprDecimal
+{
 
 //	example specialization
 
@@ -20,8 +24,6 @@
 //        Class:  DDecimal<16>
 //  Description:  16 digit decimal class
 // =====================================================================================
-
-#include <decDouble.h>
 
 template <>
 class DDecimal<16>
@@ -104,7 +106,7 @@ class DDecimal<16>
 	inline DDecimal<16>::DDecimal(uint32_t number)
 	{
 		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
-		decDoubleFromInt32(&this->mDecimal, number);
+		decDoubleFromUInt32(&this->mDecimal, number);
 	}
 
 	inline DDecimal<16>::DDecimal(double number, int dec_digits)
@@ -263,6 +265,7 @@ inline std::istream& operator>>(std::istream& is, DDecimal<16>& item)
 	return is;
 }
 
+};
 
 #endif
 

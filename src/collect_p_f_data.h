@@ -66,7 +66,7 @@ class CMyApp : public CApplication
 	interval mInterval;
 	scale mScale;
 
-	DDecimal<16> mBoxSize;
+	DprDecimal::DDecimal<16> mBoxSize;
 	int mReversalBoxes;
 	bool mInputIsPath;
 	bool mOutputIsPath;

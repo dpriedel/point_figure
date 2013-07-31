@@ -28,7 +28,7 @@
 //#include "DDecimal_32.h"
 
 //template<32>
-decContext DDecimal<16>::mCtx;
+decContext DprDecimal::DDecimal<16>::mCtx;
 
 int
 main ( int argc, char *argv[] )
@@ -94,9 +94,7 @@ main ( int argc, char *argv[] )
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
 	: CApplication(argc, argv),
-	mInputIsPath(false), mSource(source::unknown), 
-	mMode(mode::unknown)
-
+	mSource(source::unknown), mMode(mode::unknown), mInputIsPath(false)
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
 
@@ -213,8 +211,8 @@ CMyApp::Do_Run (void)
 
 	/* std::cout << "12.3 + 0,345 = " << output << std::endl; */
 
-	DDecimal<16> testDec;
-	DDecimal<16> testDec2("123.45");
+	DprDecimal::DDecimal<16> testDec;
+	DprDecimal::DDecimal<16> testDec2("123.45");
 
 	std::cout << testDec2 << std::endl;
 
@@ -233,7 +231,7 @@ CMyApp::Do_Run (void)
 	testDec /= 4.3;
 	std::cout << "after dividing by 4.3: " << testDec << std::endl;
 
-	DDecimal<16> a = testDec + testDec2;
+	DprDecimal::DDecimal<16> a = testDec + testDec2;
 	std::cout << "adding 2 numbers: " << testDec << " and " << testDec2 << " = " << a << std::endl;
 
 	bool xx = testDec == testDec2;

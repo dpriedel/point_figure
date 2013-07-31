@@ -8,13 +8,12 @@
 #ifndef _DDECIMAL_
 #define _DDECIMAL_
 
-#include <iosfwd>
 #include <string>
+
 #include <decNumber.h>
 
-#include <boost/lexical_cast.hpp>
-//#include <boost/algorithm/string/trim.hpp>
-//#include <boost/algorithm/string/classification.hpp>
+namespace DprDecimal
+{
 
 // =====================================================================================
 //        Class:  DDecimal
@@ -35,7 +34,7 @@ class DDecimal
 		// ====================  MUTATORS      =======================================
 
 		// ====================  OPERATORS     =======================================
-
+		
 	protected:
 		// ====================  DATA MEMBERS  =======================================
 
@@ -47,6 +46,7 @@ class DDecimal
 
 }; // -----  end of template class DDecimal  -----
 
+};
 
 #endif
 

@@ -35,13 +35,13 @@ class P_F_Data
 	public:
 		// ====================  LIFECYCLE     =======================================
 		P_F_Data ();                             // constructor
-		P_F_Data(const DDecimal<16> boxsize, int reversal);
+		P_F_Data(const DprDecimal::DDecimal<16> boxsize, int reversal);
 
 		// ====================  ACCESSORS     =======================================
 
 		// ====================  MUTATORS      =======================================
 		
-		void SetBoxSize(const DDecimal<16>& boxsize);
+		void SetBoxSize(const DprDecimal::DDecimal<16>& boxsize);
 		void SetReversal(int reversal);
 
 
@@ -61,7 +61,7 @@ class P_F_Data
 		greg::date mLastChangeDate;		//	date of last change to data
 		greg::date mLastCheckedDate;	//	last time checked to see if update needed
 
-		DDecimal<16> mBoxSize;
+		DprDecimal::DDecimal<16> mBoxSize;
 		int mReversalBoxes;
 
 		enum class direction { unknown, moving_up, moving_down };

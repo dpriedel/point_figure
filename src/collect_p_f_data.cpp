@@ -31,7 +31,7 @@
 //#include "DDecimal_32.h"
 
 //template<32>
-decContext DDecimal<16>::mCtx;
+decContext DprDecimal::DDecimal<16>::mCtx;
 
 int
 main ( int argc, char *argv[] )
@@ -201,7 +201,7 @@ CMyApp::Do_CheckArgs (void)
 	}
 
 	dfail_if_(! mVariableMap.count("boxsize"), "'Boxsize must be specified.");
-	DDecimal<16> boxsize = mVariableMap["boxsize"].as<DDecimal<16>>();
+	DprDecimal::DDecimal<16> boxsize = mVariableMap["boxsize"].as<DprDecimal::DDecimal<16>>();
 	mBoxSize = boxsize;
 
 	if (mVariableMap.count("reversal") == 0)
@@ -234,7 +234,7 @@ CMyApp::Do_SetupProgramOptions (void)
 		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
 		("output,o",			po::value<std::string>(),	"output file name")
 		("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.")
-		("boxsize,b",			po::value<DDecimal<16>>(),	"box step size. 'n', 'm.n'")
+		("boxsize,b",			po::value<DprDecimal::DDecimal<16>>(),	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<int>(),			"reversal size in number of boxes. Default is 1")
 		("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'")
 		("interval,i",			po::value<std::string>(),	"'eod', 'tic', '1sec', '5sec', '1min', '5min', etc. Default is 'tic'")

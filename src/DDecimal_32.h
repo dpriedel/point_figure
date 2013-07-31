@@ -23,6 +23,9 @@
 
 #include <decQuad.h>
 
+namespace DprDecimal
+{
+
 template <>
 class DDecimal<32>
 {
@@ -258,6 +261,7 @@ std::istream& operator>>(std::istream& is, DDecimal<32>& item)
 	decQuadFromString(&item.mDecimal, temp.c_str(), &item.mCtx);
 	return is;
 }
+};
 
 
 #endif
