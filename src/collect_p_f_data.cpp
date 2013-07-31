@@ -20,6 +20,8 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#include <fstream>
+
 //#include <decDouble.h>
 
 #include "TException.h"
@@ -254,23 +256,46 @@ CMyApp::Do_ParseProgramOptions (void)
 void
 CMyApp::Do_Run (void)
 {
-	//	simple copy code from input to output
-	//	and initialize a DDecimal value from the string input
-	//	and then convert back to a string to see if anything
-	//	gets lost in translation.
+	// open a stream on the specified input source.
 	
-	/* if (mSource == source::stdin && mDestination == destination::stdout) */
-	/* { */
-	/* 	std::ostream_iterator<aLine> otor(std::cout, "\n"); */
-	/* 	std::istream_iterator<aLine> itor(std::cin); */
-	/* 	std::istream_iterator<aLine> itor_end; */
+	std::istream* theInput{nullptr};
+	std::ifstream iFile;
 
-	/* 	//std:copy(itor, itor_end, otor); */
-	/* 	std:transform(itor, itor_end, otor, */
-	/* 				[] (const aLine& data) {DDecimal<16> aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; }); */
-	/* } */
-	/* else */
-	/* 	std::cout << "not stdin and stdout." << std::endl; */
+	if (mSource == source::stdin)
+		theInput = &std::cin;
+	else if (mSource == source::file)
+	{
+		iFile.open(mInputPath.string(), std::ios_base::in | std::ios_base::binary);
+		dfail_if_(! iFile.is_open(), "Unable to open input file: ", mInputPath.c_str());
+		theInput = &iFile;
+	}
+	else
+		dfail_msg_("Unspecified input.");
+
+	std::istream_iterator<aLine> itor{*theInput};
+	std::istream_iterator<aLine> itor_end;
+
+	std::ostream* theOutput{nullptr};
+	std::ofstream oFile;
+
+	if (mDestination == destination::stdout)
+		theOutput = &std::cout;
+	else
+	{
+		oFile.open(mOutputPath.string(), std::ios::out | std::ios::binary);
+		dfail_if_(! oFile.is_open(), "Unable to open output file: ", mOutputPath.c_str());
+		theOutput = &oFile;
+	}
+
+	std::ostream_iterator<aLine> otor{*theOutput, "\n"};
+
+	std::copy(itor, itor_end, otor);
+
+	// sampel code using a lambda
+	//std:copy(itor, itor_end, otor);
+	/* std:transform(itor, itor_end, otor, */
+	/* 			[] (const aLine& data) {DDecimal<16> aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; }); */
+
 
 	//	play with decimal support in c++11
 	
