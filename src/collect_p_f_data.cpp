@@ -292,7 +292,6 @@ CMyApp::Do_Run (void)
 	std::copy(itor, itor_end, otor);
 
 	// sampel code using a lambda
-	//std:copy(itor, itor_end, otor);
 	/* std:transform(itor, itor_end, otor, */
 	/* 			[] (const aLine& data) {DDecimal<16> aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; }); */
 
