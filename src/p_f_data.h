@@ -44,6 +44,10 @@ class P_F_Data
 		void SetBoxSize(const DprDecimal::DDecimal<16>& boxsize);
 		void SetReversal(int reversal);
 
+		void SetInputSource(std::istream* inputData);
+		void SetOutputDest(std::ostream* outputData);
+
+		void LoadData();
 
 		// ====================  OPERATORS     =======================================
 
@@ -68,6 +72,8 @@ class P_F_Data
 
 		direction mCurrentDirection;
 
+		std::istream* mInputData;
+		std::ostream* mOutputData;
 
 
 
