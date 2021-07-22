@@ -10,7 +10,8 @@
 
 #include <string>
 
-#include <decNumber.h>
+//#include <decNumber.h>
+#include <DDecimal_32.h>
 
 namespace DprDecimal
 {

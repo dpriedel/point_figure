@@ -18,9 +18,9 @@ endif
 ifeq "$(CFG)" "Debug"
 OUTDIR=Debug_test
 OUTFILE=DDecimal_test
-CFG_INC=-I/extra/boost/boost-1.54_gcc-4.8/ -I/extra/gcc/decNumber -I/home/dpriedel/projects/workspace/app_framework/include/
-CFG_LIB=-liberty -L/extra/boost/boost-1.54_gcc-4.8/lib -lboost_system-d -lboost_filesystem-d -lboost_program_options-d
-RPATH_LIB=-Xlinker -rpath -Xlinker /extra/gcc/gcc-4.8/lib64 -Xlinker -rpath -Xlinker /extra/boost/boost-1.54_gcc-4.8/lib
+CFG_INC=-I/extra/boost/boost-1.55_gcc-4.8/ -I/extra/gcc/decNumber -I/home/dpriedel/projects/workspace/app_framework/include/
+CFG_LIB=-liberty -L/extra/boost/boost-1.55_gcc-4.8/lib -lboost_system-d -lboost_filesystem-d -lboost_program_options-d
+RPATH_LIB=-Xlinker -rpath -Xlinker /extra/gcc/gcc-4.8/lib64 -Xlinker -rpath -Xlinker /extra/boost/boost-1.55_gcc-4.8/lib
 CFG_OBJ=
 OBJ=$(OUTDIR)/DDecimal_test.o $(OUTDIR)/CApplication.o $(OUTDIR)/ErrorHandler.o $(OUTDIR)/TException.o \
 	$(OUTDIR)/decContext.o $(OUTDIR)/decDouble.o $(OUTDIR)/decQuad.o

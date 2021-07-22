@@ -11,8 +11,10 @@
 #include <sstream>
 #include <iomanip>
 
-#include "DDecimal.h"
 #include <decDouble.h>
+/* #include <decNumber.h> */
+#include "DDecimal.h"
+#include "decContext.h"
 
 namespace DprDecimal
 {
@@ -25,25 +27,26 @@ namespace DprDecimal
 //  Description:  16 digit decimal class
 // =====================================================================================
 
+constexpr int SMALLDEC = 16;
 template <>
-class DDecimal<16>
+class DDecimal<SMALLDEC>
 {
-	friend DDecimal<16> operator+(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
-	friend DDecimal<16> operator-(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
-	friend DDecimal<16> operator*(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
-	friend DDecimal<16> operator/(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend DDecimal<SMALLDEC> operator+(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
+	friend DDecimal<SMALLDEC> operator-(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
+	friend DDecimal<SMALLDEC> operator*(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
+	friend DDecimal<SMALLDEC> operator/(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
 
-	friend bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
-	friend bool operator!=(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend bool operator==(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
+	friend bool operator!=(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
 
-	friend bool operator<(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
-	friend bool operator>(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend bool operator<(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
+	friend bool operator>(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
 
-	friend bool operator<=(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
-	friend bool operator>=(const DDecimal<16>& lhs, const DDecimal<16>& rhs);
+	friend bool operator<=(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
+	friend bool operator>=(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs);
 
-	friend std::istream& operator>>(std::istream& is, DDecimal<16>& item);
-	friend std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item);
+	friend std::istream& operator>>(std::istream& is, DDecimal<SMALLDEC>& item);
+	friend std::ostream& operator<<(std::ostream& os, const DDecimal<SMALLDEC>& item);
 
 	public:
 		// ====================  LIFECYCLE     =======================================
@@ -57,16 +60,16 @@ class DDecimal<16>
 
 		// ====================  ACCESSORS     =======================================
 		
-		std::string ToStr() const;
+		[[nodiscard]] std::string ToStr() const;
 
 		// ====================  MUTATORS      =======================================
 
 		// ====================  OPERATORS     =======================================
 		
-		DDecimal<16>& operator+=(const DDecimal<16>& rhs);
-		DDecimal<16>& operator-=(const DDecimal<16>& rhs);
-		DDecimal<16>& operator*=(const DDecimal<16>& rhs);
-		DDecimal<16>& operator/=(const DDecimal<16>& rhs);
+		DDecimal<SMALLDEC>& operator+=(const DDecimal<SMALLDEC>& rhs);
+		DDecimal<SMALLDEC>& operator-=(const DDecimal<SMALLDEC>& rhs);
+		DDecimal<SMALLDEC>& operator*=(const DDecimal<SMALLDEC>& rhs);
+		DDecimal<SMALLDEC>& operator/=(const DDecimal<SMALLDEC>& rhs);
 
 	protected:
 		// ====================  DATA MEMBERS  =======================================
@@ -74,52 +77,52 @@ class DDecimal<16>
 	private:
 		// ====================  DATA MEMBERS  =======================================
 		
-		decDouble mDecimal;
+		decDouble mDecimal{};
 		static decContext mCtx;
 
-}; // -----  end of template class DDecimal16  -----
+}; // -----  end of template class DDecimalSMALLDEC  -----
 
 //
 //	constructions/implicit conversion operators
 //
 
-	inline DDecimal<16>::DDecimal()
+	inline DDecimal<SMALLDEC>::DDecimal()
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decContextDefault(&DDecimal<SMALLDEC>::mCtx, DEC_INIT_DECDOUBLE);
 	}
 
-	inline DDecimal<16>::DDecimal(const char* number)
+	inline DDecimal<SMALLDEC>::DDecimal(const char* number)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
-		decDoubleFromString(&this->mDecimal, number, &this->mCtx);
+		decContextDefault(&DDecimal<SMALLDEC>::mCtx, DEC_INIT_DECDOUBLE);
+		decDoubleFromString(&this->mDecimal, number, &DDecimal<SMALLDEC>::mCtx);
 	}
 
-	inline DDecimal<16>::DDecimal(const std::string& number)
+	inline DDecimal<SMALLDEC>::DDecimal(const std::string& number)
 		: DDecimal(number.c_str())	{ }
 
-	inline DDecimal<16>::DDecimal(int32_t number)
+	inline DDecimal<SMALLDEC>::DDecimal(int32_t number)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decContextDefault(&DDecimal<SMALLDEC>::mCtx, DEC_INIT_DECDOUBLE);
 		decDoubleFromInt32(&this->mDecimal, number);
 	}
 
-	inline DDecimal<16>::DDecimal(uint32_t number)
+	inline DDecimal<SMALLDEC>::DDecimal(uint32_t number)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decContextDefault(&DDecimal<SMALLDEC>::mCtx, DEC_INIT_DECDOUBLE);
 		decDoubleFromUInt32(&this->mDecimal, number);
 	}
 
-	inline DDecimal<16>::DDecimal(double number, int dec_digits)
+	inline DDecimal<SMALLDEC>::DDecimal(double number, int dec_digits)
 	{
-		decContextDefault(&this->mCtx, DEC_INIT_DECDOUBLE);
+		decContextDefault(&DDecimal<SMALLDEC>::mCtx, DEC_INIT_DECDOUBLE);
 		std::ostringstream temp;
 		temp << std::fixed << std::setprecision(dec_digits) << number;
 
-		decDoubleFromString(&this->mDecimal, temp.str().c_str(), &this->mCtx);
-//		decDoubleReduce(&this->mDecimal, &this->mDecimal, &this->mCtx);
+		decDoubleFromString(&this->mDecimal, temp.str().c_str(), &DDecimal<SMALLDEC>::mCtx);
+//		decDoubleReduce(&this->mDecimal, &this->mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	}
 	
-	inline std::string DDecimal<16>::ToStr() const
+	inline std::string DDecimal<SMALLDEC>::ToStr() const
 	{
 		char output [DECDOUBLE_String];
 		decDoubleToString(&this->mDecimal, output);
@@ -130,27 +133,27 @@ class DDecimal<16>
 //	member arithmetic operators
 //
 
-inline DDecimal<16>& DDecimal<16>::operator+=(const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC>& DDecimal<SMALLDEC>::operator+=(const DDecimal<SMALLDEC>& rhs)
 {
-	decDoubleAdd(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decDoubleAdd(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return *this;
 }
 
-inline DDecimal<16>& DDecimal<16>::operator-=(const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC>& DDecimal<SMALLDEC>::operator-=(const DDecimal<SMALLDEC>& rhs)
 {
-	decDoubleSubtract(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decDoubleSubtract(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return *this;
 }
 
-inline DDecimal<16>& DDecimal<16>::operator*=(const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC>& DDecimal<SMALLDEC>::operator*=(const DDecimal<SMALLDEC>& rhs)
 {
-	decDoubleMultiply(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decDoubleMultiply(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return *this;
 }
 
-inline DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC>& DDecimal<SMALLDEC>::operator/=(const DDecimal<SMALLDEC>& rhs)
 {
-	decDoubleDivide(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &this->mCtx);
+	decDoubleDivide(&this->mDecimal, &this->mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return *this;
 }
 
@@ -158,31 +161,31 @@ inline DDecimal<16>& DDecimal<16>::operator/=(const DDecimal<16>& rhs)
 //	non-member arithmetic operators
 //
 
-inline DDecimal<16> operator+(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC> operator+(const DDecimal<SMALLDEC>&lhs, const DDecimal<SMALLDEC>& rhs)
 {
-	DDecimal<16> result;
-	decDoubleAdd(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	DDecimal<SMALLDEC> result;
+	decDoubleAdd(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return result;
 }
 
-inline DDecimal<16> operator-(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC> operator-(const DDecimal<SMALLDEC>&lhs, const DDecimal<SMALLDEC>& rhs)
 {
-	DDecimal<16> result;
-	decDoubleSubtract(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	DDecimal<SMALLDEC> result;
+	decDoubleSubtract(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return result;
 }
 
-inline DDecimal<16> operator*(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC> operator*(const DDecimal<SMALLDEC>&lhs, const DDecimal<SMALLDEC>& rhs)
 {
-	DDecimal<16> result;
-	decDoubleMultiply(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	DDecimal<SMALLDEC> result;
+	decDoubleMultiply(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return result;
 }
 
-inline DDecimal<16> operator/(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
+inline DDecimal<SMALLDEC> operator/(const DDecimal<SMALLDEC>&lhs, const DDecimal<SMALLDEC>& rhs)
 {
-	DDecimal<16> result;
-	decDoubleDivide(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &result.mCtx);
+	DDecimal<SMALLDEC> result;
+	decDoubleDivide(&result.mDecimal, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
 	return result;
 }
 
@@ -190,66 +193,51 @@ inline DDecimal<16> operator/(const DDecimal<16>&lhs, const DDecimal<16>& rhs)
 //	non member comparison operators
 //
 
-inline bool operator==(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator==(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
-	if (decDoubleIsZero(&result))
-		return true;
-	else
-		return false;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
+	return decDoubleToInt32(&result, &DDecimal<SMALLDEC>::mCtx, DEC_ROUND_HALF_EVEN) == 0;
 }
 
-inline bool operator!=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator!=(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs)
 {
 	return ! operator==(lhs, rhs);
 }
 
-inline bool operator<(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator<(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
-	if (decDoubleIsNegative(&result))
-		return true;
-	else
-		return false;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
+	return decDoubleToInt32(&result, &DDecimal<SMALLDEC>::mCtx, DEC_ROUND_HALF_EVEN) == -1;
 }
 
-inline bool operator>(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator>(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
-	if (decDoubleIsPositive(&result))
-		return true;
-	else
-		return false;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
+	return decDoubleToInt32(&result, &DDecimal<SMALLDEC>::mCtx, DEC_ROUND_HALF_EVEN) == 1;
 }
 
-inline bool operator<=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator<=(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
-	if (decDoubleIsPositive(&result))
-		return false;
-	else
-		return true;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
+	return decDoubleToInt32(&result, &DDecimal<SMALLDEC>::mCtx, DEC_ROUND_HALF_EVEN) < 1;
 }
 
-inline bool operator>=(const DDecimal<16>& lhs, const DDecimal<16>& rhs)
+inline bool operator>=(const DDecimal<SMALLDEC>& lhs, const DDecimal<SMALLDEC>& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &lhs.mCtx);
-	if (decDoubleIsNegative(&result))
-		return false;
-	else
-		return true;
+	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &DDecimal<SMALLDEC>::mCtx);
+	return decDoubleToInt32(&result, &DDecimal<SMALLDEC>::mCtx, DEC_ROUND_HALF_EVEN) >= 0;
 }
 
 //
 //	stream inserter/extractor
 //
 
-inline std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item)
+inline std::ostream& operator<<(std::ostream& os, const DDecimal<SMALLDEC>& item)
 {
 	char output [DECDOUBLE_String];
 	decDoubleToString(&item.mDecimal, output);
@@ -257,11 +245,11 @@ inline std::ostream& operator<<(std::ostream& os, const DDecimal<16>& item)
 	return os;
 }
 
-inline std::istream& operator>>(std::istream& is, DDecimal<16>& item)
+inline std::istream& operator>>(std::istream& is, DDecimal<SMALLDEC>& item)
 {
 	std::string temp;
 	is >> temp;
-	decDoubleFromString(&item.mDecimal, temp.c_str(), &item.mCtx);
+	decDoubleFromString(&item.mDecimal, temp.c_str(), &DDecimal<SMALLDEC>::mCtx);
 	return is;
 }
 
