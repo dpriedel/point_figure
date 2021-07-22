@@ -5,8 +5,8 @@
 //    Description:  This program will compute Point & Figure data for the
 //    				given input file.
 // 
-//        Version:  1.0
-//        Created:  04/23/2013 02:00:49 PM
+//        Version:  2.0
+//        Created:  2021-07-20 11:50 AM
 //       Revision:  none
 //       Compiler:  g++
 // 
@@ -22,75 +22,30 @@
 #include <iterator>
 #include <fstream>
 
+#include <date/tz.h>
+
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/async.h>
 //#include <decDouble.h>
 
-#include "TException.h"
-#include "aLine.h"
 #include "collect_p_f_data.h"
 #include "p_f_data.h"
-
+#include "aLine.h"
 //#include "DDecimal_16.h"
 //#include "DDecimal_32.h"
 
-//template<32>
-decContext DprDecimal::DDecimal<16>::mCtx;
 
-int
-main ( int argc, char *argv[] )
+bool CMyApp::had_signal_ = false;
+
+// utility to convert a date::year_month_day to a string
+// using Howard Hinnant's date library
+
+inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a_date_time)
 {
-	int result = EXIT_SUCCESS;
-	 
-	CMyApp* myApp = NULL;
-
-	try
-	{
-		//	first, let's create an instance of our class
-	
-		myApp = new CMyApp(argc, argv);
-		CApplication::sTheApplication = myApp;
-	}
-	catch (...)
-	{
-		//	If we're here, there is probably no application object
-			
-		std::cerr << "Error creating the Application.  Nothing done!" << std::endl;
-
-		//	any errors on startup and we're outta here
-		
-		return 2;
-	}
-	//	Normal processing...
-	
-	try
-	{
-		myApp->StartUp ();		//	all errors will throw an exception
-		myApp->Run ();
-	}
-
-	catch (std::exception& theProblem)
-	{
-		CApplication::sCErrorHandler->HandleException(theProblem);
-		result = 3;
-		if (myApp)
-			myApp->Done ();				//	base class exceptions are always fatal.
-	}
-	catch (...)
-	{
-		result = 4;
-		std::cerr << "Something totally unexpected happened." << std::endl;
-		if (myApp)
-			myApp->Done ();				//	base class exceptions are always fatal.
-	}
-
-	if (myApp && myApp->IsDone ())
-	{
-		myApp->Quit ();
-		delete myApp;
-	}
-
-	return result;
-}// ----------  end of function main  ----------
-
+    auto t = date::make_zoned(date::current_zone(), a_date_time);
+    std::string ts = date::format("%a, %b %d, %Y at %I:%M:%S %p %Z", t);
+    return ts;
+}
 
 //--------------------------------------------------------------------------------------
 //       Class:  CMyApp
@@ -98,31 +53,24 @@ main ( int argc, char *argv[] )
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
-	: CApplication{argc, argv},
+    : mArgc{argc}, mArgv{argv},
 	mSource{source::unknown}, mDestination{destination::unknown}, mMode{mode::unknown}, mInterval{interval::unknown}, 
 	mScale{scale::unknown}, mInputIsPath{false}, mOutputIsPath{false} 
 
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
 
-CMyApp::~CMyApp (void)
+bool CMyApp::Startup ()
 {
-	return ;
-}		// -----  end of method CMyApp::~CMyApp  -----
-
-void
-CMyApp::Do_StartUp (void)
-{
-	return ;
+	return true ;
 }		// -----  end of method CMyApp::Do_StartUp  -----
 
 
-void
-CMyApp::Do_CheckArgs (void)
+bool CMyApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
-	dfail_if_(! mVariableMap.count("symbol"), "Symbol must be specified.");
+	;//dfail_if_(! mVariableMap.count("symbol"), "Symbol must be specified.");
 	mSymbol = mVariableMap["symbol"].as<std::string>();
 
 	if(mVariableMap.count("file") == 0)
@@ -142,7 +90,7 @@ CMyApp::Do_CheckArgs (void)
 		{
 			mSource = source::file;
 			mInputPath = temp;
-			dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+			;//dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
 		}
 	}
 
@@ -160,7 +108,7 @@ CMyApp::Do_CheckArgs (void)
 		else if (temp == "update")
 			mMode = mode::update;
 		else
-			dfail_msg_("Unkown 'mode': ", temp.c_str());
+			;//dfail_msg("Unkown 'mode': ", temp.c_str());
 	}
 
 	//	if not specified, assume we are sending output to stdout
@@ -176,7 +124,7 @@ CMyApp::Do_CheckArgs (void)
 		if (temp == "file")
 		{
 			mDestination = destination::file;
-			dfail_if_(! mVariableMap.count("output"), "Output destination of 'file' specified but no 'output' name provided.");
+			;//dfail_if_(! mVariableMap.count("output"), "Output destination of 'file' specified but no 'output' name provided.");
 			std::string temp = mVariableMap["output"].as<std::string>();
 			if (temp == "-")
 			{
@@ -192,18 +140,18 @@ CMyApp::Do_CheckArgs (void)
 		else if (temp == "DB")
 		{
 			mDestination = destination::DB;
-			dfail_if_(! mVariableMap.count("output"), "Output destination of 'DB' specified but no 'output' table name provided.");
+			;//dfail_if_(! mVariableMap.count("output"), "Output destination of 'DB' specified but no 'output' table name provided.");
 			std::string temp = mVariableMap["output"].as<std::string>();
-			dfail_if_(temp == "-", "Invalid DB table name specified: '-'.");
+			;//dfail_if_(temp == "-", "Invalid DB table name specified: '-'.");
 			mDBName = temp;
 		}
 		else
-			dfail_msg_("Invalid destination type specified. Must be: 'file' or 'DB'.");
+			;//dfail_msg("Invalid destination type specified. Must be: 'file' or 'DB'.");
 
 	}
 
-	dfail_if_(! mVariableMap.count("boxsize"), "'Boxsize must be specified.");
-	DprDecimal::DDecimal<16> boxsize = mVariableMap["boxsize"].as<DprDecimal::DDecimal<16>>();
+	;//dfail_if_(! mVariableMap.count("boxsize"), "'Boxsize must be specified.");
+	DprDecimal::DDecDouble boxsize = mVariableMap["boxsize"].as<DprDecimal::DDecDouble>();
 	mBoxSize = boxsize;
 
 	if (mVariableMap.count("reversal") == 0)
@@ -221,22 +169,21 @@ CMyApp::Do_CheckArgs (void)
 		else if (temp == "log")
 			mScale = scale::log;
 		else
-			dfail_msg_("Scale must be either 'arithmetic' or 'log'.");
+			;//dfail_msg("Scale must be either 'arithmetic' or 'log'.");
 	}
-	return ;
+	return true ;
 }		// -----  end of method CMyApp::Do_CheckArgs  -----
 
-void
-CMyApp::Do_SetupProgramOptions (void)
+void CMyApp::SetupProgramOptions ()
 {
-	mNewOptions.add_options()
+	mNewOptions->add_options()
 		("help",											"produce help message")
 		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
 		("file,f",				po::value<std::string>(),	"name of file containing data for symbol. Default is stdin")
 		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
 		("output,o",			po::value<std::string>(),	"output file name")
 		("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.")
-		("boxsize,b",			po::value<DprDecimal::DDecimal<16>>(),	"box step size. 'n', 'm.n'")
+		("boxsize,b",			po::value<DprDecimal::DDecDouble>(),	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<int>(),			"reversal size in number of boxes. Default is 1")
 		("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'")
 		("interval,i",			po::value<std::string>(),	"'eod', 'tic', '1sec', '5sec', '1min', '5min', etc. Default is 'tic'")
@@ -246,15 +193,33 @@ CMyApp::Do_SetupProgramOptions (void)
 }		// -----  end of method CMyApp::Do_SetupProgramOptions  -----
 
 
-void
-CMyApp::Do_ParseProgramOptions (void)
+void CMyApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 {
-	return ;
-}		// -----  end of method CMyApp::Do_ParseProgramOptions  -----
+    if (tokens.empty())
+    {
+	    auto options = po::parse_command_line(mArgc, mArgv, *mNewOptions);
+        po::store(options, mVariableMap);
+        if (this->mArgc == 1 ||	mVariableMap.count("help") == 1)
+        {
+            std::cout << *mNewOptions << "\n";
+            throw std::runtime_error("\nExiting after 'help'.");
+        }
+    }
+    else
+    {
+        auto options = po::command_line_parser(tokens).options(*mNewOptions).run();
+        po::store(options, mVariableMap);
+        if (mVariableMap.count("help") == 1)
+        {
+            std::cout << *mNewOptions << "\n";
+            throw std::runtime_error("\nExiting after 'help'.");
+        }
+    }
+	po::notify(mVariableMap);    
+}		/* -----  end of method ExtractorApp::ParseProgramOptions  ----- */
 
 
-void
-CMyApp::Do_Run (void)
+std::tuple<int, int, int> CMyApp::Run()
 {
 	// open a stream on the specified input source.
 	
@@ -266,11 +231,11 @@ CMyApp::Do_Run (void)
 	else if (mSource == source::file)
 	{
 		iFile.open(mInputPath.string(), std::ios_base::in | std::ios_base::binary);
-		dfail_if_(! iFile.is_open(), "Unable to open input file: ", mInputPath.c_str());
+		;//dfail_if_(! iFile.is_open(), "Unable to open input file: ", mInputPath.c_str());
 		theInput = &iFile;
 	}
 	else
-		dfail_msg_("Unspecified input.");
+		;//dfail_msg("Unspecified input.");
 
 	std::istream_iterator<aLine> itor{*theInput};
 	std::istream_iterator<aLine> itor_end;
@@ -283,7 +248,7 @@ CMyApp::Do_Run (void)
 	else
 	{
 		oFile.open(mOutputPath.string(), std::ios::out | std::ios::binary);
-		dfail_if_(! oFile.is_open(), "Unable to open output file: ", mOutputPath.c_str());
+		;//dfail_if_(! oFile.is_open(), "Unable to open output file: ", mOutputPath.c_str());
 		theOutput = &oFile;
 	}
 
@@ -298,6 +263,10 @@ CMyApp::Do_Run (void)
 
 	//	play with decimal support in c++11
 	
-	return ;
+	return {} ;
 }		// -----  end of method CMyApp::Do_Run  -----
 
+void CMyApp::Shutdown ()
+{
+    spdlog::info(fmt::format("\n\n*** End run {} ***\n", LocalDateTimeAsString(std::chrono::system_clock::now())));
+}       // -----  end of method ExtractorApp::Shutdown  -----
