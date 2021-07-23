@@ -129,4 +129,27 @@ private:
     static bool had_signal_;
 }; // -----  end of class CMyApp  -----
 
+// custom fmtlib formatter for filesytem paths
+
+template <> struct fmt::formatter<std::filesystem::path>: formatter<std::string> {
+  // parse is inherited from formatter<string_view>.
+  template <typename FormatContext>
+  auto format(const std::filesystem::path& p, FormatContext& ctx) {
+    std::string f_name = p.string();
+    return formatter<std::string>::format(f_name, ctx);
+  }
+};
+
+// custom fmtlib formatter for date year_month_day
+
+template <> struct fmt::formatter<date::year_month_day>: formatter<std::string> {
+  // parse is inherited from formatter<string_view>.
+  template <typename FormatContext>
+  auto format(date::year_month_day d, FormatContext& ctx) {
+    std::string s_date = date::format("%Y-%m-%d", d);
+    return formatter<std::string>::format(s_date, ctx);
+  }
+};
+
+
 #endif   // ----- #ifndef collect_p_f_data_INC  ----- 

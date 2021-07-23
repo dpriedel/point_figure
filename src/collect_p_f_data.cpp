@@ -151,7 +151,7 @@ bool CMyApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
-	;//dfail_if_(! mVariableMap.count("symbol"), "Symbol must be specified.");
+    BOOST_ASSERT_MSG(mVariableMap.count("symbol") != 0, "Symbol must be specified.");
 	mSymbol = mVariableMap["symbol"].as<std::string>();
 
 	if(mVariableMap.count("file") == 0)
@@ -171,7 +171,7 @@ bool CMyApp::CheckArgs ()
 		{
 			mSource = source::file;
 			mInputPath = temp;
-			;//dfail_if_(! fs::exists(mInputPath), "Can't find input file: ", mInputPath.c_str());
+            BOOST_ASSERT_MSG(fs::exists(mInputPath), fmt::format("Can't find input file: {}", mInputPath).c_str());
 		}
 	}
 
@@ -185,11 +185,17 @@ bool CMyApp::CheckArgs ()
 	{
 		std::string temp = mVariableMap["mode"].as<std::string>();
 		if (temp == "load")
+        {
 			mMode = mode::load;
+        }
 		else if (temp == "update")
+        {
 			mMode = mode::update;
+        }
 		else
-			;//dfail_msg("Unkown 'mode': ", temp.c_str());
+        {
+			throw std::invalid_argument(fmt::format("Unkown 'mode': {}", temp));
+        }
 	}
 
 	//	if not specified, assume we are sending output to stdout
@@ -205,7 +211,7 @@ bool CMyApp::CheckArgs ()
 		if (temp == "file")
 		{
 			mDestination = destination::file;
-			;//dfail_if_(! mVariableMap.count("output"), "Output destination of 'file' specified but no 'output' name provided.");
+            BOOST_ASSERT_MSG(mVariableMap.count("output") != 0, "Output destination of 'file' specified but no 'output' name provided.");
 			std::string temp = mVariableMap["output"].as<std::string>();
 			if (temp == "-")
 			{
@@ -221,42 +227,58 @@ bool CMyApp::CheckArgs ()
 		else if (temp == "DB")
 		{
 			mDestination = destination::DB;
-			;//dfail_if_(! mVariableMap.count("output"), "Output destination of 'DB' specified but no 'output' table name provided.");
+            BOOST_ASSERT_MSG(mVariableMap.count("output") != 0, "Output destination of 'DB' specified but no 'output' table name provided.");
 			std::string temp = mVariableMap["output"].as<std::string>();
-			;//dfail_if_(temp == "-", "Invalid DB table name specified: '-'.");
+            BOOST_ASSERT_MSG(temp != "-", "Invalid DB table name specified: '-'.");
 			mDBName = temp;
 		}
 		else
-			;//dfail_msg("Invalid destination type specified. Must be: 'file' or 'DB'.");
+        {
+			throw std::invalid_argument("Invalid destination type specified. Must be: 'file' or 'DB'.");
+        }
 
 	}
 
-	;//dfail_if_(! mVariableMap.count("boxsize"), "'Boxsize must be specified.");
+    BOOST_ASSERT_MSG(mVariableMap.count("boxsize") != 0, "'Boxsize must be specified.");
 	DprDecimal::DDecDouble boxsize = mVariableMap["boxsize"].as<DprDecimal::DDecDouble>();
 	mBoxSize = boxsize;
 
 	if (mVariableMap.count("reversal") == 0)
+    {
 		mReversalBoxes = 1;
+    }
 	else
+    {
 		mReversalBoxes = mVariableMap["reversal"].as<int>();
+    }
 
 	if (mVariableMap.count("scale") == 0)
+    {
 		mScale = scale::arithmetic;
+    }
 	else
 	{
 		std::string temp = mVariableMap["reversal"].as<std::string>();
 		if (temp == "arithmetic")
+        {
 			mScale = scale::arithmetic;
+        }
 		else if (temp == "log")
+        {
 			mScale = scale::log;
+        }
 		else
-			;//dfail_msg("Scale must be either 'arithmetic' or 'log'.");
+        {
+			throw std::invalid_argument("Scale must be either 'arithmetic' or 'log'.");
+        }
 	}
 	return true ;
 }		// -----  end of method CMyApp::Do_CheckArgs  -----
 
 void CMyApp::SetupProgramOptions ()
 {
+    mNewOptions = std::make_unique<po::options_description>();
+
 	mNewOptions->add_options()
 		("help",											"produce help message")
 		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
@@ -311,15 +333,19 @@ std::tuple<int, int, int> CMyApp::Run()
 	std::ifstream iFile;
 
 	if (mSource == source::stdin)
+    {
 		theInput = &std::cin;
+    }
 	else if (mSource == source::file)
 	{
 		iFile.open(mInputPath.string(), std::ios_base::in | std::ios_base::binary);
-		;//dfail_if_(! iFile.is_open(), "Unable to open input file: ", mInputPath.c_str());
+        BOOST_ASSERT_MSG(iFile.is_open(), fmt::format("Unable to open input file: {}", mInputPath).c_str());
 		theInput = &iFile;
 	}
 	else
-		;//dfail_msg("Unspecified input.");
+    {
+        throw std::invalid_argument("Unspecified input.");
+    }
 
 	std::istream_iterator<aLine> itor{*theInput};
 	std::istream_iterator<aLine> itor_end;
@@ -328,21 +354,23 @@ std::tuple<int, int, int> CMyApp::Run()
 	std::ofstream oFile;
 
 	if (mDestination == destination::stdout)
+    {
 		theOutput = &std::cout;
+    }
 	else
 	{
 		oFile.open(mOutputPath.string(), std::ios::out | std::ios::binary);
-		;//dfail_if_(! oFile.is_open(), "Unable to open output file: ", mOutputPath.c_str());
+        BOOST_ASSERT_MSG(oFile.is_open(), fmt::format("Unable to open output file: {}", mInputPath).c_str());
 		theOutput = &oFile;
 	}
 
 	std::ostream_iterator<aLine> otor{*theOutput, "\n"};
 
-	std::copy(itor, itor_end, otor);
+//	std::copy(itor, itor_end, otor);
 
 	// sampel code using a lambda
-	/* std:transform(itor, itor_end, otor, */
-	/* 			[] (const aLine& data) {DDecimal<16> aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; }); */
+	std:transform(itor, itor_end, otor,
+				[] (const aLine& data) {DprDecimal::DDecDouble aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
 
 
 	//	play with decimal support in c++11
