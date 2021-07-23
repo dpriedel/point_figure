@@ -3,14 +3,18 @@ tutorial.cpp
 Debug/*
 makefile_x86_64
 Debug_e2e/*
+Debug_collect/*
 decimal_test/*
+Debug_test/*
 src/tags
 tags
 # our executables
 collect_p_f_data
 DDecimal_test
 EndToEnd_Test
-Debug_test/*
+p_f_collect
+
+
 *pyc
 .ycm_extra_conf.py
 
