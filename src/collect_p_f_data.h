@@ -99,11 +99,15 @@ private:
 	int mArgc = 0;
 	char** mArgv = nullptr;
 	const std::vector<std::string> tokens_;
+    std::string logging_level_{"information"};
 
     fs::path mInputPath;
     fs::path mOutputPath;
+    fs::path log_file_path_name_;
     std::string mSymbol;
     std::string mDBName;
+
+    std::shared_ptr<spdlog::logger> logger_;
 
     enum class source { unknown, file, stdin, network };
     enum class destination { unknown, DB, file, stdout };

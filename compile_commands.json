@@ -19,12 +19,12 @@
       "-I/extra/gcc/decNumber/include",
       "-march=native",
       "-o",
-      "Debug_e2e/Main.o",
+      "Debug_collect/Main.o",
       "Main.cpp"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
     "file": "/home/dpriedel/projects/point_figure/Main.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_e2e/Main.o"
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/Main.o"
   },
   {
     "arguments": [
@@ -46,12 +46,12 @@
       "-I/extra/gcc/decNumber/include",
       "-march=native",
       "-o",
-      "Debug_e2e/collect_p_f_data.o",
+      "Debug_collect/collect_p_f_data.o",
       "./src/collect_p_f_data.cpp"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
     "file": "/home/dpriedel/projects/point_figure/./src/collect_p_f_data.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_e2e/collect_p_f_data.o"
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/collect_p_f_data.o"
   },
   {
     "arguments": [
@@ -73,26 +73,20 @@
       "-I/extra/gcc/decNumber/include",
       "-march=native",
       "-o",
-      "Debug_e2e/p_f_data.o",
-      "./src/p_f_data.cpp"
+      "Debug_collect/DDecDouble.o",
+      "./src/DDecDouble.cpp"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/home/dpriedel/projects/point_figure/./src/p_f_data.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_e2e/p_f_data.o"
+    "file": "/home/dpriedel/projects/point_figure/./src/DDecDouble.cpp",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/DDecDouble.o"
   },
   {
     "arguments": [
-      "/extra/gcc/gcc-11/bin/g++",
+      "/extra/gcc/gcc-11/bin/gcc",
       "-c",
-      "-x",
-      "c++",
       "-O0",
       "-g3",
-      "-std=c++20",
       "-D_DEBUG",
-      "-DBOOST_ENABLE_ASSERT_HANDLER",
-      "-DSPDLOG_FMT_EXTERNAL",
-      "-DBOOST_REGEX_STANDALONE",
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
@@ -100,11 +94,53 @@
       "-I/extra/gcc/decNumber/include",
       "-march=native",
       "-o",
-      "Debug_e2e/p_f_column.o",
-      "./src/p_f_column.cpp"
+      "Debug_collect/decDouble.o",
+      "/extra/gcc/decNumber/src/decDouble.c"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/home/dpriedel/projects/point_figure/./src/p_f_column.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_e2e/p_f_column.o"
+    "file": "/extra/gcc/decNumber/src/decDouble.c",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/decDouble.o"
+  },
+  {
+    "arguments": [
+      "/extra/gcc/gcc-11/bin/gcc",
+      "-c",
+      "-O0",
+      "-g3",
+      "-D_DEBUG",
+      "-fPIC",
+      "-I/home/dpriedel/projects/point_figure/src",
+      "-I/usr/local/include",
+      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/gcc/decNumber/include",
+      "-march=native",
+      "-o",
+      "Debug_collect/decQuad.o",
+      "/extra/gcc/decNumber/src/decQuad.c"
+    ],
+    "directory": "/home/dpriedel/projects/point_figure",
+    "file": "/extra/gcc/decNumber/src/decQuad.c",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/decQuad.o"
+  },
+  {
+    "arguments": [
+      "/extra/gcc/gcc-11/bin/gcc",
+      "-c",
+      "-O0",
+      "-g3",
+      "-D_DEBUG",
+      "-fPIC",
+      "-I/home/dpriedel/projects/point_figure/src",
+      "-I/usr/local/include",
+      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/gcc/decNumber/include",
+      "-march=native",
+      "-o",
+      "Debug_collect/decContext.o",
+      "/extra/gcc/decNumber/src/decContext.c"
+    ],
+    "directory": "/home/dpriedel/projects/point_figure",
+    "file": "/extra/gcc/decNumber/src/decContext.c",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/decContext.o"
   }
 ]

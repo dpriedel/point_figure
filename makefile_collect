@@ -33,7 +33,7 @@ endif
 
 #	common definitions
 
-OUTFILE := EndToEnd_Test
+OUTFILE := p_f_collect
 
 CFG_INC := -I/home/dpriedel/projects/point_figure/src \
 	-I$(GTESTDIR) \
@@ -65,7 +65,7 @@ VPATH := $(SDIR1):$(SDIR2):$(SDIR3)
 #
 ifeq "$(CFG)" "Debug"
 
-OUTDIR=Debug_e2e
+OUTDIR=Debug_collect
 
 CFG_LIB := -lpthread \
 		-L$(GCCDIR)/lib64 \
