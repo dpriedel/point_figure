@@ -8,6 +8,7 @@
 #ifndef _DDECDOUBLE_
 #define _DDECDOUBLE_
 
+#include <iostream>
 #include <sstream>
 #include <iomanip>
 
@@ -33,6 +34,8 @@ class DDecDouble
 	friend DDecDouble operator*(const DDecDouble& lhs, const DDecDouble& rhs);
 	friend DDecDouble operator/(const DDecDouble& lhs, const DDecDouble& rhs);
 
+	friend bool operator==(const DDecDouble& lhs, double rhs);
+	friend bool operator==(double lhs, const DDecDouble& rhs);
 	friend bool operator==(const DDecDouble& lhs, const DDecDouble& rhs);
 	friend bool operator!=(const DDecDouble& lhs, const DDecDouble& rhs);
 
@@ -154,8 +157,34 @@ inline DDecDouble operator/(const DDecDouble&lhs, const DDecDouble& rhs)
 //	non member comparison operators
 //
 
+inline bool operator==(double lhs, const DDecDouble& rhs)
+{
+    int exp = decDoubleGetExponent(&rhs.mDecimal);
+    exp = exp < 0 ? -exp : exp;
+    DDecDouble temp{lhs, exp};
+//    std::cout << "exponent: " << decDoubleGetExponent(&rhs.mDecimal) << '\n';
+	decDouble result;
+	decDoubleCompare(&result, &temp.mDecimal, &rhs.mDecimal, &DDecDouble::mCtx);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 0;
+}
+
+inline bool operator==(const DDecDouble& lhs, double rhs)
+{
+    int exp = decDoubleGetExponent(&lhs.mDecimal);
+    exp = exp < 0 ? -exp : exp;
+    DDecDouble temp{rhs, exp};
+//    std::cout << "exponent: " << decDoubleGetExponent(&lhs.mDecimal) << '\n';
+	decDouble result;
+	decDoubleCompare(&result, &lhs.mDecimal, &temp.mDecimal, &DDecDouble::mCtx);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 0;
+}
+
 inline bool operator==(const DDecDouble& lhs, const DDecDouble& rhs)
 {
+    if (decDoubleGetExponent(&lhs.mDecimal) != decDoubleGetExponent(&rhs.mDecimal))
+    {
+        return false;
+    }
 	decDouble result;
 	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &DDecDouble::mCtx);
 	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 0;

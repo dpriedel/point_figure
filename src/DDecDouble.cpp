@@ -15,6 +15,11 @@
 //
 // =====================================================================================
 
+#include <array>
+#include <charconv>
+
+#include <fmt/format.h>
+
 #include "DDecDouble.h"
 
 decContext DprDecimal::DDecDouble::mCtx ;
@@ -47,10 +52,23 @@ DprDecimal::DDecDouble::DDecDouble(uint32_t number)
 
 DprDecimal::DDecDouble::DDecDouble(double number, int dec_digits)
 {
-    decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
+    //    once GCC fully supports from_chars, use the code below
+//    std::array<char, 30> buf;
+//    if (auto [p, ec] = std::from_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed, dec_digits);
+//            ec != std::errc())
+//    {
+//        throw std::runtime_error(fmt::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
+//    }
+//    else
+//    {
+//        // string is NOT NULL terminated
+//        buf[p] = '\0';
+//    }
+
     std::ostringstream temp;
     temp << std::fixed << std::setprecision(dec_digits) << number;
 
+    decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
     decDoubleFromString(&this->mDecimal, temp.str().c_str(), &DDecDouble::mCtx);
 //		decDoubleReduce(&this->mDecimal, &this->mDecimal, &DDecDouble::mCtx);
 }
