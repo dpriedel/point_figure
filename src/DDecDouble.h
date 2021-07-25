@@ -181,10 +181,10 @@ inline bool operator==(const DDecDouble& lhs, double rhs)
 
 inline bool operator==(const DDecDouble& lhs, const DDecDouble& rhs)
 {
-    if (decDoubleGetExponent(&lhs.mDecimal) != decDoubleGetExponent(&rhs.mDecimal))
-    {
-        return false;
-    }
+//    if (decDoubleGetExponent(&lhs.mDecimal) != decDoubleGetExponent(&rhs.mDecimal))
+//    {
+//        return false;
+//    }
 	decDouble result;
 	decDoubleCompare(&result, &lhs.mDecimal, &rhs.mDecimal, &DDecDouble::mCtx);
 	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 0;
