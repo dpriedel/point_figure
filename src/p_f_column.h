@@ -5,7 +5,7 @@
 //    Description:  header for class which implements Point & Figure column data
 // 
 //        Version:  1.0
-//        Created:  05/21/2013 02:55:43 PM
+//        Created:  2021-07-26 09:36 AM 
 //       Revision:  none
 //       Compiler:  g++
 // 
@@ -15,7 +15,10 @@
 // 
 // =====================================================================================
 
+#ifndef  P_F_COLUMN_INC_
+#define  P_F_COLUMN_INC_
 
+#include "DDecDouble.h"
 
 // =====================================================================================
 //        Class:  P_F_Column
@@ -23,21 +26,41 @@
 // =====================================================================================
 class P_F_Column
 {
-	public:
-		// ====================  LIFECYCLE     =======================================
-		P_F_Column ();                             // constructor
+public:
 
-		// ====================  ACCESSORS     =======================================
+    enum Direction {e_unknown, e_up, e_down};
 
-		// ====================  MUTATORS      =======================================
+    // ====================  LIFECYCLE     =======================================
+    P_F_Column () = default;                             // constructor
+    P_F_Column(int box_size, int reversal_size, Direction=e_unknown);
 
-		// ====================  OPERATORS     =======================================
+    // ====================  ACCESSORS     =======================================
 
-	protected:
-		// ====================  DATA MEMBERS  =======================================
+    int GetTop() { return top_; }
+    int GetBottom() { return top_; }
+    Direction GetDirection() { return direction_; }
+    int GetBoxsize() { return box_size_; }
+    int GetReversalsize() { return reversal_size_; }
 
-	private:
-		// ====================  DATA MEMBERS  =======================================
+    // ====================  MUTATORS      =======================================
+
+    bool AddValue(DprDecimal::DDecDouble& new_value);
+
+    // ====================  OPERATORS     =======================================
+
+protected:
+    // ====================  DATA MEMBERS  =======================================
+
+private:
+    // ====================  DATA MEMBERS  =======================================
+
+    int box_size_ = 0;
+    int reversal_size_ = 0;
+
+    int bottom_ = 0;
+    int top_ = 0;
+    Direction direction_ = e_unknown;
 
 }; // -----  end of class P_F_Column  -----
 
+#endif   // ----- #ifndef P_F_COLUMN_INC  ----- 

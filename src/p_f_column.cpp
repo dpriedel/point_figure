@@ -5,7 +5,7 @@
 //    Description:  implementation of class which implements Point & Figure column data
 // 
 //        Version:  1.0
-//        Created:  05/21/2013 02:57:51 PM
+//        Created:  2021-07-26 09:36 AM 
 //       Revision:  none
 //       Compiler:  g++
 // 
@@ -24,7 +24,8 @@
 //      Method:  P_F_Column
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-P_F_Column::P_F_Column ()
+
+P_F_Column::P_F_Column(int box_size, int reversal_size, Direction direction)
+    : box_size_{box_size}, reversal_size_{reversal_size}, direction_{direction}
 {
 }  // -----  end of method P_F_Column::P_F_Column  (constructor)  -----
-
