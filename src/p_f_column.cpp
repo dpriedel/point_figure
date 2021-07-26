@@ -15,6 +15,16 @@
 // 
 // =====================================================================================
 
+//-----------------------------------------------------------------------------
+// 
+// Logic for how to construct a column given incoming data comes from the
+// excellent book "The Definitive Guide to Point and Figure" by
+// Jeremy du Plessis.
+// This book is written by an engineer/programmer to the alogorithm descriptions
+// can be readily used to write code.  However, the implementation along with 
+// responsibility for any errors is mine.
+//
+//-----------------------------------------------------------------------------
 
 #include "p_f_column.h"
 

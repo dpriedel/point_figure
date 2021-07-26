@@ -28,11 +28,11 @@ class P_F_Column
 {
 public:
 
-    enum Direction {e_unknown, e_up, e_down};
+    enum class Direction {e_unknown, e_up, e_down};
 
     // ====================  LIFECYCLE     =======================================
     P_F_Column () = default;                             // constructor
-    P_F_Column(int box_size, int reversal_size, Direction=e_unknown);
+    P_F_Column(int box_size, int reversal_size, Direction=Direction::e_unknown);
 
     // ====================  ACCESSORS     =======================================
 
@@ -59,7 +59,10 @@ private:
 
     int bottom_ = 0;
     int top_ = 0;
-    Direction direction_ = e_unknown;
+    Direction direction_ = Direction::e_unknown;
+
+    // for 1-box, can have both up and down in same column
+    bool had_reversal_ = false;
 
 }; // -----  end of class P_F_Column  -----
 
