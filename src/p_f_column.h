@@ -19,6 +19,7 @@
 #define  P_F_COLUMN_INC_
 
 #include "DDecDouble.h"
+#include <cstdint>
 
 // =====================================================================================
 //        Class:  P_F_Column
@@ -32,19 +33,19 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     P_F_Column () = default;                             // constructor
-    P_F_Column(int box_size, int reversal_size, Direction=Direction::e_unknown);
+    P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown);
 
     // ====================  ACCESSORS     =======================================
 
-    int GetTop() { return top_; }
-    int GetBottom() { return top_; }
-    Direction GetDirection() { return direction_; }
-    int GetBoxsize() { return box_size_; }
-    int GetReversalsize() { return reversal_size_; }
+    [[nodiscard]] int GetTop() const { return top_; }
+    [[nodiscard]] int GetBottom() const { return bottom_; }
+    [[nodiscard]] Direction GetDirection() const { return direction_; }
+    [[nodiscard]] int GetBoxsize() const { return box_size_; }
+    [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
 
     // ====================  MUTATORS      =======================================
 
-    bool AddValue(DprDecimal::DDecDouble& new_value);
+    bool AddValue(const DprDecimal::DDecDouble& new_value);
 
     // ====================  OPERATORS     =======================================
 
@@ -52,13 +53,16 @@ protected:
     // ====================  DATA MEMBERS  =======================================
 
 private:
+
+    [[nodiscard]] int32_t RoundDownToNearestBox(const DprDecimal::DDecDouble& a_value) const;
+
     // ====================  DATA MEMBERS  =======================================
 
-    int box_size_ = 0;
-    int reversal_size_ = 0;
+    int32_t box_size_ = -1;
+    int32_t reversal_boxes_ = -1;
 
-    int bottom_ = 0;
-    int top_ = 0;
+    int32_t bottom_ = -1;
+    int32_t top_ = -1;
     Direction direction_ = Direction::e_unknown;
 
     // for 1-box, can have both up and down in same column
