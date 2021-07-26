@@ -21,36 +21,39 @@
 #include <fmt/format.h>
 
 #include "DDecDouble.h"
+#include "decContext.h"
 
-decContext DprDecimal::DDecDouble::mCtx ;
+using namespace DprDecimal;
 
-DprDecimal::DDecDouble::DDecDouble()
+decContext DDecDouble::mCtx ;
+
+DDecDouble::DDecDouble()
 {
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
 }
 
-DprDecimal::DDecDouble::DDecDouble(const char* number)
+DDecDouble::DDecDouble(const char* number)
 {
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
     decDoubleFromString(&this->decimal_, number, &DDecDouble::mCtx);
 }
 
-DprDecimal::DDecDouble::DDecDouble(const std::string& number)
+DDecDouble::DDecDouble(const std::string& number)
     : DDecDouble(number.c_str())	{ }
 
-DprDecimal::DDecDouble::DDecDouble(int32_t number)
+DDecDouble::DDecDouble(int32_t number)
 {
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
     decDoubleFromInt32(&this->decimal_, number);
 }
 
-DprDecimal::DDecDouble::DDecDouble(uint32_t number)
+DDecDouble::DDecDouble(uint32_t number)
 {
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
     decDoubleFromUInt32(&this->decimal_, number);
 }
 
-DprDecimal::DDecDouble::DDecDouble(double number, int dec_digits)
+DDecDouble::DDecDouble(double number, int dec_digits)
 {
     //    once GCC fully supports from_chars, use the code below
 //    std::array<char, 30> buf;
@@ -72,3 +75,10 @@ DprDecimal::DDecDouble::DDecDouble(double number, int dec_digits)
     decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx);
 //		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx);
 }
+
+int32_t DDecDouble::ToInt () const
+{
+    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx, DEC_ROUND_HALF_DOWN);
+    return result;
+}		// -----  end of method DDecDouble::ToInt  ----- 
+

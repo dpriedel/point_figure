@@ -61,6 +61,8 @@ class DDecDouble
 		// ====================  ACCESSORS     =======================================
 		
 		[[nodiscard]] std::string ToStr() const;
+        int32_t ToInt() const;
+        double ToDouble() const;
 
 		// ====================  MUTATORS      =======================================
 
