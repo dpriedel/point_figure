@@ -32,7 +32,7 @@ DprDecimal::DDecDouble::DDecDouble()
 DprDecimal::DDecDouble::DDecDouble(const char* number)
 {
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
-    decDoubleFromString(&this->mDecimal, number, &DDecDouble::mCtx);
+    decDoubleFromString(&this->decimal_, number, &DDecDouble::mCtx);
 }
 
 DprDecimal::DDecDouble::DDecDouble(const std::string& number)
@@ -41,13 +41,13 @@ DprDecimal::DDecDouble::DDecDouble(const std::string& number)
 DprDecimal::DDecDouble::DDecDouble(int32_t number)
 {
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
-    decDoubleFromInt32(&this->mDecimal, number);
+    decDoubleFromInt32(&this->decimal_, number);
 }
 
 DprDecimal::DDecDouble::DDecDouble(uint32_t number)
 {
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
-    decDoubleFromUInt32(&this->mDecimal, number);
+    decDoubleFromUInt32(&this->decimal_, number);
 }
 
 DprDecimal::DDecDouble::DDecDouble(double number, int dec_digits)
@@ -69,6 +69,6 @@ DprDecimal::DDecDouble::DDecDouble(double number, int dec_digits)
     temp << std::fixed << std::setprecision(dec_digits) << number;
 
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
-    decDoubleFromString(&this->mDecimal, temp.str().c_str(), &DDecDouble::mCtx);
-//		decDoubleReduce(&this->mDecimal, &this->mDecimal, &DDecDouble::mCtx);
+    decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx);
+//		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx);
 }
