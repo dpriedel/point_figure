@@ -30,6 +30,7 @@ class P_F_Column
 public:
 
     enum class Direction {e_unknown, e_up, e_down};
+    enum class Status { e_accepted, e_ignored, e_reversal };
 
     // ====================  LIFECYCLE     =======================================
     P_F_Column () = default;                             // constructor
@@ -42,10 +43,11 @@ public:
     [[nodiscard]] Direction GetDirection() const { return direction_; }
     [[nodiscard]] int GetBoxsize() const { return box_size_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
+    [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
 
     // ====================  MUTATORS      =======================================
 
-    bool AddValue(const DprDecimal::DDecDouble& new_value);
+    [[nodiscard]] Status AddValue(const DprDecimal::DDecDouble& new_value);
 
     // ====================  OPERATORS     =======================================
 

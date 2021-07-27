@@ -43,12 +43,10 @@ P_F_Column::P_F_Column(int box_size, int reversal_boxes, Direction direction)
 }  // -----  end of method P_F_Column::P_F_Column  (constructor)  -----
 
 
-bool P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
+P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
 {
     // if this is the first entry in the column, just set first entry 
     // to the input value rounded down to the nearest box value.
-
-    std::cout << "new value: " << new_value << '\n';
 
     if (top_ == -1 && bottom_ == -1)
     {
@@ -57,14 +55,15 @@ bool P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
         top_= RoundDownToNearestBox(new_value);
         bottom_ = top_;
     
-        return true;
+        return Status::e_accepted;
     }
 
     int32_t possible_value = new_value.ToInt();
 
-    std::cout << "possible value: " << possible_value << '\n';
-
     // OK, we've got a value but may not yet have a direction.
+    // NOTE: Since a new value may gap up or down, we could 
+    // have multiple boxes to fill in. Hence the loops in 
+    // routines below.
 
     if (direction_ == Direction::e_unknown)
     {
@@ -73,22 +72,25 @@ bool P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
 
         if (possible_value >= top_ + box_size_)
         {
-            while (possible_value > top_)
+            while (possible_value >= top_ + box_size_)
             {
                 direction_ = Direction::e_up;
                 top_ += box_size_;
             }
-            return true;
+            return Status::e_accepted;
         }
         if (possible_value <= bottom_ - box_size_)
         {
-            while(possible_value < bottom_)
+            while(possible_value <= bottom_ - box_size_)
             {
                 direction_ = Direction::e_down;
                 bottom_ -= box_size_;
             }
-            return true;
+            return Status::e_accepted;
         }
+
+        // skip value
+        return Status::e_ignored;
     }
 
     // now that we know our direction, we can either continue in 
@@ -100,39 +102,73 @@ bool P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
     {
         if (possible_value >= top_ + box_size_)
         {
-            while (possible_value > top_)
+            while (possible_value >= top_ + box_size_)
             {
                 top_ += box_size_;
             }
-            return true;
+            return Status::e_accepted;
         }
         // look for a reversal 
 
         if (possible_value <= top_ - (box_size_ * reversal_boxes_))
         {
-            throw std::runtime_error("got reversal from going up.\n");
+            // look for one-step-back reversal first.
+
+            if (reversal_boxes_ == 1)
+            {
+                if (bottom_ < top_ - box_size_)
+                {
+                    // can't do it as box is occupied.
+                    return Status::e_reversal;
+                }
+                while(possible_value <= bottom_ - box_size_)
+                {
+                    bottom_ -= box_size_;
+                }
+                had_reversal_ = true;
+                direction_ = Direction::e_down;
+                return Status::e_accepted;
+            }
+            return Status::e_reversal;
         }
     }
     if (direction_ == Direction::e_down)
     {
         if (possible_value <= bottom_ - box_size_)
         {
-            while(possible_value < bottom_)
+            while(possible_value <= bottom_ - box_size_)
             {
                 bottom_ -= box_size_;
             }
-            return true;
+            return Status::e_accepted;
         }
         // look for a reversal 
 
         if (possible_value >= bottom_ + (box_size_ * reversal_boxes_))
         {
-            throw std::runtime_error("got reversal from going down.\n");
+            // look for one-step-back reversal first.
+
+            if (reversal_boxes_ == 1)
+            {
+                if (top_ > bottom_ + box_size_)
+                {
+                    // can't do it as box is occupied.
+                    return Status::e_reversal;
+                }
+                while(possible_value >= top_ + box_size_)
+                {
+                    top_ += box_size_;
+                }
+                had_reversal_ = true;
+                direction_ = Direction::e_up;
+                return Status::e_accepted;
+            }
+            return Status::e_reversal;
         }
     }
 
 
-    return false;
+    return Status::e_ignored;
 }		// -----  end of method P_F_Column::AddValue  ----- 
 
 int32_t P_F_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
