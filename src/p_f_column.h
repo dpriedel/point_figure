@@ -18,9 +18,12 @@
 #ifndef  P_F_COLUMN_INC_
 #define  P_F_COLUMN_INC_
 
-#include "DDecDouble.h"
 #include <cstdint>
 #include <utility>
+#include <memory>
+#include <optional>
+
+#include "DDecDouble.h"
 
 // =====================================================================================
 //        Class:  P_F_Column
@@ -33,11 +36,15 @@ public:
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
 
-    using AddResult = std::pair<Status, int32_t>;
+    using AddResult = std::pair<Status, std::optional<std::unique_ptr<P_F_Column>>>;
 
     // ====================  LIFECYCLE     =======================================
     P_F_Column () = default;                             // constructor
     P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t=-1, int32_t=-1);
+
+    // make reversed column here because we know everything needed to do so.
+
+    std::unique_ptr<P_F_Column> MakeReversalColumn(Direction direction, int32_t value);
 
     // ====================  ACCESSORS     =======================================
 

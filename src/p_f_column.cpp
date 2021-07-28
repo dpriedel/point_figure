@@ -26,8 +26,8 @@
 //
 //-----------------------------------------------------------------------------
 
-#include <cstdint>
 #include <exception>
+#include <memory>
 
 #include "p_f_column.h"
 
@@ -42,6 +42,13 @@ P_F_Column::P_F_Column(int box_size, int reversal_boxes, Direction direction, in
 {
 }  // -----  end of method P_F_Column::P_F_Column  (constructor)  -----
 
+std::unique_ptr<P_F_Column> P_F_Column::MakeReversalColumn (Direction direction, int32_t value )
+{
+    return std::make_unique<P_F_Column>(box_size_, reversal_boxes_, direction,
+            direction == Direction::e_down ? top_ - box_size_ : value,
+            direction == Direction::e_down ? value : bottom_ + box_size_
+            );
+}		// -----  end of method P_F_Column::MakeReversalColumn  ----- 
 
 P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
 {
@@ -55,7 +62,7 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
         top_= RoundDownToNearestBox(new_value);
         bottom_ = top_;
     
-        return {Status::e_accepted, top_};
+        return {Status::e_accepted, std::nullopt};
     }
 
     int32_t possible_value = new_value.ToInt();
@@ -77,7 +84,7 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
                 direction_ = Direction::e_up;
                 top_ += box_size_;
             }
-            return {Status::e_accepted, top_};
+            return {Status::e_accepted, std::nullopt};
         }
         if (possible_value <= bottom_ - box_size_)
         {
@@ -86,11 +93,11 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
                 direction_ = Direction::e_down;
                 bottom_ -= box_size_;
             }
-            return {Status::e_accepted, bottom_};
+            return {Status::e_accepted, std::nullopt};
         }
 
         // skip value
-        return {Status::e_ignored, possible_value};
+        return {Status::e_ignored, std::nullopt};
     }
 
     // now that we know our direction, we can either continue in 
@@ -106,7 +113,7 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
             {
                 top_ += box_size_;
             }
-            return {Status::e_accepted, top_};
+            return {Status::e_accepted, std::nullopt};
         }
         // look for a reversal 
 
@@ -119,7 +126,7 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
                 if (bottom_ <= top_ - box_size_)
                 {
                     // can't do it as box is occupied.
-                    return {Status::e_reversal, top_ - box_size_};
+                    return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_)};
                 }
                 while(possible_value <= bottom_ - box_size_)
                 {
@@ -127,9 +134,9 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
                 }
                 had_reversal_ = true;
                 direction_ = Direction::e_down;
-                return {Status::e_accepted, bottom_};
+                return {Status::e_accepted, std::nullopt};
             }
-            return {Status::e_reversal, top_ - (box_size_ * reversal_boxes_)};
+            return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - (box_size_ * reversal_boxes_))};
         }
     }
     if (direction_ == Direction::e_down)
@@ -140,7 +147,7 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
             {
                 bottom_ -= box_size_;
             }
-            return {Status::e_accepted, bottom_};
+            return {Status::e_accepted, std::nullopt};
         }
         // look for a reversal 
 
@@ -153,7 +160,7 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
                 if (top_ >= bottom_ + box_size_)
                 {
                     // can't do it as box is occupied.
-                    return {Status::e_reversal, bottom_ + box_size_};
+                    return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_)};
                 }
                 while(possible_value >= top_ + box_size_)
                 {
@@ -161,14 +168,14 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
                 }
                 had_reversal_ = true;
                 direction_ = Direction::e_up;
-                return {Status::e_accepted, top_};
+                return {Status::e_accepted, std::nullopt};
             }
-            return {Status::e_reversal, bottom_ + (box_size_ * reversal_boxes_)};
+            return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_))};
         }
     }
 
 
-    return {Status::e_ignored, possible_value};
+    return {Status::e_ignored, std::nullopt};
 }		// -----  end of method P_F_Column::AddValue  ----- 
 
 int32_t P_F_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
