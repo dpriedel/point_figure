@@ -20,6 +20,7 @@
 
 #include "DDecDouble.h"
 #include <cstdint>
+#include <utility>
 
 // =====================================================================================
 //        Class:  P_F_Column
@@ -32,9 +33,11 @@ public:
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
 
+    using AddResult = std::pair<Status, int32_t>;
+
     // ====================  LIFECYCLE     =======================================
     P_F_Column () = default;                             // constructor
-    P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown);
+    P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t top=-1, int32_t bottom_=-1);
 
     // ====================  ACCESSORS     =======================================
 
@@ -47,7 +50,7 @@ public:
 
     // ====================  MUTATORS      =======================================
 
-    [[nodiscard]] Status AddValue(const DprDecimal::DDecDouble& new_value);
+    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecDouble& new_value);
 
     // ====================  OPERATORS     =======================================
 
@@ -78,35 +81,41 @@ private:
 
 inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Status status)
 {
-    if (status == P_F_Column::Status::e_accepted)
+    switch(status)
     {
-        os << "accepted";
-    }
-    else if (status == P_F_Column::Status::e_ignored)
-    {
-        os << "ignored";
-    }
-    else if (status == P_F_Column::Status::e_reversal)
-    {
-        os << "reversal";
-    }
+        case P_F_Column::Status::e_accepted:
+            os << "accepted";
+            break;
+
+        case P_F_Column::Status::e_ignored:
+            os << "ignored";
+            break;
+
+        case P_F_Column::Status::e_reversal:
+            os << "reversed";
+            break;
+    };
+
 	return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Direction direction)
 {
-    if (direction == P_F_Column::Direction::e_unknown)
+    switch(direction)
     {
-        os << "unknown";
-    }
-    else if (direction == P_F_Column::Direction::e_down)
-    {
-        os << "down";
-    }
-    else if (direction == P_F_Column::Direction::e_up)
-    {
-        os << "up";
-    }
+        case P_F_Column::Direction::e_unknown:
+            os << "unknown";
+            break;
+
+        case P_F_Column::Direction::e_down:
+            os << "down";
+            break;
+
+        case P_F_Column::Direction::e_up:
+            os << "up";
+            break;
+    };
+
 	return os;
 }
 

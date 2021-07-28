@@ -37,13 +37,13 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-P_F_Column::P_F_Column(int box_size, int reversal_boxes, Direction direction)
-    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, direction_{direction}
+P_F_Column::P_F_Column(int box_size, int reversal_boxes, Direction direction, int32_t top, int32_t bottom)
+    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, direction_{direction}, top_{top}, bottom_{bottom}
 {
 }  // -----  end of method P_F_Column::P_F_Column  (constructor)  -----
 
 
-P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
+P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
 {
     // if this is the first entry in the column, just set first entry 
     // to the input value rounded down to the nearest box value.
@@ -55,7 +55,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
         top_= RoundDownToNearestBox(new_value);
         bottom_ = top_;
     
-        return Status::e_accepted;
+        return {Status::e_accepted, top_};
     }
 
     int32_t possible_value = new_value.ToInt();
@@ -77,7 +77,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
                 direction_ = Direction::e_up;
                 top_ += box_size_;
             }
-            return Status::e_accepted;
+            return {Status::e_accepted, top_};
         }
         if (possible_value <= bottom_ - box_size_)
         {
@@ -86,11 +86,11 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
                 direction_ = Direction::e_down;
                 bottom_ -= box_size_;
             }
-            return Status::e_accepted;
+            return {Status::e_accepted, bottom_};
         }
 
         // skip value
-        return Status::e_ignored;
+        return {Status::e_ignored, possible_value};
     }
 
     // now that we know our direction, we can either continue in 
@@ -106,7 +106,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
             {
                 top_ += box_size_;
             }
-            return Status::e_accepted;
+            return {Status::e_accepted, top_};
         }
         // look for a reversal 
 
@@ -119,7 +119,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
                 if (bottom_ <= top_ - box_size_)
                 {
                     // can't do it as box is occupied.
-                    return Status::e_reversal;
+                    return {Status::e_reversal, top_ - box_size_};
                 }
                 while(possible_value <= bottom_ - box_size_)
                 {
@@ -127,9 +127,9 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
                 }
                 had_reversal_ = true;
                 direction_ = Direction::e_down;
-                return Status::e_accepted;
+                return {Status::e_accepted, bottom_};
             }
-            return Status::e_reversal;
+            return {Status::e_reversal, top_ - (box_size_ * reversal_boxes_)};
         }
     }
     if (direction_ == Direction::e_down)
@@ -140,7 +140,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
             {
                 bottom_ -= box_size_;
             }
-            return Status::e_accepted;
+            return {Status::e_accepted, bottom_};
         }
         // look for a reversal 
 
@@ -153,7 +153,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
                 if (top_ >= bottom_ + box_size_)
                 {
                     // can't do it as box is occupied.
-                    return Status::e_reversal;
+                    return {Status::e_reversal, bottom_ + box_size_};
                 }
                 while(possible_value >= top_ + box_size_)
                 {
@@ -161,14 +161,14 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
                 }
                 had_reversal_ = true;
                 direction_ = Direction::e_up;
-                return Status::e_accepted;
+                return {Status::e_accepted, top_};
             }
-            return Status::e_reversal;
+            return {Status::e_reversal, bottom_ + (box_size_ * reversal_boxes_)};
         }
     }
 
 
-    return Status::e_ignored;
+    return {Status::e_ignored, possible_value};
 }		// -----  end of method P_F_Column::AddValue  ----- 
 
 int32_t P_F_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
