@@ -72,4 +72,43 @@ private:
 
 }; // -----  end of class P_F_Column  -----
 
+//
+//	stream inserter
+//
+
+inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Status status)
+{
+    if (status == P_F_Column::Status::e_accepted)
+    {
+        os << "accepted";
+    }
+    else if (status == P_F_Column::Status::e_ignored)
+    {
+        os << "ignored";
+    }
+    else if (status == P_F_Column::Status::e_reversal)
+    {
+        os << "reversal";
+    }
+	return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Direction direction)
+{
+    if (direction == P_F_Column::Direction::e_unknown)
+    {
+        os << "unknown";
+    }
+    else if (direction == P_F_Column::Direction::e_down)
+    {
+        os << "down";
+    }
+    else if (direction == P_F_Column::Direction::e_up)
+    {
+        os << "up";
+    }
+	return os;
+}
+
+
 #endif   // ----- #ifndef P_F_COLUMN_INC  ----- 

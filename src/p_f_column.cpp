@@ -116,7 +116,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
 
             if (reversal_boxes_ == 1)
             {
-                if (bottom_ < top_ - box_size_)
+                if (bottom_ <= top_ - box_size_)
                 {
                     // can't do it as box is occupied.
                     return Status::e_reversal;
@@ -150,7 +150,7 @@ P_F_Column::Status P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value
 
             if (reversal_boxes_ == 1)
             {
-                if (top_ > bottom_ + box_size_)
+                if (top_ >= bottom_ + box_size_)
                 {
                     // can't do it as box is occupied.
                     return Status::e_reversal;
