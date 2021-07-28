@@ -37,7 +37,7 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     P_F_Column () = default;                             // constructor
-    P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t top=-1, int32_t bottom_=-1);
+    P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t=-1, int32_t=-1);
 
     // ====================  ACCESSORS     =======================================
 
