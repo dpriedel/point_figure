@@ -65,6 +65,11 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
         return {Status::e_accepted, std::nullopt};
     }
 
+    // du Plessis says in "Definitive Guide" (pp. 28-29) that fractional 
+    // parts of price were just truncated, no rounding done.  I'm going to go 
+    // with rounding here though since, at the time he was talking about,
+    // there were no computers to do this.
+
     int32_t possible_value = new_value.ToInt();
 
     // OK, we've got a value but may not yet have a direction.
