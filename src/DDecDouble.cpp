@@ -55,24 +55,24 @@ DDecDouble::DDecDouble(uint32_t number)
 
 DDecDouble::DDecDouble(double number, int dec_digits)
 {
-    //    once GCC fully supports from_chars, use the code below
-//    std::array<char, 30> buf;
-//    if (auto [p, ec] = std::from_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed, dec_digits);
-//            ec != std::errc())
-//    {
-//        throw std::runtime_error(fmt::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
-//    }
-//    else
-//    {
-//        // string is NOT NULL terminated
-//        buf[p] = '\0';
-//    }
+    std::array<char, 30> buf{};
+    if (auto [p, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed, dec_digits);
+            ec != std::errc())
+    {
+        throw std::runtime_error(fmt::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
+    }
+    else
+    {
+        // string is NOT NULL terminated
+        buf[buf.size()] = '\0';
+    }
 
-    std::ostringstream temp;
-    temp << std::fixed << std::setprecision(dec_digits) << number;
+//    std::ostringstream temp;
+//    temp << std::fixed << std::setprecision(dec_digits) << number;
 
     decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
-    decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx);
+//    decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx);
+    decDoubleFromString(&this->decimal_, buf.data(), &DDecDouble::mCtx);
 //		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx);
 }
 
