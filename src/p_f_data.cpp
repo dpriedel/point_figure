@@ -4,8 +4,8 @@
 // 
 //    Description:  Implementation of class which contains Point & Figure data for a symbol.
 // 
-//        Version:  1.0
-//        Created:  05/21/2013 01:58:39 PM
+//        Version:  2.0
+//        Created:  2021-07-29 08:47 AM
 //       Revision:  none
 //       Compiler:  g++
 // 
@@ -25,9 +25,19 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-P_F_Data::P_F_Data ()
-	: mBoxSize{0}, mReversalBoxes{0}, mCurrentDirection{direction::unknown}
+P_F_Data::P_F_Data (std::string symbol, std::int32_t boxsize, int32_t reversal_boxes)
+	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes}, currentdirection_{Direction::e_unknown}
 
 {
 }  // -----  end of method P_F_Data::P_F_Data  (constructor)  -----
+
+void P_F_Data::LoadData (std::istream* input_data)
+{
+    return ;
+}		// -----  end of method P_F_Data::LoadData  ----- 
+
+void P_F_Data::ExportData (std::ostream* output_data)
+{
+    return ;
+}		// -----  end of method P_F_Data::ExportData  ----- 
 

@@ -4,8 +4,8 @@
 // 
 //    Description:  class to manage Point & Figure data for a symbol.
 // 
-//        Version:  1.0
-//        Created:  04/30/2013 03:04:50 PM
+//        Version:  2.0
+//        Created:  2021-07-29 08:29 AM
 //       Revision:  none
 //       Compiler:  g++
 // 
@@ -20,63 +20,63 @@
 //  Description:  class to manage Point & Figure data for a symbol.
 // =====================================================================================
 
+#ifndef  P_F_DATA_INC
+#define  P_F_DATA_INC
+
+
+#include <chrono>
+#include <cstdint>
+#include <string>
 #include <vector>
 
-#include <boost/date_time/gregorian/gregorian.hpp>
+#include <date/date.h>
 
-#include "DDecDouble.h"
+//using namespace std::chrono_literals;
 
-namespace greg = boost::gregorian;
 
 class P_F_Column;
 
 class P_F_Data
 {
-	public:
-		// ====================  LIFECYCLE     =======================================
-		P_F_Data ();                             // constructor
-		P_F_Data(const DprDecimal::DDecDouble boxsize, int reversal);
+    using tpt = std::chrono::time_point<std::chrono::steady_clock>;
 
-		// ====================  ACCESSORS     =======================================
+public:
+    enum class Direction { e_unknown, e_moving_up, e_moving_down };
 
-		// ====================  MUTATORS      =======================================
-		
-		void SetBoxSize(const DprDecimal::DDecDouble& boxsize);
-		void SetReversal(int reversal);
+    // ====================  LIFECYCLE     =======================================
+    P_F_Data () = default;                             // constructor
+    P_F_Data(std::string symbol, std::int32_t boxsize, int32_t reversal_boxes);
 
-		void SetInputSource(std::istream* inputData);
-		void SetOutputDest(std::ostream* outputData);
+    // ====================  ACCESSORS     =======================================
 
-		void LoadData();
+    void ExportData(std::ostream* output_data);
+    [[nodiscard]] Direction GetCurrentDirection() const { return currentdirection_; }
 
-		// ====================  OPERATORS     =======================================
+    // ====================  MUTATORS      =======================================
+    
+    void LoadData(std::istream* input_data);
 
-	protected:
-		// ====================  DATA MEMBERS  =======================================
+    // ====================  OPERATORS     =======================================
 
-	private:
-		// ====================  DATA MEMBERS  =======================================
+protected:
+    // ====================  DATA MEMBERS  =======================================
 
-		std::vector<P_F_Column> mColumns;
+private:
+    // ====================  DATA MEMBERS  =======================================
 
-		std::string mSymbol;
+    std::vector<P_F_Column> columns_;
 
-		greg::date mFirstDate;			//	earliest entry for symbol
-		greg::date mLastChangeDate;		//	date of last change to data
-		greg::date mLastCheckedDate;	//	last time checked to see if update needed
+    std::string symbol_;
 
-		DprDecimal::DDecDouble mBoxSize;
-		int mReversalBoxes;
+    tpt mFirstDate;			//	earliest entry for symbol
+    tpt mLastChangeDate;		//	date of last change to data
+    tpt mLastCheckedDate;	//	last time checked to see if update needed
 
-		enum class direction { unknown, moving_up, moving_down };
+    int32_t boxsize_;
+    int32_t reversal_boxes_;
 
-		direction mCurrentDirection;
-
-		std::istream* mInputData;
-		std::ostream* mOutputData;
-
-
-
+    Direction currentdirection_;
 
 }; // -----  end of class P_F_Data  -----
+#endif   // ----- #ifndef P_F_DATA_INC  ----- 
 
