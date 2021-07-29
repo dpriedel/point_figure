@@ -42,10 +42,6 @@ public:
     P_F_Column () = default;                             // constructor
     P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t=-1, int32_t=-1);
 
-    // make reversed column here because we know everything needed to do so.
-
-    std::unique_ptr<P_F_Column> MakeReversalColumn(Direction direction, int32_t value);
-
     // ====================  ACCESSORS     =======================================
 
     [[nodiscard]] int GetTop() const { return top_; }
@@ -62,6 +58,10 @@ public:
     // ====================  OPERATORS     =======================================
 
 protected:
+    // make reversed column here because we know everything needed to do so.
+
+    std::unique_ptr<P_F_Column> MakeReversalColumn(Direction direction, int32_t value);
+
     // ====================  DATA MEMBERS  =======================================
 
 private:
