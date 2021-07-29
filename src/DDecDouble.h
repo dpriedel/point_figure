@@ -48,39 +48,39 @@ class DDecDouble
 	friend std::istream& operator>>(std::istream& is, DDecDouble& item);
 	friend std::ostream& operator<<(std::ostream& os, const DDecDouble& item);
 
-	public:
-		// ====================  LIFECYCLE     =======================================
-		DDecDouble ();                             // constructor
-		DDecDouble (const char* number);           // constructor
-		DDecDouble (const std::string& number);    // constructor
-		DDecDouble (int32_t number);               // constructor
-		DDecDouble (uint32_t number);              // constructor
+public:
+    // ====================  LIFECYCLE     =======================================
+    DDecDouble ();                             // constructor
+    DDecDouble (const char* number);           // constructor
+    DDecDouble (const std::string& number);    // constructor
+    DDecDouble (int32_t number);               // constructor
+    DDecDouble (uint32_t number);              // constructor
 
-		DDecDouble (double number, int dec_digits=2);	 // constructor
+    DDecDouble (double number, int dec_digits=2);	 // constructor
 
-		// ====================  ACCESSORS     =======================================
-		
-		[[nodiscard]] std::string ToStr() const;
-        int32_t ToInt() const;
-        double ToDouble() const;
+    // ====================  ACCESSORS     =======================================
+    
+    [[nodiscard]] std::string ToStr() const;
+    int32_t ToInt() const;
+    double ToDouble() const;
 
-		// ====================  MUTATORS      =======================================
+    // ====================  MUTATORS      =======================================
 
-		// ====================  OPERATORS     =======================================
-		
-		DDecDouble& operator+=(const DDecDouble& rhs);
-		DDecDouble& operator-=(const DDecDouble& rhs);
-		DDecDouble& operator*=(const DDecDouble& rhs);
-		DDecDouble& operator/=(const DDecDouble& rhs);
+    // ====================  OPERATORS     =======================================
+    
+    DDecDouble& operator+=(const DDecDouble& rhs);
+    DDecDouble& operator-=(const DDecDouble& rhs);
+    DDecDouble& operator*=(const DDecDouble& rhs);
+    DDecDouble& operator/=(const DDecDouble& rhs);
 
-	protected:
-		// ====================  DATA MEMBERS  =======================================
+protected:
+    // ====================  DATA MEMBERS  =======================================
 
-	private:
-		// ====================  DATA MEMBERS  =======================================
-		
-		decDouble decimal_{};
-		static decContext mCtx;
+private:
+    // ====================  DATA MEMBERS  =======================================
+    
+    decDouble decimal_{};
+    static decContext mCtx;
 
 }; // -----  end of template class DDecimalSMALLDEC  -----
 
