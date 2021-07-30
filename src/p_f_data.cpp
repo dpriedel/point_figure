@@ -15,6 +15,7 @@
 // 
 // =====================================================================================
 
+//#include <iterator>
 
 #include "p_f_data.h"
 #include "p_f_column.h"
@@ -25,19 +26,49 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-P_F_Data::P_F_Data (std::string symbol, std::int32_t boxsize, int32_t reversal_boxes)
-	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes}, currentdirection_{Direction::e_unknown}
+P_F_Data::P_F_Data (const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes)
+	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes}, current_direction_{P_F_Column::Direction::e_unknown}
 
 {
 }  // -----  end of method P_F_Data::P_F_Data  (constructor)  -----
 
 void P_F_Data::LoadData (std::istream* input_data)
 {
-    return ;
+    // for now, just assume its numbers.
+
+    current_column_ = std::make_unique<P_F_Column>(boxsize_, reversal_boxes_);
+
+    while (! input_data->eof())
+    {
+        int32_t price;
+        *input_data >> price;
+        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(price));
+        if (status == P_F_Column::Status::e_reversal)
+        {
+            auto* save_col = current_column_.get();         // non-owning access
+            columns_.push_back(*save_col);
+            current_column_ = std::move(new_col.value());
+
+            // now continue on processing the value.
+            
+            status = current_column_->AddValue(DprDecimal::DDecDouble(price)).first;
+            current_direction_ = current_column_->GetDirection();
+        }
+    }
+
+    // make sure we keep the last column we were working on 
+
+    columns_.push_back(*current_column_);
+
 }		// -----  end of method P_F_Data::LoadData  ----- 
 
 void P_F_Data::ExportData (std::ostream* output_data)
 {
-    return ;
+    // for now, just print our column info.
+
+    for (const auto& a_col : columns_)
+    {
+        std::cout << "bottom: " << a_col.GetBottom() << " top: " << a_col.GetTop() << " direction: " << a_col.GetDirection() << (a_col.GetHadReversal() ? " one step back reversal" : "") << '\n';
+    }
 }		// -----  end of method P_F_Data::ExportData  ----- 
 

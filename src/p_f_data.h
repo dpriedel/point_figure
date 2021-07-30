@@ -26,6 +26,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -33,24 +34,25 @@
 
 //using namespace std::chrono_literals;
 
+#include "p_f_column.h"
 
-class P_F_Column;
 
 class P_F_Data
 {
     using tpt = std::chrono::time_point<std::chrono::steady_clock>;
 
 public:
-    enum class Direction { e_unknown, e_moving_up, e_moving_down };
 
     // ====================  LIFECYCLE     =======================================
     P_F_Data () = default;                             // constructor
-    P_F_Data(std::string symbol, std::int32_t boxsize, int32_t reversal_boxes);
+    P_F_Data(const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes);
 
     // ====================  ACCESSORS     =======================================
 
     void ExportData(std::ostream* output_data);
-    [[nodiscard]] Direction GetCurrentDirection() const { return currentdirection_; }
+    [[nodiscard]] P_F_Column::Direction GetCurrentDirection() const { return current_direction_; }
+
+    [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size(); }
 
     // ====================  MUTATORS      =======================================
     
@@ -65,6 +67,7 @@ private:
     // ====================  DATA MEMBERS  =======================================
 
     std::vector<P_F_Column> columns_;
+    std::unique_ptr<P_F_Column> current_column_;
 
     std::string symbol_;
 
@@ -75,7 +78,7 @@ private:
     int32_t boxsize_;
     int32_t reversal_boxes_;
 
-    Direction currentdirection_;
+    P_F_Column::Direction current_direction_;
 
 }; // -----  end of class P_F_Data  -----
 #endif   // ----- #ifndef P_F_DATA_INC  ----- 
