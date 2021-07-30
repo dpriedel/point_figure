@@ -26,6 +26,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -43,6 +44,8 @@ class P_F_Data
 
 public:
 
+    using Y_Limits = std::pair<int32_t, int32_t>;
+
     // ====================  LIFECYCLE     =======================================
     P_F_Data () = default;                             // constructor
     P_F_Data(const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes);
@@ -53,6 +56,8 @@ public:
     [[nodiscard]] P_F_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size(); }
+
+    [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
     // ====================  MUTATORS      =======================================
     
@@ -79,6 +84,8 @@ private:
 
     int32_t boxsize_;
     int32_t reversal_boxes_;
+    int32_t y_min_ = std::numeric_limits<int32_t>::max();
+    int32_t y_max_ = std::numeric_limits<int32_t>::min();
 
     P_F_Column::Direction current_direction_;
 

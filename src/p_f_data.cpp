@@ -43,6 +43,16 @@ void P_F_Data::LoadData (std::istream* input_data)
         int32_t price;
         *input_data >> price;
         auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(price));
+
+        if (current_column_->GetTop() > y_max_)
+        {
+            y_max_ = current_column_->GetTop();
+        }
+        if (current_column_->GetBottom() < y_min_)
+        {
+            y_min_ = current_column_->GetBottom();
+        }
+
         if (status == P_F_Column::Status::e_reversal)
         {
             auto* save_col = current_column_.get();         // non-owning access
@@ -58,6 +68,15 @@ void P_F_Data::LoadData (std::istream* input_data)
 
     // make sure we keep the last column we were working on 
 
+    if (current_column_->GetTop() > y_max_)
+    {
+        y_max_ = current_column_->GetTop();
+    }
+    if (current_column_->GetBottom() < y_min_)
+    {
+        y_min_ = current_column_->GetBottom();
+    }
+
     columns_.push_back(*current_column_);
 
 }		// -----  end of method P_F_Data::LoadData  ----- 
@@ -70,5 +89,6 @@ void P_F_Data::ExportData (std::ostream* output_data)
     {
         std::cout << "bottom: " << a_col.GetBottom() << " top: " << a_col.GetTop() << " direction: " << a_col.GetDirection() << (a_col.GetHadReversal() ? " one step back reversal" : "") << '\n';
     }
+    std::cout << "Chart y limits: <" << y_min_ << ", " << y_max_ << ">\n";
 }		// -----  end of method P_F_Data::ExportData  ----- 
 
