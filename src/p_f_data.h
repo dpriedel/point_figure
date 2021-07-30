@@ -60,6 +60,8 @@ public:
 
     // ====================  OPERATORS     =======================================
 
+    const P_F_Column& operator[](size_t which) const { return columns_[which]; }
+
 protected:
     // ====================  DATA MEMBERS  =======================================
 
