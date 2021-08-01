@@ -70,7 +70,9 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
     // with rounding here though since, at the time he was talking about,
     // there were no computers to do this.
 
-    int32_t possible_value = new_value.ToInt();
+    // Nevermind about above commment for now
+
+    int32_t possible_value = new_value.ToIntTruncated();
 
     // OK, we've got a value but may not yet have a direction.
     // NOTE: Since a new value may gap up or down, we could 
@@ -185,7 +187,7 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
 
 int32_t P_F_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
 {
-    int32_t price_as_int = a_value.ToInt();
+    int32_t price_as_int = a_value.ToIntTruncated();
 
     // we're using '10' to start with
     int32_t result = (price_as_int / box_size_) * box_size_;
