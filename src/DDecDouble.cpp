@@ -76,9 +76,15 @@ DDecDouble::DDecDouble(double number, int dec_digits)
 //		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx);
 }
 
-int32_t DDecDouble::ToInt () const
+int32_t DDecDouble::ToIntRounded () const
 {
     int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx, DEC_ROUND_HALF_DOWN);
     return result;
-}		// -----  end of method DDecDouble::ToInt  ----- 
+}		// -----  end of method DDecDouble::ToIntRounded  ----- 
+
+int32_t DDecDouble::ToIntTruncated () const
+{
+    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx, DEC_ROUND_DOWN);
+    return result;
+}		// -----  end of method DDecDouble::ToIntTruncated  ----- 
 
