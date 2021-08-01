@@ -61,6 +61,7 @@ public:
 
     // ====================  MUTATORS      =======================================
     
+    template<typename T>
     void LoadData(std::istream* input_data);
 
     // ====================  OPERATORS     =======================================
@@ -90,5 +91,60 @@ private:
     P_F_Column::Direction current_direction_;
 
 }; // -----  end of class P_F_Data  -----
+
+template<typename T>
+void P_F_Data::LoadData (std::istream* input_data)
+{
+    // for now, just assume its numbers.
+
+    current_column_ = std::make_unique<P_F_Column>(boxsize_, reversal_boxes_);
+
+    while ( ! input_data->eof())
+    {
+        T price;
+        *input_data >> price;
+        if (input_data->fail())
+        {
+            continue;
+        }
+//        std::cout << price << '\n';
+        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(price));
+
+        if (current_column_->GetTop() > y_max_)
+        {
+            y_max_ = current_column_->GetTop();
+        }
+        if (current_column_->GetBottom() < y_min_)
+        {
+            y_min_ = current_column_->GetBottom();
+        }
+
+        if (status == P_F_Column::Status::e_reversal)
+        {
+            auto* save_col = current_column_.get();         // non-owning access
+            columns_.push_back(*save_col);
+            current_column_ = std::move(new_col.value());
+
+            // now continue on processing the value.
+            
+            status = current_column_->AddValue(DprDecimal::DDecDouble(price)).first;
+            current_direction_ = current_column_->GetDirection();
+        }
+    }
+
+    // make sure we keep the last column we were working on 
+
+    if (current_column_->GetTop() > y_max_)
+    {
+        y_max_ = current_column_->GetTop();
+    }
+    if (current_column_->GetBottom() < y_min_)
+    {
+        y_min_ = current_column_->GetBottom();
+    }
+
+    columns_.push_back(*current_column_);
+
+}
 #endif   // ----- #ifndef P_F_DATA_INC  ----- 
 

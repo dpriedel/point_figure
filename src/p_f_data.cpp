@@ -32,55 +32,6 @@ P_F_Data::P_F_Data (const std::string& symbol, std::int32_t boxsize, int32_t rev
 {
 }  // -----  end of method P_F_Data::P_F_Data  (constructor)  -----
 
-void P_F_Data::LoadData (std::istream* input_data)
-{
-    // for now, just assume its numbers.
-
-    current_column_ = std::make_unique<P_F_Column>(boxsize_, reversal_boxes_);
-
-    while (! input_data->eof())
-    {
-        int32_t price;
-        *input_data >> price;
-        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(price));
-
-        if (current_column_->GetTop() > y_max_)
-        {
-            y_max_ = current_column_->GetTop();
-        }
-        if (current_column_->GetBottom() < y_min_)
-        {
-            y_min_ = current_column_->GetBottom();
-        }
-
-        if (status == P_F_Column::Status::e_reversal)
-        {
-            auto* save_col = current_column_.get();         // non-owning access
-            columns_.push_back(*save_col);
-            current_column_ = std::move(new_col.value());
-
-            // now continue on processing the value.
-            
-            status = current_column_->AddValue(DprDecimal::DDecDouble(price)).first;
-            current_direction_ = current_column_->GetDirection();
-        }
-    }
-
-    // make sure we keep the last column we were working on 
-
-    if (current_column_->GetTop() > y_max_)
-    {
-        y_max_ = current_column_->GetTop();
-    }
-    if (current_column_->GetBottom() < y_min_)
-    {
-        y_min_ = current_column_->GetBottom();
-    }
-
-    columns_.push_back(*current_column_);
-
-}		// -----  end of method P_F_Data::LoadData  ----- 
-
 void P_F_Data::ExportData (std::ostream* output_data)
 {
     // for now, just print our column info.
