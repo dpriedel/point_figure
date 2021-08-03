@@ -46,6 +46,10 @@ public:
 
     using Y_Limits = std::pair<int32_t, int32_t>;
 
+    // make it look like a range
+
+    using const_iterator = std::vector<P_F_Column>::const_iterator;
+
     // ====================  LIFECYCLE     =======================================
     P_F_Data () = default;                             // constructor
     P_F_Data(const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes);
@@ -58,6 +62,9 @@ public:
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size(); }
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
+
+    [[nodiscard]] const_iterator begin() const { return columns_.begin(); }
+    [[nodiscard]] const_iterator end() const { return columns_.end(); }
 
     // ====================  MUTATORS      =======================================
     
@@ -145,6 +152,8 @@ void P_F_Data::LoadData (std::istream* input_data)
 
     columns_.push_back(*current_column_);
 
+    P_F_Column* col = current_column_.release();
+    delete col;
 }
 #endif   // ----- #ifndef P_F_DATA_INC  ----- 
 
