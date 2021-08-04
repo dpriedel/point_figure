@@ -26,12 +26,15 @@
 
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <limits>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <date/date.h>
+
+namespace fs = std::filesystem;
 
 //using namespace std::chrono_literals;
 
@@ -65,6 +68,8 @@ public:
 
     [[nodiscard]] const_iterator begin() const { return columns_.begin(); }
     [[nodiscard]] const_iterator end() const { return columns_.end(); }
+
+    void ConstructChartAndWriteToFile(fs::path output_filename) const;
 
     // ====================  MUTATORS      =======================================
     

@@ -16,6 +16,10 @@
 // =====================================================================================
 
 //#include <iterator>
+#include <iostream>
+
+#include <chartdir.h>
+#include <fmt/format.h>
 
 #include "p_f_data.h"
 #include "p_f_column.h"
@@ -42,4 +46,64 @@ void P_F_Data::ExportData (std::ostream* output_data)
     }
     std::cout << "Chart y limits: <" << y_min_ << ", " << y_max_ << ">\n";
 }		// -----  end of method P_F_Data::ExportData  ----- 
+
+void P_F_Data::ConstructChartAndWriteToFile (fs::path output_filename) const
+{
+    // this code comes pretty much right out of the cppdemo code
+    // with some modifications for good memory management practices.
+
+    // NOTE: there are a bunch of numeric constants here related to 
+    // chart configuration. These should be paramets eventually.
+
+    std::vector<double> highData;
+    std::vector<double> lowData;
+    std::vector<double> openData;
+    std::vector<double> closeData;
+
+    for (const auto& col : columns_)
+    {
+        lowData.push_back(col.GetBottom());
+        highData.push_back(col.GetTop());
+
+        if (col.GetDirection() == P_F_Column::Direction::e_up)
+        {
+            openData.push_back(col.GetBottom());
+            closeData.push_back(col.GetTop());
+        }
+        else
+        {
+            openData.push_back(col.GetTop());
+            closeData.push_back(col.GetBottom());
+        }
+    }
+
+    std::unique_ptr<XYChart> c = std::make_unique<XYChart>(600, 350);
+
+    c->setPlotArea(50, 25, 500, 250)->setGridColor(0xc0c0c0, 0xc0c0c0);
+
+    c->addTitle(fmt::format("{}X{} for {}", boxsize_, reversal_boxes_, symbol_).c_str());
+
+//    c->xAxis()->setTitle("Jan 2001");
+
+    // we don't need any labels on the x-axis now.
+    // Set the labels on the x axis. Rotate the labels by 45 degrees.
+//    c->xAxis()->setLabels(StringArray(labels, labels_size))->setFontAngle(45);
+
+    // Add a title to the y axis
+    c->yAxis()->setTitle("Tick data");
+
+    c->yAxis()->setTickDensity(20, 10);
+    c->yAxis2()->copyAxis(c->yAxis());
+
+    auto* layer = c->addCandleStickLayer(DoubleArray(highData.data(), highData.size()),
+        DoubleArray(lowData.data(), lowData.size()), DoubleArray(openData.data(), openData.size()),
+        DoubleArray( closeData.data(), closeData.size()), 0x00ff00, 0xff0000);
+
+    // Set the line width to 2 pixels
+    layer->setLineWidth(2);
+
+    // Output the chart
+    c->makeChart(output_filename.c_str());
+
+}		// -----  end of method P_F_Data::ConstructChartAndWriteToFile  ----- 
 
