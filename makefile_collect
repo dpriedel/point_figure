@@ -38,7 +38,8 @@ OUTFILE := p_f_collect
 CFG_INC := -I/home/dpriedel/projects/point_figure/src \
 	-I$(GTESTDIR) \
 	-I$(BOOSTDIR) \
-	-I$(DECIMALSRCDIR)/include
+	-I$(DECIMALSRCDIR)/include \
+	-I/usr/local/include/ChartDirector
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
@@ -47,9 +48,9 @@ SRCS1 := $(SDIR1)/Main.cpp
 
 SDIR2 := ./src
 SRCS2 := $(SDIR2)/collect_p_f_data.cpp \
-		$(SDIR2)/DDecDouble.cpp 
-		# $(SDIR2)/p_f_data.cpp \
-		# $(SDIR2)/p_f_column.cpp
+		$(SDIR2)/DDecDouble.cpp \
+		$(SDIR2)/p_f_data.cpp \
+		$(SDIR2)/p_f_column.cpp
 
 SDIR3 := $(DECIMALSRCDIR)/src
 SRCS3 := $(SDIR3)/decDouble.c \
@@ -75,7 +76,8 @@ CFG_LIB := -lpthread \
 		-L/usr/local/lib \
 		-lfmt \
 		-lspdlog \
-		-ldate-tz
+		-ldate-tz \
+		-lchartdir
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
