@@ -17,31 +17,46 @@
 #ifndef  LIVESTREAM_INC
 #define  LIVESTREAM_INC
 
+#include <string>
+#include <vector>
+
+#include "DDecDouble.h"
+
 // =====================================================================================
 //        Class:  LiveStream
 //  Description:  live stream ticker updates -- look like a generator 
 // =====================================================================================
+#include <vector>
 class LiveStream
 {
-    public:
-        // ====================  LIFECYCLE     ======================================= 
-        LiveStream ();                             // constructor 
+public:
 
-        // ====================  ACCESSORS     ======================================= 
 
-        // ====================  MUTATORS      ======================================= 
+    // ====================  LIFECYCLE     ======================================= 
+    LiveStream () = default;                             // constructor 
+    LiveStream (const std::string& host, const std::string& port, const std::string& prefix,
+            const std::string& symbols);
 
-        // ====================  OPERATORS     ======================================= 
+    // ====================  ACCESSORS     ======================================= 
 
-    protected:
-        // ====================  METHODS       ======================================= 
+    // ====================  MUTATORS      ======================================= 
 
-        // ====================  DATA MEMBERS  ======================================= 
+    // ====================  OPERATORS     ======================================= 
 
-    private:
-        // ====================  METHODS       ======================================= 
+protected:
+    // ====================  METHODS       ======================================= 
 
-        // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  ======================================= 
+
+private:
+    // ====================  METHODS       ======================================= 
+
+    // ====================  DATA MEMBERS  ======================================= 
+
+    std::vector<std::string> symbol_list_;
+    std::string host_;
+    std::string port_;
+    std::string websocket_prefix_;
 
 }; // -----  end of class LiveStream  ----- 
 
