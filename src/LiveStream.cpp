@@ -90,7 +90,7 @@ void LiveStream::Connect()
 
 
 }
-void LiveStream::StartStreaming()
+void LiveStream::StreamData()
 {
 
     // put this here for now.
@@ -132,7 +132,7 @@ void LiveStream::StartStreaming()
     }
 }
 
-void LiveStream::StopStreaming()
+void LiveStream::Disconnect()
 {
 
     // Close the WebSocket connection

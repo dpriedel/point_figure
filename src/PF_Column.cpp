@@ -1,6 +1,6 @@
 // =====================================================================================
 // 
-//       Filename:  p_f_column.cpp
+//       Filename:  PF_Column.cpp
 // 
 //    Description:  implementation of class which implements Point & Figure column data
 // 
@@ -29,28 +29,28 @@
 #include <exception>
 #include <memory>
 
-#include "p_f_column.h"
+#include "PF_Column.h"
 
 //--------------------------------------------------------------------------------------
-//       Class:  P_F_Column
-//      Method:  P_F_Column
+//       Class:  PF_Column
+//      Method:  PF_Column
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-P_F_Column::P_F_Column(int box_size, int reversal_boxes, Direction direction, int32_t top, int32_t bottom)
+PF_Column::PF_Column(int box_size, int reversal_boxes, Direction direction, int32_t top, int32_t bottom)
     : box_size_{box_size}, reversal_boxes_{reversal_boxes}, direction_{direction}, top_{top}, bottom_{bottom}
 {
-}  // -----  end of method P_F_Column::P_F_Column  (constructor)  -----
+}  // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
-std::unique_ptr<P_F_Column> P_F_Column::MakeReversalColumn (Direction direction, int32_t value )
+std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, int32_t value )
 {
-    return std::make_unique<P_F_Column>(box_size_, reversal_boxes_, direction,
+    return std::make_unique<PF_Column>(box_size_, reversal_boxes_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
             direction == Direction::e_down ? value : bottom_ + box_size_
             );
-}		// -----  end of method P_F_Column::MakeReversalColumn  ----- 
+}		// -----  end of method PF_Column::MakeReversalColumn  ----- 
 
-P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_value)
+PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_value)
 {
     // if this is the first entry in the column, just set first entry 
     // to the input value rounded down to the nearest box value.
@@ -183,9 +183,9 @@ P_F_Column::AddResult P_F_Column::AddValue (const DprDecimal::DDecDouble& new_va
 
 
     return {Status::e_ignored, std::nullopt};
-}		// -----  end of method P_F_Column::AddValue  ----- 
+}		// -----  end of method PF_Column::AddValue  ----- 
 
-int32_t P_F_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
+int32_t PF_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
 {
     int32_t price_as_int = a_value.ToIntTruncated();
 
@@ -194,5 +194,5 @@ int32_t P_F_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value
 
     return result;
 
-}		// -----  end of method P_F_Column::RoundDowntoNearestBox  ----- 
+}		// -----  end of method PF_Column::RoundDowntoNearestBox  ----- 
 

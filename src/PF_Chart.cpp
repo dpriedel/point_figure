@@ -21,22 +21,21 @@
 #include <chartdir.h>
 #include <fmt/format.h>
 
-#include "p_f_data.h"
-#include "p_f_column.h"
+#include "PF_Chart.h"
 
 //--------------------------------------------------------------------------------------
-//       Class:  P_F_Data
-//      Method:  P_F_Data
+//       Class:  PF_Chart
+//      Method:  PF_Chart
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-P_F_Data::P_F_Data (const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes)
-	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes}, current_direction_{P_F_Column::Direction::e_unknown}
+PF_Chart::PF_Chart (const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes)
+	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes}, current_direction_{PF_Column::Direction::e_unknown}
 
 {
-}  // -----  end of method P_F_Data::P_F_Data  (constructor)  -----
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
-void P_F_Data::ExportData (std::ostream* output_data)
+void PF_Chart::ExportData (std::ostream* output_data)
 {
     // for now, just print our column info.
 
@@ -45,9 +44,9 @@ void P_F_Data::ExportData (std::ostream* output_data)
         std::cout << "bottom: " << a_col.GetBottom() << " top: " << a_col.GetTop() << " direction: " << a_col.GetDirection() << (a_col.GetHadReversal() ? " one step back reversal" : "") << '\n';
     }
     std::cout << "Chart y limits: <" << y_min_ << ", " << y_max_ << ">\n";
-}		// -----  end of method P_F_Data::ExportData  ----- 
+}		// -----  end of method PF_Chart::ExportData  ----- 
 
-void P_F_Data::ConstructChartAndWriteToFile (fs::path output_filename) const
+void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
 {
     // this code comes pretty much right out of the cppdemo code
     // with some modifications for good memory management practices.
@@ -65,7 +64,7 @@ void P_F_Data::ConstructChartAndWriteToFile (fs::path output_filename) const
         lowData.push_back(col.GetBottom());
         highData.push_back(col.GetTop());
 
-        if (col.GetDirection() == P_F_Column::Direction::e_up)
+        if (col.GetDirection() == PF_Column::Direction::e_up)
         {
             openData.push_back(col.GetBottom());
             closeData.push_back(col.GetTop());
@@ -105,5 +104,5 @@ void P_F_Data::ConstructChartAndWriteToFile (fs::path output_filename) const
     // Output the chart
     c->makeChart(output_filename.c_str());
 
-}		// -----  end of method P_F_Data::ConstructChartAndWriteToFile  ----- 
+}		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
 

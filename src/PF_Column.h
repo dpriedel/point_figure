@@ -1,6 +1,6 @@
 // =====================================================================================
 // 
-//       Filename:  p_f_column.h
+//       Filename:  PF_Column.h
 // 
 //    Description:  header for class which implements Point & Figure column data
 // 
@@ -15,8 +15,8 @@
 // 
 // =====================================================================================
 
-#ifndef  P_F_COLUMN_INC_
-#define  P_F_COLUMN_INC_
+#ifndef  PF_COLUMN_INC_
+#define  PF_COLUMN_INC_
 
 #include <cstdint>
 #include <utility>
@@ -26,21 +26,21 @@
 #include "DDecDouble.h"
 
 // =====================================================================================
-//        Class:  P_F_Column
+//        Class:  PF_Column
 //  Description:  
 // =====================================================================================
-class P_F_Column
+class PF_Column
 {
 public:
 
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
 
-    using AddResult = std::pair<Status, std::optional<std::unique_ptr<P_F_Column>>>;
+    using AddResult = std::pair<Status, std::optional<std::unique_ptr<PF_Column>>>;
 
     // ====================  LIFECYCLE     =======================================
-    P_F_Column () = default;                             // constructor
-    P_F_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t=-1, int32_t=-1);
+    PF_Column () = default;                             // constructor
+    PF_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t=-1, int32_t=-1);
 
     // ====================  ACCESSORS     =======================================
 
@@ -60,7 +60,7 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    std::unique_ptr<P_F_Column> MakeReversalColumn(Direction direction, int32_t value);
+    std::unique_ptr<PF_Column> MakeReversalColumn(Direction direction, int32_t value);
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -80,25 +80,25 @@ private:
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;
 
-}; // -----  end of class P_F_Column  -----
+}; // -----  end of class PF_Column  -----
 
 //
 //	stream inserter
 //
 
-inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Status status)
+inline std::ostream& operator<<(std::ostream& os, const PF_Column::Status status)
 {
     switch(status)
     {
-        case P_F_Column::Status::e_accepted:
+        case PF_Column::Status::e_accepted:
             os << "accepted";
             break;
 
-        case P_F_Column::Status::e_ignored:
+        case PF_Column::Status::e_ignored:
             os << "ignored";
             break;
 
-        case P_F_Column::Status::e_reversal:
+        case PF_Column::Status::e_reversal:
             os << "reversed";
             break;
     };
@@ -106,19 +106,19 @@ inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Status statu
 	return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Direction direction)
+inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction direction)
 {
     switch(direction)
     {
-        case P_F_Column::Direction::e_unknown:
+        case PF_Column::Direction::e_unknown:
             os << "unknown";
             break;
 
-        case P_F_Column::Direction::e_down:
+        case PF_Column::Direction::e_down:
             os << "down";
             break;
 
-        case P_F_Column::Direction::e_up:
+        case PF_Column::Direction::e_up:
             os << "up";
             break;
     };
@@ -127,4 +127,4 @@ inline std::ostream& operator<<(std::ostream& os, const P_F_Column::Direction di
 }
 
 
-#endif   // ----- #ifndef P_F_COLUMN_INC  ----- 
+#endif   // ----- #ifndef P_F_COLUMN_INC_  ----- 

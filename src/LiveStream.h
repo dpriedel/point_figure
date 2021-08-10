@@ -48,6 +48,7 @@ class LiveStream
 {
 public:
 
+//    struct P_F_
 
     // ====================  LIFECYCLE     ======================================= 
     LiveStream () = default;                             // constructor 
@@ -60,8 +61,8 @@ public:
 
     void Connect();
     void Disconnect();
-    void StartStreaming();
-    void StopStreaming();
+    void StreamData();
+//    void StopStreaming();
 
     // ====================  OPERATORS     ======================================= 
 

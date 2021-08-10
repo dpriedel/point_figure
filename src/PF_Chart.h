@@ -16,12 +16,12 @@
 // =====================================================================================
 
 // =====================================================================================
-//        Class:  P_F_Data
+//        Class:  PF_Chart
 //  Description:  class to manage Point & Figure data for a symbol.
 // =====================================================================================
 
-#ifndef  P_F_DATA_INC
-#define  P_F_DATA_INC
+#ifndef  PF_CHART_INC
+#define  PF_CHART_INC
 
 
 #include <chrono>
@@ -38,10 +38,10 @@ namespace fs = std::filesystem;
 
 //using namespace std::chrono_literals;
 
-#include "p_f_column.h"
+#include "PF_Column.h"
 
 
-class P_F_Data
+class PF_Chart
 {
     using tpt = std::chrono::time_point<std::chrono::steady_clock>;
 
@@ -51,16 +51,16 @@ public:
 
     // make it look like a range
 
-    using const_iterator = std::vector<P_F_Column>::const_iterator;
+    using const_iterator = std::vector<PF_Column>::const_iterator;
 
     // ====================  LIFECYCLE     =======================================
-    P_F_Data () = default;                             // constructor
-    P_F_Data(const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes);
+    PF_Chart () = default;                             // constructor
+    PF_Chart(const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes);
 
     // ====================  ACCESSORS     =======================================
 
     void ExportData(std::ostream* output_data);
-    [[nodiscard]] P_F_Column::Direction GetCurrentDirection() const { return current_direction_; }
+    [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size(); }
 
@@ -78,7 +78,7 @@ public:
 
     // ====================  OPERATORS     =======================================
 
-    const P_F_Column& operator[](size_t which) const { return columns_[which]; }
+    const PF_Column& operator[](size_t which) const { return columns_[which]; }
 
 protected:
     // ====================  DATA MEMBERS  =======================================
@@ -86,8 +86,8 @@ protected:
 private:
     // ====================  DATA MEMBERS  =======================================
 
-    std::vector<P_F_Column> columns_;
-    std::unique_ptr<P_F_Column> current_column_;
+    std::vector<PF_Column> columns_;
+    std::unique_ptr<PF_Column> current_column_;
 
     std::string symbol_;
 
@@ -100,16 +100,16 @@ private:
     int32_t y_min_ = std::numeric_limits<int32_t>::max();
     int32_t y_max_ = std::numeric_limits<int32_t>::min();
 
-    P_F_Column::Direction current_direction_;
+    PF_Column::Direction current_direction_;
 
-}; // -----  end of class P_F_Data  -----
+}; // -----  end of class PF_Chart  -----
 
 template<typename T>
-void P_F_Data::LoadData (std::istream* input_data)
+void PF_Chart::LoadData (std::istream* input_data)
 {
     // for now, just assume its numbers.
 
-    current_column_ = std::make_unique<P_F_Column>(boxsize_, reversal_boxes_);
+    current_column_ = std::make_unique<PF_Column>(boxsize_, reversal_boxes_);
 
     while ( ! input_data->eof())
     {
@@ -131,7 +131,7 @@ void P_F_Data::LoadData (std::istream* input_data)
             y_min_ = current_column_->GetBottom();
         }
 
-        if (status == P_F_Column::Status::e_reversal)
+        if (status == PF_Column::Status::e_reversal)
         {
             auto* save_col = current_column_.get();         // non-owning access
             columns_.push_back(*save_col);
@@ -157,8 +157,8 @@ void P_F_Data::LoadData (std::istream* input_data)
 
     columns_.push_back(*current_column_);
 
-    P_F_Column* col = current_column_.release();
+    PF_Column* col = current_column_.release();
     delete col;
 }
-#endif   // ----- #ifndef P_F_DATA_INC  ----- 
+#endif   // ----- #ifndef PF_CHART_INC  ----- 
 
