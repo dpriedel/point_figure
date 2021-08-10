@@ -61,7 +61,7 @@ public:
 
     void Connect();
     void Disconnect();
-    void StreamData();
+    void StreamData(bool* time_to_stop);
 //    void StopStreaming();
 
     // ====================  OPERATORS     ======================================= 

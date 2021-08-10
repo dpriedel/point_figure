@@ -90,7 +90,7 @@ void LiveStream::Connect()
 
 
 }
-void LiveStream::StreamData()
+void LiveStream::StreamData(bool* time_to_stop)
 {
 
     // put this here for now.
@@ -122,8 +122,7 @@ void LiveStream::StreamData()
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
     
-    int i = 0; 
-    while(++i < 10)
+    while(! *time_to_stop)
     {
         // Read a message into our buffer
         ws_.read(buffer);
