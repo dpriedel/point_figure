@@ -17,6 +17,7 @@
 #ifndef  LIVESTREAM_INC
 #define  LIVESTREAM_INC
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,7 @@
 #include <boost/asio/ssl/stream.hpp>
 
 #include <boost/json.hpp>
+#include <sys/types.h>
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -48,12 +50,23 @@ class LiveStream
 {
 public:
 
-//    struct P_F_
+    struct PF_Data
+    {
+        std::string ticker_;                        // Ticker
+        std::string time_stamp_;                    // Date
+        int64_t time_stamp_seconds_;                // Nanoseconds
+        DprDecimal::DDecDouble last_price_;         // Last Price
+        int32_t last_size_;                         // Last Size
+    };
 
     // ====================  LIFECYCLE     ======================================= 
-    LiveStream () = default;                             // constructor 
+    LiveStream ();                             // constructor 
+    ~LiveStream ();
     LiveStream (const std::string& host, const std::string& port, const std::string& prefix,
             const std::string& api_key, const std::string& symbols);
+
+    LiveStream(const LiveStream& rhs) = delete;
+    LiveStream(LiveStream&& rhs) = delete;
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -66,6 +79,9 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
+    LiveStream& operator = (const LiveStream& rhs) = delete;
+    LiveStream& operator = (LiveStream&& rhs) = delete;
+
 protected:
     // ====================  METHODS       ======================================= 
 
@@ -74,8 +90,11 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
+    void ExtractData(const beast::flat_buffer& buffer);
+
     // ====================  DATA MEMBERS  ======================================= 
 
+    std::deque<PF_Data> pf_data_;
     std::vector<std::string> symbol_list_;
     std::string api_key_;
     std::string host_;

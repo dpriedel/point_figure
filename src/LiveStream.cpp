@@ -52,6 +52,17 @@ inline std::vector<T> split_string(std::string_view string_data, char delim)
 //      Method:  LiveStream
 // Description:  constructor
 //--------------------------------------------------------------------------------------
+
+LiveStream::LiveStream ()
+    : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+{
+}  // -----  end of method LiveStream::LiveStream  (constructor)  ----- 
+
+LiveStream::~LiveStream ()
+{
+    // need to disconnect if still connected.
+}		// -----  end of method LiveStream::~LiveStream  ----- 
+
 LiveStream::LiveStream (const std::string& host, const std::string& port, const std::string& prefix,
             const std::string& api_key, const std::string& symbols)
     : api_key_{api_key}, host_{host}, port_{port}, websocket_prefix_{prefix},
@@ -130,6 +141,15 @@ void LiveStream::StreamData(bool* time_to_stop)
         std::cout << beast::make_printable(buffer.data()) << std::endl;
     }
 }
+
+void LiveStream::ExtractData (const beast::flat_buffer& buffer)
+{
+    // will eventually need to use locks to access this I think.
+    // for now, we just append data.
+
+
+
+}		// -----  end of method LiveStream::ExtractData  ----- 
 
 void LiveStream::Disconnect()
 {
