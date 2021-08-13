@@ -10,14 +10,19 @@
 //       Compiler:  g++
 //
 //         Author:  David P. Riedel (), driedel@cox.net
-//        License:  GNU General Public License -v3
-//
+/// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)/
 // =====================================================================================
+// the guts of this code comes from the examples distributed by Boost.
 
 #include <string_view>
 
-#include "LiveStream.h"
+#include <json/json.h>
 
+#include "LiveStream.h"
+#include "boost/beast/core/buffers_to_string.hpp"
+
+using namespace std::string_literals;
 
 //  let's do a little 'template normal' programming again
 
@@ -61,6 +66,11 @@ LiveStream::LiveStream ()
 LiveStream::~LiveStream ()
 {
     // need to disconnect if still connected.
+    
+    if (ws_.is_open())
+    {
+        Disconnect();
+    }
 }		// -----  end of method LiveStream::~LiveStream  ----- 
 
 LiveStream::LiveStream (const std::string& host, const std::string& port, const std::string& prefix,
@@ -106,47 +116,110 @@ void LiveStream::StreamData(bool* time_to_stop)
 
     // put this here for now.
     // need to manually construct to get expected formate when serialized 
-    boost::json::array tickers = {"spy", "uso"};
+
+    Json::Value connection_request;
+    connection_request["eventName"] = "subscribe";
+    connection_request["authorization"] = api_key_;
+    connection_request["eventData"]["thresholdLevel"] = 5;
+    Json::Value tickers;
     for (const auto& symbol : symbol_list_)
     {
-        tickers.push_back(boost::json::value(symbol));
+        tickers.append(symbol);
     }
-    boost::json::object event_data;
-    event_data["thresholdLevel"] = 5;
-    event_data["tickers"] = tickers;
+    
+    connection_request["eventData"]["tickers"] = tickers;
 
-    boost::json::object obj;
-    obj["eventName"] = "subscribe";
-    obj["authorization"] = api_key_;
-    obj["eventData"] = event_data;
-
-    // std::cout << "obj: " << boost::json::serialize(obj) << '\n';
-
-    std::string const  text = boost::json::serialize(obj);
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";        // compact printing and string formatting 
+    const std::string connection_request_str = Json::writeString(builder, connection_request);
+    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
 
     // Perform the websocket handshake
     ws_.handshake(host_, websocket_prefix_);
 
     // Send the message
-    ws_.write(net::buffer(text));
+    ws_.write(net::buffer(connection_request_str));
 
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
-    
-    while(! *time_to_stop)
+
+    while(true)
     {
-        // Read a message into our buffer
+        buffer.clear();
         ws_.read(buffer);
+        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
         // The make_printable() function helps print a ConstBufferSequence
-        std::cout << beast::make_printable(buffer.data()) << std::endl;
+//        std::cout << buffer_content << std::endl;
+        ExtractData(buffer_content);
+        if (*time_to_stop == true)
+        {
+            break;
+        }
     }
 }
 
-void LiveStream::ExtractData (const beast::flat_buffer& buffer)
+void LiveStream::ExtractData (const std::string& buffer)
 {
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
+    JSONCPP_STRING err;
+    Json::Value response;
 
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+//    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+    if (! reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, &err))
+    {
+        throw std::runtime_error("Problem parsing tiingo response: "s + err);
+    }
+    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
+
+    auto message_type = response["messageType"];
+    if (message_type == "A")
+    {
+        auto data = response["data"];
+
+        if (data[0] != "T")
+        {
+            return;
+        }
+        // extract our data
+
+        PF_Data new_value;
+        new_value.subscription_id_ = subscription_id_;
+        new_value.time_stamp_ = data[1].asString();
+        new_value.time_stamp_seconds_ = data[2].asInt64();
+        new_value.ticker_ = data[3].asString();
+        new_value.last_price_ = DprDecimal::DDecDouble(data[9].asFloat(), 4);
+        new_value.last_size_ = data[10].asInt();
+
+        pf_data_.push_back(std::move(new_value));        
+
+        std::cout << "new data: " << new_value.ticker_ << " : " << new_value.last_price_ << '\n';
+    }
+    else if (message_type == "I")
+    {
+        subscription_id_ = response["data"]["subscriptionId"].asInt();
+        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+        return;
+    }
+    else if (message_type == "H")
+    {
+        // heartbeat , just return
+
+        return;
+    }
+    else
+    {
+        throw std::runtime_error("unexpected message type: "s + message_type.asString());
+    }
+
+
+
+//	for (auto& e : stream_data.as_object()["directory"].as_object()["item"].as_array())
+//    {
+//		pf_data_.emplace_back(e.as_object()["name"].get_string().data());
+//    }
 
 
 }		// -----  end of method LiveStream::ExtractData  ----- 
@@ -156,8 +229,4 @@ void LiveStream::Disconnect()
 
     // Close the WebSocket connection
     ws_.close(websocket::close_code::normal);
-    // catch(std::exception const& e)
-    // {
-    //     std::cerr << "Error: " << e.what() << std::endl;
-    // }
 }

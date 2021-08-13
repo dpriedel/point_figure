@@ -29,7 +29,6 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
 
-#include <boost/json.hpp>
 #include <sys/types.h>
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
@@ -52,6 +51,7 @@ public:
 
     struct PF_Data
     {
+        std::string subscription_id_;
         std::string ticker_;                        // Ticker
         std::string time_stamp_;                    // Date
         int64_t time_stamp_seconds_;                // Nanoseconds
@@ -90,7 +90,7 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
-    void ExtractData(const beast::flat_buffer& buffer);
+    void ExtractData(const std::string& buffer);
 
     // ====================  DATA MEMBERS  ======================================= 
 
@@ -100,6 +100,7 @@ private:
     std::string host_;
     std::string port_;
     std::string websocket_prefix_;
+    int32_t subscription_id_;
 
     net::io_context ioc_;
     ssl::context ctx_;
