@@ -1,6 +1,6 @@
 // =====================================================================================
 // 
-//       Filename:  collect_p_f_data.cpp
+//       Filename:  PF_CollectDataApp.cpp
 // 
 //    Description:  This program will compute Point & Figure data for the
 //    				given input file.
@@ -28,8 +28,8 @@
 #include <spdlog/async.h>
 //#include <decDouble.h>
 
-#include "collect_p_f_data.h"
-#include "p_f_data.h"
+#include "PF_CollectDataApp.h"
+#include "PF_Chart.h"
 #include "aLine.h"
 //#include "DDecimal_16.h"
 //#include "DDecimal_32.h"
@@ -295,7 +295,6 @@ void CMyApp::SetupProgramOptions ()
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
 		;
 
-	return ;
 }		// -----  end of method CMyApp::Do_SetupProgramOptions  -----
 
 

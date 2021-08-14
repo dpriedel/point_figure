@@ -19,7 +19,7 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.76_gcc-11
+BOOSTDIR := /extra/boost/boost-1.77_gcc-11
 GCCDIR := /extra/gcc/gcc-11
 GTESTDIR := /usr/local/include
 DECIMALSRCDIR := /extra/gcc/decNumber
@@ -33,7 +33,7 @@ endif
 
 #	common definitions
 
-OUTFILE := p_f_collect
+OUTFILE := PF_CollectData
 
 CFG_INC := -I/home/dpriedel/projects/point_figure/src \
 	-I$(GTESTDIR) \
@@ -47,10 +47,10 @@ SDIR1 := .
 SRCS1 := $(SDIR1)/Main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/collect_p_f_data.cpp \
+SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/DDecDouble.cpp \
-		$(SDIR2)/p_f_data.cpp \
-		$(SDIR2)/p_f_column.cpp
+		$(SDIR2)/PF_Chart.cpp \
+		$(SDIR2)/PF_Column.cpp
 
 SDIR3 := $(DECIMALSRCDIR)/src
 SRCS3 := $(SDIR3)/decDouble.c \

@@ -1,6 +1,6 @@
 // =====================================================================================
 // 
-//       Filename:  collect_p_f_data.h
+//       Filename:  PF_CollectDataApp.h
 // 
 //    Description:  Module to calculation Point & Figure data for a given symbol.
 // 
@@ -15,8 +15,8 @@
 // 
 // =====================================================================================
 
-#ifndef  collect_p_f_data_INC
-#define  collect_p_f_data_INC
+#ifndef  PF_COLLECTDATAAPP_INC
+#define  PF_COLLECTDATAAPP_INC
 
 
 #include <filesystem>
@@ -152,4 +152,4 @@ template <> struct fmt::formatter<date::year_month_day>: formatter<std::string> 
 };
 
 
-#endif   // ----- #ifndef collect_p_f_data_INC  ----- 
+#endif   // ----- #ifndef PF_COLLECTDATAAPP_INC  ----- 

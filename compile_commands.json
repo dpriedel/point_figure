@@ -15,7 +15,7 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -43,17 +43,17 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
       "-o",
-      "Debug_collect/collect_p_f_data.o",
-      "./src/collect_p_f_data.cpp"
+      "Debug_collect/PF_CollectDataApp.o",
+      "./src/PF_CollectDataApp.cpp"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/home/dpriedel/projects/point_figure/./src/collect_p_f_data.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_collect/collect_p_f_data.o"
+    "file": "/home/dpriedel/projects/point_figure/./src/PF_CollectDataApp.cpp",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/PF_CollectDataApp.o"
   },
   {
     "arguments": [
@@ -71,7 +71,7 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -99,17 +99,17 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
       "-o",
-      "Debug_collect/p_f_data.o",
-      "./src/p_f_data.cpp"
+      "Debug_collect/PF_Chart.o",
+      "./src/PF_Chart.cpp"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/home/dpriedel/projects/point_figure/./src/p_f_data.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_collect/p_f_data.o"
+    "file": "/home/dpriedel/projects/point_figure/./src/PF_Chart.cpp",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/PF_Chart.o"
   },
   {
     "arguments": [
@@ -127,17 +127,17 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
       "-o",
-      "Debug_collect/p_f_column.o",
-      "./src/p_f_column.cpp"
+      "Debug_collect/PF_Column.o",
+      "./src/PF_Column.cpp"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/home/dpriedel/projects/point_figure/./src/p_f_column.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_collect/p_f_column.o"
+    "file": "/home/dpriedel/projects/point_figure/./src/PF_Column.cpp",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/PF_Column.o"
   },
   {
     "arguments": [
@@ -149,7 +149,7 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -171,7 +171,7 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -193,7 +193,7 @@
       "-fPIC",
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
-      "-I/extra/boost/boost-1.76_gcc-11",
+      "-I/extra/boost/boost-1.77_gcc-11",
       "-I/extra/gcc/decNumber/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
