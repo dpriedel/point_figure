@@ -10,6 +10,7 @@ src/tags
 tags
 # our executables
 collect_p_f_data
+PF_CollectData
 DDecimal_test
 EndToEnd_Test
 p_f_collect
