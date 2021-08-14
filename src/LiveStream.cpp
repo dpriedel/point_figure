@@ -153,6 +153,7 @@ void LiveStream::StreamData(bool* time_to_stop)
         ExtractData(buffer_content);
         if (*time_to_stop == true)
         {
+            StopStreaming();
             break;
         }
     }
@@ -214,15 +215,76 @@ void LiveStream::ExtractData (const std::string& buffer)
         throw std::runtime_error("unexpected message type: "s + message_type.asString());
     }
 
-
-
-//	for (auto& e : stream_data.as_object()["directory"].as_object()["item"].as_array())
-//    {
-//		pf_data_.emplace_back(e.as_object()["name"].get_string().data());
-//    }
-
-
 }		// -----  end of method LiveStream::ExtractData  ----- 
+
+void LiveStream::StopStreaming ()
+{
+    // we need to send the unsubscribe message in a separate connection.
+
+    Json::Value disconnect_request;
+    disconnect_request["eventName"] = "unsubscribe";
+    disconnect_request["authorization"] = api_key_;
+    disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
+    Json::Value tickers;
+    for (const auto& symbol : symbol_list_)
+    {
+        tickers.append(symbol);
+    }
+    
+    disconnect_request["eventData"]["tickers"] = tickers;
+
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";        // compact printing and string formatting 
+    const std::string disconnect_request_str = Json::writeString(builder, disconnect_request);
+    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
+
+    // just grab the code from the example program 
+
+    net::io_context ioc;
+    ssl::context ctx{ssl::context::tlsv12_client};
+
+    tcp::resolver resolver{ioc};
+    websocket::stream<beast::ssl_stream<tcp::socket>> ws{ioc, ctx};
+
+    auto host = host_;
+    auto port = port_;
+
+    auto const results = resolver.resolve(host, port);
+
+    auto ep = net::connect(get_lowest_layer(ws), results);
+
+    if(! SSL_set_tlsext_host_name(ws.next_layer().native_handle(), host.c_str()))
+        throw beast::system_error(
+            beast::error_code(
+                static_cast<int>(::ERR_get_error()),
+                net::error::get_ssl_category()),
+            "Failed to set SNI Hostname");
+
+    host += ':' + std::to_string(ep.port());
+
+    ws.next_layer().handshake(ssl::stream_base::client);
+
+    ws.set_option(websocket::stream_base::decorator(
+        [](websocket::request_type& req)
+        {
+            req.set(http::field::user_agent,
+                std::string(BOOST_BEAST_VERSION_STRING) +
+                    " websocket-client-coro");
+        }));
+
+    ws.handshake(host, websocket_prefix_);
+
+    ws.write(net::buffer(std::string(disconnect_request_str)));
+
+    beast::flat_buffer buffer;
+
+    ws.read(buffer);
+
+    ws.close(websocket::close_code::normal);
+
+    std::cout << beast::make_printable(buffer.data()) << std::endl;
+ 
+}		// -----  end of method LiveStream::StopStreaming  ----- 
 
 void LiveStream::Disconnect()
 {
