@@ -104,10 +104,13 @@ void LiveStream::Connect()
     // Update the host_ string. This will provide the value of the
     // Host HTTP header during the WebSocket handshake.
     // See https://tools.ietf.org/html/rfc7230#section-5.4
-    host_ += ':' + std::to_string(ep.port());
+    auto host = host_ + ':' + std::to_string(ep.port());
 
     // Perform the SSL handshake
     ws_.next_layer().handshake(ssl::stream_base::client);
+
+    // Perform the websocket handshake
+    ws_.handshake(host, websocket_prefix_);
 
 
 }
@@ -132,10 +135,7 @@ void LiveStream::StreamData(bool* time_to_stop)
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "";        // compact printing and string formatting 
     const std::string connection_request_str = Json::writeString(builder, connection_request);
-    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
-
-    // Perform the websocket handshake
-    ws_.handshake(host_, websocket_prefix_);
+//    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
 
     // Send the message
     ws_.write(net::buffer(connection_request_str));
@@ -173,7 +173,7 @@ void LiveStream::ExtractData (const std::string& buffer)
     {
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
-    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
+//    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
     auto message_type = response["messageType"];
     if (message_type == "A")
@@ -196,12 +196,12 @@ void LiveStream::ExtractData (const std::string& buffer)
 
         pf_data_.push_back(std::move(new_value));        
 
-        std::cout << "new data: " << new_value.ticker_ << " : " << new_value.last_price_ << '\n';
+//        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ << '\n';
     }
     else if (message_type == "I")
     {
         subscription_id_ = response["data"]["subscriptionId"].asInt();
-        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+//        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
         return;
     }
     else if (message_type == "H")
@@ -236,7 +236,7 @@ void LiveStream::StopStreaming ()
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "";        // compact printing and string formatting 
     const std::string disconnect_request_str = Json::writeString(builder, disconnect_request);
-    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
+//    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
 
     // just grab the code from the example program 
 
@@ -282,7 +282,7 @@ void LiveStream::StopStreaming ()
 
     ws.close(websocket::close_code::normal);
 
-    std::cout << beast::make_printable(buffer.data()) << std::endl;
+//    std::cout << beast::make_printable(buffer.data()) << std::endl;
  
 }		// -----  end of method LiveStream::StopStreaming  ----- 
 
