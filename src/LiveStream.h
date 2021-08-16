@@ -70,6 +70,11 @@ public:
 
     // ====================  ACCESSORS     ======================================= 
 
+    [[nodiscard]] std::deque<PF_Data>::const_iterator begin() const { return pf_data_.begin(); }
+    [[nodiscard]] std::deque<PF_Data>::const_iterator end() const { return pf_data_.end(); }
+
+    [[nodiscard]] bool empty() const { return pf_data_.empty(); }
+
     // ====================  MUTATORS      ======================================= 
 
     void Connect();
@@ -107,5 +112,12 @@ private:
     tcp::resolver resolver_;
     websocket::stream<beast::ssl_stream<tcp::socket>> ws_;
 }; // -----  end of class LiveStream  ----- 
+
+inline std::ostream& operator<<(std::ostream& os, const LiveStream::PF_Data pf_data)
+{
+    std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_ << " time:" << pf_data.time_stamp_;
+    return os;
+}
+
 
 #endif   // ----- #ifndef LIVESTREAM_INC  ----- 
