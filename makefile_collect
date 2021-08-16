@@ -71,7 +71,6 @@ OUTDIR=Debug_collect
 CFG_LIB := -lpthread \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
-		-lboost_json-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
 		-lfmt \
