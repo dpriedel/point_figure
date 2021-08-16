@@ -16,6 +16,7 @@
 // 
 // =====================================================================================
 
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
@@ -31,8 +32,6 @@
 #include "PF_CollectDataApp.h"
 #include "PF_Chart.h"
 #include "aLine.h"
-//#include "DDecimal_16.h"
-//#include "DDecimal_32.h"
 
 
 bool CMyApp::had_signal_ = false;
@@ -240,7 +239,7 @@ bool CMyApp::CheckArgs ()
 	}
 
     BOOST_ASSERT_MSG(mVariableMap.count("boxsize") != 0, "'Boxsize must be specified.");
-	DprDecimal::DDecDouble boxsize = mVariableMap["boxsize"].as<DprDecimal::DDecDouble>();
+	int32_t boxsize = mVariableMap["boxsize"].as<int32_t>();
 	mBoxSize = boxsize;
 
 	if (mVariableMap.count("reversal") == 0)
@@ -286,8 +285,8 @@ void CMyApp::SetupProgramOptions ()
 		("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
 		("output,o",			po::value<std::string>(),	"output file name")
 		("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.")
-		("boxsize,b",			po::value<DprDecimal::DDecDouble>(),	"box step size. 'n', 'm.n'")
-		("reversal,r",			po::value<int>(),			"reversal size in number of boxes. Default is 1")
+		("boxsize,b",			po::value<int32_t>(),   	"box step size. 'n', 'm.n'")
+		("reversal,r",			po::value<int32_t>(),		"reversal size in number of boxes. Default is 1")
 		("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'")
 		("interval,i",			po::value<std::string>(),	"'eod', 'tic', '1sec', '5sec', '1min', '5min', etc. Default is 'tic'")
 		("log-path", po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
@@ -363,15 +362,20 @@ std::tuple<int, int, int> CMyApp::Run()
 		theOutput = &oFile;
 	}
 
-	std::ostream_iterator<aLine> otor{*theOutput, "\n"};
+//	std::ostream_iterator<aLine> otor{*theOutput, "\n"};
+//
+////	std::copy(itor, itor_end, otor);
+//
+//	// sampel code using a lambda
+//	std:transform(itor, itor_end, otor,
+//				[] (const aLine& data) {DprDecimal::DDecDouble aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
 
-//	std::copy(itor, itor_end, otor);
+    PF_Chart chart{mSymbol, mBoxSize, mReversalBoxes};
 
-	// sampel code using a lambda
-	std:transform(itor, itor_end, otor,
-				[] (const aLine& data) {DprDecimal::DDecDouble aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
+    chart.LoadData<DprDecimal::DDecDouble>(theInput);
+    std::cout << "chart info: " << chart.GetNumberOfColumns() << '\n';
 
-
+    chart.ConstructChartAndWriteToFile(mOutputPath);
 	//	play with decimal support in c++11
 	
 	return {} ;

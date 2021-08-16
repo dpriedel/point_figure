@@ -32,9 +32,6 @@ namespace po = boost::program_options;
 #include <date/date.h>
 #include <spdlog/spdlog.h>
 
-
-#include "DDecDouble.h"
-
 // =====================================================================================
 //        Class:  CMyApp
 //  Description:  application specific stuff
@@ -121,8 +118,8 @@ private:
     interval mInterval;
     scale mScale;
 
-    DprDecimal::DDecDouble mBoxSize;
-    int mReversalBoxes;
+    int32_t mBoxSize;
+    int32_t mReversalBoxes;
     bool mInputIsPath;
     bool mOutputIsPath;
 
