@@ -88,3 +88,18 @@ int32_t DDecDouble::ToIntTruncated () const
     return result;
 }		// -----  end of method DDecDouble::ToIntTruncated  ----- 
 
+
+double DDecDouble::ToDouble () const
+{
+    // I don't see a better way to do this.
+
+    std::string temp = this->ToStr();
+    double result{};
+    if (auto [p, ec] = std::from_chars(temp.data(), temp.data() + temp.size(), result); ec != std::errc())
+    {
+        throw std::runtime_error(fmt::format("Problem converting decimal to double: {}\n", std::make_error_code(ec).message()));
+    }
+    return result ;
+}		// -----  end of method DDecDouble::ToDouble  ----- 
+
+
