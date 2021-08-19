@@ -61,18 +61,18 @@ void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
 
     for (const auto& col : columns_)
     {
-        lowData.push_back(col.GetBottom());
-        highData.push_back(col.GetTop());
+        lowData.push_back(col.GetBottom().ToDouble());
+        highData.push_back(col.GetTop().ToDouble());
 
         if (col.GetDirection() == PF_Column::Direction::e_up)
         {
-            openData.push_back(col.GetBottom());
-            closeData.push_back(col.GetTop());
+            openData.push_back(col.GetBottom().ToDouble());
+            closeData.push_back(col.GetTop().ToDouble());
         }
         else
         {
-            openData.push_back(col.GetTop());
-            closeData.push_back(col.GetBottom());
+            openData.push_back(col.GetTop().ToDouble());
+            closeData.push_back(col.GetBottom().ToDouble());
         }
     }
 
@@ -80,7 +80,7 @@ void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
 
     c->setPlotArea(50, 25, 500, 250)->setGridColor(0xc0c0c0, 0xc0c0c0);
 
-    c->addTitle(fmt::format("{}X{} for {}", boxsize_, reversal_boxes_, symbol_).c_str());
+    c->addTitle(fmt::format("{}X{} for {}", boxsize_.ToDouble(), reversal_boxes_, symbol_).c_str());
 
 //    c->xAxis()->setTitle("Jan 2001");
 

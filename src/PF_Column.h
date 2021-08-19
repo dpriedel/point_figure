@@ -40,14 +40,15 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     PF_Column () = default;                             // constructor
-    PF_Column(int box_size, int reversal_boxes, Direction=Direction::e_unknown, int32_t=-1, int32_t=-1);
+    PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes, Direction=Direction::e_unknown,
+            DprDecimal::DDecDouble=-1, DprDecimal::DDecDouble=-1);
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] int GetTop() const { return top_; }
-    [[nodiscard]] int GetBottom() const { return bottom_; }
+    [[nodiscard]] DprDecimal::DDecDouble GetTop() const { return top_; }
+    [[nodiscard]] DprDecimal::DDecDouble GetBottom() const { return bottom_; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
-    [[nodiscard]] int GetBoxsize() const { return box_size_; }
+    [[nodiscard]] DprDecimal::DDecDouble GetBoxsize() const { return box_size_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
 
@@ -60,21 +61,21 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    std::unique_ptr<PF_Column> MakeReversalColumn(Direction direction, int32_t value);
+    std::unique_ptr<PF_Column> MakeReversalColumn(Direction direction, DprDecimal::DDecDouble value);
 
     // ====================  DATA MEMBERS  =======================================
 
 private:
 
-    [[nodiscard]] int32_t RoundDownToNearestBox(const DprDecimal::DDecDouble& a_value) const;
+    [[nodiscard]] DprDecimal::DDecDouble RoundDownToNearestBox(const DprDecimal::DDecDouble& a_value) const;
 
     // ====================  DATA MEMBERS  =======================================
 
-    int32_t box_size_ = -1;
+    DprDecimal::DDecDouble box_size_ = -1;
     int32_t reversal_boxes_ = -1;
 
-    int32_t bottom_ = -1;
-    int32_t top_ = -1;
+    DprDecimal::DDecDouble bottom_ = -1;
+    DprDecimal::DDecDouble top_ = -1;
     Direction direction_ = Direction::e_unknown;
 
     // for 1-box, can have both up and down in same column

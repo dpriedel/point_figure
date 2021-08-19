@@ -29,6 +29,7 @@
 #include <exception>
 #include <memory>
 
+#include "DDecDouble.h"
 #include "PF_Column.h"
 
 //--------------------------------------------------------------------------------------
@@ -37,12 +38,13 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Column::PF_Column(int box_size, int reversal_boxes, Direction direction, int32_t top, int32_t bottom)
+PF_Column::PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes, Direction direction,
+        DprDecimal::DDecDouble top, DprDecimal::DDecDouble bottom)
     : box_size_{box_size}, reversal_boxes_{reversal_boxes}, direction_{direction}, top_{top}, bottom_{bottom}
 {
 }  // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
-std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, int32_t value )
+std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value )
 {
     return std::make_unique<PF_Column>(box_size_, reversal_boxes_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
@@ -65,14 +67,12 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
         return {Status::e_accepted, std::nullopt};
     }
 
-    // du Plessis says in "Definitive Guide" (pp. 28-29) that fractional 
-    // parts of price were just truncated, no rounding done.  I'm going to go 
-    // with rounding here though since, at the time he was talking about,
-    // there were no computers to do this.
+    // In "21st Century Point and Figure", Du Plessis talks about
+    // use the Average True Range to set the box size. This seems
+    // to me to be particularly appropriate for live streaming data.
+    // It also will support logarithmic charts.
 
-    // Nevermind about above commment for now
-
-    int32_t possible_value = new_value.ToIntTruncated();
+    DprDecimal::DDecDouble possible_value = new_value;
 
     // OK, we've got a value but may not yet have a direction.
     // NOTE: Since a new value may gap up or down, we could 
@@ -185,12 +185,12 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::AddValue  ----- 
 
-int32_t PF_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
+DprDecimal::DDecDouble PF_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
 {
-    int32_t price_as_int = a_value.ToIntTruncated();
+    DprDecimal::DDecDouble price_as_int = a_value.ToIntTruncated();
 
     // we're using '10' to start with
-    int32_t result = (price_as_int / box_size_) * box_size_;
+    DprDecimal::DDecDouble result = (price_as_int / box_size_) * box_size_;
 
     return result;
 

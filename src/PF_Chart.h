@@ -47,7 +47,7 @@ class PF_Chart
 
 public:
 
-    using Y_Limits = std::pair<int32_t, int32_t>;
+    using Y_Limits = std::pair<DprDecimal::DDecDouble, DprDecimal::DDecDouble>;
 
     // make it look like a range
 
@@ -95,10 +95,10 @@ private:
     tpt mLastChangeDate;		//	date of last change to data
     tpt mLastCheckedDate;	//	last time checked to see if update needed
 
-    int32_t boxsize_;
+    DprDecimal::DDecDouble boxsize_;
     int32_t reversal_boxes_;
-    int32_t y_min_ = std::numeric_limits<int32_t>::max();
-    int32_t y_max_ = std::numeric_limits<int32_t>::min();
+    DprDecimal::DDecDouble y_min_ = std::numeric_limits<DprDecimal::DDecDouble>::max();
+    DprDecimal::DDecDouble y_max_ = std::numeric_limits<DprDecimal::DDecDouble>::min();
 
     PF_Column::Direction current_direction_;
 
