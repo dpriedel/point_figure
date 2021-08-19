@@ -61,9 +61,9 @@ public:
     // ====================  ACCESSORS     =======================================
     
     [[nodiscard]] std::string ToStr() const;
-    int32_t ToIntRounded() const;
-    int32_t ToIntTruncated() const;
-    double ToDouble() const;
+    [[nodiscard]] int32_t ToIntRounded() const;
+    [[nodiscard]] int32_t ToIntTruncated() const;
+    [[nodiscard]] double ToDouble() const;
 
     // ====================  MUTATORS      =======================================
 
