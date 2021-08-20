@@ -38,15 +38,16 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Column::PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes, Direction direction,
-        DprDecimal::DDecDouble top, DprDecimal::DDecDouble bottom)
-    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, direction_{direction}, top_{top}, bottom_{bottom}
+PF_Column::PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
+            Direction direction, DprDecimal::DDecDouble top, DprDecimal::DDecDouble bottom)
+    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
+        direction_{direction}, top_{top}, bottom_{bottom}
 {
 }  // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
 std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value )
 {
-    return std::make_unique<PF_Column>(box_size_, reversal_boxes_, direction,
+    return std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
             direction == Direction::e_down ? value : bottom_ + box_size_
             );
@@ -72,7 +73,15 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     // to me to be particularly appropriate for live streaming data.
     // It also will support logarithmic charts.
 
-    DprDecimal::DDecDouble possible_value = new_value;
+    DprDecimal::DDecDouble possible_value;
+    if (fractional_boxes_ == FractionalBoxes::e_integral)
+    {
+        possible_value = new_value.ToIntTruncated();
+    }
+    else
+    {
+        possible_value = new_value;
+    }
 
     // OK, we've got a value but may not yet have a direction.
     // NOTE: Since a new value may gap up or down, we could 
@@ -187,10 +196,18 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
 
 DprDecimal::DDecDouble PF_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
 {
-    DprDecimal::DDecDouble price_as_int = a_value.ToIntTruncated();
+    DprDecimal::DDecDouble price_as_int;
+    if (fractional_boxes_ == FractionalBoxes::e_integral)
+    {
+        price_as_int = a_value.ToIntTruncated();
+    }
+    else
+    {
+        price_as_int = a_value;
+    }
 
     // we're using '10' to start with
-    DprDecimal::DDecDouble result = (price_as_int / box_size_) * box_size_;
+    DprDecimal::DDecDouble result = DprDecimal::Mod(price_as_int, box_size_) * box_size_;
 
     return result;
 

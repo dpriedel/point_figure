@@ -27,7 +27,6 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
-#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -55,7 +54,8 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
-    PF_Chart(const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes);
+    PF_Chart(const std::string& symbol, DprDecimal::DDecDouble boxsize, int32_t reversal_boxes,
+            PF_Column::FractionalBoxes fractional_boxes=PF_Column::FractionalBoxes::e_integral);
 
     // ====================  ACCESSORS     =======================================
 
@@ -97,10 +97,11 @@ private:
 
     DprDecimal::DDecDouble boxsize_;
     int32_t reversal_boxes_;
-    DprDecimal::DDecDouble y_min_ = std::numeric_limits<DprDecimal::DDecDouble>::max();
-    DprDecimal::DDecDouble y_max_ = std::numeric_limits<DprDecimal::DDecDouble>::min();
+    DprDecimal::DDecDouble y_min_ = 100000;         // just a number
+    DprDecimal::DDecDouble y_max_ = -1;
 
     PF_Column::Direction current_direction_;
+    PF_Column::FractionalBoxes fractional_boxes_;
 
 }; // -----  end of class PF_Chart  -----
 
@@ -109,7 +110,7 @@ void PF_Chart::LoadData (std::istream* input_data)
 {
     // for now, just assume its numbers.
 
-    current_column_ = std::make_unique<PF_Column>(boxsize_, reversal_boxes_);
+    current_column_ = std::make_unique<PF_Column>(boxsize_, reversal_boxes_, fractional_boxes_);
 
     while ( ! input_data->eof())
     {

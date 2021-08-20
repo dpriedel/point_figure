@@ -29,8 +29,10 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart (const std::string& symbol, std::int32_t boxsize, int32_t reversal_boxes)
-	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes}, current_direction_{PF_Column::Direction::e_unknown}
+PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecDouble boxsize, int32_t reversal_boxes,
+        PF_Column::FractionalBoxes fractional_boxes)
+	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes},
+        current_direction_{PF_Column::Direction::e_unknown}, fractional_boxes_{fractional_boxes}
 
 {
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -41,7 +43,9 @@ void PF_Chart::ExportData (std::ostream* output_data)
 
     for (const auto& a_col : columns_)
     {
-        std::cout << "bottom: " << a_col.GetBottom() << " top: " << a_col.GetTop() << " direction: " << a_col.GetDirection() << (a_col.GetHadReversal() ? " one step back reversal" : "") << '\n';
+        std::cout << "bottom: " << a_col.GetBottom() << " top: " << a_col.GetTop()
+            << " direction: " << a_col.GetDirection()
+            << (a_col.GetHadReversal() ? " one step back reversal" : "") << '\n';
     }
     std::cout << "Chart y limits: <" << y_min_ << ", " << y_max_ << ">\n";
 }		// -----  end of method PF_Chart::ExportData  ----- 

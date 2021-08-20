@@ -35,13 +35,16 @@ public:
 
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
+    enum class FractionalBoxes { e_integral, e_fractional };
 
     using AddResult = std::pair<Status, std::optional<std::unique_ptr<PF_Column>>>;
 
     // ====================  LIFECYCLE     =======================================
     PF_Column () = default;                             // constructor
-    PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes, Direction=Direction::e_unknown,
-            DprDecimal::DDecDouble=-1, DprDecimal::DDecDouble=-1);
+    PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes,
+            FractionalBoxes fractional_boxes = FractionalBoxes::e_integral,
+            Direction direction = Direction::e_unknown,
+            DprDecimal::DDecDouble top =-1, DprDecimal::DDecDouble bottom =-1);
 
     // ====================  ACCESSORS     =======================================
 
@@ -74,9 +77,10 @@ private:
     DprDecimal::DDecDouble box_size_ = -1;
     int32_t reversal_boxes_ = -1;
 
-    DprDecimal::DDecDouble bottom_ = -1;
-    DprDecimal::DDecDouble top_ = -1;
-    Direction direction_ = Direction::e_unknown;
+    DprDecimal::DDecDouble bottom_;
+    DprDecimal::DDecDouble top_;
+    Direction direction_;
+    FractionalBoxes fractional_boxes_;      // whether to drop fractional part of new values.
 
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;
