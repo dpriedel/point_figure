@@ -34,6 +34,8 @@ class DDecDouble
 	friend DDecDouble operator*(const DDecDouble& lhs, const DDecDouble& rhs);
 	friend DDecDouble operator/(const DDecDouble& lhs, const DDecDouble& rhs);
 
+    friend DDecDouble Mod(const DDecDouble&lhs, const DDecDouble& rhs);
+
 	friend bool operator==(const DDecDouble& lhs, double rhs);
 	friend bool operator==(double lhs, const DDecDouble& rhs);
 	friend bool operator==(const DDecDouble& lhs, const DDecDouble& rhs);
@@ -81,7 +83,7 @@ private:
     // ====================  DATA MEMBERS  =======================================
     
     decDouble decimal_{};
-    static decContext mCtx;
+    static decContext mCtx_;
 
 }; // -----  end of template class DDecimalSMALLDEC  -----
 
@@ -102,25 +104,25 @@ inline std::string DDecDouble::ToStr() const
 
 inline DDecDouble& DDecDouble::operator+=(const DDecDouble& rhs)
 {
-	decDoubleAdd(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleAdd(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return *this;
 }
 
 inline DDecDouble& DDecDouble::operator-=(const DDecDouble& rhs)
 {
-	decDoubleSubtract(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleSubtract(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return *this;
 }
 
 inline DDecDouble& DDecDouble::operator*=(const DDecDouble& rhs)
 {
-	decDoubleMultiply(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleMultiply(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return *this;
 }
 
 inline DDecDouble& DDecDouble::operator/=(const DDecDouble& rhs)
 {
-	decDoubleDivide(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleDivide(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return *this;
 }
 
@@ -131,28 +133,35 @@ inline DDecDouble& DDecDouble::operator/=(const DDecDouble& rhs)
 inline DDecDouble operator+(const DDecDouble&lhs, const DDecDouble& rhs)
 {
 	DDecDouble result;
-	decDoubleAdd(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleAdd(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return result;
 }
 
 inline DDecDouble operator-(const DDecDouble&lhs, const DDecDouble& rhs)
 {
 	DDecDouble result;
-	decDoubleSubtract(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleSubtract(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return result;
 }
 
 inline DDecDouble operator*(const DDecDouble&lhs, const DDecDouble& rhs)
 {
 	DDecDouble result;
-	decDoubleMultiply(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleMultiply(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return result;
 }
 
 inline DDecDouble operator/(const DDecDouble&lhs, const DDecDouble& rhs)
 {
 	DDecDouble result;
-	decDoubleDivide(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
+	decDoubleDivide(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	return result;
+}
+
+inline DDecDouble Mod(const DDecDouble&lhs, const DDecDouble& rhs)
+{
+	DDecDouble result;
+	decDoubleDivideInteger(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
 	return result;
 }
 
@@ -167,8 +176,8 @@ inline bool operator==(double lhs, const DDecDouble& rhs)
     DDecDouble temp{lhs, exp};
 //    std::cout << "exponent: " << decDoubleGetExponent(&rhs.decimal_) << '\n';
 	decDouble result;
-	decDoubleCompare(&result, &temp.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 0;
+	decDoubleCompare(&result, &temp.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
 }
 
 inline bool operator==(const DDecDouble& lhs, double rhs)
@@ -178,8 +187,8 @@ inline bool operator==(const DDecDouble& lhs, double rhs)
     DDecDouble temp{rhs, exp};
 //    std::cout << "exponent: " << decDoubleGetExponent(&lhs.decimal_) << '\n';
 	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &temp.decimal_, &DDecDouble::mCtx);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 0;
+	decDoubleCompare(&result, &lhs.decimal_, &temp.decimal_, &DDecDouble::mCtx_);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
 }
 
 inline bool operator==(const DDecDouble& lhs, const DDecDouble& rhs)
@@ -189,8 +198,8 @@ inline bool operator==(const DDecDouble& lhs, const DDecDouble& rhs)
 //        return false;
 //    }
 	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 0;
+	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
 }
 
 inline bool operator!=(const DDecDouble& lhs, const DDecDouble& rhs)
@@ -201,29 +210,29 @@ inline bool operator!=(const DDecDouble& lhs, const DDecDouble& rhs)
 inline bool operator<(const DDecDouble& lhs, const DDecDouble& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == -1;
+	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == -1;
 }
 
 inline bool operator>(const DDecDouble& lhs, const DDecDouble& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) == 1;
+	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 1;
 }
 
 inline bool operator<=(const DDecDouble& lhs, const DDecDouble& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) < 1;
+	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) < 1;
 }
 
 inline bool operator>=(const DDecDouble& lhs, const DDecDouble& rhs)
 {
 	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx, DEC_ROUND_HALF_EVEN) >= 0;
+	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) >= 0;
 }
 
 //
@@ -242,7 +251,8 @@ inline std::istream& operator>>(std::istream& is, DDecDouble& item)
 {
 	std::string temp;
 	is >> temp;
-	decDoubleFromString(&item.decimal_, temp.c_str(), &DDecDouble::mCtx);
+//    std::cout << "temp from stream: " << temp << '\n';
+	decDoubleFromString(&item.decimal_, temp.c_str(), &DDecDouble::mCtx_);
 	return is;
 }
 

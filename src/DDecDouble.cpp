@@ -25,17 +25,17 @@
 
 using namespace DprDecimal;
 
-decContext DDecDouble::mCtx ;
+decContext DDecDouble::mCtx_ ;
 
 DDecDouble::DDecDouble()
 {
-    decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
+    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
 }
 
 DDecDouble::DDecDouble(const char* number)
 {
-    decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
-    decDoubleFromString(&this->decimal_, number, &DDecDouble::mCtx);
+    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
+    decDoubleFromString(&this->decimal_, number, &DDecDouble::mCtx_);
 }
 
 DDecDouble::DDecDouble(const std::string& number)
@@ -43,13 +43,13 @@ DDecDouble::DDecDouble(const std::string& number)
 
 DDecDouble::DDecDouble(int32_t number)
 {
-    decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
+    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
     decDoubleFromInt32(&this->decimal_, number);
 }
 
 DDecDouble::DDecDouble(uint32_t number)
 {
-    decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
+    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
     decDoubleFromUInt32(&this->decimal_, number);
 }
 
@@ -70,21 +70,21 @@ DDecDouble::DDecDouble(double number, int dec_digits)
 //    std::ostringstream temp;
 //    temp << std::fixed << std::setprecision(dec_digits) << number;
 
-    decContextDefault(&DDecDouble::mCtx, DEC_INIT_DECDOUBLE);
-//    decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx);
-    decDoubleFromString(&this->decimal_, buf.data(), &DDecDouble::mCtx);
-//		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx);
+    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
+//    decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx_);
+    decDoubleFromString(&this->decimal_, buf.data(), &DDecDouble::mCtx_);
+//		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx_);
 }
 
 int32_t DDecDouble::ToIntRounded () const
 {
-    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx, DEC_ROUND_HALF_DOWN);
+    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx_, DEC_ROUND_HALF_DOWN);
     return result;
 }		// -----  end of method DDecDouble::ToIntRounded  ----- 
 
 int32_t DDecDouble::ToIntTruncated () const
 {
-    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx, DEC_ROUND_DOWN);
+    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx_, DEC_ROUND_DOWN);
     return result;
 }		// -----  end of method DDecDouble::ToIntTruncated  ----- 
 
