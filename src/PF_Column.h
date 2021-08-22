@@ -58,6 +58,7 @@ public:
     // ====================  MUTATORS      =======================================
 
     [[nodiscard]] AddResult AddValue(const DprDecimal::DDecDouble& new_value);
+	friend std::ostream& operator<<(std::ostream& os, const PF_Column& column);
 
     // ====================  OPERATORS     =======================================
 
@@ -131,5 +132,11 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction dir
 	return os;
 }
 
+inline std::ostream& operator<<(std::ostream& os, const PF_Column& column)
+{
+    os << "bottom: " << column.bottom_ << " top: " << column.top_ << " direction: " << column.direction_
+        << (column.had_reversal_ ? " one step back reversal" : "");
+    return os;
+}
 
 #endif   // ----- #ifndef P_F_COLUMN_INC_  ----- 

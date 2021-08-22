@@ -79,6 +79,7 @@ public:
     // ====================  OPERATORS     =======================================
 
     const PF_Column& operator[](size_t which) const { return columns_[which]; }
+	friend std::ostream& operator<<(std::ostream& os, const PF_Chart& column);
 
 protected:
     // ====================  DATA MEMBERS  =======================================
@@ -161,5 +162,17 @@ void PF_Chart::LoadData (std::istream* input_data)
     PF_Column* col = current_column_.release();
     delete col;
 }
+
+inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
+{
+    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.boxsize_ << " reversal boxes: " << chart.reversal_boxes_<< '\n';
+    for (const auto& col : chart.columns_)
+    {
+        os << '\t' << col << '\n';
+    }
+    os << "number of columns: " << chart.columns_.size() << " min value: " << chart.y_min_ << " max value: " << chart.y_max_ << '\n';
+    return os;
+}
+
 #endif   // ----- #ifndef PF_CHART_INC  ----- 
 
