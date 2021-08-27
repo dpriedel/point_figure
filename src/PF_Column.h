@@ -135,7 +135,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction dir
 inline std::ostream& operator<<(std::ostream& os, const PF_Column& column)
 {
     os << "bottom: " << column.bottom_ << " top: " << column.top_ << " direction: " << column.direction_
-        << (column.had_reversal_ ? " one step back reversal" : "");
+        << (column.had_reversal_ ? " one-step-back reversal" : "");
     return os;
 }
 
