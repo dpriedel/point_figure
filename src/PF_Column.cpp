@@ -53,7 +53,7 @@ std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, D
             );
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
 
-PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_value)
+PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_value, tpt the_time)
 {
     // if this is the first entry in the column, just set first entry 
     // to the input value rounded down to the nearest box value.
@@ -64,6 +64,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
 
         top_= RoundDownToNearestBox(new_value);
         bottom_ = top_;
+        time_span_ = {the_time, the_time};
     
         return {Status::e_accepted, std::nullopt};
     }
@@ -100,6 +101,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 direction_ = Direction::e_up;
                 top_ += box_size_;
             }
+            time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
         if (possible_value <= bottom_ - box_size_)
@@ -109,6 +111,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 direction_ = Direction::e_down;
                 bottom_ -= box_size_;
             }
+            time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
 
@@ -129,6 +132,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
             {
                 top_ += box_size_;
             }
+            time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
         // look for a reversal 
@@ -141,6 +145,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
             {
                 if (bottom_ <= top_ - box_size_)
                 {
+                    time_span_.second = the_time;
                     // can't do it as box is occupied.
                     return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_)};
                 }
@@ -150,8 +155,10 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 }
                 had_reversal_ = true;
                 direction_ = Direction::e_down;
+                time_span_.second = the_time;
                 return {Status::e_accepted, std::nullopt};
             }
+            time_span_.second = the_time;
             return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - (box_size_ * reversal_boxes_))};
         }
     }
@@ -163,6 +170,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
             {
                 bottom_ -= box_size_;
             }
+            time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
         // look for a reversal 
@@ -175,6 +183,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
             {
                 if (top_ >= bottom_ + box_size_)
                 {
+                    time_span_.second = the_time;
                     // can't do it as box is occupied.
                     return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_)};
                 }
@@ -184,8 +193,10 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 }
                 had_reversal_ = true;
                 direction_ = Direction::e_up;
+                time_span_.second = the_time;
                 return {Status::e_accepted, std::nullopt};
             }
+            time_span_.second = the_time;
             return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_))};
         }
     }

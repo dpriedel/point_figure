@@ -24,7 +24,6 @@
 #define  PF_CHART_INC
 
 
-#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -42,8 +41,6 @@ namespace fs = std::filesystem;
 
 class PF_Chart
 {
-    using tpt = std::chrono::time_point<std::chrono::steady_clock>;
-
 public:
 
     using Y_Limits = std::pair<DprDecimal::DDecDouble, DprDecimal::DDecDouble>;
@@ -79,7 +76,7 @@ public:
     // ====================  OPERATORS     =======================================
 
     const PF_Column& operator[](size_t which) const { return columns_[which]; }
-	friend std::ostream& operator<<(std::ostream& os, const PF_Chart& column);
+	friend std::ostream& operator<<(std::ostream& os, const PF_Chart& chart);
 
 protected:
     // ====================  DATA MEMBERS  =======================================
@@ -92,9 +89,9 @@ private:
 
     std::string symbol_;
 
-    tpt mFirstDate;			//	earliest entry for symbol
-    tpt mLastChangeDate;		//	date of last change to data
-    tpt mLastCheckedDate;	//	last time checked to see if update needed
+    PF_Column::tpt mFirstDate;			//	earliest entry for symbol
+    PF_Column::tpt mLastChangeDate;		//	date of last change to data
+    PF_Column::tpt mLastCheckedDate;	//	last time checked to see if update needed
 
     DprDecimal::DDecDouble boxsize_;
     int32_t reversal_boxes_;
@@ -115,14 +112,20 @@ void PF_Chart::LoadData (std::istream* input_data)
 
     while ( ! input_data->eof())
     {
+        std::string date_time;
+        char delim;
         T price;
+        *input_data >> date_time;
+        *input_data >> delim;
         *input_data >> price;
         if (input_data->fail())
         {
             continue;
         }
+
+        PF_Column::tpt the_time;
 //        std::cout << price << '\n';
-        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(price));
+        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(price), the_time);
 
         if (current_column_->GetTop() > y_max_)
         {
@@ -141,7 +144,7 @@ void PF_Chart::LoadData (std::istream* input_data)
 
             // now continue on processing the value.
             
-            status = current_column_->AddValue(DprDecimal::DDecDouble(price)).first;
+            status = current_column_->AddValue(DprDecimal::DDecDouble(price), the_time).first;
             current_direction_ = current_column_->GetDirection();
         }
     }

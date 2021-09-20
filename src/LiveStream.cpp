@@ -22,34 +22,9 @@
 #include "LiveStream.h"
 #include "boost/beast/core/buffers_to_string.hpp"
 
+#include "utilities.h"
+
 using namespace std::string_literals;
-
-//  let's do a little 'template normal' programming again
-
-// function to split a string on a delimiter and return a vector of items.
-// use concepts to restrict to strings and string_views.
-
-template<typename T>
-inline std::vector<T> split_string(std::string_view string_data, char delim)
-    requires std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>
-{
-    std::vector<T> results;
-	for (auto it = 0; it != T::npos; ++it)
-	{
-		auto pos = string_data.find(delim, it);
-        if (pos != T::npos)
-        {
-    		results.emplace_back(string_data.substr(it, pos - it));
-        }
-        else
-        {
-    		results.emplace_back(string_data.substr(it));
-            break;
-        }
-		it = pos;
-	}
-    return results;
-}
 
 
 //--------------------------------------------------------------------------------------

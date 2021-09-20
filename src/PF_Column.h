@@ -18,6 +18,7 @@
 #ifndef  PF_COLUMN_INC_
 #define  PF_COLUMN_INC_
 
+#include <chrono>
 #include <cstdint>
 #include <utility>
 #include <memory>
@@ -37,6 +38,9 @@ public:
     enum class Status { e_accepted, e_ignored, e_reversal };
     enum class FractionalBoxes { e_integral, e_fractional };
 
+    using tpt = std::chrono::time_point<std::chrono::system_clock>;
+    using TimeSpan = std::pair<tpt, tpt>;
+
     using AddResult = std::pair<Status, std::optional<std::unique_ptr<PF_Column>>>;
 
     // ====================  LIFECYCLE     =======================================
@@ -54,10 +58,11 @@ public:
     [[nodiscard]] DprDecimal::DDecDouble GetBoxsize() const { return box_size_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
+    [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
 
     // ====================  MUTATORS      =======================================
 
-    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecDouble& new_value);
+    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecDouble& new_value, tpt the_time);
 	friend std::ostream& operator<<(std::ostream& os, const PF_Column& column);
 
     // ====================  OPERATORS     =======================================
@@ -75,6 +80,7 @@ private:
 
     // ====================  DATA MEMBERS  =======================================
 
+    TimeSpan time_span_;
     DprDecimal::DDecDouble box_size_ = -1;
     int32_t reversal_boxes_ = -1;
 
