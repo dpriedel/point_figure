@@ -28,9 +28,12 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <date/date.h>
+
+#include "utilities.h"
 
 namespace fs = std::filesystem;
 
@@ -71,7 +74,7 @@ public:
     // ====================  MUTATORS      =======================================
     
     template<typename T>
-    void LoadData(std::istream* input_data);
+    void LoadData(std::istream* input_data, std::string_view format, char delim);
 
     // ====================  OPERATORS     =======================================
 
@@ -104,28 +107,26 @@ private:
 }; // -----  end of class PF_Chart  -----
 
 template<typename T>
-void PF_Chart::LoadData (std::istream* input_data)
+void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char delim)
 {
     // for now, just assume its numbers.
 
     current_column_ = std::make_unique<PF_Column>(boxsize_, reversal_boxes_, fractional_boxes_);
 
+    std::string buffer;
     while ( ! input_data->eof())
     {
-        std::string date_time;
-        char delim;
-        T price;
-        *input_data >> date_time;
-        *input_data >> delim;
-        *input_data >> price;
+        std::getline(*input_data, buffer);
         if (input_data->fail())
         {
             continue;
         }
+        // need to split out fields
 
-        PF_Column::tpt the_time;
-//        std::cout << price << '\n';
-        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(price), the_time);
+        auto fields = split_string<std::string_view>(buffer, delim);
+
+        PF_Column::tpt the_time = StringToTimePoint("%Y-%m-%d", fields[0]);
+        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(fields[1]), the_time);
 
         if (current_column_->GetTop() > y_max_)
         {
@@ -144,7 +145,7 @@ void PF_Chart::LoadData (std::istream* input_data)
 
             // now continue on processing the value.
             
-            status = current_column_->AddValue(DprDecimal::DDecDouble(price), the_time).first;
+            status = current_column_->AddValue(DprDecimal::DDecDouble(fields[1]), the_time).first;
             current_direction_ = current_column_->GetDirection();
         }
     }
