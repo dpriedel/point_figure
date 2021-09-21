@@ -11,6 +11,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <string_view>
 
 extern "C" {
     #include <decDouble.h>
@@ -54,7 +55,7 @@ public:
     // ====================  LIFECYCLE     =======================================
     DDecDouble ();                             // constructor
     DDecDouble (const char* number);           // constructor
-    DDecDouble (const std::string& number);    // constructor
+    DDecDouble (std::string_view number);    // constructor
     DDecDouble (int32_t number);               // constructor
     DDecDouble (uint32_t number);              // constructor
 

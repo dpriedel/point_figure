@@ -19,6 +19,7 @@
 #include <charconv>
 
 #include <fmt/format.h>
+#include <string_view>
 
 #include "DDecDouble.h"
 #include "decContext.h"
@@ -38,8 +39,8 @@ DDecDouble::DDecDouble(const char* number)
     decDoubleFromString(&this->decimal_, number, &DDecDouble::mCtx_);
 }
 
-DDecDouble::DDecDouble(const std::string& number)
-    : DDecDouble(number.c_str())	{ }
+DDecDouble::DDecDouble(std::string_view number)
+    : DDecDouble(number.data())	{ }
 
 DDecDouble::DDecDouble(int32_t number)
 {
