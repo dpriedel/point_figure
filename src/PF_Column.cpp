@@ -53,6 +53,12 @@ std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, D
             );
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
 
+bool PF_Column::operator== (const PF_Column& rhs) const
+{
+    return rhs.box_size_ == box_size_ && rhs.reversal_boxes_ == reversal_boxes_ && rhs.direction_ == direction_
+        && rhs.top_ == top_ && rhs.bottom_ == bottom_ && rhs.had_reversal_ == had_reversal_;
+}		// -----  end of method PF_Column::operator==  ----- 
+
 PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_value, tpt the_time)
 {
     // if this is the first entry in the column, just set first entry 
@@ -223,4 +229,46 @@ DprDecimal::DDecDouble PF_Column::RoundDownToNearestBox (const DprDecimal::DDecD
     return result;
 
 }		// -----  end of method PF_Column::RoundDowntoNearestBox  ----- 
+
+    
+Json::Value PF_Column::ToJSON () const
+{
+    Json::Value result;
+    result["box_size"] = box_size_.ToStr();
+    result["reversal_boxes"] = reversal_boxes_;
+    result["bottom"] = bottom_.ToStr();
+    result["top"] = top_.ToStr();
+
+    switch(direction_)
+    {
+        case PF_Column::Direction::e_unknown:
+            result["direction"] = "unknown";
+            break;
+
+        case PF_Column::Direction::e_down:
+            result["direction"] = "down";
+            break;
+
+        case PF_Column::Direction::e_up:
+            result["direction"] = "up";
+            break;
+    };
+
+    switch(fractional_boxes_)
+    {
+        case PF_Column::FractionalBoxes::e_integral:
+            result["fractional_boxes"] = "integral";
+            break;
+
+        case PF_Column::FractionalBoxes::e_fractional:
+            result["fractional_boxes"] = "fractional";
+            break;
+    };
+
+    result["had_reversal"] = had_reversal_;
+    result["start_at"] = std::to_string(time_span_.first.time_since_epoch().count());
+    result["last_entry"] = std::to_string(time_span_.second.time_since_epoch().count());
+
+    return result;
+}		// -----  end of method PF_Column::ToJSON  ----- 
 

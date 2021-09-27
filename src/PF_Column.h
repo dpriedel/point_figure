@@ -24,6 +24,8 @@
 #include <memory>
 #include <optional>
 
+#include <json/json.h>
+
 #include "DDecDouble.h"
 
 // =====================================================================================
@@ -60,12 +62,18 @@ public:
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
     [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
 
+    [[nodiscard]] Json::Value ToJSON() const;
+
     // ====================  MUTATORS      =======================================
 
     [[nodiscard]] AddResult AddValue(const DprDecimal::DDecDouble& new_value, tpt the_time);
-	friend std::ostream& operator<<(std::ostream& os, const PF_Column& column);
+
+    bool operator==(const PF_Column& rhs) const;
+    bool operator!=(const PF_Column& rhs) const { return !operator==(rhs); };
 
     // ====================  OPERATORS     =======================================
+
+	friend std::ostream& operator<<(std::ostream& os, const PF_Column& column);
 
 protected:
     // make reversed column here because we know everything needed to do so.
@@ -86,8 +94,8 @@ private:
 
     DprDecimal::DDecDouble bottom_;
     DprDecimal::DDecDouble top_;
-    Direction direction_;
-    FractionalBoxes fractional_boxes_;      // whether to drop fractional part of new values.
+    Direction direction_ = Direction::e_unknown;
+    FractionalBoxes fractional_boxes_ = FractionalBoxes::e_integral;      // whether to drop fractional part of new values.
 
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;
