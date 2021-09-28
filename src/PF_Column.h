@@ -74,6 +74,9 @@ public:
 
     PF_Column& operator= (const Json::Value& new_data);
 
+    // NOTE: time_span_ is excluded from equality comparison so it can be used
+    // when looking for patterns over time.
+
     bool operator==(const PF_Column& rhs) const;
     bool operator!=(const PF_Column& rhs) const { return !operator==(rhs); };
 
