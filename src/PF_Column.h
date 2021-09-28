@@ -52,6 +52,8 @@ public:
             Direction direction = Direction::e_unknown,
             DprDecimal::DDecDouble top =-1, DprDecimal::DDecDouble bottom =-1);
 
+    PF_Column(const Json::Value& new_data);
+
     // ====================  ACCESSORS     =======================================
 
     [[nodiscard]] DprDecimal::DDecDouble GetTop() const { return top_; }
@@ -68,10 +70,12 @@ public:
 
     [[nodiscard]] AddResult AddValue(const DprDecimal::DDecDouble& new_value, tpt the_time);
 
+    // ====================  OPERATORS     =======================================
+
+    PF_Column& operator= (const Json::Value& new_data);
+
     bool operator==(const PF_Column& rhs) const;
     bool operator!=(const PF_Column& rhs) const { return !operator==(rhs); };
-
-    // ====================  OPERATORS     =======================================
 
 	friend std::ostream& operator<<(std::ostream& os, const PF_Column& column);
 
@@ -83,6 +87,8 @@ protected:
     // ====================  DATA MEMBERS  =======================================
 
 private:
+
+    void FromJSON(const Json::Value& the_data);
 
     [[nodiscard]] DprDecimal::DDecDouble RoundDownToNearestBox(const DprDecimal::DDecDouble& a_value) const;
 

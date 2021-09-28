@@ -29,6 +29,8 @@
 #include <exception>
 #include <memory>
 
+#include <fmt/format.h>
+
 #include "DDecDouble.h"
 #include "PF_Column.h"
 
@@ -45,6 +47,16 @@ PF_Column::PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes, Fracti
 {
 }  // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
+//--------------------------------------------------------------------------------------
+//       Class:  PF_Column
+//      Method:  PF_Column
+// Description:  constructor
+//--------------------------------------------------------------------------------------
+PF_Column::PF_Column (const Json::Value& new_data)
+{
+    this->FromJSON(new_data);
+}  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
+
 std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value )
 {
     return std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_, direction,
@@ -52,6 +64,13 @@ std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, D
             direction == Direction::e_down ? value : bottom_ + box_size_
             );
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
+
+
+PF_Column& PF_Column::operator= (const Json::Value& new_data)
+{
+    this->FromJSON(new_data);
+    return *this;
+}		// -----  end of method PF_Column::operator=  ----- 
 
 bool PF_Column::operator== (const PF_Column& rhs) const
 {
@@ -266,9 +285,57 @@ Json::Value PF_Column::ToJSON () const
     };
 
     result["had_reversal"] = had_reversal_;
-    result["start_at"] = std::to_string(time_span_.first.time_since_epoch().count());
-    result["last_entry"] = std::to_string(time_span_.second.time_since_epoch().count());
+//    result["start_at"] = std::to_string(time_span_.first.time_since_epoch().count());
+//    result["last_entry"] = std::to_string(time_span_.second.time_since_epoch().count());
+    result["start_at"] = time_span_.first.time_since_epoch().count();
+    result["last_entry"] = time_span_.second.time_since_epoch().count();
 
     return result;
 }		// -----  end of method PF_Column::ToJSON  ----- 
+
+void PF_Column::FromJSON (const Json::Value& new_data)
+{
+    box_size_ = DprDecimal::DDecDouble{new_data["box_size"].asString()};
+    reversal_boxes_ = new_data["reversal_boxes"].asInt();
+    bottom_ = DprDecimal::DDecDouble{new_data["bottom"].asString()};
+    top_ = DprDecimal::DDecDouble{new_data["top"].asString()};
+
+    const auto direction = new_data["direction"].asString();
+    if (direction == "up")
+    {
+        direction_ = PF_Column::Direction::e_up;
+    }
+    else if (direction == "down")
+    {
+        direction_ = PF_Column::Direction::e_down;
+    }
+    else if (direction == "unknown")
+    {
+        direction_ = PF_Column::Direction::e_unknown;
+    }
+    else
+    {
+        throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
+    }
+
+    const auto fractional = new_data["fractional_boxes"].asString();
+    if (fractional  == "integral")
+    {
+
+        fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+    }
+    else if (direction == "fractional")
+    {
+        fractional_boxes_ = PF_Column::FractionalBoxes::e_fractional;
+    }
+    else
+    {
+        throw std::invalid_argument{fmt::format("Invalid fractional_boxes provided: {}. Must be 'integral' or 'fractional'.", fractional)};
+    }
+
+    had_reversal_ = new_data["had_reversal"].asBool();
+    
+    time_span_.first = PF_Column::tpt{std::chrono::nanoseconds{new_data["start_at"].asInt64()}};
+    time_span_.second = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
+}		// -----  end of method PF_Column::FromJSON  ----- 
 
