@@ -37,6 +37,67 @@ PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecDouble boxsize, i
 {
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
+//--------------------------------------------------------------------------------------
+//       Class:  PF_Chart
+//      Method:  PF_Chart
+// Description:  constructor
+//--------------------------------------------------------------------------------------
+PF_Chart::PF_Chart (const Json::Value& new_data)
+{
+    this->FromJSON(new_data);
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  ----- 
+
+PF_Chart& PF_Chart::operator= (const Json::Value& new_data)
+{
+    this->FromJSON(new_data);
+    return *this;
+}		// -----  end of method PF_Chart::operator=  ----- 
+
+bool PF_Chart::operator== (const PF_Chart& rhs) const
+{
+    if (symbol_ != rhs.symbol_)
+    {
+        return false;
+    }
+    if (box_size_ != rhs.box_size_)
+    {
+        return false;
+    }
+    if (reversal_boxes_ != rhs.reversal_boxes_)
+    {
+        return false;
+    }
+    if (y_min_ != rhs.y_min_)
+    {
+        return false;
+    }
+    if (y_max_ != rhs.y_max_)
+    {
+        return false;
+    }
+    if (current_direction_ != rhs.current_direction_)
+    {
+        return false;
+    }
+    if (fractional_boxes_ != rhs.fractional_boxes_)
+    {
+        return false;
+    }
+
+    // if we got here, then we can look at our data 
+
+    if (columns_ != rhs.columns_)
+    {
+        return false;
+    }
+    if (*current_column_ != *rhs.current_column_)
+    {
+        return false;
+    }
+
+    return true;
+}		// -----  end of method PF_Chart::operator==  ----- 
+
 void PF_Chart::ExportData (std::ostream* output_data)
 {
     // for now, just print our column info.
@@ -145,9 +206,9 @@ Json::Value PF_Chart::ToJSON () const
             result["fractional_boxes"] = "fractional";
             break;
     };
-    result["first_date"] = mFirstDate_.time_since_epoch().count();
-    result["last_change_date"] = mLastChangeDate_.time_since_epoch().count();
-    result["last_check_date"] = mLastCheckedDate_.time_since_epoch().count();
+    result["first_date"] = first_date_.time_since_epoch().count();
+    result["last_change_date"] = last_change_date_.time_since_epoch().count();
+    result["last_check_date"] = last_checked_date_.time_since_epoch().count();
     
     Json::Value cols{Json::arrayValue};
     for (const auto& col : columns_)
@@ -155,7 +216,69 @@ Json::Value PF_Chart::ToJSON () const
         cols.append(col.ToJSON());
     }
     result["columns"] = cols;
+
+    result["current_column"] = current_column_->ToJSON();
+
     return result;
 
 }		// -----  end of method PF_Chart::ToJSON  ----- 
+
+
+void PF_Chart::FromJSON (const Json::Value& new_data)
+{
+    symbol_ = new_data["symbol"].asString();
+    box_size_ = DprDecimal::DDecDouble{new_data["box_size"].asString()};
+    reversal_boxes_ = new_data["reversal_boxes"].asInt();
+    y_min_ = DprDecimal::DDecDouble{new_data["y_min"].asString()};
+    y_max_ = DprDecimal::DDecDouble{new_data["y_max"].asString()};
+
+    const auto direction = new_data["current_direction"].asString();
+    if (direction == "up")
+    {
+        current_direction_ = PF_Column::Direction::e_up;
+    }
+    else if (direction == "down")
+    {
+        current_direction_ = PF_Column::Direction::e_down;
+    }
+    else if (direction == "unknown")
+    {
+        current_direction_ = PF_Column::Direction::e_unknown;
+    }
+    else
+    {
+        throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
+    }
+
+    const auto fractional = new_data["fractional_boxes"].asString();
+    if (fractional  == "integral")
+    {
+
+        fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+    }
+    else if (direction == "fractional")
+    {
+        fractional_boxes_ = PF_Column::FractionalBoxes::e_fractional;
+    }
+    else
+    {
+        throw std::invalid_argument{fmt::format("Invalid fractional_boxes provided: {}. Must be 'integral' or 'fractional'.", fractional)};
+    }
+
+    first_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
+    last_change_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
+    last_checked_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
+
+    // lastly, we can do our columns 
+
+    const auto& cols = new_data["columns"];
+    auto cols_size = cols.size();
+    for (int i = 0; i < cols_size; ++i)
+    {
+        columns_.emplace_back(PF_Column{cols[i]});
+    }
+
+    current_column_ = std::make_unique<PF_Column>(PF_Column(new_data["current_column"]));
+
+}		// -----  end of method PF_Chart::FromJSON  ----- 
 
