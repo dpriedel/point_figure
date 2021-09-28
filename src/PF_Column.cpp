@@ -57,12 +57,15 @@ PF_Column::PF_Column (const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
 
-std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value )
+std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value,
+        tpt the_time)
 {
-    return std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_, direction,
+    auto new_column = std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
             direction == Direction::e_down ? value : bottom_ + box_size_
             );
+    new_column->time_span_ = {the_time, the_time};
+    return new_column;
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
 
 
@@ -172,7 +175,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 {
                     time_span_.second = the_time;
                     // can't do it as box is occupied.
-                    return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_)};
+                    return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_, the_time)};
                 }
                 while(possible_value <= bottom_ - box_size_)
                 {
@@ -184,7 +187,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 return {Status::e_accepted, std::nullopt};
             }
             time_span_.second = the_time;
-            return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - (box_size_ * reversal_boxes_))};
+            return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - (box_size_ * reversal_boxes_), the_time)};
         }
     }
     if (direction_ == Direction::e_down)
@@ -210,7 +213,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 {
                     time_span_.second = the_time;
                     // can't do it as box is occupied.
-                    return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_)};
+                    return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_, the_time)};
                 }
                 while(possible_value >= top_ + box_size_)
                 {
@@ -222,7 +225,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                 return {Status::e_accepted, std::nullopt};
             }
             time_span_.second = the_time;
-            return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_))};
+            return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_), the_time)};
         }
     }
 

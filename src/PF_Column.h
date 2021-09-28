@@ -85,7 +85,8 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    std::unique_ptr<PF_Column> MakeReversalColumn(Direction direction, DprDecimal::DDecDouble value);
+    std::unique_ptr<PF_Column> MakeReversalColumn(Direction direction, DprDecimal::DDecDouble value,
+            tpt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
