@@ -31,7 +31,7 @@
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecDouble boxsize, int32_t reversal_boxes,
         PF_Column::FractionalBoxes fractional_boxes)
-	: symbol_{symbol}, boxsize_{boxsize}, reversal_boxes_{reversal_boxes},
+	: symbol_{symbol}, box_size_{boxsize}, reversal_boxes_{reversal_boxes},
         current_direction_{PF_Column::Direction::e_unknown}, fractional_boxes_{fractional_boxes}
 
 {
@@ -84,7 +84,7 @@ void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
 
     c->setPlotArea(50, 25, 500, 250)->setGridColor(0xc0c0c0, 0xc0c0c0);
 
-    c->addTitle(fmt::format("{}X{} for {}", boxsize_.ToDouble(), reversal_boxes_, symbol_).c_str());
+    c->addTitle(fmt::format("{}X{} for {}", box_size_.ToDouble(), reversal_boxes_, symbol_).c_str());
 
 //    c->xAxis()->setTitle("Jan 2001");
 
@@ -109,4 +109,53 @@ void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
     c->makeChart(output_filename.c_str());
 
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
+
+
+Json::Value PF_Chart::ToJSON () const
+{
+    Json::Value result;
+    result["symbol"] = symbol_;
+    result["box_size"] = box_size_.ToStr();
+    result["reversal_boxes"] = reversal_boxes_;
+    result["y_min"] = y_min_.ToStr();
+    result["y_max"] = y_max_.ToStr();
+
+    switch(current_direction_)
+    {
+        case PF_Column::Direction::e_unknown:
+            result["current_direction"] = "unknown";
+            break;
+
+        case PF_Column::Direction::e_down:
+            result["current_direction"] = "down";
+            break;
+
+        case PF_Column::Direction::e_up:
+            result["current_direction"] = "up";
+            break;
+    };
+
+    switch(fractional_boxes_)
+    {
+        case PF_Column::FractionalBoxes::e_integral:
+            result["fractional_boxes"] = "integral";
+            break;
+
+        case PF_Column::FractionalBoxes::e_fractional:
+            result["fractional_boxes"] = "fractional";
+            break;
+    };
+    result["first_date"] = mFirstDate_.time_since_epoch().count();
+    result["last_change_date"] = mLastChangeDate_.time_since_epoch().count();
+    result["last_check_date"] = mLastCheckedDate_.time_since_epoch().count();
+    
+    Json::Value cols{Json::arrayValue};
+    for (const auto& col : columns_)
+    {
+        cols.append(col.ToJSON());
+    }
+    result["columns"] = cols;
+    return result;
+
+}		// -----  end of method PF_Chart::ToJSON  ----- 
 

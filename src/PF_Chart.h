@@ -71,6 +71,8 @@ public:
 
     void ConstructChartAndWriteToFile(fs::path output_filename) const;
 
+    [[nodiscard]] Json::Value ToJSON() const;
+
     // ====================  MUTATORS      =======================================
     
     template<typename T>
@@ -92,11 +94,11 @@ private:
 
     std::string symbol_;
 
-    PF_Column::tpt mFirstDate;			//	earliest entry for symbol
-    PF_Column::tpt mLastChangeDate;		//	date of last change to data
-    PF_Column::tpt mLastCheckedDate;	//	last time checked to see if update needed
+    PF_Column::tpt mFirstDate_;			    //	earliest entry for symbol
+    PF_Column::tpt mLastChangeDate_;		//	date of last change to data
+    PF_Column::tpt mLastCheckedDate_;	    //	last time checked to see if update needed
 
-    DprDecimal::DDecDouble boxsize_;
+    DprDecimal::DDecDouble box_size_;
     int32_t reversal_boxes_;
     DprDecimal::DDecDouble y_min_ = 100000;         // just a number
     DprDecimal::DDecDouble y_max_ = -1;
@@ -111,7 +113,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char
 {
     // for now, just assume its numbers.
 
-    current_column_ = std::make_unique<PF_Column>(boxsize_, reversal_boxes_, fractional_boxes_);
+    current_column_ = std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_);
 
     std::string buffer;
     while ( ! input_data->eof())
@@ -169,7 +171,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
-    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.boxsize_ << " reversal boxes: " << chart.reversal_boxes_<< '\n';
+    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.box_size_ << " reversal boxes: " << chart.reversal_boxes_<< '\n';
     for (const auto& col : chart.columns_)
     {
         os << '\t' << col << '\n';
