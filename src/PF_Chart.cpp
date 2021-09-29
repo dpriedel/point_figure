@@ -98,19 +98,6 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     return true;
 }		// -----  end of method PF_Chart::operator==  ----- 
 
-void PF_Chart::ExportData (std::ostream* output_data)
-{
-    // for now, just print our column info.
-
-    for (const auto& a_col : columns_)
-    {
-        std::cout << "bottom: " << a_col.GetBottom() << " top: " << a_col.GetTop()
-            << " direction: " << a_col.GetDirection()
-            << (a_col.GetHadReversal() ? " one step back reversal" : "") << '\n';
-    }
-    std::cout << "Chart y limits: <" << y_min_ << ", " << y_max_ << ">\n";
-}		// -----  end of method PF_Chart::ExportData  ----- 
-
 void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
 {
     // this code comes pretty much right out of the cppdemo code

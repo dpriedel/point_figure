@@ -49,8 +49,10 @@ public:
     using Y_Limits = std::pair<DprDecimal::DDecDouble, DprDecimal::DDecDouble>;
 
     // make it look like a range
+    //TODO: use a custom iterator which will include current_column_ in 
+    // the iteration.
 
-    using const_iterator = std::vector<PF_Column>::const_iterator;
+//    using const_iterator = std::vector<PF_Column>::const_iterator;
 
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
@@ -61,7 +63,6 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-    void ExportData(std::ostream* output_data);
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
     // need to include current_column_ 
