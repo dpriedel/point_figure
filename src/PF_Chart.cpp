@@ -29,10 +29,10 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecDouble boxsize, int32_t reversal_boxes,
+PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecDouble box_size, int32_t reversal_boxes,
         PF_Column::FractionalBoxes fractional_boxes)
-	: symbol_{symbol}, box_size_{boxsize}, reversal_boxes_{reversal_boxes},
-        current_direction_{PF_Column::Direction::e_unknown}, fractional_boxes_{fractional_boxes}
+    : current_column_{box_size, reversal_boxes, fractional_boxes}, symbol_{symbol},
+    box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes}
 
 {
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -90,7 +90,7 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     {
         return false;
     }
-    if (*current_column_ != *rhs.current_column_)
+    if (current_column_ != rhs.current_column_)
     {
         return false;
     }
@@ -100,10 +100,6 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
 
 void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char delim)
 {
-    // for now, just assume its numbers.
-
-    current_column_ = std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_);
-
     std::string buffer;
     while ( ! input_data->eof())
     {
@@ -117,42 +113,41 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char
         auto fields = split_string<std::string_view>(buffer, delim);
 
         PF_Column::tpt the_time = StringToTimePoint("%Y-%m-%d", fields[0]);
-        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(fields[1]), the_time);
+        auto [status, new_col] = current_column_.AddValue(DprDecimal::DDecDouble(fields[1]), the_time);
 
         if (status == PF_Column::Status::e_accepted)
         {
-            if (current_column_->GetTop() > y_max_)
+            if (current_column_.GetTop() > y_max_)
             {
-                y_max_ = current_column_->GetTop();
+                y_max_ = current_column_.GetTop();
             }
-            if (current_column_->GetBottom() < y_min_)
+            if (current_column_.GetBottom() < y_min_)
             {
-                y_min_ = current_column_->GetBottom();
+                y_min_ = current_column_.GetBottom();
             }
         }
 
         if (status == PF_Column::Status::e_reversal)
         {
-            auto* save_col = current_column_.get();         // non-owning access
-            columns_.push_back(*save_col);
+            columns_.push_back(current_column_);
             current_column_ = std::move(new_col.value());
 
             // now continue on processing the value.
             
-            status = current_column_->AddValue(DprDecimal::DDecDouble(fields[1]), the_time).first;
-            current_direction_ = current_column_->GetDirection();
+            status = current_column_.AddValue(DprDecimal::DDecDouble(fields[1]), the_time).first;
+            current_direction_ = current_column_.GetDirection();
         }
     }
 
     // make sure we keep the last column we were working on 
 
-    if (current_column_->GetTop() > y_max_)
+    if (current_column_.GetTop() > y_max_)
     {
-        y_max_ = current_column_->GetTop();
+        y_max_ = current_column_.GetTop();
     }
-    if (current_column_->GetBottom() < y_min_)
+    if (current_column_.GetBottom() < y_min_)
     {
-        y_min_ = current_column_->GetBottom();
+        y_min_ = current_column_.GetBottom();
     }
 }
 
@@ -261,15 +256,7 @@ Json::Value PF_Chart::ToJSON () const
         cols.append(col.ToJSON());
     }
     result["columns"] = cols;
-
-    if (current_column_)
-    {
-        result["current_column"] = current_column_->ToJSON();
-    }
-    else
-    {
-        result["current_column"] = PF_Column{box_size_, reversal_boxes_, fractional_boxes_}.ToJSON();
-    }
+    result["current_column"] = current_column_.ToJSON();
 
     return result;
 
@@ -330,7 +317,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
         columns_.emplace_back(PF_Column{cols[i]});
     }
 
-    current_column_ = std::make_unique<PF_Column>(PF_Column(new_data["current_column"]));
+    current_column_ = {new_data["current_column"]};
 
 }		// -----  end of method PF_Chart::FromJSON  ----- 
 

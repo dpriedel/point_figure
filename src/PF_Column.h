@@ -21,7 +21,7 @@
 #include <chrono>
 #include <cstdint>
 #include <utility>
-#include <memory>
+//#include <memory>
 #include <optional>
 
 #include <json/json.h>
@@ -43,7 +43,7 @@ public:
     using tpt = std::chrono::time_point<std::chrono::system_clock>;
     using TimeSpan = std::pair<tpt, tpt>;
 
-    using AddResult = std::pair<Status, std::optional<std::unique_ptr<PF_Column>>>;
+    using AddResult = std::pair<Status, std::optional<PF_Column>>;
 
     // ====================  LIFECYCLE     =======================================
     PF_Column () = default;                             // constructor
@@ -85,14 +85,14 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    std::unique_ptr<PF_Column> MakeReversalColumn(Direction direction, DprDecimal::DDecDouble value,
+    PF_Column MakeReversalColumn(Direction direction, DprDecimal::DDecDouble value,
             tpt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
 private:
 
-    void FromJSON(const Json::Value& the_data);
+    void FromJSON(const Json::Value& new_data);
 
     [[nodiscard]] DprDecimal::DDecDouble RoundDownToNearestBox(const DprDecimal::DDecDouble& a_value) const;
 

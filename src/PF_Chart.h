@@ -56,10 +56,10 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
-    PF_Chart(const std::string& symbol, DprDecimal::DDecDouble boxsize, int32_t reversal_boxes,
+    PF_Chart(const std::string& symbol, DprDecimal::DDecDouble box_size, int32_t reversal_boxes,
             PF_Column::FractionalBoxes fractional_boxes=PF_Column::FractionalBoxes::e_integral);
 
-    PF_Chart(const Json::Value& new_data);
+    explicit PF_Chart(const Json::Value& new_data);
 
     // ====================  ACCESSORS     =======================================
 
@@ -89,7 +89,7 @@ public:
     bool operator== (const PF_Chart& rhs) const;
     bool operator!= (const PF_Chart& rhs) const { return ! operator==(rhs); }
 
-    const PF_Column& operator[](size_t which) const { return (which < columns_.size() ? columns_[which] : *current_column_); }
+    const PF_Column& operator[](size_t which) const { return (which < columns_.size() ? columns_[which] : current_column_); }
 	friend std::ostream& operator<<(std::ostream& os, const PF_Chart& chart);
 
 protected:
@@ -102,7 +102,7 @@ private:
     // ====================  DATA MEMBERS  =======================================
 
     std::vector<PF_Column> columns_;
-    std::unique_ptr<PF_Column> current_column_;
+    PF_Column current_column_;
 
     std::string symbol_;
 
@@ -110,13 +110,13 @@ private:
     PF_Column::tpt last_change_date_;		//	date of last change to data
     PF_Column::tpt last_checked_date_;	    //	last time checked to see if update needed
 
-    DprDecimal::DDecDouble box_size_;
-    int32_t reversal_boxes_;
+    DprDecimal::DDecDouble box_size_ = -1;
+    int32_t reversal_boxes_ = -1;
     DprDecimal::DDecDouble y_min_ = 100000;         // just a number
     DprDecimal::DDecDouble y_max_ = -1;
 
-    PF_Column::Direction current_direction_;
-    PF_Column::FractionalBoxes fractional_boxes_;
+    PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
+    PF_Column::FractionalBoxes fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
 
 }; // -----  end of class PF_Chart  -----
 
@@ -127,7 +127,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
     {
         os << '\t' << col << '\n';
     }
-    os << '\t' << *chart.current_column_ << '\n';
+    os << '\t' << chart.current_column_ << '\n';
     os << "number of columns: " << chart.GetNumberOfColumns() << " min value: " << chart.y_min_ << " max value: " << chart.y_max_ << '\n';
     return os;
 }

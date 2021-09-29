@@ -57,14 +57,14 @@ PF_Column::PF_Column (const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
 
-std::unique_ptr<PF_Column> PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value,
+PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value,
         tpt the_time)
 {
-    auto new_column = std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_, direction,
+    auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
             direction == Direction::e_down ? value : bottom_ + box_size_
-            );
-    new_column->time_span_ = {the_time, the_time};
+    };
+    new_column.time_span_ = {the_time, the_time};
     return new_column;
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
 
