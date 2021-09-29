@@ -80,7 +80,6 @@ public:
 
     // ====================  MUTATORS      =======================================
     
-    template<typename T>
     void LoadData(std::istream* input_data, std::string_view format, char delim);
 
     // ====================  OPERATORS     =======================================
@@ -120,65 +119,6 @@ private:
     PF_Column::FractionalBoxes fractional_boxes_;
 
 }; // -----  end of class PF_Chart  -----
-
-template<typename T>
-void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char delim)
-{
-    // for now, just assume its numbers.
-
-    current_column_ = std::make_unique<PF_Column>(box_size_, reversal_boxes_, fractional_boxes_);
-
-    std::string buffer;
-    while ( ! input_data->eof())
-    {
-        std::getline(*input_data, buffer);
-        if (input_data->fail())
-        {
-            continue;
-        }
-        // need to split out fields
-
-        auto fields = split_string<std::string_view>(buffer, delim);
-
-        PF_Column::tpt the_time = StringToTimePoint("%Y-%m-%d", fields[0]);
-        auto [status, new_col] = current_column_->AddValue(DprDecimal::DDecDouble(fields[1]), the_time);
-
-        if (status == PF_Column::Status::e_accepted)
-        {
-            if (current_column_->GetTop() > y_max_)
-            {
-                y_max_ = current_column_->GetTop();
-            }
-            if (current_column_->GetBottom() < y_min_)
-            {
-                y_min_ = current_column_->GetBottom();
-            }
-        }
-
-        if (status == PF_Column::Status::e_reversal)
-        {
-            auto* save_col = current_column_.get();         // non-owning access
-            columns_.push_back(*save_col);
-            current_column_ = std::move(new_col.value());
-
-            // now continue on processing the value.
-            
-            status = current_column_->AddValue(DprDecimal::DDecDouble(fields[1]), the_time).first;
-            current_direction_ = current_column_->GetDirection();
-        }
-    }
-
-    // make sure we keep the last column we were working on 
-
-    if (current_column_->GetTop() > y_max_)
-    {
-        y_max_ = current_column_->GetTop();
-    }
-    if (current_column_->GetBottom() < y_min_)
-    {
-        y_min_ = current_column_->GetBottom();
-    }
-}
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
