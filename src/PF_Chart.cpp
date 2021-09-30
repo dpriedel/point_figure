@@ -181,6 +181,19 @@ void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
         }
     }
 
+    lowData.push_back(current_column_.GetBottom().ToDouble());
+    highData.push_back(current_column_.GetTop().ToDouble());
+
+    if (current_column_.GetDirection() == PF_Column::Direction::e_up)
+    {
+        openData.push_back(current_column_.GetBottom().ToDouble());
+        closeData.push_back(current_column_.GetTop().ToDouble());
+    }
+    else
+    {
+        openData.push_back(current_column_.GetTop().ToDouble());
+        closeData.push_back(current_column_.GetBottom().ToDouble());
+    }
     std::unique_ptr<XYChart> c = std::make_unique<XYChart>(600, 350);
 
     c->setPlotArea(50, 25, 500, 250)->setGridColor(0xc0c0c0, 0xc0c0c0);
