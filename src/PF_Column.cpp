@@ -90,17 +90,8 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     {
         // OK, first time here for this column.
 
-        top_= RoundDownToNearestBox(new_value);
-        bottom_ = top_;
-        time_span_ = {the_time, the_time};
-    
-        return {Status::e_accepted, std::nullopt};
+        return StartColumn(new_value, the_time);
     }
-
-    // In "21st Century Point and Figure", du Plessis talks about
-    // using the Average True Range to set the box size. This seems
-    // to me to be particularly appropriate for live streaming data.
-    // It also will support logarithmic charts.
 
     DprDecimal::DDecDouble possible_value;
     if (fractional_boxes_ == FractionalBoxes::e_integral)
@@ -113,33 +104,13 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     }
 
     // OK, we've got a value but may not yet have a direction.
-    // NOTE: Since a new value may gap up or down, we could 
-    // have multiple boxes to fill in. 
 
     if (direction_ == Direction::e_unknown)
     {
         // we can compare to either value since they 
         // are both the same at this point.
 
-        if (possible_value >= top_ + box_size_)
-        {
-            direction_ = Direction::e_up;
-            int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
-            top_ += how_many_boxes * box_size_;
-            time_span_.second = the_time;
-            return {Status::e_accepted, std::nullopt};
-        }
-        if (possible_value <= bottom_ - box_size_)
-        {
-            direction_ = Direction::e_down;
-            int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
-            bottom_ += how_many_boxes * box_size_;
-            time_span_.second = the_time;
-            return {Status::e_accepted, std::nullopt};
-        }
-
-        // skip value
-        return {Status::e_ignored, std::nullopt};
+        return TryToFindDirection(possible_value, the_time);
     }
 
     // now that we know our direction, we can either continue in 
@@ -153,6 +124,42 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     }
     return TryToExtendDown(possible_value, the_time);
 }		// -----  end of method PF_Column::AddValue  ----- 
+
+PF_Column::AddResult PF_Column::StartColumn (DprDecimal::DDecDouble new_value, tpt the_time)
+{
+    top_= RoundDownToNearestBox(new_value);
+    bottom_ = top_;
+    time_span_ = {the_time, the_time};
+
+    return {Status::e_accepted, std::nullopt};
+}		// -----  end of method PF_Column::StartColumn  ----- 
+
+
+PF_Column::AddResult PF_Column::TryToFindDirection (DprDecimal::DDecDouble possible_value, tpt the_time)
+{
+    // NOTE: Since a new value may gap up or down, we could 
+    // have multiple boxes to fill in. 
+
+    if (possible_value >= top_ + box_size_)
+    {
+        direction_ = Direction::e_up;
+        int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
+        top_ += how_many_boxes * box_size_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+    if (possible_value <= bottom_ - box_size_)
+    {
+        direction_ = Direction::e_down;
+        int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
+        bottom_ += how_many_boxes * box_size_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+
+    // skip value
+    return {Status::e_ignored, std::nullopt};
+}		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
 PF_Column::AddResult PF_Column::TryToExtendUp (DprDecimal::DDecDouble possible_value, tpt the_time)
 {

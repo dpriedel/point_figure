@@ -94,6 +94,8 @@ private:
 
     void FromJSON(const Json::Value& new_data);
 
+    [[nodiscard]] AddResult StartColumn(DprDecimal::DDecDouble new_value, tpt the_time);
+    [[nodiscard]] AddResult TryToFindDirection(DprDecimal::DDecDouble possible_value, tpt the_time);
     [[nodiscard]] AddResult TryToExtendUp(DprDecimal::DDecDouble possible_value, tpt the_time);
     [[nodiscard]] AddResult TryToExtendDown(DprDecimal::DDecDouble possible_value, tpt the_time);
 
