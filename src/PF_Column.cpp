@@ -97,8 +97,8 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
         return {Status::e_accepted, std::nullopt};
     }
 
-    // In "21st Century Point and Figure", Du Plessis talks about
-    // use the Average True Range to set the box size. This seems
+    // In "21st Century Point and Figure", du Plessis talks about
+    // using the Average True Range to set the box size. This seems
     // to me to be particularly appropriate for live streaming data.
     // It also will support logarithmic charts.
 
@@ -114,8 +114,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
 
     // OK, we've got a value but may not yet have a direction.
     // NOTE: Since a new value may gap up or down, we could 
-    // have multiple boxes to fill in. Hence the loops in 
-    // routines below.
+    // have multiple boxes to fill in. 
 
     if (direction_ == Direction::e_unknown)
     {
@@ -124,21 +123,17 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
 
         if (possible_value >= top_ + box_size_)
         {
-            while (possible_value >= top_ + box_size_)
-            {
-                direction_ = Direction::e_up;
-                top_ += box_size_;
-            }
+            direction_ = Direction::e_up;
+            int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
+            top_ += how_many_boxes * box_size_;
             time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
         if (possible_value <= bottom_ - box_size_)
         {
-            while(possible_value <= bottom_ - box_size_)
-            {
-                direction_ = Direction::e_down;
-                bottom_ -= box_size_;
-            }
+            direction_ = Direction::e_down;
+            int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
+            bottom_ += how_many_boxes * box_size_;
             time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
@@ -156,10 +151,8 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     {
         if (possible_value >= top_ + box_size_)
         {
-            while (possible_value >= top_ + box_size_)
-            {
-                top_ += box_size_;
-            }
+            int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
+            top_ += how_many_boxes * box_size_;
             time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
@@ -177,10 +170,8 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                     // can't do it as box is occupied.
                     return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_, the_time)};
                 }
-                while(possible_value <= bottom_ - box_size_)
-                {
-                    bottom_ -= box_size_;
-                }
+                int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
+                bottom_ += how_many_boxes * box_size_;
                 had_reversal_ = true;
                 direction_ = Direction::e_down;
                 time_span_.second = the_time;
@@ -194,10 +185,8 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     {
         if (possible_value <= bottom_ - box_size_)
         {
-            while(possible_value <= bottom_ - box_size_)
-            {
-                bottom_ -= box_size_;
-            }
+            int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
+            bottom_ += how_many_boxes * box_size_;
             time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
@@ -215,10 +204,8 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
                     // can't do it as box is occupied.
                     return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_, the_time)};
                 }
-                while(possible_value >= top_ + box_size_)
-                {
-                    top_ += box_size_;
-                }
+                int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
+                top_ += how_many_boxes * box_size_;
                 had_reversal_ = true;
                 direction_ = Direction::e_up;
                 time_span_.second = the_time;
@@ -228,7 +215,6 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
             return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_), the_time)};
         }
     }
-
 
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::AddValue  ----- 
