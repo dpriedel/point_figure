@@ -149,75 +149,83 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
 
     if (direction_ == Direction::e_up)
     {
-        if (possible_value >= top_ + box_size_)
-        {
-            int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
-            top_ += how_many_boxes * box_size_;
-            time_span_.second = the_time;
-            return {Status::e_accepted, std::nullopt};
-        }
-        // look for a reversal 
-
-        if (possible_value <= top_ - (box_size_ * reversal_boxes_))
-        {
-            // look for one-step-back reversal first.
-
-            if (reversal_boxes_ == 1)
-            {
-                if (bottom_ <= top_ - box_size_)
-                {
-                    time_span_.second = the_time;
-                    // can't do it as box is occupied.
-                    return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_, the_time)};
-                }
-                int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
-                bottom_ += how_many_boxes * box_size_;
-                had_reversal_ = true;
-                direction_ = Direction::e_down;
-                time_span_.second = the_time;
-                return {Status::e_accepted, std::nullopt};
-            }
-            time_span_.second = the_time;
-            return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - (box_size_ * reversal_boxes_), the_time)};
-        }
+        return TryToExtendUp(possible_value, the_time);
     }
-    if (direction_ == Direction::e_down)
+    return TryToExtendDown(possible_value, the_time);
+}		// -----  end of method PF_Column::AddValue  ----- 
+
+PF_Column::AddResult PF_Column::TryToExtendUp (DprDecimal::DDecDouble possible_value, tpt the_time)
+{
+    if (possible_value >= top_ + box_size_)
     {
-        if (possible_value <= bottom_ - box_size_)
+        int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
+        top_ += how_many_boxes * box_size_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+    // look for a reversal 
+
+    if (possible_value <= top_ - (box_size_ * reversal_boxes_))
+    {
+        // look for one-step-back reversal first.
+
+        if (reversal_boxes_ == 1)
         {
+            if (bottom_ <= top_ - box_size_)
+            {
+                time_span_.second = the_time;
+                // can't do it as box is occupied.
+                return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_, the_time)};
+            }
             int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
             bottom_ += how_many_boxes * box_size_;
+            had_reversal_ = true;
+            direction_ = Direction::e_down;
             time_span_.second = the_time;
             return {Status::e_accepted, std::nullopt};
         }
-        // look for a reversal 
-
-        if (possible_value >= bottom_ + (box_size_ * reversal_boxes_))
-        {
-            // look for one-step-back reversal first.
-
-            if (reversal_boxes_ == 1)
-            {
-                if (top_ >= bottom_ + box_size_)
-                {
-                    time_span_.second = the_time;
-                    // can't do it as box is occupied.
-                    return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_, the_time)};
-                }
-                int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
-                top_ += how_many_boxes * box_size_;
-                had_reversal_ = true;
-                direction_ = Direction::e_up;
-                time_span_.second = the_time;
-                return {Status::e_accepted, std::nullopt};
-            }
-            time_span_.second = the_time;
-            return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_), the_time)};
-        }
+        time_span_.second = the_time;
+        return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - (box_size_ * reversal_boxes_), the_time)};
     }
-
     return {Status::e_ignored, std::nullopt};
-}		// -----  end of method PF_Column::AddValue  ----- 
+}		// -----  end of method PF_Chart::TryToExtendUp  ----- 
+
+
+PF_Column::AddResult PF_Column::TryToExtendDown (DprDecimal::DDecDouble possible_value, tpt the_time)
+{
+    if (possible_value <= bottom_ - box_size_)
+    {
+        int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
+        bottom_ += how_many_boxes * box_size_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+    // look for a reversal 
+
+    if (possible_value >= bottom_ + (box_size_ * reversal_boxes_))
+    {
+        // look for one-step-back reversal first.
+
+        if (reversal_boxes_ == 1)
+        {
+            if (top_ >= bottom_ + box_size_)
+            {
+                time_span_.second = the_time;
+                // can't do it as box is occupied.
+                return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_, the_time)};
+            }
+            int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
+            top_ += how_many_boxes * box_size_;
+            had_reversal_ = true;
+            direction_ = Direction::e_up;
+            time_span_.second = the_time;
+            return {Status::e_accepted, std::nullopt};
+        }
+        time_span_.second = the_time;
+        return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_), the_time)};
+    }
+    return {Status::e_ignored, std::nullopt};
+}		// -----  end of method PF_Column::TryToExtendDown  ----- 
 
 DprDecimal::DDecDouble PF_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
 {

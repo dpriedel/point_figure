@@ -94,6 +94,9 @@ private:
 
     void FromJSON(const Json::Value& new_data);
 
+    [[nodiscard]] AddResult TryToExtendUp(DprDecimal::DDecDouble possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendDown(DprDecimal::DDecDouble possible_value, tpt the_time);
+
     [[nodiscard]] DprDecimal::DDecDouble RoundDownToNearestBox(const DprDecimal::DDecDouble& a_value) const;
 
     // ====================  DATA MEMBERS  =======================================
