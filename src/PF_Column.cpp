@@ -83,9 +83,6 @@ bool PF_Column::operator== (const PF_Column& rhs) const
 
 PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_value, tpt the_time)
 {
-    // if this is the first entry in the column, just set first entry 
-    // to the input value rounded down to the nearest box value.
-
     if (top_ == -1 && bottom_ == -1)
     {
         // OK, first time here for this column.
@@ -107,13 +104,10 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
 
     if (direction_ == Direction::e_unknown)
     {
-        // we can compare to either value since they 
-        // are both the same at this point.
-
         return TryToFindDirection(possible_value, the_time);
     }
 
-    // now that we know our direction, we can either continue in 
+    // If we're here, we have direction. We can either continue in 
     // that direction, ignore the value or reverse our direction 
     // in which case, we start a new column (unless this is 
     // a 1-box reversal and we can revers in place)
@@ -127,6 +121,9 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
 
 PF_Column::AddResult PF_Column::StartColumn (DprDecimal::DDecDouble new_value, tpt the_time)
 {
+    // As this is the first entry in the column, just set fields 
+    // to the input value rounded down to the nearest box value.
+
     top_= RoundDownToNearestBox(new_value);
     bottom_ = top_;
     time_span_ = {the_time, the_time};
@@ -139,6 +136,9 @@ PF_Column::AddResult PF_Column::TryToFindDirection (DprDecimal::DDecDouble possi
 {
     // NOTE: Since a new value may gap up or down, we could 
     // have multiple boxes to fill in. 
+
+    // we can compare to either value since they 
+    // are both the same at this point.
 
     if (possible_value >= top_ + box_size_)
     {
