@@ -74,13 +74,14 @@ public:
 //    [[nodiscard]] const_iterator begin() const { return columns_.begin(); }
 //    [[nodiscard]] const_iterator end() const { return columns_.end(); }
 
-    void ConstructChartAndWriteToFile(fs::path output_filename) const;
+    void ConstructChartAndWriteToFile(const fs::path& output_filename) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
 
     // ====================  MUTATORS      =======================================
     
-    void LoadData(std::istream* input_data, std::string_view format, char delim);
+    void AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time);
+    void LoadData(std::istream* input_data, std::string_view date_format, char delim);
 
     // ====================  OPERATORS     =======================================
 

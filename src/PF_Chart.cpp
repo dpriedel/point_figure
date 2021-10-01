@@ -98,7 +98,35 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     return true;
 }		// -----  end of method PF_Chart::operator==  ----- 
 
-void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char delim)
+void PF_Chart::AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time)
+{
+    auto [status, new_col] = current_column_.AddValue(new_value, the_time);
+
+    if (status == PF_Column::Status::e_accepted)
+    {
+        if (current_column_.GetTop() > y_max_)
+        {
+            y_max_ = current_column_.GetTop();
+        }
+        if (current_column_.GetBottom() < y_min_)
+        {
+            y_min_ = current_column_.GetBottom();
+        }
+    }
+
+    if (status == PF_Column::Status::e_reversal)
+    {
+        columns_.push_back(current_column_);
+        current_column_ = std::move(new_col.value());
+
+        // now continue on processing the value.
+        
+        status = current_column_.AddValue(new_value, the_time).first;
+        current_direction_ = current_column_.GetDirection();
+    }
+}		// -----  end of method PF_Chart::AddValue  ----- 
+
+void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format, char delim)
 {
     std::string buffer;
     while ( ! input_data->eof())
@@ -112,31 +140,9 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char
 
         auto fields = split_string<std::string_view>(buffer, delim);
 
-        PF_Column::tpt the_time = StringToTimePoint("%Y-%m-%d", fields[0]);
-        auto [status, new_col] = current_column_.AddValue(DprDecimal::DDecDouble(fields[1]), the_time);
+        PF_Column::tpt the_time = StringToTimePoint(date_format, fields[0]);
 
-        if (status == PF_Column::Status::e_accepted)
-        {
-            if (current_column_.GetTop() > y_max_)
-            {
-                y_max_ = current_column_.GetTop();
-            }
-            if (current_column_.GetBottom() < y_min_)
-            {
-                y_min_ = current_column_.GetBottom();
-            }
-        }
-
-        if (status == PF_Column::Status::e_reversal)
-        {
-            columns_.push_back(current_column_);
-            current_column_ = std::move(new_col.value());
-
-            // now continue on processing the value.
-            
-            status = current_column_.AddValue(DprDecimal::DDecDouble(fields[1]), the_time).first;
-            current_direction_ = current_column_.GetDirection();
-        }
+        AddValue(DprDecimal::DDecDouble(fields[1]), the_time);
     }
 
     // make sure we keep the last column we were working on 
@@ -151,7 +157,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view format, char
     }
 }
 
-void PF_Chart::ConstructChartAndWriteToFile (fs::path output_filename) const
+void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) const
 {
     // this code comes pretty much right out of the cppdemo code
     // with some modifications for good memory management practices.
