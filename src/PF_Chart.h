@@ -80,7 +80,7 @@ public:
 
     // ====================  MUTATORS      =======================================
     
-    void AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time);
+    PF_Column::Status AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, char delim);
 
     // ====================  OPERATORS     =======================================

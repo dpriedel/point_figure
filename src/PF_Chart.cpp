@@ -98,7 +98,7 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     return true;
 }		// -----  end of method PF_Chart::operator==  ----- 
 
-void PF_Chart::AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time)
+PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time)
 {
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
 
@@ -113,8 +113,7 @@ void PF_Chart::AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt 
             y_min_ = current_column_.GetBottom();
         }
     }
-
-    if (status == PF_Column::Status::e_reversal)
+    else if (status == PF_Column::Status::e_reversal)
     {
         columns_.push_back(current_column_);
         current_column_ = std::move(new_col.value());
@@ -124,6 +123,7 @@ void PF_Chart::AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt 
         status = current_column_.AddValue(new_value, the_time).first;
         current_direction_ = current_column_.GetDirection();
     }
+    return status;
 }		// -----  end of method PF_Chart::AddValue  ----- 
 
 void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format, char delim)
