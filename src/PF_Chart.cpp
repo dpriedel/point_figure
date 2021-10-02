@@ -21,6 +21,8 @@
 #include <chartdir.h>
 #include <fmt/format.h>
 
+#include <range/v3/algorithm/for_each.hpp>
+
 #include "PF_Chart.h"
 
 //--------------------------------------------------------------------------------------
@@ -330,11 +332,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     // lastly, we can do our columns 
 
     const auto& cols = new_data["columns"];
-    auto cols_size = cols.size();
-    for (int i = 0; i < cols_size; ++i)
-    {
-        columns_.emplace_back(PF_Column{cols[i]});
-    }
+    ranges::for_each(cols, [this](const auto& next_val) { this->columns_.emplace_back(next_val); });
 
     current_column_ = {new_data["current_column"]};
 
