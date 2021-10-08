@@ -32,9 +32,10 @@
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecDouble box_size, int32_t reversal_boxes,
-        PF_Column::FractionalBoxes fractional_boxes)
+        PF_Column::FractionalBoxes fractional_boxes, bool use_logarithms)
     : current_column_{box_size, reversal_boxes, fractional_boxes}, symbol_{symbol},
-    box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes}
+    box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
+    use_logarithms_{use_logarithms}
 
 {
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -82,6 +83,11 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
         return false;
     }
     if (fractional_boxes_ != rhs.fractional_boxes_)
+    {
+        return false;
+    }
+
+    if (use_logarithms_ != rhs.use_logarithms_)
     {
         return false;
     }
@@ -241,6 +247,7 @@ Json::Value PF_Chart::ToJSON () const
     result["reversal_boxes"] = reversal_boxes_;
     result["y_min"] = y_min_.ToStr();
     result["y_max"] = y_max_.ToStr();
+    result["use_logarithms"] = use_logarithms_;
 
     switch(current_direction_)
     {
@@ -291,6 +298,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
     y_min_ = DprDecimal::DDecDouble{new_data["y_min"].asString()};
     y_max_ = DprDecimal::DDecDouble{new_data["y_max"].asString()};
+    use_logarithms_ = new_data["use_logarithms"].asBool();
 
     const auto direction = new_data["current_direction"].asString();
     if (direction == "up")
@@ -337,4 +345,15 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     current_column_ = {new_data["current_column"]};
 
 }		// -----  end of method PF_Chart::FromJSON  ----- 
+
+
+    // ===  FUNCTION  ======================================================================
+    //         Name:  ComputeATR
+    //  Description:  
+    // =====================================================================================
+
+DprDecimal::DDecDouble ComputeATR(std::string_view symbol, date::year_month_day start_date, int32_t how_man_days)
+{
+    return {};
+}		// -----  end of function ComputeATR  -----
 

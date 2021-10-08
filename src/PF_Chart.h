@@ -57,7 +57,8 @@ public:
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
     PF_Chart(const std::string& symbol, DprDecimal::DDecDouble box_size, int32_t reversal_boxes,
-            PF_Column::FractionalBoxes fractional_boxes=PF_Column::FractionalBoxes::e_integral);
+            PF_Column::FractionalBoxes fractional_boxes=PF_Column::FractionalBoxes::e_integral,
+            bool use_logarithms=false);
 
     explicit PF_Chart(const Json::Value& new_data);
 
@@ -119,6 +120,8 @@ private:
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
     PF_Column::FractionalBoxes fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
 
+    bool use_logarithms_ = false;
+
 }; // -----  end of class PF_Chart  -----
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
@@ -132,6 +135,13 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
     os << "number of columns: " << chart.GetNumberOfColumns() << " min value: " << chart.y_min_ << " max value: " << chart.y_max_ << '\n';
     return os;
 }
+
+// In order to set our box size, we use the Average True Range method. For
+// each symbol, we will look up the 'n' most recent historical values 
+// starting with the given date and moving backward from 
+// Tiingo and compute the ATR using the formula from Investopedia.
+
+DprDecimal::DDecDouble ComputeATR(std::string_view symbol, date::year_month_day start_date, int32_t how_man_days);
 
 #endif   // ----- #ifndef PF_CHART_INC  ----- 
 
