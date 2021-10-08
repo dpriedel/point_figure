@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  LiveStream.h
+//       Filename:  Tiingo.h
 //
 //    Description:  class to live stream ticker updatas 
 //
@@ -14,12 +14,17 @@
 //
 // =====================================================================================
 
-#ifndef  LIVESTREAM_INC
-#define  LIVESTREAM_INC
+#ifndef  _TIINGO_INC_
+#define  _TIINGO_INC_
 
+#include <date/date.h>
 #include <deque>
 #include <string>
 #include <vector>
+#include <sys/types.h>
+
+#include <date/julian.h>
+#include <json/json.h>
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
@@ -28,8 +33,6 @@
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
-
-#include <sys/types.h>
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -41,11 +44,11 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 #include "DDecDouble.h"
 
 // =====================================================================================
-//        Class:  LiveStream
+//        Class:  Tiingo
 //  Description:  live stream ticker updates -- look like a generator 
 // =====================================================================================
 #include <vector>
-class LiveStream
+class Tiingo
 {
 public:
 
@@ -60,13 +63,13 @@ public:
     };
 
     // ====================  LIFECYCLE     ======================================= 
-    LiveStream ();                             // constructor 
-    ~LiveStream ();
-    LiveStream (const std::string& host, const std::string& port, const std::string& prefix,
+    Tiingo ();                             // constructor 
+    ~Tiingo ();
+    Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
             const std::string& api_key, const std::string& symbols);
 
-    LiveStream(const LiveStream& rhs) = delete;
-    LiveStream(LiveStream&& rhs) = delete;
+    Tiingo(const Tiingo& rhs) = delete;
+    Tiingo(Tiingo&& rhs) = delete;
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -74,6 +77,9 @@ public:
     [[nodiscard]] std::deque<PF_Data>::const_iterator end() const { return pf_data_.end(); }
 
     [[nodiscard]] bool empty() const { return pf_data_.empty(); }
+
+    Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, bool sort_asc);
+    Json::Value GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous);
 
     // ====================  MUTATORS      ======================================= 
 
@@ -84,8 +90,8 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
-    LiveStream& operator = (const LiveStream& rhs) = delete;
-    LiveStream& operator = (LiveStream&& rhs) = delete;
+    Tiingo& operator = (const Tiingo& rhs) = delete;
+    Tiingo& operator = (Tiingo&& rhs) = delete;
 
 protected:
     // ====================  METHODS       ======================================= 
@@ -111,13 +117,13 @@ private:
     ssl::context ctx_;
     tcp::resolver resolver_;
     websocket::stream<beast::ssl_stream<tcp::socket>> ws_;
-}; // -----  end of class LiveStream  ----- 
+}; // -----  end of class Tiingo  ----- 
 
-inline std::ostream& operator<<(std::ostream& os, const LiveStream::PF_Data pf_data)
+inline std::ostream& operator<<(std::ostream& os, const Tiingo::PF_Data pf_data)
 {
     std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_ << " time:" << pf_data.time_stamp_;
     return os;
 }
 
 
-#endif   // ----- #ifndef LIVESTREAM_INC  ----- 
+#endif   // ----- #ifndef _TIINGO_INC_  ----- 

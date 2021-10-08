@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  LiveStream.cpp
+//       Filename:  Tiingo.cpp
 //
 //    Description:  Live stream ticker updates 
 //
@@ -15,11 +15,10 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
+#include <date/date.h>
 #include <string_view>
 
-#include <json/json.h>
-
-#include "LiveStream.h"
+#include "Tiingo.h"
 #include "boost/beast/core/buffers_to_string.hpp"
 
 #include "utilities.h"
@@ -28,17 +27,17 @@ using namespace std::string_literals;
 
 
 //--------------------------------------------------------------------------------------
-//       Class:  LiveStream
-//      Method:  LiveStream
+//       Class:  Tiingo
+//      Method:  Tiingo
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-LiveStream::LiveStream ()
+Tiingo::Tiingo ()
     : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
 {
-}  // -----  end of method LiveStream::LiveStream  (constructor)  ----- 
+}  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
 
-LiveStream::~LiveStream ()
+Tiingo::~Tiingo ()
 {
     // need to disconnect if still connected.
     
@@ -46,9 +45,9 @@ LiveStream::~LiveStream ()
     {
         Disconnect();
     }
-}		// -----  end of method LiveStream::~LiveStream  ----- 
+}		// -----  end of method Tiingo::~Tiingo  ----- 
 
-LiveStream::LiveStream (const std::string& host, const std::string& port, const std::string& prefix,
+Tiingo::Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
             const std::string& api_key, const std::string& symbols)
     : api_key_{api_key}, host_{host}, port_{port}, websocket_prefix_{prefix},
         ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
@@ -58,9 +57,9 @@ LiveStream::LiveStream (const std::string& host, const std::string& port, const 
 
     symbol_list_ = split_string<std::string>(symbols, ',');
 
-}  // -----  end of method LiveStream::LiveStream  (constructor)  ----- 
+}  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
 
-void LiveStream::Connect()
+void Tiingo::Connect()
 {
     // Look up the domain name
     auto const results = resolver_.resolve(host_, port_);
@@ -89,7 +88,7 @@ void LiveStream::Connect()
 
 
 }
-void LiveStream::StreamData(bool* time_to_stop)
+void Tiingo::StreamData(bool* time_to_stop)
 {
 
     // put this here for now.
@@ -99,7 +98,7 @@ void LiveStream::StreamData(bool* time_to_stop)
     connection_request["eventName"] = "subscribe";
     connection_request["authorization"] = api_key_;
     connection_request["eventData"]["thresholdLevel"] = 5;
-    Json::Value tickers;
+    Json::Value tickers(Json::arrayValue);
     for (const auto& symbol : symbol_list_)
     {
         tickers.append(symbol);
@@ -134,7 +133,7 @@ void LiveStream::StreamData(bool* time_to_stop)
     }
 }
 
-void LiveStream::ExtractData (const std::string& buffer)
+void Tiingo::ExtractData (const std::string& buffer)
 {
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
@@ -190,9 +189,9 @@ void LiveStream::ExtractData (const std::string& buffer)
         throw std::runtime_error("unexpected message type: "s + message_type.asString());
     }
 
-}		// -----  end of method LiveStream::ExtractData  ----- 
+}		// -----  end of method Tiingo::ExtractData  ----- 
 
-void LiveStream::StopStreaming ()
+void Tiingo::StopStreaming ()
 {
     // we need to send the unsubscribe message in a separate connection.
 
@@ -200,7 +199,7 @@ void LiveStream::StopStreaming ()
     disconnect_request["eventName"] = "unsubscribe";
     disconnect_request["authorization"] = api_key_;
     disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
-    Json::Value tickers;
+    Json::Value tickers(Json::arrayValue);
     for (const auto& symbol : symbol_list_)
     {
         tickers.append(symbol);
@@ -259,11 +258,62 @@ void LiveStream::StopStreaming ()
 
 //    std::cout << beast::make_printable(buffer.data()) << std::endl;
  
-}		// -----  end of method LiveStream::StopStreaming  ----- 
+}		// -----  end of method Tiingo::StopStreaming  ----- 
 
-void LiveStream::Disconnect()
+void Tiingo::Disconnect()
 {
 
     // Close the WebSocket connection
     ws_.close(websocket::close_code::normal);
 }
+
+Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous)
+{
+    // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
+
+    auto days = date::sys_days(start_from);
+    date::weekday business_days{days};
+
+    // first, make sure we are on a weekday to start with 
+
+    if (business_days == date::Saturday)
+    {
+        --days;
+        --business_days;
+    }
+    else if (business_days == date::Sunday)
+    {
+        --days;
+        --days;
+        --business_days;
+        --business_days;
+    }
+
+    start_from = date::year_month_day{days};
+
+    for (int i = --how_many_previous; i > 1; --i)
+    {
+        --business_days;
+        if (business_days == date::Saturday)
+        {
+            --days;
+            --business_days;
+        }
+        else if (business_days == date::Sunday)
+        {
+            --days;
+            --days;
+            --business_days;
+            --business_days;
+        }
+    }
+    date::year_month_day end_at = date::year_month_day{days};
+    return GetTickerData(symbol, start_from, end_at, false);
+
+}		// -----  end of method Tiingo::GetMostRecentTickerData  ----- 
+
+Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, bool sort_asc)
+{
+    return {};
+}		// -----  end of method Tiingo::GetTickerData  ----- 
+
