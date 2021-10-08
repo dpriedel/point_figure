@@ -280,6 +280,7 @@ Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
 
     auto business_days = ConstructeBusinessDayRange(start_from, how_many_previous, UpOrDown::e_Down);
+//    std::cout << "business days: " << business_days.first << " : " << business_days.second << '\n';
 
     // we reverse the dates because we worked backwards from our given starting point and 
     // Tiingo needs the dates in ascending order. 
@@ -302,16 +303,16 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
     }
 
     auto const results = resolver.resolve(host_, port_);
-
     beast::get_lowest_layer(stream).connect(results);
-
     stream.handshake(ssl::stream_base::client);
 
-    std::string headers = R"({ "Content-Type": "application/json" })";
-    std::string request = fmt::format("https://{}/tiingo/daily/{}/prices?startDate={:%Y-%m-%d}&endDate={:%Y-%m-%d}&token={}&format={}&resampleFreq={}&sort={}",
-            host_, symbol, date::sys_days(start_date), date::sys_days(end_date), api_key_, "json", "daily", "-date");
+    // we use our custom formatter for year_month_day objects because converting to sys_days 
+    // and then formatting changes the date (becomes a day earlier) for some reason (time zone 
+    // related maybe?? )
 
-    std::cout << request << '\n';
+    std::string request = fmt::format("https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
+            host_, symbol, start_date, end_date, api_key_, "json", "daily", "-date");
+
     http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
     req.set(http::field::host, host_);
     req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
@@ -330,8 +331,20 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
     beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
 
-    std::cout << result << '\n';
-//	return result;
-    return {};
+//    std::cout << result << '\n';
+
+    // now, just convert to JSON 
+
+    JSONCPP_STRING err;
+    Json::Value response;
+
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+//    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+    if (! reader->parse(result.data(), result.data() + result.size(), &response, &err))
+    {
+        throw std::runtime_error("Problem parsing tiingo response: "s + err);
+    }
+    return response;
 }		// -----  end of method Tiingo::GetTickerData  ----- 
 
