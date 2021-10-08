@@ -42,6 +42,7 @@ namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 #include "DDecDouble.h"
+#include "utilities.h"
 
 // =====================================================================================
 //        Class:  Tiingo
@@ -65,6 +66,7 @@ public:
     // ====================  LIFECYCLE     ======================================= 
     Tiingo ();                             // constructor 
     ~Tiingo ();
+    Tiingo(const std::string& host, const std::string& port, const std::string& api_key);
     Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
             const std::string& api_key, const std::string& symbols);
 
@@ -78,7 +80,7 @@ public:
 
     [[nodiscard]] bool empty() const { return pf_data_.empty(); }
 
-    Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, bool sort_asc);
+    Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc);
     Json::Value GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous);
 
     // ====================  MUTATORS      ======================================= 
@@ -111,7 +113,8 @@ private:
     std::string host_;
     std::string port_;
     std::string websocket_prefix_;
-    int32_t subscription_id_;
+    int32_t subscription_id_ = -1;
+    int version_ = 11;
 
     net::io_context ioc_;
     ssl::context ctx_;

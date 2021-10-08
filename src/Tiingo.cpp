@@ -18,6 +18,8 @@
 #include <date/date.h>
 #include <string_view>
 
+#include <fmt/chrono.h>
+
 #include "Tiingo.h"
 #include "boost/beast/core/buffers_to_string.hpp"
 
@@ -46,6 +48,12 @@ Tiingo::~Tiingo ()
         Disconnect();
     }
 }		// -----  end of method Tiingo::~Tiingo  ----- 
+
+Tiingo::Tiingo (const std::string& host, const std::string& port, const std::string& api_key)
+    : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client},
+    resolver_{ioc_}, ws_{ioc_, ctx_}
+{
+}  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
 
 Tiingo::Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
             const std::string& api_key, const std::string& symbols)
@@ -271,49 +279,59 @@ Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
 
-    auto days = date::sys_days(start_from);
-    date::weekday business_days{days};
+    auto business_days = ConstructeBusinessDayRange(start_from, how_many_previous, UpOrDown::e_Down);
 
-    // first, make sure we are on a weekday to start with 
+    // we reverse the dates because we worked backwards from our given starting point and 
+    // Tiingo needs the dates in ascending order. 
 
-    if (business_days == date::Saturday)
-    {
-        --days;
-        --business_days;
-    }
-    else if (business_days == date::Sunday)
-    {
-        --days;
-        --days;
-        --business_days;
-        --business_days;
-    }
-
-    start_from = date::year_month_day{days};
-
-    for (int i = --how_many_previous; i > 1; --i)
-    {
-        --business_days;
-        if (business_days == date::Saturday)
-        {
-            --days;
-            --business_days;
-        }
-        else if (business_days == date::Sunday)
-        {
-            --days;
-            --days;
-            --business_days;
-            --business_days;
-        }
-    }
-    date::year_month_day end_at = date::year_month_day{days};
-    return GetTickerData(symbol, start_from, end_at, false);
+    return GetTickerData(symbol, business_days.second, business_days.first, UpOrDown::e_Down);
 
 }		// -----  end of method Tiingo::GetMostRecentTickerData  ----- 
 
-Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, bool sort_asc)
+Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc)
 {
+    // if any problems occur here, we'll just let beast throw an exception.
+
+    tcp::resolver resolver(ioc_);
+    beast::ssl_stream<beast::tcp_stream> stream(ioc_, ctx_);
+
+    if(! SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
+    {
+        beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
+        throw beast::system_error{ec};
+    }
+
+    auto const results = resolver.resolve(host_, port_);
+
+    beast::get_lowest_layer(stream).connect(results);
+
+    stream.handshake(ssl::stream_base::client);
+
+    std::string headers = R"({ "Content-Type": "application/json" })";
+    std::string request = fmt::format("https://{}/tiingo/daily/{}/prices?startDate={:%Y-%m-%d}&endDate={:%Y-%m-%d}&token={}&format={}&resampleFreq={}&sort={}",
+            host_, symbol, date::sys_days(start_date), date::sys_days(end_date), api_key_, "json", "daily", "-date");
+
+    std::cout << request << '\n';
+    http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
+    req.set(http::field::host, host_);
+    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+    http::write(stream, req);
+
+    beast::flat_buffer buffer;
+
+    http::response<http::string_body> res;
+
+    http::read(stream, buffer, res);
+    std::string result = res.body();
+
+    // shutdown without causing a 'stream_truncated' error.
+
+    beast::get_lowest_layer(stream).cancel();
+    beast::get_lowest_layer(stream).close();
+
+    std::cout << result << '\n';
+//	return result;
     return {};
 }		// -----  end of method Tiingo::GetTickerData  ----- 
 
