@@ -23,6 +23,7 @@
 
 #include <range/v3/algorithm/for_each.hpp>
 
+#include "DDecDouble.h"
 #include "PF_Chart.h"
 
 //--------------------------------------------------------------------------------------
@@ -349,11 +350,25 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
     // ===  FUNCTION  ======================================================================
     //         Name:  ComputeATR
-    //  Description:  
+    //  Description:  Expects the input data is in descending order by date
     // =====================================================================================
 
-DprDecimal::DDecDouble ComputeATR(std::string_view symbol, date::year_month_day start_date, int32_t how_man_days)
+DprDecimal::DDecDouble ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days)
 {
-    return {};
+    BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided. Need at least: {} values", how_many_days).c_str());
+
+    DprDecimal::DDecDouble total;
+
+    for (int i = 0; i < the_data.size(); ++i)
+    {
+        DprDecimal::DDecDouble high_minus_low = DprDecimal::DDecDouble{the_data[i]["high"].asString()} - DprDecimal::DDecDouble{the_data[i]["close"].asString()};
+        DprDecimal::DDecDouble high_minus_prev_close = (DprDecimal::DDecDouble{the_data[i]["high"].asString()} - DprDecimal::DDecDouble{the_data[i + 1]["close"].asString()}).abs();
+        DprDecimal::DDecDouble low_minus_prev_close = (DprDecimal::DDecDouble{the_data[i]["low"].asString()} - DprDecimal::DDecDouble{the_data[i + 1]["close"].asString()}).abs();
+
+        DprDecimal::DDecDouble max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
+        
+        total += max;
+    }
+    return total /= how_many_days;
 }		// -----  end of function ComputeATR  -----
 

@@ -141,7 +141,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 // starting with the given date and moving backward from 
 // Tiingo and compute the ATR using the formula from Investopedia.
 
-DprDecimal::DDecDouble ComputeATR(std::string_view symbol, date::year_month_day start_date, int32_t how_man_days);
+DprDecimal::DDecDouble ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days);
 
 #endif   // ----- #ifndef PF_CHART_INC  ----- 
 
