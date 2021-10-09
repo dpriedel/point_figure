@@ -31,6 +31,7 @@ decContext DDecDouble::mCtx_ ;
 DDecDouble::DDecDouble()
 {
     decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
+    decDoubleFromInt32(&this->decimal_, 0);
 }
 
 DDecDouble::DDecDouble(const char* number)
@@ -75,6 +76,34 @@ DDecDouble::DDecDouble(double number, int dec_digits)
 //    decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx_);
     decDoubleFromString(&this->decimal_, buf.data(), &DDecDouble::mCtx_);
 //		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx_);
+}
+
+DDecDouble& DDecDouble::operator=(int32_t rhs)
+{
+    DDecDouble tmp{rhs};
+    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    return *this;
+}
+
+DDecDouble& DDecDouble::operator=(uint32_t rhs)
+{
+    DDecDouble tmp{rhs};
+    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    return *this;
+}
+
+DDecDouble& DDecDouble::operator=(double rhs)
+{
+    DDecDouble tmp{rhs};
+    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    return *this;
+}
+
+DDecDouble& DDecDouble::operator=(std::string_view rhs)
+{
+    DDecDouble tmp{rhs};
+    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    return *this;
 }
 
 int32_t DDecDouble::ToIntRounded () const

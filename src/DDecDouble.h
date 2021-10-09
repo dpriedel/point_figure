@@ -77,6 +77,11 @@ public:
     DDecDouble& operator*=(const DDecDouble& rhs);
     DDecDouble& operator/=(const DDecDouble& rhs);
 
+    DDecDouble& operator=(int32_t rhs);
+    DDecDouble& operator=(uint32_t rhs);
+    DDecDouble& operator=(double rhs);
+    DDecDouble& operator=(std::string_view rhs);
+
 protected:
     // ====================  DATA MEMBERS  =======================================
 
