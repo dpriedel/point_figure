@@ -19,6 +19,9 @@ extern "C" {
 
 namespace DprDecimal
 {
+class DDecDouble;
+
+    DDecDouble max(const DDecDouble& lhs, const DDecDouble& rhs);
 
 //	example specialization
 
@@ -48,6 +51,8 @@ class DDecDouble
 	friend bool operator<=(const DDecDouble& lhs, const DDecDouble& rhs);
 	friend bool operator>=(const DDecDouble& lhs, const DDecDouble& rhs);
 
+    friend DDecDouble max(const DDecDouble& lhs, const DDecDouble& rhs);
+
 	friend std::istream& operator>>(std::istream& is, DDecDouble& item);
 	friend std::ostream& operator<<(std::ostream& os, const DDecDouble& item);
 
@@ -70,6 +75,8 @@ public:
 
     // ====================  MUTATORS      =======================================
 
+    [[nodiscard]] DDecDouble abs() const;
+
     // ====================  OPERATORS     =======================================
     
     DDecDouble& operator+=(const DDecDouble& rhs);
@@ -81,6 +88,7 @@ public:
     DDecDouble& operator=(uint32_t rhs);
     DDecDouble& operator=(double rhs);
     DDecDouble& operator=(std::string_view rhs);
+
 
 protected:
     // ====================  DATA MEMBERS  =======================================

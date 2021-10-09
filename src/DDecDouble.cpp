@@ -31,7 +31,7 @@ decContext DDecDouble::mCtx_ ;
 DDecDouble::DDecDouble()
 {
     decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
-    decDoubleFromInt32(&this->decimal_, 0);
+    decDoubleIsZero(&this->decimal_);
 }
 
 DDecDouble::DDecDouble(const char* number)
@@ -132,4 +132,23 @@ double DDecDouble::ToDouble () const
     return result ;
 }		// -----  end of method DDecDouble::ToDouble  ----- 
 
+DDecDouble DDecDouble::abs() const
+{
+    DDecDouble result;
+    decDoubleAbs(&result.decimal_, &this->decimal_, &DDecDouble::mCtx_);
+
+    return result;
+}		// -----  end of method DDecDouble::abs  ----- 
+
+// ===  FUNCTION  ======================================================================
+//         Name:  max
+//  Description:  
+// =====================================================================================
+    
+DDecDouble DprDecimal::max(const DDecDouble& lhs, const DDecDouble& rhs)
+{
+    DDecDouble result;
+    decDoubleMax(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+    return result;
+}		// -----  end of function max  -----
 
