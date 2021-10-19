@@ -359,16 +359,22 @@ DprDecimal::DDecDouble ComputeATR(std::string_view symbol, const Json::Value& th
 
     DprDecimal::DDecDouble total;
 
-    for (int i = 0; i < the_data.size(); ++i)
+    for (int i = 0; i < how_many_days; ++i)
     {
-        DprDecimal::DDecDouble high_minus_low = DprDecimal::DDecDouble{the_data[i]["high"].asString()} - DprDecimal::DDecDouble{the_data[i]["close"].asString()};
+//        std::cout << "data: " << the_data[i] << '\n';
+
+        DprDecimal::DDecDouble high_minus_low = DprDecimal::DDecDouble{the_data[i]["high"].asString()} - DprDecimal::DDecDouble{the_data[i]["low"].asString()};
         DprDecimal::DDecDouble high_minus_prev_close = (DprDecimal::DDecDouble{the_data[i]["high"].asString()} - DprDecimal::DDecDouble{the_data[i + 1]["close"].asString()}).abs();
         DprDecimal::DDecDouble low_minus_prev_close = (DprDecimal::DDecDouble{the_data[i]["low"].asString()} - DprDecimal::DDecDouble{the_data[i + 1]["close"].asString()}).abs();
 
         DprDecimal::DDecDouble max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
+
+//        std::cout << "h - l: " << high_minus_low << " h - pc: " << high_minus_prev_close << " l - pc: " << low_minus_prev_close << '\n';
         
         total += max;
     }
+
+//    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
 }		// -----  end of function ComputeATR  -----
 
