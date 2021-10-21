@@ -46,7 +46,7 @@ class PF_Chart
 {
 public:
 
-    using Y_Limits = std::pair<DprDecimal::DDecDouble, DprDecimal::DDecDouble>;
+    using Y_Limits = std::pair<DprDecimal::DDecQuad, DprDecimal::DDecQuad>;
 
     // make it look like a range
     //TODO: use a custom iterator which will include current_column_ in 
@@ -56,7 +56,7 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
-    PF_Chart(const std::string& symbol, DprDecimal::DDecDouble box_size, int32_t reversal_boxes,
+    PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
             PF_Column::FractionalBoxes fractional_boxes=PF_Column::FractionalBoxes::e_integral,
             bool use_logarithms=false);
 
@@ -81,7 +81,7 @@ public:
 
     // ====================  MUTATORS      =======================================
     
-    PF_Column::Status AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time);
+    PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, char delim);
 
     // ====================  OPERATORS     =======================================
@@ -112,10 +112,10 @@ private:
     PF_Column::tpt last_change_date_;		//	date of last change to data
     PF_Column::tpt last_checked_date_;	    //	last time checked to see if update needed
 
-    DprDecimal::DDecDouble box_size_ = -1;
+    DprDecimal::DDecQuad box_size_ = -1;
     int32_t reversal_boxes_ = -1;
-    DprDecimal::DDecDouble y_min_ = 100000;         // just a number
-    DprDecimal::DDecDouble y_max_ = -1;
+    DprDecimal::DDecQuad y_min_ = 100000;         // just a number
+    DprDecimal::DDecQuad y_max_ = -1;
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
     PF_Column::FractionalBoxes fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
@@ -141,7 +141,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 // starting with the given date and moving backward from 
 // Tiingo and compute the ATR using the formula from Investopedia.
 
-DprDecimal::DDecDouble ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days);
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days);
 
 #endif   // ----- #ifndef PF_CHART_INC  ----- 
 

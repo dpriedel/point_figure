@@ -31,7 +31,7 @@
 
 #include <fmt/format.h>
 
-#include "DDecDouble.h"
+#include "DDecQuad.h"
 #include "PF_Column.h"
 
 //--------------------------------------------------------------------------------------
@@ -40,8 +40,8 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Column::PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
-            Direction direction, DprDecimal::DDecDouble top, DprDecimal::DDecDouble bottom)
+PF_Column::PF_Column(DprDecimal::DDecQuad box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
+            Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
     : box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
         direction_{direction}, top_{top}, bottom_{bottom}
 {
@@ -57,7 +57,7 @@ PF_Column::PF_Column (const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
 
-PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecDouble value,
+PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQuad value,
         tpt the_time)
 {
     auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, direction,
@@ -81,7 +81,7 @@ bool PF_Column::operator== (const PF_Column& rhs) const
         && rhs.top_ == top_ && rhs.bottom_ == bottom_ && rhs.had_reversal_ == had_reversal_;
 }		// -----  end of method PF_Column::operator==  ----- 
 
-PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_value, tpt the_time)
+PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
     if (top_ == -1 && bottom_ == -1)
     {
@@ -90,7 +90,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
         return StartColumn(new_value, the_time);
     }
 
-    DprDecimal::DDecDouble possible_value;
+    DprDecimal::DDecQuad possible_value;
     if (fractional_boxes_ == FractionalBoxes::e_integral)
     {
         possible_value = new_value.ToIntTruncated();
@@ -119,7 +119,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecDouble& new_valu
     return TryToExtendDown(possible_value, the_time);
 }		// -----  end of method PF_Column::AddValue  ----- 
 
-PF_Column::AddResult PF_Column::StartColumn (DprDecimal::DDecDouble new_value, tpt the_time)
+PF_Column::AddResult PF_Column::StartColumn (DprDecimal::DDecQuad new_value, tpt the_time)
 {
     // As this is the first entry in the column, just set fields 
     // to the input value rounded down to the nearest box value.
@@ -132,7 +132,7 @@ PF_Column::AddResult PF_Column::StartColumn (DprDecimal::DDecDouble new_value, t
 }		// -----  end of method PF_Column::StartColumn  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToFindDirection (DprDecimal::DDecDouble possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToFindDirection (DprDecimal::DDecQuad possible_value, tpt the_time)
 {
     // NOTE: Since a new value may gap up or down, we could 
     // have multiple boxes to fill in. 
@@ -161,7 +161,7 @@ PF_Column::AddResult PF_Column::TryToFindDirection (DprDecimal::DDecDouble possi
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
-PF_Column::AddResult PF_Column::TryToExtendUp (DprDecimal::DDecDouble possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendUp (DprDecimal::DDecQuad possible_value, tpt the_time)
 {
     if (possible_value >= top_ + box_size_)
     {
@@ -198,7 +198,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp (DprDecimal::DDecDouble possible_v
 }		// -----  end of method PF_Chart::TryToExtendUp  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToExtendDown (DprDecimal::DDecDouble possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendDown (DprDecimal::DDecQuad possible_value, tpt the_time)
 {
     if (possible_value <= bottom_ - box_size_)
     {
@@ -234,9 +234,9 @@ PF_Column::AddResult PF_Column::TryToExtendDown (DprDecimal::DDecDouble possible
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendDown  ----- 
 
-DprDecimal::DDecDouble PF_Column::RoundDownToNearestBox (const DprDecimal::DDecDouble& a_value) const
+DprDecimal::DDecQuad PF_Column::RoundDownToNearestBox (const DprDecimal::DDecQuad& a_value) const
 {
-    DprDecimal::DDecDouble price_as_int;
+    DprDecimal::DDecQuad price_as_int;
     if (fractional_boxes_ == FractionalBoxes::e_integral)
     {
         price_as_int = a_value.ToIntTruncated();
@@ -247,7 +247,7 @@ DprDecimal::DDecDouble PF_Column::RoundDownToNearestBox (const DprDecimal::DDecD
     }
 
     // we're using '10' to start with
-    DprDecimal::DDecDouble result = DprDecimal::Mod(price_as_int, box_size_) * box_size_;
+    DprDecimal::DDecQuad result = DprDecimal::Mod(price_as_int, box_size_) * box_size_;
 
     return result;
 
@@ -299,10 +299,10 @@ Json::Value PF_Column::ToJSON () const
 
 void PF_Column::FromJSON (const Json::Value& new_data)
 {
-    box_size_ = DprDecimal::DDecDouble{new_data["box_size"].asString()};
+    box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
-    bottom_ = DprDecimal::DDecDouble{new_data["bottom"].asString()};
-    top_ = DprDecimal::DDecDouble{new_data["top"].asString()};
+    bottom_ = DprDecimal::DDecQuad{new_data["bottom"].asString()};
+    top_ = DprDecimal::DDecQuad{new_data["top"].asString()};
 
     const auto direction = new_data["direction"].asString();
     if (direction == "up")

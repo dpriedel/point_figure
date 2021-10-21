@@ -23,7 +23,7 @@
 
 #include <range/v3/algorithm/for_each.hpp>
 
-#include "DDecDouble.h"
+#include "DDecQuad.h"
 #include "PF_Chart.h"
 
 //--------------------------------------------------------------------------------------
@@ -32,7 +32,7 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecDouble box_size, int32_t reversal_boxes,
+PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
         PF_Column::FractionalBoxes fractional_boxes, bool use_logarithms)
     : current_column_{box_size, reversal_boxes, fractional_boxes}, symbol_{symbol},
     box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
@@ -107,7 +107,7 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     return true;
 }		// -----  end of method PF_Chart::operator==  ----- 
 
-PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecDouble& new_value, PF_Column::tpt the_time)
+PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time)
 {
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
 
@@ -151,7 +151,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
         PF_Column::tpt the_time = StringToTimePoint(date_format, fields[0]);
 
-        AddValue(DprDecimal::DDecDouble(fields[1]), the_time);
+        AddValue(DprDecimal::DDecQuad(fields[1]), the_time);
     }
 
     // make sure we keep the last column we were working on 
@@ -295,10 +295,10 @@ Json::Value PF_Chart::ToJSON () const
 void PF_Chart::FromJSON (const Json::Value& new_data)
 {
     symbol_ = new_data["symbol"].asString();
-    box_size_ = DprDecimal::DDecDouble{new_data["box_size"].asString()};
+    box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
-    y_min_ = DprDecimal::DDecDouble{new_data["y_min"].asString()};
-    y_max_ = DprDecimal::DDecDouble{new_data["y_max"].asString()};
+    y_min_ = DprDecimal::DDecQuad{new_data["y_min"].asString()};
+    y_max_ = DprDecimal::DDecQuad{new_data["y_max"].asString()};
     use_logarithms_ = new_data["use_logarithms"].asBool();
 
     const auto direction = new_data["current_direction"].asString();
@@ -353,21 +353,21 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     //  Description:  Expects the input data is in descending order by date
     // =====================================================================================
 
-DprDecimal::DDecDouble ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days)
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days)
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided. Need at least: {} values", how_many_days).c_str());
 
-    DprDecimal::DDecDouble total;
+    DprDecimal::DDecQuad total;
 
     for (int i = 0; i < how_many_days; ++i)
     {
 //        std::cout << "data: " << the_data[i] << '\n';
 
-        DprDecimal::DDecDouble high_minus_low = DprDecimal::DDecDouble{the_data[i]["high"].asString()} - DprDecimal::DDecDouble{the_data[i]["low"].asString()};
-        DprDecimal::DDecDouble high_minus_prev_close = (DprDecimal::DDecDouble{the_data[i]["high"].asString()} - DprDecimal::DDecDouble{the_data[i + 1]["close"].asString()}).abs();
-        DprDecimal::DDecDouble low_minus_prev_close = (DprDecimal::DDecDouble{the_data[i]["low"].asString()} - DprDecimal::DDecDouble{the_data[i + 1]["close"].asString()}).abs();
+        DprDecimal::DDecQuad high_minus_low = DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i]["low"].asString()};
+        DprDecimal::DDecQuad high_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["close"].asString()}).abs();
+        DprDecimal::DDecQuad low_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["low"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["close"].asString()}).abs();
 
-        DprDecimal::DDecDouble max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
+        DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
 
 //        std::cout << "h - l: " << high_minus_low << " h - pc: " << high_minus_prev_close << " l - pc: " << low_minus_prev_close << '\n';
         

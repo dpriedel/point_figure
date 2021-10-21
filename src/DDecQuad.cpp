@@ -1,8 +1,8 @@
 // =====================================================================================
 //
-//       Filename:  DDecDouble.cpp
+//       Filename:  DDecQuad.cpp
 //
-//    Description:  implementation for DDecDouble 
+//    Description:  implementation for DDecQuad 
 //                  provides a place to allocate static context member and
 //                  initialize it.
 //        Version:  1.0
@@ -21,41 +21,45 @@
 #include <fmt/format.h>
 #include <string_view>
 
-#include "DDecDouble.h"
-#include "decContext.h"
+#include "DDecQuad.h"
+extern "C"
+{
+    #include <decQuad.h>
+    #include <bid/decimal128.h>
+}
 
 using namespace DprDecimal;
 
-decContext DDecDouble::mCtx_ ;
+decContext DDecQuad::mCtx_ ;
 
-DDecDouble::DDecDouble()
+DDecQuad::DDecQuad()
 {
-    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
-    decDoubleIsZero(&this->decimal_);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decQuadIsZero(&this->decimal_);
 }
 
-DDecDouble::DDecDouble(const char* number)
+DDecQuad::DDecQuad(const char* number)
 {
-    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
-    decDoubleFromString(&this->decimal_, number, &DDecDouble::mCtx_);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decQuadFromString(&this->decimal_, number, &DDecQuad::mCtx_);
 }
 
-DDecDouble::DDecDouble(std::string_view number)
-    : DDecDouble(number.data())	{ }
+DDecQuad::DDecQuad(std::string_view number)
+    : DDecQuad(number.data())	{ }
 
-DDecDouble::DDecDouble(int32_t number)
+DDecQuad::DDecQuad(int32_t number)
 {
-    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
-    decDoubleFromInt32(&this->decimal_, number);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decQuadFromInt32(&this->decimal_, number);
 }
 
-DDecDouble::DDecDouble(uint32_t number)
+DDecQuad::DDecQuad(uint32_t number)
 {
-    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
-    decDoubleFromUInt32(&this->decimal_, number);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decQuadFromUInt32(&this->decimal_, number);
 }
 
-DDecDouble::DDecDouble(double number, int dec_digits)
+DDecQuad::DDecQuad(double number, int dec_digits)
 {
     std::array<char, 30> buf{};
     if (auto [p, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed, dec_digits);
@@ -72,54 +76,54 @@ DDecDouble::DDecDouble(double number, int dec_digits)
 //    std::ostringstream temp;
 //    temp << std::fixed << std::setprecision(dec_digits) << number;
 
-    decContextDefault(&DDecDouble::mCtx_, DEC_INIT_DECDOUBLE);
-//    decDoubleFromString(&this->decimal_, temp.str().c_str(), &DDecDouble::mCtx_);
-    decDoubleFromString(&this->decimal_, buf.data(), &DDecDouble::mCtx_);
-//		decDoubleReduce(&this->decimal_, &this->decimal_, &DDecDouble::mCtx_);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+//    decQuadFromString(&this->decimal_, temp.str().c_str(), &DDecQuad::mCtx_);
+    decQuadFromString(&this->decimal_, buf.data(), &DDecQuad::mCtx_);
+//		decQuadReduce(&this->decimal_, &this->decimal_, &DDecQuad::mCtx_);
 }
 
-DDecDouble& DDecDouble::operator=(int32_t rhs)
+DDecQuad& DDecQuad::operator=(int32_t rhs)
 {
-    DDecDouble tmp{rhs};
-    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    DDecQuad tmp{rhs};
+    decQuadCopy(&this->decimal_, &tmp.decimal_);
     return *this;
 }
 
-DDecDouble& DDecDouble::operator=(uint32_t rhs)
+DDecQuad& DDecQuad::operator=(uint32_t rhs)
 {
-    DDecDouble tmp{rhs};
-    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    DDecQuad tmp{rhs};
+    decQuadCopy(&this->decimal_, &tmp.decimal_);
     return *this;
 }
 
-DDecDouble& DDecDouble::operator=(double rhs)
+DDecQuad& DDecQuad::operator=(double rhs)
 {
-    DDecDouble tmp{rhs};
-    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    DDecQuad tmp{rhs};
+    decQuadCopy(&this->decimal_, &tmp.decimal_);
     return *this;
 }
 
-DDecDouble& DDecDouble::operator=(std::string_view rhs)
+DDecQuad& DDecQuad::operator=(std::string_view rhs)
 {
-    DDecDouble tmp{rhs};
-    decDoubleCopy(&this->decimal_, &tmp.decimal_);
+    DDecQuad tmp{rhs};
+    decQuadCopy(&this->decimal_, &tmp.decimal_);
     return *this;
 }
 
-int32_t DDecDouble::ToIntRounded () const
+int32_t DDecQuad::ToIntRounded () const
 {
-    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx_, DEC_ROUND_HALF_DOWN);
+    int32_t result = decQuadToInt32(&decimal_, &DDecQuad::mCtx_, DEC_ROUND_HALF_DOWN);
     return result;
-}		// -----  end of method DDecDouble::ToIntRounded  ----- 
+}		// -----  end of method DDecQuad::ToIntRounded  ----- 
 
-int32_t DDecDouble::ToIntTruncated () const
+int32_t DDecQuad::ToIntTruncated () const
 {
-    int32_t result = decDoubleToInt32(&decimal_, &DDecDouble::mCtx_, DEC_ROUND_DOWN);
+    int32_t result = decQuadToInt32(&decimal_, &DDecQuad::mCtx_, DEC_ROUND_DOWN);
     return result;
-}		// -----  end of method DDecDouble::ToIntTruncated  ----- 
+}		// -----  end of method DDecQuad::ToIntTruncated  ----- 
 
 
-double DDecDouble::ToDouble () const
+double DDecQuad::ToDouble () const
 {
     // I don't see a better way to do this.
 
@@ -130,25 +134,36 @@ double DDecDouble::ToDouble () const
         throw std::runtime_error(fmt::format("Problem converting decimal to double: {}\n", std::make_error_code(ec).message()));
     }
     return result ;
-}		// -----  end of method DDecDouble::ToDouble  ----- 
+}		// -----  end of method DDecQuad::ToDouble  ----- 
 
-DDecDouble DDecDouble::abs() const
+DDecQuad DDecQuad::abs() const
 {
-    DDecDouble result;
-    decDoubleAbs(&result.decimal_, &this->decimal_, &DDecDouble::mCtx_);
+    DDecQuad result;
+    decQuadAbs(&result.decimal_, &this->decimal_, &DDecQuad::mCtx_);
 
     return result;
-}		// -----  end of method DDecDouble::abs  ----- 
+}		// -----  end of method DDecQuad::abs  ----- 
+
+DDecQuad DDecQuad::log_n() const
+{
+    decNumber temp;
+    decQuadToNumber(&this->decimal_, &temp);
+    decNumber ln_temp;
+    decNumberLn(&temp, &ln_temp, &DDecQuad::mCtx_);
+    DDecQuad result;
+    decQuadFromNumber(&result.decimal_, &ln_temp, &DDecQuad::mCtx_);
+    return result;
+}		// -----  end of method DDecQuad::logn  ----- 
 
 // ===  FUNCTION  ======================================================================
 //         Name:  max
 //  Description:  
 // =====================================================================================
     
-DDecDouble DprDecimal::max(const DDecDouble& lhs, const DDecDouble& rhs)
+DDecQuad DprDecimal::max(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-    DDecDouble result;
-    decDoubleMax(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+    DDecQuad result;
+    decQuadMax(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
     return result;
 }		// -----  end of function max  -----
 

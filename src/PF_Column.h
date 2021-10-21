@@ -26,7 +26,7 @@
 
 #include <json/json.h>
 
-#include "DDecDouble.h"
+#include "DDecQuad.h"
 
 // =====================================================================================
 //        Class:  PF_Column
@@ -47,19 +47,19 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     PF_Column () = default;                             // constructor
-    PF_Column(DprDecimal::DDecDouble box_size, int reversal_boxes,
+    PF_Column(DprDecimal::DDecQuad box_size, int reversal_boxes,
             FractionalBoxes fractional_boxes = FractionalBoxes::e_integral,
             Direction direction = Direction::e_unknown,
-            DprDecimal::DDecDouble top =-1, DprDecimal::DDecDouble bottom =-1);
+            DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
     PF_Column(const Json::Value& new_data);
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] DprDecimal::DDecDouble GetTop() const { return top_; }
-    [[nodiscard]] DprDecimal::DDecDouble GetBottom() const { return bottom_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return top_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return bottom_; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
-    [[nodiscard]] DprDecimal::DDecDouble GetBoxsize() const { return box_size_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
     [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
@@ -68,7 +68,7 @@ public:
 
     // ====================  MUTATORS      =======================================
 
-    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecDouble& new_value, tpt the_time);
+    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecQuad& new_value, tpt the_time);
 
     // ====================  OPERATORS     =======================================
 
@@ -85,7 +85,7 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    PF_Column MakeReversalColumn(Direction direction, DprDecimal::DDecDouble value,
+    PF_Column MakeReversalColumn(Direction direction, DprDecimal::DDecQuad value,
             tpt the_time);
 
     // ====================  DATA MEMBERS  =======================================
@@ -94,21 +94,21 @@ private:
 
     void FromJSON(const Json::Value& new_data);
 
-    [[nodiscard]] AddResult StartColumn(DprDecimal::DDecDouble new_value, tpt the_time);
-    [[nodiscard]] AddResult TryToFindDirection(DprDecimal::DDecDouble possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendUp(DprDecimal::DDecDouble possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendDown(DprDecimal::DDecDouble possible_value, tpt the_time);
+    [[nodiscard]] AddResult StartColumn(DprDecimal::DDecQuad new_value, tpt the_time);
+    [[nodiscard]] AddResult TryToFindDirection(DprDecimal::DDecQuad possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendUp(DprDecimal::DDecQuad possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendDown(DprDecimal::DDecQuad possible_value, tpt the_time);
 
-    [[nodiscard]] DprDecimal::DDecDouble RoundDownToNearestBox(const DprDecimal::DDecDouble& a_value) const;
+    [[nodiscard]] DprDecimal::DDecQuad RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
     // ====================  DATA MEMBERS  =======================================
 
     TimeSpan time_span_;
-    DprDecimal::DDecDouble box_size_ = -1;
+    DprDecimal::DDecQuad box_size_ = -1;
     int32_t reversal_boxes_ = -1;
 
-    DprDecimal::DDecDouble bottom_;
-    DprDecimal::DDecDouble top_;
+    DprDecimal::DDecQuad bottom_;
+    DprDecimal::DDecQuad top_;
     Direction direction_ = Direction::e_unknown;
     FractionalBoxes fractional_boxes_ = FractionalBoxes::e_integral;      // whether to drop fractional part of new values.
 

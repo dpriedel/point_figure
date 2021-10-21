@@ -1,12 +1,12 @@
 
 // =====================================================================================
-//        Class:  DDecDouble
+//        Class:  DDecQuad
 //  Description:  Dave's decimal class. wraps libDecnum. Provides only minimal
 //				  code to do what I need right now.
 // =====================================================================================
 
-#ifndef _DDECDOUBLE_
-#define _DDECDOUBLE_
+#ifndef _DDECQUAD_
+#define _DDECQUAD_
 
 #include <iostream>
 #include <sstream>
@@ -14,57 +14,57 @@
 #include <string_view>
 
 extern "C" {
-    #include <decDouble.h>
+    #include <decQuad.h>
 }
 
 namespace DprDecimal
 {
-class DDecDouble;
+class DDecQuad;
 
-    DDecDouble max(const DDecDouble& lhs, const DDecDouble& rhs);
+    DDecQuad max(const DDecQuad& lhs, const DDecQuad& rhs);
 
 //	example specialization
 
 
 // =====================================================================================
-//        Class:  DDecDouble
+//        Class:  DDecQuad
 //  Description:  64 digit decimal class
 // =====================================================================================
 
-class DDecDouble
+class DDecQuad
 {
-	friend DDecDouble operator+(const DDecDouble& lhs, const DDecDouble& rhs);
-	friend DDecDouble operator-(const DDecDouble& lhs, const DDecDouble& rhs);
-	friend DDecDouble operator*(const DDecDouble& lhs, const DDecDouble& rhs);
-	friend DDecDouble operator/(const DDecDouble& lhs, const DDecDouble& rhs);
+	friend DDecQuad operator+(const DDecQuad& lhs, const DDecQuad& rhs);
+	friend DDecQuad operator-(const DDecQuad& lhs, const DDecQuad& rhs);
+	friend DDecQuad operator*(const DDecQuad& lhs, const DDecQuad& rhs);
+	friend DDecQuad operator/(const DDecQuad& lhs, const DDecQuad& rhs);
 
-    friend DDecDouble Mod(const DDecDouble&lhs, const DDecDouble& rhs);
+    friend DDecQuad Mod(const DDecQuad&lhs, const DDecQuad& rhs);
 
-	friend bool operator==(const DDecDouble& lhs, double rhs);
-	friend bool operator==(double lhs, const DDecDouble& rhs);
-	friend bool operator==(const DDecDouble& lhs, const DDecDouble& rhs);
-	friend bool operator!=(const DDecDouble& lhs, const DDecDouble& rhs);
+	friend bool operator==(const DDecQuad& lhs, double rhs);
+	friend bool operator==(double lhs, const DDecQuad& rhs);
+	friend bool operator==(const DDecQuad& lhs, const DDecQuad& rhs);
+	friend bool operator!=(const DDecQuad& lhs, const DDecQuad& rhs);
 
-	friend bool operator<(const DDecDouble& lhs, const DDecDouble& rhs);
-	friend bool operator>(const DDecDouble& lhs, const DDecDouble& rhs);
+	friend bool operator<(const DDecQuad& lhs, const DDecQuad& rhs);
+	friend bool operator>(const DDecQuad& lhs, const DDecQuad& rhs);
 
-	friend bool operator<=(const DDecDouble& lhs, const DDecDouble& rhs);
-	friend bool operator>=(const DDecDouble& lhs, const DDecDouble& rhs);
+	friend bool operator<=(const DDecQuad& lhs, const DDecQuad& rhs);
+	friend bool operator>=(const DDecQuad& lhs, const DDecQuad& rhs);
 
-    friend DDecDouble max(const DDecDouble& lhs, const DDecDouble& rhs);
+    friend DDecQuad max(const DDecQuad& lhs, const DDecQuad& rhs);
 
-	friend std::istream& operator>>(std::istream& is, DDecDouble& item);
-	friend std::ostream& operator<<(std::ostream& os, const DDecDouble& item);
+	friend std::istream& operator>>(std::istream& is, DDecQuad& item);
+	friend std::ostream& operator<<(std::ostream& os, const DDecQuad& item);
 
 public:
     // ====================  LIFECYCLE     =======================================
-    DDecDouble ();                             // constructor
-    DDecDouble (const char* number);           // constructor
-    DDecDouble (std::string_view number);    // constructor
-    DDecDouble (int32_t number);               // constructor
-    DDecDouble (uint32_t number);              // constructor
+    DDecQuad ();                             // constructor
+    DDecQuad (const char* number);           // constructor
+    DDecQuad (std::string_view number);    // constructor
+    DDecQuad (int32_t number);               // constructor
+    DDecQuad (uint32_t number);              // constructor
 
-    DDecDouble (double number, int dec_digits=2);	 // constructor
+    DDecQuad (double number, int dec_digits=2);	 // constructor
 
     // ====================  ACCESSORS     =======================================
     
@@ -75,19 +75,20 @@ public:
 
     // ====================  MUTATORS      =======================================
 
-    [[nodiscard]] DDecDouble abs() const;
+    [[nodiscard]] DDecQuad abs() const;
+    [[nodiscard]] DDecQuad log_n() const;
 
     // ====================  OPERATORS     =======================================
     
-    DDecDouble& operator+=(const DDecDouble& rhs);
-    DDecDouble& operator-=(const DDecDouble& rhs);
-    DDecDouble& operator*=(const DDecDouble& rhs);
-    DDecDouble& operator/=(const DDecDouble& rhs);
+    DDecQuad& operator+=(const DDecQuad& rhs);
+    DDecQuad& operator-=(const DDecQuad& rhs);
+    DDecQuad& operator*=(const DDecQuad& rhs);
+    DDecQuad& operator/=(const DDecQuad& rhs);
 
-    DDecDouble& operator=(int32_t rhs);
-    DDecDouble& operator=(uint32_t rhs);
-    DDecDouble& operator=(double rhs);
-    DDecDouble& operator=(std::string_view rhs);
+    DDecQuad& operator=(int32_t rhs);
+    DDecQuad& operator=(uint32_t rhs);
+    DDecQuad& operator=(double rhs);
+    DDecQuad& operator=(std::string_view rhs);
 
 
 protected:
@@ -96,7 +97,7 @@ protected:
 private:
     // ====================  DATA MEMBERS  =======================================
     
-    decDouble decimal_{};
+    decQuad decimal_{};
     static decContext mCtx_;
 
 }; // -----  end of template class DDecimalSMALLDEC  -----
@@ -105,10 +106,10 @@ private:
 //	constructions/implicit conversion operators
 //
 	
-inline std::string DDecDouble::ToStr() const
+inline std::string DDecQuad::ToStr() const
 {
-    char output [DECDOUBLE_String];
-    decDoubleToString(&this->decimal_, output);
+    char output [DECQUAD_String];
+    decQuadToString(&this->decimal_, output);
     return std::string(output);
 }
 
@@ -116,27 +117,27 @@ inline std::string DDecDouble::ToStr() const
 //	member arithmetic operators
 //
 
-inline DDecDouble& DDecDouble::operator+=(const DDecDouble& rhs)
+inline DDecQuad& DDecQuad::operator+=(const DDecQuad& rhs)
 {
-	decDoubleAdd(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	decQuadAdd(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
-inline DDecDouble& DDecDouble::operator-=(const DDecDouble& rhs)
+inline DDecQuad& DDecQuad::operator-=(const DDecQuad& rhs)
 {
-	decDoubleSubtract(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	decQuadSubtract(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
-inline DDecDouble& DDecDouble::operator*=(const DDecDouble& rhs)
+inline DDecQuad& DDecQuad::operator*=(const DDecQuad& rhs)
 {
-	decDoubleMultiply(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	decQuadMultiply(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
-inline DDecDouble& DDecDouble::operator/=(const DDecDouble& rhs)
+inline DDecQuad& DDecQuad::operator/=(const DDecQuad& rhs)
 {
-	decDoubleDivide(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	decQuadDivide(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
@@ -144,38 +145,38 @@ inline DDecDouble& DDecDouble::operator/=(const DDecDouble& rhs)
 //	non-member arithmetic operators
 //
 
-inline DDecDouble operator+(const DDecDouble&lhs, const DDecDouble& rhs)
+inline DDecQuad operator+(const DDecQuad&lhs, const DDecQuad& rhs)
 {
-	DDecDouble result;
-	decDoubleAdd(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	DDecQuad result;
+	decQuadAdd(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
-inline DDecDouble operator-(const DDecDouble&lhs, const DDecDouble& rhs)
+inline DDecQuad operator-(const DDecQuad&lhs, const DDecQuad& rhs)
 {
-	DDecDouble result;
-	decDoubleSubtract(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	DDecQuad result;
+	decQuadSubtract(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
-inline DDecDouble operator*(const DDecDouble&lhs, const DDecDouble& rhs)
+inline DDecQuad operator*(const DDecQuad&lhs, const DDecQuad& rhs)
 {
-	DDecDouble result;
-	decDoubleMultiply(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	DDecQuad result;
+	decQuadMultiply(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
-inline DDecDouble operator/(const DDecDouble&lhs, const DDecDouble& rhs)
+inline DDecQuad operator/(const DDecQuad&lhs, const DDecQuad& rhs)
 {
-	DDecDouble result;
-	decDoubleDivide(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	DDecQuad result;
+	decQuadDivide(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
-inline DDecDouble Mod(const DDecDouble&lhs, const DDecDouble& rhs)
+inline DDecQuad Mod(const DDecQuad&lhs, const DDecQuad& rhs)
 {
-	DDecDouble result;
-	decDoubleDivideInteger(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
+	DDecQuad result;
+	decQuadDivideInteger(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
@@ -183,90 +184,90 @@ inline DDecDouble Mod(const DDecDouble&lhs, const DDecDouble& rhs)
 //	non member comparison operators
 //
 
-inline bool operator==(double lhs, const DDecDouble& rhs)
+inline bool operator==(double lhs, const DDecQuad& rhs)
 {
-    int exp = decDoubleGetExponent(&rhs.decimal_);
+    int exp = decQuadGetExponent(&rhs.decimal_);
     exp = exp < 0 ? -exp : exp;
-    DDecDouble temp{lhs, exp};
-//    std::cout << "exponent: " << decDoubleGetExponent(&rhs.decimal_) << '\n';
-	decDouble result;
-	decDoubleCompare(&result, &temp.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
+    DDecQuad temp{lhs, exp};
+//    std::cout << "exponent: " << decQuadGetExponent(&rhs.decimal_) << '\n';
+	decQuad result;
+	decQuadCompare(&result, &temp.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
 }
 
-inline bool operator==(const DDecDouble& lhs, double rhs)
+inline bool operator==(const DDecQuad& lhs, double rhs)
 {
-    int exp = decDoubleGetExponent(&lhs.decimal_);
+    int exp = decQuadGetExponent(&lhs.decimal_);
     exp = exp < 0 ? -exp : exp;
-    DDecDouble temp{rhs, exp};
-//    std::cout << "exponent: " << decDoubleGetExponent(&lhs.decimal_) << '\n';
-	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &temp.decimal_, &DDecDouble::mCtx_);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
+    DDecQuad temp{rhs, exp};
+//    std::cout << "exponent: " << decQuadGetExponent(&lhs.decimal_) << '\n';
+	decQuad result;
+	decQuadCompare(&result, &lhs.decimal_, &temp.decimal_, &DDecQuad::mCtx_);
+	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
 }
 
-inline bool operator==(const DDecDouble& lhs, const DDecDouble& rhs)
+inline bool operator==(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-//    if (decDoubleGetExponent(&lhs.decimal_) != decDoubleGetExponent(&rhs.decimal_))
+//    if (decQuadGetExponent(&lhs.decimal_) != decQuadGetExponent(&rhs.decimal_))
 //    {
 //        return false;
 //    }
-	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
+	decQuad result;
+	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
 }
 
-inline bool operator!=(const DDecDouble& lhs, const DDecDouble& rhs)
+inline bool operator!=(const DDecQuad& lhs, const DDecQuad& rhs)
 {
 	return ! operator==(lhs, rhs);
 }
 
-inline bool operator<(const DDecDouble& lhs, const DDecDouble& rhs)
+inline bool operator<(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == -1;
+	decQuad result;
+	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == -1;
 }
 
-inline bool operator>(const DDecDouble& lhs, const DDecDouble& rhs)
+inline bool operator>(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) == 1;
+	decQuad result;
+	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 1;
 }
 
-inline bool operator<=(const DDecDouble& lhs, const DDecDouble& rhs)
+inline bool operator<=(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) < 1;
+	decQuad result;
+	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) < 1;
 }
 
-inline bool operator>=(const DDecDouble& lhs, const DDecDouble& rhs)
+inline bool operator>=(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decDouble result;
-	decDoubleCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecDouble::mCtx_);
-	return decDoubleToInt32(&result, &DDecDouble::mCtx_, DEC_ROUND_HALF_EVEN) >= 0;
+	decQuad result;
+	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) >= 0;
 }
 
 //
 //	stream inserter/extractor
 //
 
-inline std::ostream& operator<<(std::ostream& os, const DDecDouble& item)
+inline std::ostream& operator<<(std::ostream& os, const DDecQuad& item)
 {
-	char output [DECDOUBLE_String];
-	decDoubleToString(&item.decimal_, output);
+	char output [DECQUAD_String];
+	decQuadToString(&item.decimal_, output);
 	os << output;
 	return os;
 }
 
-inline std::istream& operator>>(std::istream& is, DDecDouble& item)
+inline std::istream& operator>>(std::istream& is, DDecQuad& item)
 {
 	std::string temp;
 	is >> temp;
 //    std::cout << "temp from stream: " << temp << '\n';
-	decDoubleFromString(&item.decimal_, temp.c_str(), &DDecDouble::mCtx_);
+	decQuadFromString(&item.decimal_, temp.c_str(), &DDecQuad::mCtx_);
 	return is;
 }
 

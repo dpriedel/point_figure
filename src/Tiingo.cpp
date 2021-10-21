@@ -173,7 +173,7 @@ void Tiingo::ExtractData (const std::string& buffer)
         new_value.time_stamp_ = data[1].asString();
         new_value.time_stamp_seconds_ = data[2].asInt64();
         new_value.ticker_ = data[3].asString();
-        new_value.last_price_ = DprDecimal::DDecDouble(data[9].asFloat(), 4);
+        new_value.last_price_ = DprDecimal::DDecQuad(data[9].asFloat(), 4);
         new_value.last_size_ = data[10].asInt();
 
         pf_data_.push_back(std::move(new_value));        
