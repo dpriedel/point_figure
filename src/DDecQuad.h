@@ -97,7 +97,7 @@ protected:
 private:
     // ====================  DATA MEMBERS  =======================================
     
-    decQuad decimal_{};
+    decQuad decimal_;
     static decContext mCtx_;
 
 }; // -----  end of template class DDecimalSMALLDEC  -----

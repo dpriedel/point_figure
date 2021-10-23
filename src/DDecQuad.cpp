@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include "DDecQuad.h"
+#include "decContext.h"
 extern "C"
 {
     #include <decQuad.h>
@@ -34,13 +35,14 @@ decContext DDecQuad::mCtx_ ;
 
 DDecQuad::DDecQuad()
 {
-    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
-    decQuadIsZero(&this->decimal_);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+    decQuadZero(&this->decimal_);
 }
 
 DDecQuad::DDecQuad(const char* number)
 {
-    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+    decQuadZero(&this->decimal_);
     decQuadFromString(&this->decimal_, number, &DDecQuad::mCtx_);
 }
 
@@ -49,13 +51,15 @@ DDecQuad::DDecQuad(std::string_view number)
 
 DDecQuad::DDecQuad(int32_t number)
 {
-    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+    decQuadZero(&this->decimal_);
     decQuadFromInt32(&this->decimal_, number);
 }
 
 DDecQuad::DDecQuad(uint32_t number)
 {
-    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+    decQuadZero(&this->decimal_);
     decQuadFromUInt32(&this->decimal_, number);
 }
 
@@ -76,7 +80,8 @@ DDecQuad::DDecQuad(double number, int dec_digits)
 //    std::ostringstream temp;
 //    temp << std::fixed << std::setprecision(dec_digits) << number;
 
-    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECDOUBLE);
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+    decQuadZero(&this->decimal_);
 //    decQuadFromString(&this->decimal_, temp.str().c_str(), &DDecQuad::mCtx_);
     decQuadFromString(&this->decimal_, buf.data(), &DDecQuad::mCtx_);
 //		decQuadReduce(&this->decimal_, &this->decimal_, &DDecQuad::mCtx_);
