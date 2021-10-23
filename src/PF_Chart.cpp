@@ -361,7 +361,7 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_
 
     for (int i = 0; i < how_many_days; ++i)
     {
-//        std::cout << "data: " << the_data[i] << '\n';
+        std::cout << "data: " << the_data[i] << '\n';
 
         DprDecimal::DDecQuad high_minus_low = DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i]["low"].asString()};
         DprDecimal::DDecQuad high_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["close"].asString()}).abs();
@@ -369,12 +369,12 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_
 
         DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
 
-//        std::cout << "h - l: " << high_minus_low << " h - pc: " << high_minus_prev_close << " l - pc: " << low_minus_prev_close << '\n';
+        std::cout << "h - l: " << high_minus_low << " h - pc: " << high_minus_prev_close << " l - pc: " << low_minus_prev_close << " max: " << max << '\n';
         
         total += max;
     }
 
-//    std::cout << "total: " << total << '\n';
+    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
 }		// -----  end of function ComputeATR  -----
 
