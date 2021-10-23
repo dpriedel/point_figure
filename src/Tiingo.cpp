@@ -16,6 +16,7 @@
 // the guts of this code comes from the examples distributed by Boost.
 
 #include <date/date.h>
+#include <regex>
 #include <string_view>
 
 #include <fmt/chrono.h>
@@ -310,7 +311,7 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
     // and then formatting changes the date (becomes a day earlier) for some reason (time zone 
     // related maybe?? )
 
-    std::string request = fmt::format("https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
+    const std::string request = fmt::format("https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
             host_, symbol, start_date, end_date, api_key_, "json", "daily", "-date");
 
     http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
@@ -331,7 +332,17 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
     beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
 
-//    std::cout << result << '\n';
+//    std::cout << "raw data: " << result << '\n';
+
+    // I need to convert some numeric fields to string fields so they
+    // won't be converted to floats and give me a bunch of extra decimal digits.
+    // These values are nicely rounded by Tiingo.
+
+    const std::regex source{R"***("(open|high|low|close)":([0-9]*\.[0-9]*))***"}; 
+    const std::string dest{R"***("$1":"$2")***"};
+    auto result1 = std::regex_replace(result, source, dest);
+
+//    std::cout << "modified data: " << result1 << '\n';
 
     // now, just convert to JSON 
 
@@ -340,8 +351,7 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
 
     Json::CharReaderBuilder builder;
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-//    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
-    if (! reader->parse(result.data(), result.data() + result.size(), &response, &err))
+    if (! reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
     {
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
