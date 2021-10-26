@@ -15,10 +15,11 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
-#include <date/date.h>
+#include <iostream>
 #include <regex>
 #include <string_view>
 
+#include <date/date.h>
 #include <fmt/chrono.h>
 
 #include "Tiingo.h"
@@ -144,6 +145,8 @@ void Tiingo::StreamData(bool* time_to_stop)
 
 void Tiingo::ExtractData (const std::string& buffer)
 {
+    const std::regex trade_price{R"***("T",(?:.*?.){8} ([0-9]*\.[0-9]*),)***"}; 
+
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
     JSONCPP_STRING err;
@@ -169,15 +172,24 @@ void Tiingo::ExtractData (const std::string& buffer)
         }
         // extract our data
 
-        PF_Data new_value;
-        new_value.subscription_id_ = subscription_id_;
-        new_value.time_stamp_ = data[1].asString();
-        new_value.time_stamp_seconds_ = data[2].asInt64();
-        new_value.ticker_ = data[3].asString();
-        new_value.last_price_ = DprDecimal::DDecQuad(data[9].asFloat(), 4);
-        new_value.last_size_ = data[10].asInt();
+        std::smatch m;
+        bool found_it = std::regex_search(buffer, m, trade_price);
+        if (! found_it)
+        {
+            std::cout << "can't find trade price in buffer: " << buffer << '\n';
+        }
+        else
+        {
+            PF_Data new_value;
+            new_value.subscription_id_ = subscription_id_;
+            new_value.time_stamp_ = data[1].asString();
+            new_value.time_stamp_seconds_ = data[2].asInt64();
+            new_value.ticker_ = data[3].asString();
+            new_value.last_price_ = DprDecimal::DDecQuad{m[1].str()};
+            new_value.last_size_ = data[10].asInt();
 
-        pf_data_.push_back(std::move(new_value));        
+            pf_data_.push_back(std::move(new_value));        
+        }
 
 //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ << '\n';
     }
