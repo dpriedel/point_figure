@@ -22,12 +22,11 @@
 #include <string_view>
 
 #include "DDecQuad.h"
-#include "decContext.h"
 extern "C"
 {
-    #include <decQuad.h>
-    #include <bid/decimal128.h>
+    #include <decContext.h>
 }
+
 
 using namespace DprDecimal;
 
@@ -149,16 +148,41 @@ DDecQuad DDecQuad::abs() const
     return result;
 }		// -----  end of method DDecQuad::abs  ----- 
 
+DDecQuad& DDecQuad::Rescale(std::string_view decimal_digits)
+{
+    decNumber temp;
+    decQuadToNumber(&this->decimal_, &temp);
+
+    decNumber digits;
+    decNumberFromString(&digits, decimal_digits.data(), &DDecQuad::mCtx_);
+
+    decNumberRescale(&temp, &temp, &digits, &DDecQuad::mCtx_);
+
+    decQuadFromNumber(&this->decimal_, &temp, &DDecQuad::mCtx_);
+    return *this;
+}
+
 DDecQuad DDecQuad::log_n() const
 {
     decNumber temp;
     decQuadToNumber(&this->decimal_, &temp);
     decNumber ln_temp;
-    decNumberLn(&temp, &ln_temp, &DDecQuad::mCtx_);
+    decNumberLn(&ln_temp, &temp, &DDecQuad::mCtx_);
     DDecQuad result;
     decQuadFromNumber(&result.decimal_, &ln_temp, &DDecQuad::mCtx_);
     return result;
-}		// -----  end of method DDecQuad::logn  ----- 
+}		// -----  end of method DDecQuad::log_n  ----- 
+
+DDecQuad DDecQuad::exp_n() const
+{
+    decNumber temp;
+    decQuadToNumber(&this->decimal_, &temp);
+    decNumber exp_temp;
+    decNumberExp(&exp_temp, &temp, &DDecQuad::mCtx_);
+    DDecQuad result;
+    decQuadFromNumber(&result.decimal_, &exp_temp, &DDecQuad::mCtx_);
+    return result;
+}		// -----  end of method DDecQuad::exp_n  ----- 
 
 // ===  FUNCTION  ======================================================================
 //         Name:  max

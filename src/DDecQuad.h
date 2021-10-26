@@ -13,8 +13,10 @@
 #include <iomanip>
 #include <string_view>
 
-extern "C" {
+extern "C"
+{
     #include <decQuad.h>
+    #include <bid/decimal128.h>
 }
 
 namespace DprDecimal
@@ -73,10 +75,13 @@ public:
     [[nodiscard]] int32_t ToIntTruncated() const;
     [[nodiscard]] double ToDouble() const;
 
-    // ====================  MUTATORS      =======================================
-
     [[nodiscard]] DDecQuad abs() const;
     [[nodiscard]] DDecQuad log_n() const;
+    [[nodiscard]] DDecQuad exp_n() const;
+
+    // ====================  MUTATORS      =======================================
+
+    DDecQuad& Rescale(std::string_view decimal_digits);
 
     // ====================  OPERATORS     =======================================
     
