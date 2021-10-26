@@ -361,7 +361,7 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_
 
     for (int i = 0; i < how_many_days; ++i)
     {
-        std::cout << "data: " << the_data[i] << '\n';
+//        std::cout << "data: " << the_data[i] << '\n';
 
         DprDecimal::DDecQuad high_minus_low = DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i]["low"].asString()};
         DprDecimal::DDecQuad high_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["close"].asString()}).abs();
