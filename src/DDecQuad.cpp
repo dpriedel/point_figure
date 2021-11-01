@@ -22,10 +22,10 @@
 #include <string_view>
 
 #include "DDecQuad.h"
-extern "C"
-{
-    #include <decContext.h>
-}
+//extern "C"
+//{
+//    #include <decContext.h>
+//}
 
 
 using namespace DprDecimal;
@@ -60,6 +60,13 @@ DDecQuad::DDecQuad(uint32_t number)
     decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
     decQuadZero(&this->decimal_);
     decQuadFromUInt32(&this->decimal_, number);
+}
+
+DDecQuad::DDecQuad(const decNumber& number)
+{
+    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+    decQuadZero(&this->decimal_);
+    decQuadFromNumber(&this->decimal_, &number, &DDecQuad::mCtx_);
 }
 
 DDecQuad::DDecQuad(double number, int dec_digits)
@@ -114,6 +121,12 @@ DDecQuad& DDecQuad::operator=(std::string_view rhs)
     return *this;
 }
 
+DDecQuad& DDecQuad::operator=(const decNumber& rhs)
+{
+    decQuadFromNumber(&this->decimal_, &rhs, &DDecQuad::mCtx_);
+    return *this;
+}
+
 int32_t DDecQuad::ToIntRounded () const
 {
     int32_t result = decQuadToInt32(&decimal_, &DDecQuad::mCtx_, DEC_ROUND_HALF_DOWN);
@@ -150,15 +163,24 @@ DDecQuad DDecQuad::abs() const
 
 DDecQuad& DDecQuad::Rescale(std::string_view decimal_digits)
 {
+    char output [DECQUAD_String];
+    decQuadToString(&this->decimal_, output);
+    std::cout << "output: " << output << '\n';
     decNumber temp;
+    decNumberZero(&temp);
     decQuadToNumber(&this->decimal_, &temp);
 
+    char output1 [DECQUAD_String];
+    decNumberToString(&temp, output1);
+    std::cout << "output1: " << output1 << '\n';
     decNumber digits;
     decNumberFromString(&digits, decimal_digits.data(), &DDecQuad::mCtx_);
 
-    decNumberRescale(&temp, &temp, &digits, &DDecQuad::mCtx_);
+    decNumber temp2;
+    decNumberZero(&temp2);
+    decNumberQuantize(&temp2, &temp, &digits, &DDecQuad::mCtx_);
 
-    decQuadFromNumber(&this->decimal_, &temp, &DDecQuad::mCtx_);
+    decQuadFromNumber(&this->decimal_, &temp2, &DDecQuad::mCtx_);
     return *this;
 }
 

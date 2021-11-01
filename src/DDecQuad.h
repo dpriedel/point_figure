@@ -15,8 +15,9 @@
 
 extern "C"
 {
+    #include <decContext.h>
     #include <decQuad.h>
-    #include <bid/decimal128.h>
+    #include <decimal128.h>
 }
 
 namespace DprDecimal
@@ -65,6 +66,7 @@ public:
     DDecQuad (std::string_view number);    // constructor
     DDecQuad (int32_t number);               // constructor
     DDecQuad (uint32_t number);              // constructor
+    DDecQuad (const decNumber& number);
 
     DDecQuad (double number, int dec_digits=2);	 // constructor
 
@@ -93,6 +95,7 @@ public:
     DDecQuad& operator=(int32_t rhs);
     DDecQuad& operator=(uint32_t rhs);
     DDecQuad& operator=(double rhs);
+    DDecQuad& operator=(const decNumber& rhs);
     DDecQuad& operator=(std::string_view rhs);
 
 
