@@ -15,7 +15,7 @@
 
 extern "C"
 {
-    #include <decContext.h>
+//    #include <decContext.h>
     #include <decQuad.h>
     #include <decimal128.h>
 }
@@ -43,8 +43,12 @@ class DDecQuad
 
     friend DDecQuad Mod(const DDecQuad&lhs, const DDecQuad& rhs);
 
+    // the 2 specializations for double internally round the
+    // double to same number of decimals as the decNumber.
+
 	friend bool operator==(const DDecQuad& lhs, double rhs);
 	friend bool operator==(double lhs, const DDecQuad& rhs);
+
 	friend bool operator==(const DDecQuad& lhs, const DDecQuad& rhs);
 	friend bool operator!=(const DDecQuad& lhs, const DDecQuad& rhs);
 
@@ -62,7 +66,9 @@ class DDecQuad
 public:
     // ====================  LIFECYCLE     =======================================
     DDecQuad ();                             // constructor
-    DDecQuad (const char* number);           // constructor
+    DDecQuad (const DDecQuad& rhs);
+    DDecQuad (DDecQuad&& rhs);
+//    DDecQuad (const char* number);           // constructor
     DDecQuad (std::string_view number);    // constructor
     DDecQuad (int32_t number);               // constructor
     DDecQuad (uint32_t number);              // constructor
@@ -92,6 +98,8 @@ public:
     DDecQuad& operator*=(const DDecQuad& rhs);
     DDecQuad& operator/=(const DDecQuad& rhs);
 
+    DDecQuad& operator=(const DDecQuad& rhs);
+    DDecQuad& operator=(DDecQuad&& rhs);
     DDecQuad& operator=(int32_t rhs);
     DDecQuad& operator=(uint32_t rhs);
     DDecQuad& operator=(double rhs);
@@ -107,6 +115,8 @@ private:
     
     decQuad decimal_;
     static decContext mCtx_;
+
+    static bool context_initialized_;
 
 }; // -----  end of template class DDecimalSMALLDEC  -----
 
