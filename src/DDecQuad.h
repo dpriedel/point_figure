@@ -15,7 +15,6 @@
 
 extern "C"
 {
-//    #include <decContext.h>
     #include <decQuad.h>
     #include <decimal128.h>
 }
@@ -46,8 +45,8 @@ class DDecQuad
     // the 2 specializations for double internally round the
     // double to same number of decimals as the decNumber.
 
-	friend bool operator==(const DDecQuad& lhs, double rhs);
-	friend bool operator==(double lhs, const DDecQuad& rhs);
+//	friend bool operator==(const DDecQuad& lhs, double rhs);
+//	friend bool operator==(double lhs, const DDecQuad& rhs);
 
 	friend bool operator==(const DDecQuad& lhs, const DDecQuad& rhs);
 	friend bool operator!=(const DDecQuad& lhs, const DDecQuad& rhs);
@@ -74,7 +73,7 @@ public:
     DDecQuad (uint32_t number);              // constructor
     DDecQuad (const decNumber& number);
 
-    DDecQuad (double number, int dec_digits=2);	 // constructor
+    DDecQuad (double number);	 // constructor
 
     // ====================  ACCESSORS     =======================================
     
@@ -202,27 +201,27 @@ inline DDecQuad Mod(const DDecQuad&lhs, const DDecQuad& rhs)
 //	non member comparison operators
 //
 
-inline bool operator==(double lhs, const DDecQuad& rhs)
-{
-    int exp = decQuadGetExponent(&rhs.decimal_);
-    exp = exp < 0 ? -exp : exp;
-    DDecQuad temp{lhs, exp};
-//    std::cout << "exponent: " << decQuadGetExponent(&rhs.decimal_) << '\n';
-	decQuad result;
-	decQuadCompare(&result, &temp.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
-	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
-}
-
-inline bool operator==(const DDecQuad& lhs, double rhs)
-{
-    int exp = decQuadGetExponent(&lhs.decimal_);
-    exp = exp < 0 ? -exp : exp;
-    DDecQuad temp{rhs, exp};
-//    std::cout << "exponent: " << decQuadGetExponent(&lhs.decimal_) << '\n';
-	decQuad result;
-	decQuadCompare(&result, &lhs.decimal_, &temp.decimal_, &DDecQuad::mCtx_);
-	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
-}
+//inline bool operator==(double lhs, const DDecQuad& rhs)
+//{
+//    int exp = decQuadGetExponent(&rhs.decimal_);
+//    exp = exp < 0 ? -exp : exp;
+//    DDecQuad temp{lhs, exp};
+////    std::cout << "exponent: " << decQuadGetExponent(&rhs.decimal_) << '\n';
+//	decQuad result;
+//	decQuadCompare(&result, &temp.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+//	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
+//}
+//
+//inline bool operator==(const DDecQuad& lhs, double rhs)
+//{
+//    int exp = decQuadGetExponent(&lhs.decimal_);
+//    exp = exp < 0 ? -exp : exp;
+//    DDecQuad temp{rhs, exp};
+////    std::cout << "exponent: " << decQuadGetExponent(&lhs.decimal_) << '\n';
+//	decQuad result;
+//	decQuadCompare(&result, &lhs.decimal_, &temp.decimal_, &DDecQuad::mCtx_);
+//	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
+//}
 
 inline bool operator==(const DDecQuad& lhs, const DDecQuad& rhs)
 {

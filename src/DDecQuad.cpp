@@ -22,10 +22,6 @@
 #include <string_view>
 
 #include "DDecQuad.h"
-//extern "C"
-//{
-//    #include <decContext.h>
-//}
 
 
 using namespace DprDecimal;
@@ -118,10 +114,10 @@ DDecQuad::DDecQuad(const decNumber& number)
     decQuadFromNumber(&this->decimal_, &number, &DDecQuad::mCtx_);
 }
 
-DDecQuad::DDecQuad(double number, int dec_digits)
+DDecQuad::DDecQuad(double number)
 {
     std::array<char, 30> buf{};
-    if (auto [p, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed, dec_digits);
+    if (auto [p, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed);
             ec != std::errc())
     {
         throw std::runtime_error(fmt::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
@@ -129,11 +125,8 @@ DDecQuad::DDecQuad(double number, int dec_digits)
     else
     {
         // string is NOT NULL terminated
-        buf[buf.size()] = '\0';
+        *p = '\0';
     }
-
-//    std::ostringstream temp;
-//    temp << std::fixed << std::setprecision(dec_digits) << number;
 
     if (context_initialized_ == false)
     {
@@ -141,9 +134,7 @@ DDecQuad::DDecQuad(double number, int dec_digits)
         context_initialized_ = true;
     }
     decQuadZero(&this->decimal_);
-//    decQuadFromString(&this->decimal_, temp.str().c_str(), &DDecQuad::mCtx_);
     decQuadFromString(&this->decimal_, buf.data(), &DDecQuad::mCtx_);
-//		decQuadReduce(&this->decimal_, &this->decimal_, &DDecQuad::mCtx_);
 }
 
 DDecQuad& DDecQuad::operator=(const DDecQuad& rhs)
@@ -237,14 +228,12 @@ DDecQuad& DDecQuad::Rescale(std::string_view decimal_digits)
 {
     char output [DECQUAD_String];
     decQuadToString(&this->decimal_, output);
-    std::cout << "output: " << output << '\n';
     decNumber temp;
     decNumberZero(&temp);
     decQuadToNumber(&this->decimal_, &temp);
 
     char output1 [DECQUAD_String];
     decNumberToString(&temp, output1);
-    std::cout << "output1: " << output1 << '\n';
     decNumber digits;
     decNumberFromString(&digits, decimal_digits.data(), &DDecQuad::mCtx_);
 
