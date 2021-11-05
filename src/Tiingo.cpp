@@ -324,7 +324,7 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
     // related maybe?? )
 
     const std::string request = fmt::format("https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
-            host_, symbol, start_date, end_date, api_key_, "json", "daily", "-date");
+            host_, symbol, start_date, end_date, api_key_, "json", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
 
     http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
     req.set(http::field::host, host_);

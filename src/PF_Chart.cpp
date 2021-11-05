@@ -109,6 +109,7 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
 
 PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time)
 {
+//    std::cout << "Adding value: " << new_value << '\n';
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
 
     if (status == PF_Column::Status::e_accepted)
@@ -382,7 +383,7 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_
 
         DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
 
-        std::cout << "h - l: " << high_minus_low << " h - pc: " << high_minus_prev_close << " l - pc: " << low_minus_prev_close << " max: " << max << '\n';
+//        std::cout << "h - l: " << high_minus_low << " h - pc: " << high_minus_prev_close << " l - pc: " << low_minus_prev_close << " max: " << max << '\n';
         
         total += max;
     }
