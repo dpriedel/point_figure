@@ -78,7 +78,8 @@ DDecQuad::DDecQuad(std::string_view number)
         context_initialized_ = true;
     }
     decQuadZero(&this->decimal_);
-    decQuadFromString(&this->decimal_, number.data(), &DDecQuad::mCtx_);
+    std::string temp{number};
+    decQuadFromString(&this->decimal_, temp.data(), &DDecQuad::mCtx_);
 }
 
 DDecQuad::DDecQuad(int32_t number)
