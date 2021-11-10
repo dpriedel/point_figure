@@ -67,8 +67,8 @@ public:
     DDecQuad ();                             // constructor
     DDecQuad (const DDecQuad& rhs);
     DDecQuad (DDecQuad&& rhs);
-//    DDecQuad (const char* number);           // constructor
-    DDecQuad (std::string_view number);    // constructor
+    DDecQuad (const char* number);    // constructor
+    DDecQuad (const std::string& number);    // constructor
     DDecQuad (int32_t number);               // constructor
     DDecQuad (uint32_t number);              // constructor
     DDecQuad (const decNumber& number);
@@ -103,13 +103,17 @@ public:
     DDecQuad& operator=(uint32_t rhs);
     DDecQuad& operator=(double rhs);
     DDecQuad& operator=(const decNumber& rhs);
-    DDecQuad& operator=(std::string_view rhs);
+    DDecQuad& operator=(const char* rhs);
+    DDecQuad& operator=(const std::string& rhs);
 
 
 protected:
     // ====================  DATA MEMBERS  =======================================
 
 private:
+
+    static void InitContext();
+
     // ====================  DATA MEMBERS  =======================================
     
     decQuad decimal_;

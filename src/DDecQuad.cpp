@@ -29,88 +29,67 @@ using namespace DprDecimal;
 decContext DDecQuad::mCtx_ ;
 bool DDecQuad::context_initialized_ = false;
 
+void DDecQuad::InitContext()
+{
+    if (DDecQuad::context_initialized_ == false)
+    {
+        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+        DDecQuad::context_initialized_ = true;
+    }
+}
 
 DDecQuad::DDecQuad()
 {
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
 }
 
 DDecQuad::DDecQuad(const DDecQuad& rhs)
 {
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
     decQuadCopy(&this->decimal_, &rhs.decimal_);
 }
 
 DDecQuad::DDecQuad(DDecQuad&& rhs)
 {
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
     decQuadCopy(&this->decimal_, &rhs.decimal_);
     decQuadZero(&rhs.decimal_);
 }
 
-//DDecQuad::DDecQuad(const char* number)
-//{
-//    decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-//    decQuadZero(&this->decimal_);
-//    decQuadFromString(&this->decimal_, number, &DDecQuad::mCtx_);
-//}
-
-DDecQuad::DDecQuad(std::string_view number)
+DDecQuad::DDecQuad(const char* number)
 {
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
-    std::string temp{number};
-    decQuadFromString(&this->decimal_, temp.data(), &DDecQuad::mCtx_);
+    decQuadFromString(&this->decimal_, number, &DDecQuad::mCtx_);
+}
+
+DDecQuad::DDecQuad(const std::string& number)
+{
+    DDecQuad::InitContext();
+    decQuadZero(&this->decimal_);
+    decQuadFromString(&this->decimal_, number.data(), &DDecQuad::mCtx_);
 }
 
 DDecQuad::DDecQuad(int32_t number)
 {
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
     decQuadFromInt32(&this->decimal_, number);
 }
 
 DDecQuad::DDecQuad(uint32_t number)
 {
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
     decQuadFromUInt32(&this->decimal_, number);
 }
 
 DDecQuad::DDecQuad(const decNumber& number)
 {
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
     decQuadFromNumber(&this->decimal_, &number, &DDecQuad::mCtx_);
 }
@@ -129,11 +108,7 @@ DDecQuad::DDecQuad(double number)
         *p = '\0';
     }
 
-    if (context_initialized_ == false)
-    {
-        decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
-        context_initialized_ = true;
-    }
+    DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
     decQuadFromString(&this->decimal_, buf.data(), &DDecQuad::mCtx_);
 }
@@ -178,7 +153,14 @@ DDecQuad& DDecQuad::operator=(double rhs)
     return *this;
 }
 
-DDecQuad& DDecQuad::operator=(std::string_view rhs)
+DDecQuad& DDecQuad::operator=(const char* rhs)
+{
+    DDecQuad tmp{rhs};
+    decQuadCopy(&this->decimal_, &tmp.decimal_);
+    return *this;
+}
+
+DDecQuad& DDecQuad::operator=(const std::string& rhs)
 {
     DDecQuad tmp{rhs};
     decQuadCopy(&this->decimal_, &tmp.decimal_);
