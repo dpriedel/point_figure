@@ -33,8 +33,8 @@
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        PF_Column::FractionalBoxes fractional_boxes, bool use_logarithms)
-    : current_column_{box_size, reversal_boxes, fractional_boxes}, symbol_{symbol},
+        PF_Column::FractionalBoxes fractional_boxes, PF_Column::ColumnScale use_logarithms)
+    : current_column_{box_size, reversal_boxes, fractional_boxes, use_logarithms}, symbol_{symbol},
     box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
     use_logarithms_{use_logarithms}
 
@@ -152,7 +152,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
         PF_Column::tpt the_time = StringToTimePoint(date_format, fields[0]);
 
-        AddValue(DprDecimal::DDecQuad(fields[1]), the_time);
+        AddValue(DprDecimal::DDecQuad{std::string{fields[1]}}, the_time);
     }
 
     // make sure we keep the last column we were working on 
@@ -249,7 +249,7 @@ Json::Value PF_Chart::ToJSON () const
     result["reversal_boxes"] = reversal_boxes_;
     result["y_min"] = y_min_.ToStr();
     result["y_max"] = y_max_.ToStr();
-    result["use_logarithms"] = use_logarithms_;
+    result["use_logarithms"] = use_logarithms_ == PF_Column::ColumnScale::e_arithmetic ? "arithmetic" : "logarithmic";
 
     switch(current_direction_)
     {
@@ -300,7 +300,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
     y_min_ = DprDecimal::DDecQuad{new_data["y_min"].asString()};
     y_max_ = DprDecimal::DDecQuad{new_data["y_max"].asString()};
-    use_logarithms_ = new_data["use_logarithms"].asBool();
+    use_logarithms_ = new_data["use_logarithms"].asString() == "arithmetic" ? PF_Column::ColumnScale::e_arithmetic : PF_Column::ColumnScale::e_logarithmic;
 
     const auto direction = new_data["current_direction"].asString();
     if (direction == "up")

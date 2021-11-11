@@ -58,7 +58,7 @@ public:
     PF_Chart () = default;                             // constructor
     PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
             PF_Column::FractionalBoxes fractional_boxes=PF_Column::FractionalBoxes::e_integral,
-            bool use_logarithms=false);
+            PF_Column::ColumnScale use_logarithms=PF_Column::ColumnScale::e_arithmetic);
 
     explicit PF_Chart(const Json::Value& new_data);
 
@@ -120,7 +120,7 @@ private:
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
     PF_Column::FractionalBoxes fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
 
-    bool use_logarithms_ = false;
+    PF_Column::ColumnScale use_logarithms_ = PF_Column::ColumnScale::e_arithmetic;
 
 }; // -----  end of class PF_Chart  -----
 
