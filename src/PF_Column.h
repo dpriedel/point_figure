@@ -39,6 +39,7 @@ public:
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
     enum class FractionalBoxes { e_integral, e_fractional };
+    enum class ColumnScale { e_arithmetic, e_logarithmic };
 
     using tpt = std::chrono::time_point<std::chrono::system_clock>;
     using TimeSpan = std::pair<tpt, tpt>;
@@ -49,6 +50,7 @@ public:
     PF_Column () = default;                             // constructor
     PF_Column(DprDecimal::DDecQuad box_size, int reversal_boxes,
             FractionalBoxes fractional_boxes = FractionalBoxes::e_integral,
+            ColumnScale column_scale = ColumnScale::e_arithmetic,
             Direction direction = Direction::e_unknown,
             DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
@@ -60,6 +62,7 @@ public:
     [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return bottom_; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
     [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
+    [[nodiscard]] ColumnScale GetColumnScale() const { return column_scale_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
     [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
@@ -94,10 +97,10 @@ private:
 
     void FromJSON(const Json::Value& new_data);
 
-    [[nodiscard]] AddResult StartColumn(DprDecimal::DDecQuad new_value, tpt the_time);
-    [[nodiscard]] AddResult TryToFindDirection(DprDecimal::DDecQuad possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendUp(DprDecimal::DDecQuad possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendDown(DprDecimal::DDecQuad possible_value, tpt the_time);
+    [[nodiscard]] AddResult StartColumn(const DprDecimal::DDecQuad& new_value, tpt the_time);
+    [[nodiscard]] AddResult TryToFindDirection(const DprDecimal::DDecQuad& possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& possible_value, tpt the_time);
 
     [[nodiscard]] DprDecimal::DDecQuad RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
@@ -105,12 +108,14 @@ private:
 
     TimeSpan time_span_;
     DprDecimal::DDecQuad box_size_ = -1;
+    DprDecimal::DDecQuad original_box_size_ = -1;
     int32_t reversal_boxes_ = -1;
 
     DprDecimal::DDecQuad bottom_;
     DprDecimal::DDecQuad top_;
     Direction direction_ = Direction::e_unknown;
     FractionalBoxes fractional_boxes_ = FractionalBoxes::e_integral;      // whether to drop fractional part of new values.
+    ColumnScale column_scale_ = ColumnScale::e_arithmetic;
 
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;

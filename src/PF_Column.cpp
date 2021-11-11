@@ -41,10 +41,20 @@
 //--------------------------------------------------------------------------------------
 
 PF_Column::PF_Column(DprDecimal::DDecQuad box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
-            Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
-    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
+            ColumnScale column_scale, Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
+    : original_box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
+        column_scale_{column_scale},
         direction_{direction}, top_{top}, bottom_{bottom}
 {
+    if (column_scale_ == ColumnScale::e_logarithmic)
+    {
+        box_size_ = (1.0 + original_box_size_).log_n();
+    }
+    else 
+    {
+        box_size_ = original_box_size_;
+    }
+
 }  // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
@@ -60,7 +70,7 @@ PF_Column::PF_Column (const Json::Value& new_data)
 PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQuad value,
         tpt the_time)
 {
-    auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, direction,
+    auto new_column = PF_Column{original_box_size_, reversal_boxes_, fractional_boxes_,column_scale_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
             direction == Direction::e_down ? value : bottom_ + box_size_
     };
@@ -78,6 +88,7 @@ PF_Column& PF_Column::operator= (const Json::Value& new_data)
 bool PF_Column::operator== (const PF_Column& rhs) const
 {
     return rhs.box_size_ == box_size_ && rhs.reversal_boxes_ == reversal_boxes_ && rhs.direction_ == direction_
+        && rhs.column_scale_ == column_scale_ 
         && rhs.top_ == top_ && rhs.bottom_ == bottom_ && rhs.had_reversal_ == had_reversal_;
 }		// -----  end of method PF_Column::operator==  ----- 
 
@@ -87,6 +98,10 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     {
         // OK, first time here for this column.
 
+        if (column_scale_ == ColumnScale::e_logarithmic)
+        {
+            return StartColumn(new_value.log_n(), the_time);
+        }
         return StartColumn(new_value, the_time);
     }
 
@@ -97,7 +112,14 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     }
     else
     {
-        possible_value = new_value;
+        if (column_scale_ == ColumnScale::e_logarithmic)
+        {
+            possible_value = new_value.log_n();
+        }
+        else
+        {
+            possible_value = new_value;
+        }
     }
 
     // OK, we've got a value but may not yet have a direction.
@@ -119,7 +141,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     return TryToExtendDown(possible_value, the_time);
 }		// -----  end of method PF_Column::AddValue  ----- 
 
-PF_Column::AddResult PF_Column::StartColumn (DprDecimal::DDecQuad new_value, tpt the_time)
+PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
     // As this is the first entry in the column, just set fields 
     // to the input value rounded down to the nearest box value.
@@ -132,7 +154,7 @@ PF_Column::AddResult PF_Column::StartColumn (DprDecimal::DDecQuad new_value, tpt
 }		// -----  end of method PF_Column::StartColumn  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToFindDirection (DprDecimal::DDecQuad possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& possible_value, tpt the_time)
 {
     // NOTE: Since a new value may gap up or down, we could 
     // have multiple boxes to fill in. 
@@ -161,7 +183,7 @@ PF_Column::AddResult PF_Column::TryToFindDirection (DprDecimal::DDecQuad possibl
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
-PF_Column::AddResult PF_Column::TryToExtendUp (DprDecimal::DDecQuad possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& possible_value, tpt the_time)
 {
     if (possible_value >= top_ + box_size_)
     {
@@ -198,7 +220,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp (DprDecimal::DDecQuad possible_val
 }		// -----  end of method PF_Chart::TryToExtendUp  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToExtendDown (DprDecimal::DDecQuad possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& possible_value, tpt the_time)
 {
     if (possible_value <= bottom_ - box_size_)
     {
@@ -246,9 +268,12 @@ DprDecimal::DDecQuad PF_Column::RoundDownToNearestBox (const DprDecimal::DDecQua
         price_as_int = a_value;
     }
 
-    // we're using '10' to start with
-    DprDecimal::DDecQuad result = DprDecimal::Mod(price_as_int, box_size_) * box_size_;
+    if (column_scale_ == ColumnScale::e_logarithmic)
+    {
+        return a_value;
+    }
 
+    DprDecimal::DDecQuad result = DprDecimal::Mod(price_as_int, box_size_) * box_size_;
     return result;
 
 }		// -----  end of method PF_Column::RoundDowntoNearestBox  ----- 
@@ -264,27 +289,38 @@ Json::Value PF_Column::ToJSON () const
 
     switch(direction_)
     {
-        case PF_Column::Direction::e_unknown:
+        case Direction::e_unknown:
             result["direction"] = "unknown";
             break;
 
-        case PF_Column::Direction::e_down:
+        case Direction::e_down:
             result["direction"] = "down";
             break;
 
-        case PF_Column::Direction::e_up:
+        case Direction::e_up:
             result["direction"] = "up";
             break;
     };
 
     switch(fractional_boxes_)
     {
-        case PF_Column::FractionalBoxes::e_integral:
+        case FractionalBoxes::e_integral:
             result["fractional_boxes"] = "integral";
             break;
 
-        case PF_Column::FractionalBoxes::e_fractional:
+        case FractionalBoxes::e_fractional:
             result["fractional_boxes"] = "fractional";
+            break;
+    };
+
+    switch(column_scale_)
+    {
+        case ColumnScale::e_arithmetic:
+            result["column_scale"] = "arithmetic";
+            break;
+
+        case ColumnScale::e_logarithmic:
+            result["column_scale"] = "logarithmic";
             break;
     };
 
@@ -307,15 +343,15 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     const auto direction = new_data["direction"].asString();
     if (direction == "up")
     {
-        direction_ = PF_Column::Direction::e_up;
+        direction_ = Direction::e_up;
     }
     else if (direction == "down")
     {
-        direction_ = PF_Column::Direction::e_down;
+        direction_ = Direction::e_down;
     }
     else if (direction == "unknown")
     {
-        direction_ = PF_Column::Direction::e_unknown;
+        direction_ = Direction::e_unknown;
     }
     else
     {
@@ -326,20 +362,35 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     if (fractional  == "integral")
     {
 
-        fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+        fractional_boxes_ = FractionalBoxes::e_integral;
     }
-    else if (direction == "fractional")
+    else if (fractional == "fractional")
     {
-        fractional_boxes_ = PF_Column::FractionalBoxes::e_fractional;
+        fractional_boxes_ = FractionalBoxes::e_fractional;
     }
     else
     {
         throw std::invalid_argument{fmt::format("Invalid fractional_boxes provided: {}. Must be 'integral' or 'fractional'.", fractional)};
     }
 
+    const auto column_scale = new_data["column_scale"].asString();
+    if (column_scale  == "arithmetic")
+    {
+
+        column_scale_ = ColumnScale::e_arithmetic;
+    }
+    else if (column_scale == "logarithmic")
+    {
+        column_scale_ = ColumnScale::e_logarithmic;
+    }
+    else
+    {
+        throw std::invalid_argument{fmt::format("Invalid column_scale provided: {}. Must be 'arithmetic' or 'logarithmic'.", column_scale)};
+    }
+
     had_reversal_ = new_data["had_reversal"].asBool();
     
-    time_span_.first = PF_Column::tpt{std::chrono::nanoseconds{new_data["start_at"].asInt64()}};
-    time_span_.second = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
+    time_span_.first = tpt{std::chrono::nanoseconds{new_data["start_at"].asInt64()}};
+    time_span_.second = tpt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
 }		// -----  end of method PF_Column::FromJSON  ----- 
 
