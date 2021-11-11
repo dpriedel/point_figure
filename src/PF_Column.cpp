@@ -40,7 +40,7 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Column::PF_Column(DprDecimal::DDecQuad box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
+PF_Column::PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
             ColumnScale column_scale, Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
     : original_box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
         column_scale_{column_scale},

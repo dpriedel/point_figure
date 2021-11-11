@@ -47,8 +47,12 @@ public:
     using AddResult = std::pair<Status, std::optional<PF_Column>>;
 
     // ====================  LIFECYCLE     =======================================
-    PF_Column () = default;                             // constructor
-    PF_Column(DprDecimal::DDecQuad box_size, int reversal_boxes,
+
+    PF_Column() = default;
+    PF_Column(const PF_Column& rhs) = default;
+    PF_Column(PF_Column&& rhs) = default;
+
+    PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes,
             FractionalBoxes fractional_boxes = FractionalBoxes::e_integral,
             ColumnScale column_scale = ColumnScale::e_arithmetic,
             Direction direction = Direction::e_unknown,
@@ -58,10 +62,10 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return top_; }
-    [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return bottom_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return column_scale_ == ColumnScale::e_arithmetic ? top_ : top_.exp_n(); }
+    [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return column_scale_ == ColumnScale::e_arithmetic ? bottom_ : bottom_.exp_n(); }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return original_box_size_; }
     [[nodiscard]] ColumnScale GetColumnScale() const { return column_scale_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
@@ -74,6 +78,9 @@ public:
     [[nodiscard]] AddResult AddValue(const DprDecimal::DDecQuad& new_value, tpt the_time);
 
     // ====================  OPERATORS     =======================================
+
+    PF_Column& operator= (const PF_Column& rhs) = default;
+    PF_Column& operator= (PF_Column&& rhs) = default;
 
     PF_Column& operator= (const Json::Value& new_data);
 
@@ -168,7 +175,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction dir
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Column& column)
 {
-    os << "bottom: " << column.bottom_ << " top: " << column.top_ << " direction: " << column.direction_
+    os << "bottom: " << column.GetBottom() << " top: " << column.GetTop() << " direction: " << column.direction_
         << (column.had_reversal_ ? " one-step-back reversal" : "");
     return os;
 }
