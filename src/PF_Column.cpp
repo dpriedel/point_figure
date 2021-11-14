@@ -106,15 +106,15 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     }
 
     DprDecimal::DDecQuad possible_value;
-    if (fractional_boxes_ == FractionalBoxes::e_integral)
+    if (column_scale_ == ColumnScale::e_logarithmic)
     {
-        possible_value = new_value.ToIntTruncated();
+        possible_value = new_value.log_n();
     }
     else
     {
-        if (column_scale_ == ColumnScale::e_logarithmic)
+        if (fractional_boxes_ == FractionalBoxes::e_integral)
         {
-            possible_value = new_value.log_n();
+            possible_value = new_value.ToIntTruncated();
         }
         else
         {
