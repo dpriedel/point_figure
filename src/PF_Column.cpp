@@ -146,7 +146,14 @@ PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_val
     // As this is the first entry in the column, just set fields 
     // to the input value rounded down to the nearest box value.
 
-    top_= RoundDownToNearestBox(new_value);
+    if (column_scale_ == ColumnScale::e_logarithmic)
+    {
+        top_ = new_value;
+    }
+    else
+    {
+        top_= RoundDownToNearestBox(new_value);
+    }
     bottom_ = top_;
     time_span_ = {the_time, the_time};
 
@@ -268,11 +275,6 @@ DprDecimal::DDecQuad PF_Column::RoundDownToNearestBox (const DprDecimal::DDecQua
         price_as_int = a_value;
     }
 
-    if (column_scale_ == ColumnScale::e_logarithmic)
-    {
-        return a_value;
-    }
-
     DprDecimal::DDecQuad result = DprDecimal::Mod(price_as_int, box_size_) * box_size_;
     return result;
 
@@ -282,7 +284,12 @@ DprDecimal::DDecQuad PF_Column::RoundDownToNearestBox (const DprDecimal::DDecQua
 Json::Value PF_Column::ToJSON () const
 {
     Json::Value result;
+
+    result["start_at"] = time_span_.first.time_since_epoch().count();
+    result["last_entry"] = time_span_.second.time_since_epoch().count();
+
     result["box_size"] = box_size_.ToStr();
+    result["original_box_size"] = original_box_size_.ToStr();
     result["reversal_boxes"] = reversal_boxes_;
     result["bottom"] = bottom_.ToStr();
     result["top"] = top_.ToStr();
@@ -325,18 +332,18 @@ Json::Value PF_Column::ToJSON () const
     };
 
     result["had_reversal"] = had_reversal_;
-//    result["start_at"] = std::to_string(time_span_.first.time_since_epoch().count());
-//    result["last_entry"] = std::to_string(time_span_.second.time_since_epoch().count());
-    result["start_at"] = time_span_.first.time_since_epoch().count();
-    result["last_entry"] = time_span_.second.time_since_epoch().count();
-
     return result;
 }		// -----  end of method PF_Column::ToJSON  ----- 
 
 void PF_Column::FromJSON (const Json::Value& new_data)
 {
+    time_span_.first = tpt{std::chrono::nanoseconds{new_data["start_at"].asInt64()}};
+    time_span_.second = tpt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
+
     box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
+    original_box_size_ = DprDecimal::DDecQuad{new_data["original_box_size"].asString()};
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
+    
     bottom_ = DprDecimal::DDecQuad{new_data["bottom"].asString()};
     top_ = DprDecimal::DDecQuad{new_data["top"].asString()};
 
@@ -390,7 +397,5 @@ void PF_Column::FromJSON (const Json::Value& new_data)
 
     had_reversal_ = new_data["had_reversal"].asBool();
     
-    time_span_.first = tpt{std::chrono::nanoseconds{new_data["start_at"].asInt64()}};
-    time_span_.second = tpt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
 }		// -----  end of method PF_Column::FromJSON  ----- 
 

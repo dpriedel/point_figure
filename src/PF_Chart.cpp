@@ -245,11 +245,14 @@ Json::Value PF_Chart::ToJSON () const
 {
     Json::Value result;
     result["symbol"] = symbol_;
+    result["first_date"] = first_date_.time_since_epoch().count();
+    result["last_change_date"] = last_change_date_.time_since_epoch().count();
+    result["last_check_date"] = last_checked_date_.time_since_epoch().count();
+
     result["box_size"] = box_size_.ToStr();
     result["reversal_boxes"] = reversal_boxes_;
     result["y_min"] = y_min_.ToStr();
     result["y_max"] = y_max_.ToStr();
-    result["use_logarithms"] = use_logarithms_ == PF_Column::ColumnScale::e_arithmetic ? "arithmetic" : "logarithmic";
 
     switch(current_direction_)
     {
@@ -266,20 +269,10 @@ Json::Value PF_Chart::ToJSON () const
             break;
     };
 
-    switch(fractional_boxes_)
-    {
-        case PF_Column::FractionalBoxes::e_integral:
-            result["fractional_boxes"] = "integral";
-            break;
-
-        case PF_Column::FractionalBoxes::e_fractional:
-            result["fractional_boxes"] = "fractional";
-            break;
-    };
-    result["first_date"] = first_date_.time_since_epoch().count();
-    result["last_change_date"] = last_change_date_.time_since_epoch().count();
-    result["last_check_date"] = last_checked_date_.time_since_epoch().count();
+    result["fractional_boxes"] = fractional_boxes_ == PF_Column::FractionalBoxes::e_integral ? "integral" : "fractional";
     
+    result["use_logarithms"] = use_logarithms_ == PF_Column::ColumnScale::e_arithmetic ? "arithmetic" : "logarithmic";
+
     Json::Value cols{Json::arrayValue};
     for (const auto& col : columns_)
     {
@@ -296,11 +289,15 @@ Json::Value PF_Chart::ToJSON () const
 void PF_Chart::FromJSON (const Json::Value& new_data)
 {
     symbol_ = new_data["symbol"].asString();
+
+    first_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
+    last_change_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
+    last_checked_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
+
     box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
     y_min_ = DprDecimal::DDecQuad{new_data["y_min"].asString()};
     y_max_ = DprDecimal::DDecQuad{new_data["y_max"].asString()};
-    use_logarithms_ = new_data["use_logarithms"].asString() == "arithmetic" ? PF_Column::ColumnScale::e_arithmetic : PF_Column::ColumnScale::e_logarithmic;
 
     const auto direction = new_data["current_direction"].asString();
     if (direction == "up")
@@ -335,10 +332,20 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
         throw std::invalid_argument{fmt::format("Invalid fractional_boxes provided: {}. Must be 'integral' or 'fractional'.", fractional)};
     }
 
-    first_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
-    last_change_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
-    last_checked_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
-
+    const auto chart_scale = new_data["use_logarithms"].asString();
+    if (chart_scale == "arithmetic")
+    {
+        use_logarithms_ = PF_Column::ColumnScale::e_arithmetic;
+    }
+    else if (chart_scale == "logarithmic")
+    {
+        use_logarithms_ = PF_Column::ColumnScale::e_logarithmic;
+    }
+    else
+    {
+        throw std::invalid_argument{fmt::format("Invalid chart_scale provided: {}. Must be 'arithmetic' or 'logarithmic'.", chart_scale)};
+    }
+    
     // lastly, we can do our columns 
 
     const auto& cols = new_data["columns"];

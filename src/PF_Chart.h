@@ -33,14 +33,12 @@
 
 #include <date/date.h>
 
-#include "utilities.h"
-
 namespace fs = std::filesystem;
 
 //using namespace std::chrono_literals;
 
 #include "PF_Column.h"
-
+#include "utilities.h"
 
 class PF_Chart
 {
@@ -126,7 +124,8 @@ private:
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
-    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.box_size_ << " reversal boxes: " << chart.reversal_boxes_<< '\n';
+    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.box_size_ << " reversal boxes: " << chart.reversal_boxes_<< 
+        (chart.use_logarithms_ == PF_Column::ColumnScale::e_arithmetic ? " numeric scale" : " log scale") << '\n';
     for (const auto& col : chart.columns_)
     {
         os << '\t' << col << '\n';
