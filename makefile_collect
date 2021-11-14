@@ -22,8 +22,8 @@ MAKE=gmake
 BOOSTDIR := /extra/boost/boost-1.77_gcc-11
 GCCDIR := /extra/gcc/gcc-11
 GTESTDIR := /usr/local/include
-DECIMALSRCDIR := /extra/gcc/decNumber
-UTILITYDIR := /home/dpriedel/projects/common_utilities
+DECIMALSRCDIR := /extra/gcc/decNumber_old
+UTILITYDIR := $(HOME)/projects/common_utilities
 CPP := $(GCCDIR)/bin/g++
 GCC := $(GCCDIR)/bin/gcc
 
@@ -36,10 +36,10 @@ endif
 
 OUTFILE := PF_CollectData
 
-CFG_INC := -I/home/dpriedel/projects/point_figure/src \
+CFG_INC := -I$(HOME)/projects/point_figure/src \
 	-I$(GTESTDIR) \
 	-I$(BOOSTDIR) \
-	-I$(DECIMALSRCDIR)/include \
+	-I$(DECIMALSRCDIR) \
 	-I$(UTILITYDIR)/include \
 	-I/usr/local/include/ChartDirector
 
@@ -50,13 +50,13 @@ SRCS1 := $(SDIR1)/Main.cpp
 
 SDIR2 := ./src
 SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
-		$(SDIR2)/DDecDouble.cpp \
+		$(SDIR2)/DDecQuad.cpp \
 		$(SDIR2)/PF_Chart.cpp \
 		$(SDIR2)/PF_Column.cpp
 
-SDIR3 := $(DECIMALSRCDIR)/src
-SRCS3 := $(SDIR3)/decDouble.c \
-		 $(SDIR3)/decQuad.c \
+SDIR3 := $(DECIMALSRCDIR)
+SRCS3 := $(SDIR3)/decQuad.c \
+		 $(SDIR3)/decNumber.c \
 		 $(SDIR3)/decContext.c
 
 SDIR4 := $(UTILITYDIR)/src
@@ -80,6 +80,7 @@ CFG_LIB := -lpthread \
 		-L/usr/local/lib \
 		-lfmt \
 		-lspdlog \
+		-ljsoncpp \
 		-ldate-tz \
 		-lchartdir
 

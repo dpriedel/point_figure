@@ -373,7 +373,7 @@ std::tuple<int, int, int> CMyApp::Run()
 
     PF_Chart chart{mSymbol, mBoxSize, mReversalBoxes};
 
-    chart.LoadData<DprDecimal::DDecDouble>(theInput);
+//    chart.LoadData<DprDecimal::DDecQuad>(theInput);
     std::cout << "chart info: " << chart.GetNumberOfColumns() << '\n';
 
     chart.ConstructChartAndWriteToFile(mOutputPath);
