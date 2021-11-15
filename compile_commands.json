@@ -16,7 +16,7 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -45,7 +45,7 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -74,17 +74,17 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
       "-o",
-      "Debug_collect/DDecDouble.o",
-      "./src/DDecDouble.cpp"
+      "Debug_collect/DDecQuad.o",
+      "./src/DDecQuad.cpp"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/home/dpriedel/projects/point_figure/./src/DDecDouble.cpp",
-    "output": "/home/dpriedel/projects/point_figure/Debug_collect/DDecDouble.o"
+    "file": "/home/dpriedel/projects/point_figure/./src/DDecQuad.cpp",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/DDecQuad.o"
   },
   {
     "arguments": [
@@ -103,7 +103,7 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -132,7 +132,7 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
@@ -155,39 +155,16 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
-      "-I/home/dpriedel/projects/common_utilities/include",
-      "-I/usr/local/include/ChartDirector",
-      "-march=native",
-      "-o",
-      "Debug_collect/decDouble.o",
-      "/extra/gcc/decNumber/src/decDouble.c"
-    ],
-    "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/extra/gcc/decNumber/src/decDouble.c",
-    "output": "/home/dpriedel/projects/point_figure/Debug_collect/decDouble.o"
-  },
-  {
-    "arguments": [
-      "/extra/gcc/gcc-11/bin/gcc",
-      "-c",
-      "-O0",
-      "-g3",
-      "-D_DEBUG",
-      "-fPIC",
-      "-I/home/dpriedel/projects/point_figure/src",
-      "-I/usr/local/include",
-      "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
       "-o",
       "Debug_collect/decQuad.o",
-      "/extra/gcc/decNumber/src/decQuad.c"
+      "/extra/gcc/decNumber_old/decQuad.c"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/extra/gcc/decNumber/src/decQuad.c",
+    "file": "/extra/gcc/decNumber_old/decQuad.c",
     "output": "/home/dpriedel/projects/point_figure/Debug_collect/decQuad.o"
   },
   {
@@ -201,16 +178,39 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
+      "-I/home/dpriedel/projects/common_utilities/include",
+      "-I/usr/local/include/ChartDirector",
+      "-march=native",
+      "-o",
+      "Debug_collect/decNumber.o",
+      "/extra/gcc/decNumber_old/decNumber.c"
+    ],
+    "directory": "/home/dpriedel/projects/point_figure",
+    "file": "/extra/gcc/decNumber_old/decNumber.c",
+    "output": "/home/dpriedel/projects/point_figure/Debug_collect/decNumber.o"
+  },
+  {
+    "arguments": [
+      "/extra/gcc/gcc-11/bin/gcc",
+      "-c",
+      "-O0",
+      "-g3",
+      "-D_DEBUG",
+      "-fPIC",
+      "-I/home/dpriedel/projects/point_figure/src",
+      "-I/usr/local/include",
+      "-I/extra/boost/boost-1.77_gcc-11",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
       "-o",
       "Debug_collect/decContext.o",
-      "/extra/gcc/decNumber/src/decContext.c"
+      "/extra/gcc/decNumber_old/decContext.c"
     ],
     "directory": "/home/dpriedel/projects/point_figure",
-    "file": "/extra/gcc/decNumber/src/decContext.c",
+    "file": "/extra/gcc/decNumber_old/decContext.c",
     "output": "/home/dpriedel/projects/point_figure/Debug_collect/decContext.o"
   },
   {
@@ -230,7 +230,7 @@
       "-I/home/dpriedel/projects/point_figure/src",
       "-I/usr/local/include",
       "-I/extra/boost/boost-1.77_gcc-11",
-      "-I/extra/gcc/decNumber/include",
+      "-I/extra/gcc/decNumber_old",
       "-I/home/dpriedel/projects/common_utilities/include",
       "-I/usr/local/include/ChartDirector",
       "-march=native",
