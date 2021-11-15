@@ -42,17 +42,13 @@
 
 PF_Column::PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
             ColumnScale column_scale, Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
-    : original_box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
+    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
         column_scale_{column_scale},
         direction_{direction}, top_{top}, bottom_{bottom}
 {
     if (column_scale_ == ColumnScale::e_logarithmic)
     {
-        box_size_ = (1.0 + original_box_size_).log_n();
-    }
-    else 
-    {
-        box_size_ = original_box_size_;
+        log_box_increment_ = (1.0 + box_size_).log_n();
     }
 
 }  // -----  end of method PF_Column::PF_Column  (constructor)  -----
@@ -70,13 +66,24 @@ PF_Column::PF_Column (const Json::Value& new_data)
 PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQuad value,
         tpt the_time)
 {
-    auto new_column = PF_Column{original_box_size_, reversal_boxes_, fractional_boxes_,column_scale_, direction,
+    auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, column_scale_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
             direction == Direction::e_down ? value : bottom_ + box_size_
     };
     new_column.time_span_ = {the_time, the_time};
     return new_column;
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
+
+PF_Column PF_Column::MakeReversalColumnLog (Direction direction, DprDecimal::DDecQuad value,
+        tpt the_time)
+{
+    auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, column_scale_, direction,
+            direction == Direction::e_down ? top_ - log_box_increment_ : value,
+            direction == Direction::e_down ? value : bottom_ + log_box_increment_
+    };
+    new_column.time_span_ = {the_time, the_time};
+    return new_column;
+}		// -----  end of method PF_Column::MakeReversalColumnLog  ----- 
 
 
 PF_Column& PF_Column::operator= (const Json::Value& new_data)
@@ -94,32 +101,26 @@ bool PF_Column::operator== (const PF_Column& rhs) const
 
 PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
+    if (column_scale_ == ColumnScale::e_logarithmic)
+    {
+        return AddValueLog(new_value.log_n(), the_time);
+    }
+
     if (top_ == -1 && bottom_ == -1)
     {
         // OK, first time here for this column.
 
-        if (column_scale_ == ColumnScale::e_logarithmic)
-        {
-            return StartColumn(new_value.log_n(), the_time);
-        }
         return StartColumn(new_value, the_time);
     }
 
     DprDecimal::DDecQuad possible_value;
-    if (column_scale_ == ColumnScale::e_logarithmic)
+    if (fractional_boxes_ == FractionalBoxes::e_integral)
     {
-        possible_value = new_value.log_n();
+        possible_value = new_value.ToIntTruncated();
     }
     else
     {
-        if (fractional_boxes_ == FractionalBoxes::e_integral)
-        {
-            possible_value = new_value.ToIntTruncated();
-        }
-        else
-        {
-            possible_value = new_value;
-        }
+        possible_value = new_value;
     }
 
     // OK, we've got a value but may not yet have a direction.
@@ -146,14 +147,7 @@ PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_val
     // As this is the first entry in the column, just set fields 
     // to the input value rounded down to the nearest box value.
 
-    if (column_scale_ == ColumnScale::e_logarithmic)
-    {
-        top_ = new_value;
-    }
-    else
-    {
-        top_= RoundDownToNearestBox(new_value);
-    }
+    top_= RoundDownToNearestBox(new_value);
     bottom_ = top_;
     time_span_ = {the_time, the_time};
 
@@ -263,6 +257,149 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& pos
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendDown  ----- 
 
+PF_Column::AddResult PF_Column::AddValueLog (const DprDecimal::DDecQuad& new_value, tpt the_time)
+{
+    if (top_ == -1 && bottom_ == -1)
+    {
+        // OK, first time here for this column.
+
+        return StartColumnLog(new_value, the_time);
+    }
+
+    // OK, we've got a value but may not yet have a direction.
+
+    if (direction_ == Direction::e_unknown)
+    {
+        return TryToFindDirectionLog(new_value, the_time);
+    }
+
+    // If we're here, we have direction. We can either continue in 
+    // that direction, ignore the value or reverse our direction 
+    // in which case, we start a new column (unless this is 
+    // a 1-box reversal and we can revers in place)
+
+    if (direction_ == Direction::e_up)
+    {
+        return TryToExtendUpLog(new_value, the_time);
+    }
+    return TryToExtendDownLog(new_value, the_time);
+}		// -----  end of method PF_Column::AddValue  ----- 
+
+PF_Column::AddResult PF_Column::StartColumnLog (const DprDecimal::DDecQuad& new_value, tpt the_time)
+{
+    // As this is the first entry in the column, just set fields 
+    // to the input value rounded down to the nearest box value.
+
+    top_ = new_value;
+    bottom_ = top_;
+    time_span_ = {the_time, the_time};
+
+    return {Status::e_accepted, std::nullopt};
+}		// -----  end of method PF_Column::StartColumn  ----- 
+
+
+PF_Column::AddResult PF_Column::TryToFindDirectionLog (const DprDecimal::DDecQuad& possible_value, tpt the_time)
+{
+    // NOTE: Since a new value may gap up or down, we could 
+    // have multiple boxes to fill in. 
+
+    // we can compare to either value since they 
+    // are both the same at this point.
+
+    if (possible_value >= top_ + log_box_increment_)
+    {
+        direction_ = Direction::e_up;
+        int how_many_boxes = ((possible_value - top_) / log_box_increment_).ToIntTruncated();
+        top_ += how_many_boxes * log_box_increment_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+    if (possible_value <= bottom_ - log_box_increment_)
+    {
+        direction_ = Direction::e_down;
+        int how_many_boxes = ((possible_value - bottom_) / log_box_increment_).ToIntTruncated();
+        bottom_ += how_many_boxes * log_box_increment_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+
+    // skip value
+    return {Status::e_ignored, std::nullopt};
+}		// -----  end of method PF_Column::TryToFindDirection  ----- 
+
+PF_Column::AddResult PF_Column::TryToExtendUpLog (const DprDecimal::DDecQuad& possible_value, tpt the_time)
+{
+    if (possible_value >= top_ + log_box_increment_)
+    {
+        int how_many_boxes = ((possible_value - top_) / log_box_increment_).ToIntTruncated();
+        top_ += how_many_boxes * log_box_increment_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+    // look for a reversal 
+
+    if (possible_value <= top_ - (log_box_increment_ * reversal_boxes_))
+    {
+        // look for one-step-back reversal first.
+
+        if (reversal_boxes_ == 1)
+        {
+            if (bottom_ <= top_ - log_box_increment_)
+            {
+                time_span_.second = the_time;
+                // can't do it as box is occupied.
+                return {Status::e_reversal, MakeReversalColumnLog(Direction::e_down, top_ - log_box_increment_, the_time)};
+            }
+            int how_many_boxes = ((possible_value - bottom_) / log_box_increment_).ToIntTruncated();
+            bottom_ += how_many_boxes * log_box_increment_;
+            had_reversal_ = true;
+            direction_ = Direction::e_down;
+            time_span_.second = the_time;
+            return {Status::e_accepted, std::nullopt};
+        }
+        time_span_.second = the_time;
+        return {Status::e_reversal, MakeReversalColumnLog(Direction::e_down, top_ - (log_box_increment_ * reversal_boxes_), the_time)};
+    }
+    return {Status::e_ignored, std::nullopt};
+}		// -----  end of method PF_Chart::TryToExtendUp  ----- 
+
+
+PF_Column::AddResult PF_Column::TryToExtendDownLog (const DprDecimal::DDecQuad& possible_value, tpt the_time)
+{
+    if (possible_value <= bottom_ - log_box_increment_)
+    {
+        int how_many_boxes = ((possible_value - bottom_) / log_box_increment_).ToIntTruncated();
+        bottom_ += how_many_boxes * log_box_increment_;
+        time_span_.second = the_time;
+        return {Status::e_accepted, std::nullopt};
+    }
+    // look for a reversal 
+
+    if (possible_value >= bottom_ + (log_box_increment_ * reversal_boxes_))
+    {
+        // look for one-step-back reversal first.
+
+        if (reversal_boxes_ == 1)
+        {
+            if (top_ >= bottom_ + log_box_increment_)
+            {
+                time_span_.second = the_time;
+                // can't do it as box is occupied.
+                return {Status::e_reversal, MakeReversalColumnLog(Direction::e_up, bottom_ + log_box_increment_, the_time)};
+            }
+            int how_many_boxes = ((possible_value - top_) / log_box_increment_).ToIntTruncated();
+            top_ += how_many_boxes * log_box_increment_;
+            had_reversal_ = true;
+            direction_ = Direction::e_up;
+            time_span_.second = the_time;
+            return {Status::e_accepted, std::nullopt};
+        }
+        time_span_.second = the_time;
+        return {Status::e_reversal, MakeReversalColumnLog(Direction::e_up, bottom_ + (log_box_increment_ * reversal_boxes_), the_time)};
+    }
+    return {Status::e_ignored, std::nullopt};
+}		// -----  end of method PF_Column::TryToExtendDown  ----- 
+
 DprDecimal::DDecQuad PF_Column::RoundDownToNearestBox (const DprDecimal::DDecQuad& a_value) const
 {
     DprDecimal::DDecQuad price_as_int;
@@ -289,7 +426,7 @@ Json::Value PF_Column::ToJSON () const
     result["last_entry"] = time_span_.second.time_since_epoch().count();
 
     result["box_size"] = box_size_.ToStr();
-    result["original_box_size"] = original_box_size_.ToStr();
+    result["log_box_increment"] = log_box_increment_.ToStr();
     result["reversal_boxes"] = reversal_boxes_;
     result["bottom"] = bottom_.ToStr();
     result["top"] = top_.ToStr();
@@ -341,7 +478,7 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     time_span_.second = tpt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
 
     box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
-    original_box_size_ = DprDecimal::DDecQuad{new_data["original_box_size"].asString()};
+    log_box_increment_ = DprDecimal::DDecQuad{new_data["log_box_increment"].asString()};
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
     
     bottom_ = DprDecimal::DDecQuad{new_data["bottom"].asString()};

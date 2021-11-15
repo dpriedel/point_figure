@@ -64,8 +64,10 @@ public:
 
     [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return column_scale_ == ColumnScale::e_arithmetic ? top_ : top_.exp_n(); }
     [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return column_scale_ == ColumnScale::e_arithmetic ? bottom_ : bottom_.exp_n(); }
+    [[nodiscard]] DprDecimal::DDecQuad GetTop_Raw() const { return top_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBottom_Raw() const { return  bottom_ ; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return original_box_size_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
     [[nodiscard]] ColumnScale GetColumnScale() const { return column_scale_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
@@ -95,8 +97,8 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    PF_Column MakeReversalColumn(Direction direction, DprDecimal::DDecQuad value,
-            tpt the_time);
+    PF_Column MakeReversalColumn(Direction direction, DprDecimal::DDecQuad value, tpt the_time);
+    PF_Column MakeReversalColumnLog(Direction direction, DprDecimal::DDecQuad value, tpt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -109,13 +111,20 @@ private:
     [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& possible_value, tpt the_time);
     [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& possible_value, tpt the_time);
 
+    [[nodiscard]] AddResult AddValueLog(const DprDecimal::DDecQuad& new_value, tpt the_time);
+
+    [[nodiscard]] AddResult StartColumnLog(const DprDecimal::DDecQuad& new_value, tpt the_time);
+    [[nodiscard]] AddResult TryToFindDirectionLog(const DprDecimal::DDecQuad& possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendUpLog(const DprDecimal::DDecQuad& possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendDownLog(const DprDecimal::DDecQuad& possible_value, tpt the_time);
+
     [[nodiscard]] DprDecimal::DDecQuad RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
     // ====================  DATA MEMBERS  =======================================
 
     TimeSpan time_span_;
     DprDecimal::DDecQuad box_size_ = -1;
-    DprDecimal::DDecQuad original_box_size_ = -1;
+    DprDecimal::DDecQuad log_box_increment_ = -1;
     int32_t reversal_boxes_ = -1;
 
     DprDecimal::DDecQuad bottom_;
