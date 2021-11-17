@@ -27,6 +27,7 @@
 #include <json/json.h>
 
 #include "DDecQuad.h"
+#include "utilities.h"
 
 // =====================================================================================
 //        Class:  PF_Column
@@ -185,7 +186,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction dir
 inline std::ostream& operator<<(std::ostream& os, const PF_Column& column)
 {
     os << "bottom: " << column.GetBottom() << " top: " << column.GetTop() << " direction: " << column.direction_
-        << (column.had_reversal_ ? " one-step-back reversal" : "");
+        << " begin date: " << TimePointToYMDString(column.GetTimeSpan().first) << (column.had_reversal_ ? " one-step-back reversal" : "");
     return os;
 }
 

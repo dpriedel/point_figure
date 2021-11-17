@@ -16,6 +16,7 @@
 // =====================================================================================
 
 //#include <iterator>
+#include <chrono>
 #include <iostream>
 
 #include <chartdir.h>
@@ -25,6 +26,7 @@
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
+#include "utilities.h"
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_Chart
@@ -180,6 +182,12 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
     std::vector<double> openData;
     std::vector<double> closeData;
 
+    // for x-axis label, we use the begin date for each column 
+    // the chart software wants an array of const char*.
+    // this will take several steps.
+
+//    std::vector<std::string> x_axis_labels;
+
     for (const auto& col : columns_)
     {
         lowData.push_back(col.GetBottom().ToDouble());
@@ -195,6 +203,7 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
             openData.push_back(col.GetTop().ToDouble());
             closeData.push_back(col.GetBottom().ToDouble());
         }
+//        x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
     }
 
     lowData.push_back(current_column_.GetBottom().ToDouble());
@@ -210,17 +219,28 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
         openData.push_back(current_column_.GetTop().ToDouble());
         closeData.push_back(current_column_.GetBottom().ToDouble());
     }
-    std::unique_ptr<XYChart> c = std::make_unique<XYChart>(600, 350);
+//    x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
 
-    c->setPlotArea(50, 25, 500, 250)->setGridColor(0xc0c0c0, 0xc0c0c0);
+//    std::vector<const char*> x_labels;
 
-    c->addTitle(fmt::format("{}X{} for {}", box_size_.ToDouble(), reversal_boxes_, symbol_).c_str());
+//    ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
+//    ranges::for_each(x_labels, [](const auto x){ std::cout << x << '\n'; } );
+
+    std::unique_ptr<XYChart> c = std::make_unique<XYChart>(600, 700);
+
+    c->setPlotArea(50, 25, 500, 600)->setGridColor(0xc0c0c0, 0xc0c0c0);
+
+    c->addTitle(fmt::format("{}{} X {} for {}  {}", box_size_.ToDouble(),
+                (IsLogarithmic() ? "%" : ""), reversal_boxes_, symbol_,
+                (IsLogarithmic() ? "logarithmic" : "")).c_str());
 
 //    c->xAxis()->setTitle("Jan 2001");
 
-    // we don't need any labels on the x-axis now.
     // Set the labels on the x axis. Rotate the labels by 45 degrees.
-//    c->xAxis()->setLabels(StringArray(labels, labels_size))->setFontAngle(45);
+//    if (x_axis_labels.size() < 100)
+//    {
+//        c->xAxis()->setLabels(StringArray(&x_labels[0], x_labels.size()))->setFontAngle(45);
+//    }
 
     // Add a title to the y axis
     c->yAxis()->setTitle("Tick data");

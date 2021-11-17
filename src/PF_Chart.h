@@ -76,6 +76,7 @@ public:
     void ConstructChartAndWriteToFile(const fs::path& output_filename) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
+    [[nodiscard]] bool IsLogarithmic() const { return use_logarithms_ == PF_Column::ColumnScale::e_logarithmic; }
 
     // ====================  MUTATORS      =======================================
     
