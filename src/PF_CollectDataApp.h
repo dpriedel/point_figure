@@ -89,20 +89,20 @@ private:
 
     // ====================  DATA MEMBERS  =======================================
 
-	po::positional_options_description	mPositional;			//	old style options
-    std::unique_ptr<po::options_description> mNewOptions;    	//	new style options (with identifiers)
-	po::variables_map					mVariableMap;
+	po::positional_options_description	positional_;			//	old style options
+    std::unique_ptr<po::options_description> newoptions_;    	//	new style options (with identifiers)
+	po::variables_map					variablemap_;
 
-	int mArgc = 0;
-	char** mArgv = nullptr;
+	int argc_ = 0;
+	char** argv_ = nullptr;
 	const std::vector<std::string> tokens_;
     std::string logging_level_{"information"};
 
-    fs::path mInputPath;
-    fs::path mOutputPath;
+    fs::path inputpath_;
+    fs::path outputpath_;
     fs::path log_file_path_name_;
-    std::string mSymbol;
-    std::string mDBName;
+    std::string symbol_;
+    std::string dbname_;
 
     std::shared_ptr<spdlog::logger> logger_;
 
@@ -112,16 +112,16 @@ private:
     enum class interval { unknown, eod, sec1, sec5, min1, min5, live };
     enum class scale { unknown, arithmetic,log };
 
-    source mSource;
-    destination mDestination;
-    mode mMode;
-    interval mInterval;
-    scale mScale;
+    source source_;
+    destination destination_;
+    mode mode_;
+    interval interval_;
+    scale scale_;
 
-    int32_t mBoxSize;
-    int32_t mReversalBoxes;
-    bool mInputIsPath;
-    bool mOutputIsPath;
+    int32_t boxsize_;
+    int32_t reversalboxes_;
+    bool inputispath_;
+    bool outputispath_;
 
     static bool had_signal_;
 }; // -----  end of class CMyApp  -----
@@ -137,16 +137,16 @@ template <> struct fmt::formatter<std::filesystem::path>: formatter<std::string>
   }
 };
 
-// custom fmtlib formatter for date year_month_day
-
-template <> struct fmt::formatter<date::year_month_day>: formatter<std::string> {
-  // parse is inherited from formatter<string_view>.
-  template <typename FormatContext>
-  auto format(date::year_month_day d, FormatContext& ctx) {
-    std::string s_date = date::format("%Y-%m-%d", d);
-    return formatter<std::string>::format(s_date, ctx);
-  }
-};
+//// custom fmtlib formatter for date year_month_day
+//
+//template <> struct fmt::formatter<date::year_month_day>: formatter<std::string> {
+//  // parse is inherited from formatter<string_view>.
+//  template <typename FormatContext>
+//  auto format(date::year_month_day d, FormatContext& ctx) {
+//    std::string s_date = date::format("%Y-%m-%d", d);
+//    return formatter<std::string>::format(s_date, ctx);
+//  }
+//};
 
 
 #endif   // ----- #ifndef PF_COLLECTDATAAPP_INC  ----- 

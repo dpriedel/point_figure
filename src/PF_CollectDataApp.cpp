@@ -53,9 +53,9 @@ inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 CMyApp::CMyApp (int argc, char* argv[])
-    : mArgc{argc}, mArgv{argv},
-	mSource{source::unknown}, mDestination{destination::unknown}, mMode{mode::unknown}, mInterval{interval::unknown}, 
-	mScale{scale::unknown}, mInputIsPath{false}, mOutputIsPath{false} 
+    : argc_{argc}, argv_{argv},
+	source_{source::unknown}, destination_{destination::unknown}, mode_{mode::unknown}, interval_{interval::unknown}, 
+	scale_{scale::unknown}, inputispath_{false}, outputispath_{false} 
 
 {
 }  // -----  end of method CMyApp::CMyApp  (constructor)  -----
@@ -151,46 +151,46 @@ bool CMyApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
-    BOOST_ASSERT_MSG(mVariableMap.count("symbol") != 0, "Symbol must be specified.");
-	mSymbol = mVariableMap["symbol"].as<std::string>();
+    BOOST_ASSERT_MSG(variablemap_.count("symbol") != 0, "Symbol must be specified.");
+	symbol_ = variablemap_["symbol"].as<std::string>();
 
-	if(mVariableMap.count("file") == 0)
+	if(variablemap_.count("file") == 0)
 	{
-		mSource = source::stdin;
-		mInputIsPath = false;
+		source_ = source::stdin;
+		inputispath_ = false;
 	}
 	else
 	{
-		std::string temp = mVariableMap["file"].as<std::string>();
+		std::string temp = variablemap_["file"].as<std::string>();
 		if (temp == "-")
 		{
-			mSource = source::stdin;
-			mInputIsPath = false;
+			source_ = source::stdin;
+			inputispath_ = false;
 		}
 		else
 		{
-			mSource = source::file;
-			mInputPath = temp;
-            BOOST_ASSERT_MSG(fs::exists(mInputPath), fmt::format("Can't find input file: {}", mInputPath).c_str());
+			source_ = source::file;
+			inputpath_ = temp;
+            BOOST_ASSERT_MSG(fs::exists(inputpath_), fmt::format("Can't find input file: {}", inputpath_).c_str());
 		}
 	}
 
 	//	if not specified, assume we are doing a 'load' operation for symbol.
 	
-	if (mVariableMap.count("mode") == 0)
+	if (variablemap_.count("mode") == 0)
 	{
-		mMode = mode::load;
+		mode_ = mode::load;
 	}
 	else
 	{
-		std::string temp = mVariableMap["mode"].as<std::string>();
+		std::string temp = variablemap_["mode"].as<std::string>();
 		if (temp == "load")
         {
-			mMode = mode::load;
+			mode_ = mode::load;
         }
 		else if (temp == "update")
         {
-			mMode = mode::update;
+			mode_ = mode::update;
         }
 		else
         {
@@ -200,37 +200,37 @@ bool CMyApp::CheckArgs ()
 
 	//	if not specified, assume we are sending output to stdout
 	
-	if (mVariableMap.count("destination") == 0)
+	if (variablemap_.count("destination") == 0)
 	{
-		mDestination = destination::stdout;
-		mOutputIsPath = false;
+		destination_ = destination::stdout;
+		outputispath_ = false;
 	}
 	else
 	{
-		std::string temp = mVariableMap["destination"].as<std::string>();
+		std::string temp = variablemap_["destination"].as<std::string>();
 		if (temp == "file")
 		{
-			mDestination = destination::file;
-            BOOST_ASSERT_MSG(mVariableMap.count("output") != 0, "Output destination of 'file' specified but no 'output' name provided.");
-			std::string temp = mVariableMap["output"].as<std::string>();
+			destination_ = destination::file;
+            BOOST_ASSERT_MSG(variablemap_.count("output") != 0, "Output destination of 'file' specified but no 'output' name provided.");
+			std::string temp = variablemap_["output"].as<std::string>();
 			if (temp == "-")
 			{
-				mOutputIsPath = false;
-				mDestination = destination::stdout;
+				outputispath_ = false;
+				destination_ = destination::stdout;
 			}
 			else
 			{
-				mOutputPath = temp;
-				mOutputIsPath = true;
+				outputpath_ = temp;
+				outputispath_ = true;
 			}
 		}
 		else if (temp == "DB")
 		{
-			mDestination = destination::DB;
-            BOOST_ASSERT_MSG(mVariableMap.count("output") != 0, "Output destination of 'DB' specified but no 'output' table name provided.");
-			std::string temp = mVariableMap["output"].as<std::string>();
+			destination_ = destination::DB;
+            BOOST_ASSERT_MSG(variablemap_.count("output") != 0, "Output destination of 'DB' specified but no 'output' table name provided.");
+			std::string temp = variablemap_["output"].as<std::string>();
             BOOST_ASSERT_MSG(temp != "-", "Invalid DB table name specified: '-'.");
-			mDBName = temp;
+			dbname_ = temp;
 		}
 		else
         {
@@ -239,33 +239,33 @@ bool CMyApp::CheckArgs ()
 
 	}
 
-    BOOST_ASSERT_MSG(mVariableMap.count("boxsize") != 0, "'Boxsize must be specified.");
-	int32_t boxsize = mVariableMap["boxsize"].as<int32_t>();
-	mBoxSize = boxsize;
+    BOOST_ASSERT_MSG(variablemap_.count("boxsize") != 0, "'Boxsize must be specified.");
+	int32_t boxsize = variablemap_["boxsize"].as<int32_t>();
+	boxsize_ = boxsize;
 
-	if (mVariableMap.count("reversal") == 0)
+	if (variablemap_.count("reversal") == 0)
     {
-		mReversalBoxes = 1;
+		reversalboxes_ = 1;
     }
 	else
     {
-		mReversalBoxes = mVariableMap["reversal"].as<int>();
+		reversalboxes_ = variablemap_["reversal"].as<int>();
     }
 
-	if (mVariableMap.count("scale") == 0)
+	if (variablemap_.count("scale") == 0)
     {
-		mScale = scale::arithmetic;
+		scale_ = scale::arithmetic;
     }
 	else
 	{
-		std::string temp = mVariableMap["reversal"].as<std::string>();
+		std::string temp = variablemap_["reversal"].as<std::string>();
 		if (temp == "arithmetic")
         {
-			mScale = scale::arithmetic;
+			scale_ = scale::arithmetic;
         }
 		else if (temp == "log")
         {
-			mScale = scale::log;
+			scale_ = scale::log;
         }
 		else
         {
@@ -277,9 +277,9 @@ bool CMyApp::CheckArgs ()
 
 void CMyApp::SetupProgramOptions ()
 {
-    mNewOptions = std::make_unique<po::options_description>();
+    newoptions_ = std::make_unique<po::options_description>();
 
-	mNewOptions->add_options()
+	newoptions_->add_options()
 		("help",											"produce help message")
 		("symbol,s",			po::value<std::string>(),	"name of symbol we are processing data for")
 		("file,f",				po::value<std::string>(),	"name of file containing data for symbol. Default is stdin")
@@ -295,33 +295,33 @@ void CMyApp::SetupProgramOptions ()
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
 		;
 
-}		// -----  end of method CMyApp::Do_SetupProgramOptions  -----
+}		// -----  end of method CMyApp::Do_SetupPrograoptions_  -----
 
 
 void CMyApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 {
     if (tokens.empty())
     {
-	    auto options = po::parse_command_line(mArgc, mArgv, *mNewOptions);
-        po::store(options, mVariableMap);
-        if (this->mArgc == 1 ||	mVariableMap.count("help") == 1)
+	    auto options = po::parse_command_line(argc_, argv_, *newoptions_);
+        po::store(options, variablemap_);
+        if (this->argc_ == 1 ||	variablemap_.count("help") == 1)
         {
-            std::cout << *mNewOptions << "\n";
+            std::cout << *newoptions_ << "\n";
             throw std::runtime_error("\nExiting after 'help'.");
         }
     }
     else
     {
-        auto options = po::command_line_parser(tokens).options(*mNewOptions).run();
-        po::store(options, mVariableMap);
-        if (mVariableMap.count("help") == 1)
+        auto options = po::command_line_parser(tokens).options(*newoptions_).run();
+        po::store(options, variablemap_);
+        if (variablemap_.count("help") == 1)
         {
-            std::cout << *mNewOptions << "\n";
+            std::cout << *newoptions_ << "\n";
             throw std::runtime_error("\nExiting after 'help'.");
         }
     }
-	po::notify(mVariableMap);    
-}		/* -----  end of method ExtractorApp::ParseProgramOptions  ----- */
+	po::notify(variablemap_);    
+}		/* -----  end of method ExtractorApp::ParsePrograoptions_  ----- */
 
 
 std::tuple<int, int, int> CMyApp::Run()
@@ -331,14 +331,14 @@ std::tuple<int, int, int> CMyApp::Run()
 	std::istream* theInput{nullptr};
 	std::ifstream iFile;
 
-	if (mSource == source::stdin)
+	if (source_ == source::stdin)
     {
 		theInput = &std::cin;
     }
-	else if (mSource == source::file)
+	else if (source_ == source::file)
 	{
-		iFile.open(mInputPath.string(), std::ios_base::in | std::ios_base::binary);
-        BOOST_ASSERT_MSG(iFile.is_open(), fmt::format("Unable to open input file: {}", mInputPath).c_str());
+		iFile.open(inputpath_.string(), std::ios_base::in | std::ios_base::binary);
+        BOOST_ASSERT_MSG(iFile.is_open(), fmt::format("Unable to open input file: {}", inputpath_).c_str());
 		theInput = &iFile;
 	}
 	else
@@ -352,14 +352,14 @@ std::tuple<int, int, int> CMyApp::Run()
 	std::ostream* theOutput{nullptr};
 	std::ofstream oFile;
 
-	if (mDestination == destination::stdout)
+	if (destination_ == destination::stdout)
     {
 		theOutput = &std::cout;
     }
 	else
 	{
-		oFile.open(mOutputPath.string(), std::ios::out | std::ios::binary);
-        BOOST_ASSERT_MSG(oFile.is_open(), fmt::format("Unable to open output file: {}", mInputPath).c_str());
+		oFile.open(outputpath_.string(), std::ios::out | std::ios::binary);
+        BOOST_ASSERT_MSG(oFile.is_open(), fmt::format("Unable to open output file: {}", inputpath_).c_str());
 		theOutput = &oFile;
 	}
 
@@ -371,12 +371,12 @@ std::tuple<int, int, int> CMyApp::Run()
 //	std:transform(itor, itor_end, otor,
 //				[] (const aLine& data) {DprDecimal::DDecDouble aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
 
-    PF_Chart chart{mSymbol, mBoxSize, mReversalBoxes};
+    PF_Chart chart{symbol_, boxsize_, reversalboxes_};
 
 //    chart.LoadData<DprDecimal::DDecQuad>(theInput);
     std::cout << "chart info: " << chart.GetNumberOfColumns() << '\n';
 
-    chart.ConstructChartAndWriteToFile(mOutputPath);
+    chart.ConstructChartAndWriteToFile(outputpath_);
 	//	play with decimal support in c++11
 	
 	return {} ;
