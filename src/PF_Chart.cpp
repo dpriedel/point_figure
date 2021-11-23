@@ -186,7 +186,7 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
     // the chart software wants an array of const char*.
     // this will take several steps.
 
-//    std::vector<std::string> x_axis_labels;
+    std::vector<std::string> x_axis_labels;
 
     for (const auto& col : columns_)
     {
@@ -203,7 +203,7 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
             openData.push_back(col.GetTop().ToDouble());
             closeData.push_back(col.GetBottom().ToDouble());
         }
-//        x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
+        x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
     }
 
     lowData.push_back(current_column_.GetBottom().ToDouble());
@@ -219,16 +219,16 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
         openData.push_back(current_column_.GetTop().ToDouble());
         closeData.push_back(current_column_.GetBottom().ToDouble());
     }
-//    x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
+    x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
 
-//    std::vector<const char*> x_labels;
+    std::vector<const char*> x_labels;
 
-//    ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
+    ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
 //    ranges::for_each(x_labels, [](const auto x){ std::cout << x << '\n'; } );
 
     std::unique_ptr<XYChart> c = std::make_unique<XYChart>(600, 700);
 
-    c->setPlotArea(50, 25, 500, 600)->setGridColor(0xc0c0c0, 0xc0c0c0);
+    c->setPlotArea(50, 50, 500, 550)->setGridColor(0xc0c0c0, 0xc0c0c0);
 
     c->addTitle(fmt::format("{}{} X {} for {}  {}", box_size_.ToDouble(),
                 (IsLogarithmic() ? "%" : ""), reversal_boxes_, symbol_,
@@ -237,9 +237,13 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
 //    c->xAxis()->setTitle("Jan 2001");
 
     // Set the labels on the x axis. Rotate the labels by 45 degrees.
-//    if (x_axis_labels.size() < 100)
+//    if (x_labels.size() < 100)
 //    {
-//        c->xAxis()->setLabels(StringArray(&x_labels[0], x_labels.size()))->setFontAngle(45);
+        auto* textbox = c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()));
+        textbox->setFontStyle("Times new Roman");
+//        textbox->setFontAngle(45);
+        c->xAxis()->setLabelStep(10);
+//        c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()))->setFontAngle(180);
 //    }
 
     // Add a title to the y axis
