@@ -2,7 +2,7 @@
 // 
 //       Filename:  PF_CollectDataApp.h
 // 
-//    Description:  Module to calculation Point & Figure data for a given symbol.
+//    Description:  Module to collect Point & Figure data for a given set of symbols.
 // 
 //        Version:  2.0
 //        Created:  2021-07-20 11:50 AM
@@ -22,6 +22,8 @@
 #include <filesystem>
 #include <memory>
 #include <tuple>
+#include <string>
+#include <map>
 
 namespace fs = std::filesystem;
 
@@ -32,25 +34,31 @@ namespace po = boost::program_options;
 #include <date/date.h>
 #include <spdlog/spdlog.h>
 
+#include "DDecQuad.h"
+#include "PF_Chart.h"
+
 // =====================================================================================
-//        Class:  CMyApp
+//        Class:  PF_CollectDataApp
 //  Description:  application specific stuff
 // =====================================================================================
-class CMyApp
+class PF_CollectDataApp
 {
 public:
+
+    using PF_Data = std::map<std::string, PF_Chart>;
+
     // ====================  LIFECYCLE     =======================================
-    CMyApp (int argc, char* argv[]);                             // constructor
+    PF_CollectDataApp (int argc, char* argv[]);                             // constructor
 
     // use ctor below for testing with predefined options
 
-    explicit CMyApp(const std::vector<std::string>& tokens);
+    explicit PF_CollectDataApp(const std::vector<std::string>& tokens);
     
-    CMyApp() = delete;
-	CMyApp(const CMyApp& rhs) = delete;
-	CMyApp(CMyApp&& rhs) = delete;
+    PF_CollectDataApp() = delete;
+	PF_CollectDataApp(const PF_CollectDataApp& rhs) = delete;
+	PF_CollectDataApp(PF_CollectDataApp&& rhs) = delete;
 
-    ~CMyApp() = default;
+    ~PF_CollectDataApp() = default;
 
     static bool SignalReceived() { return had_signal_ ; }
 
@@ -65,8 +73,8 @@ public:
 
     // ====================  OPERATORS     =======================================
 
-    CMyApp& operator=(const CMyApp& rhs) = delete;
-    CMyApp& operator=(CMyApp&& rhs) = delete;
+    PF_CollectDataApp& operator=(const PF_CollectDataApp& rhs) = delete;
+    PF_CollectDataApp& operator=(PF_CollectDataApp&& rhs) = delete;
 
 protected:
 
@@ -89,6 +97,8 @@ private:
 
     // ====================  DATA MEMBERS  =======================================
 
+    PF_Data charts_;
+
 	po::positional_options_description	positional_;			//	old style options
     std::unique_ptr<po::options_description> newoptions_;    	//	new style options (with identifiers)
 	po::variables_map					variablemap_;
@@ -98,55 +108,47 @@ private:
 	const std::vector<std::string> tokens_;
     std::string logging_level_{"information"};
 
-    fs::path inputpath_;
-    fs::path outputpath_;
+    fs::path input_file_dirctory_;
+    fs::path output_file_directory_;
     fs::path log_file_path_name_;
     std::string symbol_;
+    std::string symbol_list_;
     std::string dbname_;
+    std::string host_name_;
+    int32_t host_port_;
 
     std::shared_ptr<spdlog::logger> logger_;
 
-    enum class source { unknown, file, stdin, network };
-    enum class destination { unknown, DB, file, stdout };
-    enum class mode { unknown, load, update };
-    enum class interval { unknown, eod, sec1, sec5, min1, min5, live };
-    enum class scale { unknown, arithmetic,log };
+    enum class Source { e_unknown, e_file, e_streaming };
+    enum class SourceFormat { e_unknown, e_csv, e_json };
+    enum class Destination { e_unknown, e_DB, e_file };
+    enum class Mode { e_unknown, e_load, e_update };
+    enum class Interval { e_unknown, e_eod, e_sec1, e_sec5, e_min1, e_min5, e_live };
 
-    source source_;
-    destination destination_;
-    mode mode_;
-    interval interval_;
-    scale scale_;
+    std::string source_i;
+    std::string source_format_i;
+    std::string destination_i;
+    std::string mode_i;
+    std::string interval_i;
+    std::string scale_i;
+    std::string use_adjusted_i;
 
-    int32_t boxsize_;
-    int32_t reversalboxes_;
-    bool inputispath_;
-    bool outputispath_;
+    Source source_ = Source::e_unknown;
+    SourceFormat source_format_ = SourceFormat::e_csv;
+    Destination destination_ = Destination::e_unknown;
+    Mode mode_ = Mode::e_unknown;
+    Interval interval_ = Interval::e_unknown;
+    PF_Column::ColumnScale scale_ = PF_Column::ColumnScale::e_arithmetic;
+    UseAdjusted use_adjusted_ = UseAdjusted::e_No;
+
+    DprDecimal::DDecQuad boxsize_;
+    int32_t reversal_boxes_;
+    bool input_is_path_;
+    bool output_is_path_;
 
     static bool had_signal_;
-}; // -----  end of class CMyApp  -----
+}; // -----  end of class PF_CollectDataApp  -----
 
-// custom fmtlib formatter for filesytem paths
-
-template <> struct fmt::formatter<std::filesystem::path>: formatter<std::string> {
-  // parse is inherited from formatter<string_view>.
-  template <typename FormatContext>
-  auto format(const std::filesystem::path& p, FormatContext& ctx) {
-    std::string f_name = p.string();
-    return formatter<std::string>::format(f_name, ctx);
-  }
-};
-
-//// custom fmtlib formatter for date year_month_day
-//
-//template <> struct fmt::formatter<date::year_month_day>: formatter<std::string> {
-//  // parse is inherited from formatter<string_view>.
-//  template <typename FormatContext>
-//  auto format(date::year_month_day d, FormatContext& ctx) {
-//    std::string s_date = date::format("%Y-%m-%d", d);
-//    return formatter<std::string>::format(s_date, ctx);
-//  }
-//};
 
 
 #endif   // ----- #ifndef PF_COLLECTDATAAPP_INC  ----- 
