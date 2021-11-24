@@ -24,6 +24,7 @@
 #include <tuple>
 #include <string>
 #include <map>
+#include <optional>
 
 namespace fs = std::filesystem;
 
@@ -88,6 +89,8 @@ protected:
 	bool	CheckArgs ();
 	void	Do_Quit ();
 
+    void    LoadSymbolPriceDataCSV(const std::string& symbol, std::ifstream& input_file);
+    std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -112,7 +115,7 @@ private:
     fs::path output_file_directory_;
     fs::path log_file_path_name_;
     std::string symbol_;
-    std::string symbol_list_;
+    std::vector<std::string> symbol_list_;
     std::string dbname_;
     std::string host_name_;
     int32_t host_port_;
@@ -139,7 +142,7 @@ private:
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
     PF_Column::ColumnScale scale_ = PF_Column::ColumnScale::e_arithmetic;
-    UseAdjusted use_adjusted_ = UseAdjusted::e_No;
+    std::string price_fld_name_;
 
     DprDecimal::DDecQuad boxsize_;
     int32_t reversal_boxes_;

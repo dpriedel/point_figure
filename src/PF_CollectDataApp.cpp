@@ -24,8 +24,12 @@
 #include <fstream>
 #include <set>
 
+#include <range/v3/algorithm/equal.hpp>
+#include <range/v3/algorithm/find_if.hpp>
+
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
+#include <string_view>
 //#include <decDouble.h>
 
 #include "DDecQuad.h"
@@ -139,7 +143,7 @@ bool PF_CollectDataApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
-    // TODO: parse out symbol list 
+    symbol_list_ = split_string<std::string>(symbol_, ',');
 
     if (! input_file_dirctory_.empty())
     {
@@ -170,8 +174,8 @@ bool PF_CollectDataApp::CheckArgs ()
     BOOST_ASSERT_MSG(mode_i == "load" | mode_i == "update", fmt::format("Mode must be 'load' or 'update': {}", mode_i).c_str());
     mode_ = mode_i == "load" ? Mode::e_load : Mode::e_update;
 
-    std::set<const char*> possible_intervals = {"eod", "live", "sec1", "sec5", "min1", "min5"};
-    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i.c_str()), fmt::format("Interval must be 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
+    const std::set<std::string> possible_intervals = {"eod", "live", "sec1", "sec5", "min1", "min5"};
+    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), fmt::format("Interval must be 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
     if (interval_i == "eod")
     {
         interval_ = Interval::e_eod;
@@ -199,9 +203,6 @@ bool PF_CollectDataApp::CheckArgs ()
     BOOST_ASSERT_MSG(scale_i == "arithmetic" | scale_i == "logarithmetic", fmt::format("Chart scale must be 'arithmetic' or 'logarithmetic': {}", scale_i).c_str());
     scale_ = scale_i == "arithmetic" ? PF_Column::ColumnScale::e_arithmetic : PF_Column::ColumnScale::e_logarithmic;
 
-    BOOST_ASSERT_MSG(use_adjusted_i == "close" | use_adjusted_i == "adjClose", fmt::format("Use adjusted must be 'close' or 'adjClose': {}", use_adjusted_i).c_str());
-    use_adjusted_ = use_adjusted_i == "close" ? UseAdjusted::e_No : UseAdjusted::e_Yes;
-
 	return true ;
 }		// -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
 
@@ -212,15 +213,15 @@ void PF_CollectDataApp::SetupProgramOptions ()
 	newoptions_->add_options()
 		("help,h",											"produce help message")
 		("symbol,s",			po::value<std::string>(&this->symbol_)->required(),	"name of symbol we are processing data for. May be a comma-delimited list.")
-		("dir,d",				po::value<fs::path>(&this->input_file_dirctory_),	"name of directory containing files for symbols we are using.")
-		("destination,d",		po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'DB'. Default is 'file'.")
+		("input_dir",			po::value<fs::path>(&this->input_file_dirctory_),	"name of directory containing files for symbols we are using.")
+		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'DB'. Default is 'file'.")
 		("source",				po::value<std::string>(&this->source_i)->default_value("file"),	"source: either 'file' or 'streaming'. Default is 'file'")
 		("source_format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'")
 		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"intervale: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
 		("scale",				po::value<std::string>(&this->scale_i)->default_value("arithmetic"),	"scale: 'arithmetic', 'log'. Default is 'arithmetic'")
-		("use_adjusted",		po::value<std::string>(&this->use_adjusted_i)->default_value("close"),	"use_adjusted: Use 'close' or 'adjClose'. Default is 'close'.")
-		("output,o",			po::value<fs::path>(&this->output_file_directory_),	"output: directory for output files.")
+		("price_fld_name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
+		("output_dir,o",		po::value<fs::path>(&this->output_file_directory_),	"output: directory for output files.")
 		("boxsize,b",			po::value<DprDecimal::DDecQuad>(&this->boxsize_)->required(),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<int32_t>(&this->reversal_boxes_)->default_value(2),		"reversal size in number of boxes. Default is 2")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
@@ -258,6 +259,18 @@ void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tok
 
 std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
+    if(source_ == Source::e_file)
+    {
+        for (const auto& symbol : symbol_list_)
+        {
+            fs::path symbol_file_name = input_file_dirctory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+            BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {} for update.", symbol).c_str());
+            std::ifstream input_file(symbol_file_name);
+            BOOST_ASSERT_MSG(input_file.is_open(), fmt::format("Can't open data file for symbol: {} for update.", symbol).c_str());
+            LoadSymbolPriceDataCSV(symbol, input_file);
+        }
+    }
+
 //	// open a stream on the specified input source.
 //	
 //	std::istream* theInput{nullptr};
@@ -313,6 +326,54 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 //	
 	return {} ;
 }		// -----  end of method PF_CollectDataApp::Do_Run  -----
+
+// function to find out which column number is the specifed column.
+
+
+
+void PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, std::ifstream& input_file)
+{
+    // Tell the stream to use our facet, so only '\n' is treated as a space.
+
+    input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
+
+    std::istream_iterator<std::string> itor{input_file};
+    std::istream_iterator<std::string> itor_end;
+
+    auto header_record = *itor;
+
+    auto date_column = FindColumnIndex(header_record, "date", ',');
+    BOOST_ASSERT_MSG(date_column.has_value(), fmt::format("Can't find 'date' field in header record: {}.", header_record).c_str());
+    auto close_column = FindColumnIndex(header_record, price_fld_name_, ',');
+    BOOST_ASSERT_MSG(close_column.has_value(), fmt::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
+    return ;
+}		// -----  end of method PF_CollectDataApp::LoadSymbolPriceDataCSV  ----- 
+
+std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim)
+{
+    auto fields = rng_split_string<std::string_view>(header, delim);
+    auto do_compare([&column_name](const auto& field_name)
+    {
+        // need case insensitive compare
+        // found this on StackOverflow (but modified for my use)
+        // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+
+        if (column_name.size() != field_name.size())
+        {
+            return false;
+        }
+
+        return ranges::equal(column_name, field_name,
+                [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
+    });
+    auto found_it = ranges::find_if(fields, do_compare);
+    if (found_it != ranges::end(fields))
+    {
+        return ranges::distance(ranges::begin(fields), found_it);
+    }
+    return {};
+
+}		// -----  end of method PF_CollectDataApp::FindColumnIndex  ----- 
 
 void PF_CollectDataApp::Shutdown ()
 {
