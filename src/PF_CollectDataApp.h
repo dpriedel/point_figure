@@ -89,7 +89,7 @@ protected:
 	bool	CheckArgs ();
 	void	Do_Quit ();
 
-    void    LoadSymbolPriceDataCSV(const std::string& symbol, std::ifstream& input_file);
+    void    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name);
     std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
 
     // ====================  DATA MEMBERS  =======================================

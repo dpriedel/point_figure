@@ -265,9 +265,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         {
             fs::path symbol_file_name = input_file_dirctory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
             BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {} for update.", symbol).c_str());
-            std::ifstream input_file(symbol_file_name);
-            BOOST_ASSERT_MSG(input_file.is_open(), fmt::format("Can't open data file for symbol: {} for update.", symbol).c_str());
-            LoadSymbolPriceDataCSV(symbol, input_file);
+            LoadSymbolPriceDataCSV(symbol, symbol_file_name);
         }
     }
 
@@ -331,16 +329,16 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 
 
-void PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, std::ifstream& input_file)
+void PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name)
 {
-    // Tell the stream to use our facet, so only '\n' is treated as a space.
+    std::ifstream input_file(symbol_file_name);
+    BOOST_ASSERT_MSG(input_file.is_open(), fmt::format("Can't open data file for symbol: {} for update.", symbol).c_str());
 
-    input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
+    const std::string file_content = LoadDataFileForUse(symbol_file_name);
 
-    std::istream_iterator<std::string> itor{input_file};
-    std::istream_iterator<std::string> itor_end;
-
-    auto header_record = *itor;
+    const auto symbol_data = split_string<std::string_view>(file_content, '\n');
+    
+    const auto header_record = symbol_data.front();
 
     auto date_column = FindColumnIndex(header_record, "date", ',');
     BOOST_ASSERT_MSG(date_column.has_value(), fmt::format("Can't find 'date' field in header record: {}.", header_record).c_str());
