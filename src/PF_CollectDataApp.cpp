@@ -26,13 +26,15 @@
 
 #include <range/v3/algorithm/equal.hpp>
 #include <range/v3/algorithm/find_if.hpp>
-
+#include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/view/drop.hpp>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
 #include <string_view>
 //#include <decDouble.h>
 
 #include "DDecQuad.h"
+#include "PF_Chart.h"
 #include "PF_CollectDataApp.h"
 #include "PF_Column.h"
 #include "utilities.h"
@@ -265,7 +267,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         {
             fs::path symbol_file_name = input_file_dirctory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
             BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {} for update.", symbol).c_str());
-            LoadSymbolPriceDataCSV(symbol, symbol_file_name);
+            auto chart = LoadSymbolPriceDataCSV(symbol, symbol_file_name);
+            charts_[symbol] = chart;
         }
     }
 
@@ -329,22 +332,29 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 
 
-void PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name)
+PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name)
 {
-    std::ifstream input_file(symbol_file_name);
-    BOOST_ASSERT_MSG(input_file.is_open(), fmt::format("Can't open data file for symbol: {} for update.", symbol).c_str());
-
     const std::string file_content = LoadDataFileForUse(symbol_file_name);
 
-    const auto symbol_data = split_string<std::string_view>(file_content, '\n');
+    const auto symbol_data_records = split_string<std::string_view>(file_content, '\n');
     
-    const auto header_record = symbol_data.front();
+    const auto header_record = symbol_data_records.front();
 
     auto date_column = FindColumnIndex(header_record, "date", ',');
     BOOST_ASSERT_MSG(date_column.has_value(), fmt::format("Can't find 'date' field in header record: {}.", header_record).c_str());
+
     auto close_column = FindColumnIndex(header_record, price_fld_name_, ',');
     BOOST_ASSERT_MSG(close_column.has_value(), fmt::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
-    return ;
+
+    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_};
+
+    ranges::for_each(symbol_data_records | ranges::views::drop(1), [&new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
+        {
+            const auto fields = split_string<std::string_view> (record, ',');
+            new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToTimePoint("%Y-%m-%d", fields[date_col]));
+        });
+
+    return new_chart;
 }		// -----  end of method PF_CollectDataApp::LoadSymbolPriceDataCSV  ----- 
 
 std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim)
@@ -360,12 +370,10 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
         {
             return false;
         }
-
-        return ranges::equal(column_name, field_name,
-                [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
+        return ranges::equal(column_name, field_name, [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
     });
-    auto found_it = ranges::find_if(fields, do_compare);
-    if (found_it != ranges::end(fields))
+
+    if (auto found_it = ranges::find_if(fields, do_compare); found_it != ranges::end(fields))
     {
         return ranges::distance(ranges::begin(fields), found_it);
     }
