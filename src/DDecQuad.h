@@ -67,11 +67,12 @@ public:
     DDecQuad ();                             // constructor
     DDecQuad (const DDecQuad& rhs);
     DDecQuad (DDecQuad&& rhs);
-    DDecQuad (const char* number);    // constructor
-    DDecQuad (const std::string& number);    // constructor
-    DDecQuad (int32_t number);               // constructor
-    DDecQuad (uint32_t number);              // constructor
-    DDecQuad (const decNumber& number);
+    DDecQuad (const char* number);              // constructor
+    DDecQuad (const std::string& number);       // constructor
+    DDecQuad (std::string_view number);         // constructor
+    DDecQuad (int32_t number);                  // constructor
+    DDecQuad (uint32_t number);                 // constructor
+    DDecQuad (const decNumber& number);         // constructor
 
     DDecQuad (double number);	 // constructor
 

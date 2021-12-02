@@ -73,6 +73,11 @@ DDecQuad::DDecQuad(const std::string& number)
     decQuadFromString(&this->decimal_, number.data(), &DDecQuad::mCtx_);
 }
 
+DDecQuad::DDecQuad(std::string_view number)
+    : DDecQuad{std::string{number}}
+{
+}
+
 DDecQuad::DDecQuad(int32_t number)
 {
     DDecQuad::InitContext();
