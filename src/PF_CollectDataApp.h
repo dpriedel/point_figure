@@ -89,8 +89,10 @@ protected:
 	bool	CheckArgs ();
 	void	Do_Quit ();
 
-    PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name);
-    std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
+    PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name) const;
+    std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim) const;
+
+    void ConvertChartToJsonAndWriteToStream(const PF_Chart& chart, std::ostream& stream) const;
 
     // ====================  DATA MEMBERS  =======================================
 

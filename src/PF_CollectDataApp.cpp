@@ -332,7 +332,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 
 
-PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name)
+PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name) const
 {
     const std::string file_content = LoadDataFileForUse(symbol_file_name);
 
@@ -357,7 +357,7 @@ PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, c
     return new_chart;
 }		// -----  end of method PF_CollectDataApp::LoadSymbolPriceDataCSV  ----- 
 
-std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim)
+std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim) const
 {
     auto fields = rng_split_string<std::string_view>(header, delim);
     auto do_compare([&column_name](const auto& field_name)
@@ -383,5 +383,28 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
 
 void PF_CollectDataApp::Shutdown ()
 {
+    if (destination_ == Destination::e_file)
+    {
+        for (const auto& [symbol, chart] : charts_)
+        {
+            fs::path output_file_name = output_file_directory_ / fmt::format("{}_{}X{}.{}", symbol, chart.GetBoxsize(), chart.GetReversalboxes(), "json");
+            std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
+            BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
+            ConvertChartToJsonAndWriteToStream(chart, output);
+            output.close();
+        }
+
+    }
     spdlog::info(fmt::format("\n\n*** End run {} ***\n", LocalDateTimeAsString(std::chrono::system_clock::now())));
 }       // -----  end of method ExtractorApp::Shutdown  -----
+
+void PF_CollectDataApp::ConvertChartToJsonAndWriteToStream (const PF_Chart& chart, std::ostream& stream) const
+{
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";        // compact printing and string formatting 
+    std::unique_ptr<Json::StreamWriter> const writer( builder.newStreamWriter());
+    writer->write(chart.ToJSON(), &stream);
+    stream << std::endl;  // add lf and flush
+    return ;
+}		// -----  end of method PF_CollectDataApp::ConvertChartToJsonAndWriteToStream  ----- 
+
