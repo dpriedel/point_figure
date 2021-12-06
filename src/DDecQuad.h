@@ -13,6 +13,8 @@
 #include <iomanip>
 #include <string_view>
 
+#include <fmt/format.h>
+
 extern "C"
 {
     #include <decQuad.h>
@@ -293,6 +295,19 @@ inline std::istream& operator>>(std::istream& is, DDecQuad& item)
 	return is;
 }
 
+};
+
+// custom fmtlib formatter for date year_month_day
+
+template <> struct fmt::formatter<DprDecimal::DDecQuad>: formatter<std::string>
+{
+    // parse is inherited from formatter<string_view>.
+    template <typename FormatContext>
+    auto format(DprDecimal::DDecQuad number, FormatContext& ctx)
+    {
+        std::string s = number.ToStr();
+        return formatter<std::string>::format(s, ctx);
+    }
 };
 
 #endif
