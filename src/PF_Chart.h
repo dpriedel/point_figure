@@ -62,6 +62,9 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
+    [[nodiscard]] int32_t GetReversalboxes() const { return reversal_boxes_; }
+
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
     // need to include current_column_ 
