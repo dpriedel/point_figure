@@ -387,24 +387,14 @@ void PF_CollectDataApp::Shutdown ()
     {
         for (const auto& [symbol, chart] : charts_)
         {
-            fs::path output_file_name = output_file_directory_ / fmt::format("{}_{}X{}.{}", symbol, chart.GetBoxsize(), chart.GetReversalboxes(), "json");
+            fs::path output_file_name = output_file_directory_ / chart.ChartName();
             std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
             BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
-            ConvertChartToJsonAndWriteToStream(chart, output);
+            chart.ConvertChartToJsonAndWriteToStream(output);
             output.close();
         }
 
     }
     spdlog::info(fmt::format("\n\n*** End run {} ***\n", LocalDateTimeAsString(std::chrono::system_clock::now())));
 }       // -----  end of method ExtractorApp::Shutdown  -----
-
-void PF_CollectDataApp::ConvertChartToJsonAndWriteToStream (const PF_Chart& chart, std::ostream& stream) const
-{
-    Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";        // compact printing and string formatting 
-    std::unique_ptr<Json::StreamWriter> const writer( builder.newStreamWriter());
-    writer->write(chart.ToJSON(), &stream);
-    stream << std::endl;  // add lf and flush
-    return ;
-}		// -----  end of method PF_CollectDataApp::ConvertChartToJsonAndWriteToStream  ----- 
 

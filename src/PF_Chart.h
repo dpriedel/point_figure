@@ -67,8 +67,9 @@ public:
 
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
-    // need to include current_column_ 
+    [[nodiscard]] std::string ChartName() const;
 
+    // includes 'current_column'
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size() + 1; }
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
@@ -77,6 +78,8 @@ public:
 //    [[nodiscard]] const_iterator end() const { return columns_.end(); }
 
     void ConstructChartAndWriteToFile(const fs::path& output_filename) const;
+
+    void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsLogarithmic() const { return use_logarithms_ == PF_Column::ColumnScale::e_logarithmic; }

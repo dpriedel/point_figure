@@ -169,6 +169,12 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
     }
 }
 
+std::string PF_Chart::ChartName () const
+{
+    std::string chart_name = fmt::format("{}_{}X{}.json", symbol_, GetBoxsize(), GetReversalboxes());
+    return chart_name;
+}		// -----  end of method PF_Chart::ChartName  ----- 
+
 void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) const
 {
     // this code comes pretty much right out of the cppdemo code
@@ -263,6 +269,16 @@ void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) co
     c->makeChart(output_filename.c_str());
 
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
+
+void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
+{
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";        // compact printing and string formatting 
+    std::unique_ptr<Json::StreamWriter> const writer( builder.newStreamWriter());
+    writer->write(this->ToJSON(), &stream);
+    stream << std::endl;  // add lf and flush
+    return ;
+}		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  ----- 
 
 
 Json::Value PF_Chart::ToJSON () const
