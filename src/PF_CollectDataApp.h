@@ -70,6 +70,8 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
+    const PF_Chart& GetChart(const std::string& symbol) const { return charts_.at(symbol); }
+
     // ====================  MUTATORS      =======================================
 
     // ====================  OPERATORS     =======================================
@@ -90,6 +92,8 @@ protected:
 	void	Do_Quit ();
 
     PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name) const;
+    PF_Chart    LoadAndParsePriceDataJSON(const std::string& symbol, const fs::path& symbol_file_name) const;
+    void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
     std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim) const;
 
     // ====================  DATA MEMBERS  =======================================
@@ -111,8 +115,9 @@ private:
 	const std::vector<std::string> tokens_;
     std::string logging_level_{"information"};
 
-    fs::path input_file_dirctory_;
-    fs::path output_file_directory_;
+    fs::path new_data_input_directory_;
+    fs::path input_chart_directory_;
+    fs::path output_chart_directory_;
     fs::path log_file_path_name_;
     std::string symbol_;
     std::vector<std::string> symbol_list_;

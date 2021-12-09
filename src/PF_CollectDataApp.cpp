@@ -40,6 +40,7 @@
 #include "utilities.h"
 #include "aLine.h"
 
+using namespace std::string_literals;
 
 bool PF_CollectDataApp::had_signal_ = false;
 
@@ -147,31 +148,38 @@ bool PF_CollectDataApp::CheckArgs ()
 	
     symbol_list_ = split_string<std::string>(symbol_, ',');
 
-    if (! input_file_dirctory_.empty())
+    // possibly empty if this is our first time or we are starting over
+
+    if (! fs::exists(input_chart_directory_))
     {
-        BOOST_ASSERT_MSG(fs::exists(input_file_dirctory_), fmt::format("Can't find input file directory: {}", input_file_dirctory_).c_str());
+        fs::create_directories(input_chart_directory_);
     }
 
-    if (! output_file_directory_.empty())
+    // we could write out data to a separate location if we want 
+    // otherwise, use the charts directory. 
+
+    if (output_chart_directory_.empty())
     {
-        if (! fs::exists(output_file_directory_))
-        {
-            fs::create_directories(output_file_directory_);
-        }
+        output_chart_directory_ = input_chart_directory_;
+    }
+    if (! fs::exists(output_chart_directory_))
+    {
+        fs::create_directories(output_chart_directory_);
     }
 
     BOOST_ASSERT_MSG(source_i == "file" | source_i == "streaming", fmt::format("Data source must be 'file' or 'streaming': {}", source_i).c_str());
     source_ = source_i == "file" ? Source::e_file : Source::e_streaming;
     
+    if (source_ == Source::e_file)
+    {
+        BOOST_ASSERT_MSG(! new_data_input_directory_.empty(), "Must specify 'new_data_dir' when data source is 'file'.");
+        BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), fmt::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
+    }
     BOOST_ASSERT_MSG(source_format_i == "csv" | source_format_i == "json", fmt::format("Data source must be 'csv' or 'json': {}", source_format_i).c_str());
     source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
     
     BOOST_ASSERT_MSG(destination_i == "file" | destination_i == "DB", fmt::format("Data destination must be 'file' or 'DB': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
-    if (destination_ == Destination::e_file)
-    {
-        BOOST_ASSERT_MSG(! output_file_directory_.empty(), "Output data being sent to a file but no output directory provided.");
-    }
 
     BOOST_ASSERT_MSG(mode_i == "load" | mode_i == "update", fmt::format("Mode must be 'load' or 'update': {}", mode_i).c_str());
     mode_ = mode_i == "load" ? Mode::e_load : Mode::e_update;
@@ -215,7 +223,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 	newoptions_->add_options()
 		("help,h",											"produce help message")
 		("symbol,s",			po::value<std::string>(&this->symbol_)->required(),	"name of symbol we are processing data for. May be a comma-delimited list.")
-		("input_dir",			po::value<fs::path>(&this->input_file_dirctory_),	"name of directory containing files for symbols we are using.")
+		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
+		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_)->required(),	"name of directory containing existing files with data for symbols we are using.")
 		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'DB'. Default is 'file'.")
 		("source",				po::value<std::string>(&this->source_i)->default_value("file"),	"source: either 'file' or 'streaming'. Default is 'file'")
 		("source_format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'")
@@ -223,7 +232,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"intervale: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
 		("scale",				po::value<std::string>(&this->scale_i)->default_value("arithmetic"),	"scale: 'arithmetic', 'log'. Default is 'arithmetic'")
 		("price_fld_name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
-		("output_dir,o",		po::value<fs::path>(&this->output_file_directory_),	"output: directory for output files.")
+		("output_dir,o",		po::value<fs::path>(&this->output_chart_directory_),	"output: directory for output files.")
 		("boxsize,b",			po::value<DprDecimal::DDecQuad>(&this->boxsize_)->required(),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<int32_t>(&this->reversal_boxes_)->default_value(2),		"reversal size in number of boxes. Default is 2")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
@@ -263,12 +272,34 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
     if(source_ == Source::e_file)
     {
-        for (const auto& symbol : symbol_list_)
+        if (mode_ == Mode::e_load)
         {
-            fs::path symbol_file_name = input_file_dirctory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-            BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {} for update.", symbol).c_str());
-            auto chart = LoadSymbolPriceDataCSV(symbol, symbol_file_name);
-            charts_[symbol] = chart;
+            for (const auto& symbol : symbol_list_)
+            {
+                fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+                BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {} for update.", symbol).c_str());
+                auto chart = LoadSymbolPriceDataCSV(symbol, symbol_file_name);
+                charts_[symbol] = chart;
+            }
+        }
+        else if (mode_ == Mode::e_update)
+        {
+            // look for existing data and load the saved JSON data if we have it.
+            // then add the new data to the chart.
+
+            for (const auto& symbol : symbol_list_)
+            {
+                PF_Chart new_chart;
+                fs::path existing_data_file_name = input_chart_directory_ / (symbol + ".json");
+                if (fs::exists(existing_data_file_name))
+                {
+                    new_chart = LoadAndParsePriceDataJSON(symbol, existing_data_file_name);
+                }
+                fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+                BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
+                AddPriceDataToExistingChartCSV(new_chart, update_file_name);
+                charts_[symbol] = new_chart;
+            }
         }
     }
 
@@ -334,28 +365,53 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name) const
 {
-    const std::string file_content = LoadDataFileForUse(symbol_file_name);
+    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_};
+
+    AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
+
+    return new_chart;
+}		// -----  end of method PF_CollectDataApp::LoadSymbolPriceDataCSV  ----- 
+
+void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const
+{
+    const std::string file_content = LoadDataFileForUse(update_file_name);
 
     const auto symbol_data_records = split_string<std::string_view>(file_content, '\n');
-    
     const auto header_record = symbol_data_records.front();
 
     auto date_column = FindColumnIndex(header_record, "date", ',');
     BOOST_ASSERT_MSG(date_column.has_value(), fmt::format("Can't find 'date' field in header record: {}.", header_record).c_str());
-
+    
     auto close_column = FindColumnIndex(header_record, price_fld_name_, ',');
     BOOST_ASSERT_MSG(close_column.has_value(), fmt::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
 
-    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_};
-
     ranges::for_each(symbol_data_records | ranges::views::drop(1), [&new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
         {
+//            std::cout << "len: " << record.size() << "  " << record << '\n';
             const auto fields = split_string<std::string_view> (record, ',');
             new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToTimePoint("%Y-%m-%d", fields[date_col]));
         });
 
+    return ;
+}		// -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV  ----- 
+
+PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const std::string& symbol, const fs::path& symbol_file_name) const
+{
+    const std::string file_content = LoadDataFileForUse(symbol_file_name);
+
+    JSONCPP_STRING err;
+    Json::Value saved_data;
+
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    if (! reader->parse(file_content.data(), file_content.data() + file_content.size(), &saved_data, &err))
+    {
+        throw std::runtime_error("Problem parsing test data file: "s + err);
+    }
+
+    PF_Chart new_chart{saved_data};
     return new_chart;
-}		// -----  end of method PF_CollectDataApp::LoadSymbolPriceDataCSV  ----- 
+}		// -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  ----- 
 
 std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim) const
 {
@@ -387,7 +443,7 @@ void PF_CollectDataApp::Shutdown ()
     {
         for (const auto& [symbol, chart] : charts_)
         {
-            fs::path output_file_name = output_file_directory_ / chart.ChartName();
+            fs::path output_file_name = output_chart_directory_ / chart.ChartName();
             std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
             BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
             chart.ConvertChartToJsonAndWriteToStream(output);
