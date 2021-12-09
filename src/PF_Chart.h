@@ -77,7 +77,7 @@ public:
 //    [[nodiscard]] const_iterator begin() const { return columns_.begin(); }
 //    [[nodiscard]] const_iterator end() const { return columns_.end(); }
 
-    void ConstructChartAndWriteToFile(const fs::path& output_filename) const;
+    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename) const;
 
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 

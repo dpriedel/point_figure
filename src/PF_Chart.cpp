@@ -171,11 +171,12 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
 std::string PF_Chart::ChartName () const
 {
-    std::string chart_name = fmt::format("{}_{}X{}.json", symbol_, GetBoxsize(), GetReversalboxes());
+//    std::string chart_name = fmt::format("{}_{}X{}.json", symbol_, GetBoxsize(), GetReversalboxes(), "json");
+    std::string chart_name = fmt::format("{}.json", symbol_);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
-void PF_Chart::ConstructChartAndWriteToFile (const fs::path& output_filename) const
+void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename) const
 {
     // this code comes pretty much right out of the cppdemo code
     // with some modifications for good memory management practices.
