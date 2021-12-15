@@ -20,11 +20,12 @@
 
 
 #include <filesystem>
-#include <memory>
-#include <tuple>
-#include <string>
 #include <map>
+#include <memory>
 #include <optional>
+#include <queue>
+#include <string>
+#include <tuple>
 
 namespace fs = std::filesystem;
 
@@ -37,6 +38,8 @@ namespace po = boost::program_options;
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
+#include "Tiingo.h"
+
 
 // =====================================================================================
 //        Class:  PF_CollectDataApp
@@ -96,6 +99,9 @@ protected:
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
     std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim) const;
 
+    void    CollectStreamingData();
+    void    ProcessStreamedData(Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
+
     // ====================  DATA MEMBERS  =======================================
 
 private:
@@ -119,11 +125,13 @@ private:
     fs::path input_chart_directory_;
     fs::path output_chart_directory_;
     fs::path log_file_path_name_;
+    fs::path tiingo_api_key_;
+
     std::string symbol_;
     std::vector<std::string> symbol_list_;
     std::string dbname_;
     std::string host_name_;
-    int32_t host_port_;
+    std::string host_port_;
 
     std::shared_ptr<spdlog::logger> logger_;
 
@@ -147,6 +155,7 @@ private:
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
     PF_Column::ColumnScale scale_ = PF_Column::ColumnScale::e_arithmetic;
+    PF_Column::FractionalBoxes fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
     std::string price_fld_name_;
 
     DprDecimal::DDecQuad boxsize_;

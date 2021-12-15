@@ -16,31 +16,38 @@
 // 
 // =====================================================================================
 
+#include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
-#include <iostream>
-#include <algorithm>
-#include <iterator>
+#include <csignal>
 #include <fstream>
+#include <future>
+#include <iostream>
+#include <iterator>
+#include <mutex>
+#include <queue>
 #include <set>
+#include <string_view>
+#include <thread>
 
 #include <range/v3/algorithm/equal.hpp>
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/drop.hpp>
+
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
-#include <string_view>
-//#include <decDouble.h>
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "PF_CollectDataApp.h"
 #include "PF_Column.h"
+#include "Tiingo.h"
 #include "utilities.h"
-#include "aLine.h"
 
 using namespace std::string_literals;
+using namespace std::literals::chrono_literals;
 
 bool PF_CollectDataApp::had_signal_ = false;
 
@@ -146,6 +153,9 @@ bool PF_CollectDataApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
+    // first, we want upper case symbols.
+
+    ranges::for_each(symbol_, [](char& c) { c = std::toupper(c); });
     symbol_list_ = split_string<std::string>(symbol_, ',');
 
     // possibly empty if this is our first time or we are starting over
@@ -174,9 +184,15 @@ bool PF_CollectDataApp::CheckArgs ()
     {
         BOOST_ASSERT_MSG(! new_data_input_directory_.empty(), "Must specify 'new_data_dir' when data source is 'file'.");
         BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), fmt::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
+
+        BOOST_ASSERT_MSG(source_format_i == "csv" | source_format_i == "json", fmt::format("Data source must be 'csv' or 'json': {}", source_format_i).c_str());
+        source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
     }
-    BOOST_ASSERT_MSG(source_format_i == "csv" | source_format_i == "json", fmt::format("Data source must be 'csv' or 'json': {}", source_format_i).c_str());
-    source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
+    else
+    {
+        BOOST_ASSERT_MSG(! tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
+        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't tiingo api key file: {}", tiingo_api_key_).c_str());
+    }
     
     BOOST_ASSERT_MSG(destination_i == "file" | destination_i == "DB", fmt::format("Data destination must be 'file' or 'DB': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
@@ -210,8 +226,17 @@ bool PF_CollectDataApp::CheckArgs ()
     {
         interval_ = Interval::e_min5;
     }
-    BOOST_ASSERT_MSG(scale_i == "arithmetic" | scale_i == "logarithmetic", fmt::format("Chart scale must be 'arithmetic' or 'logarithmetic': {}", scale_i).c_str());
+    BOOST_ASSERT_MSG(scale_i == "arithmetic" | scale_i == "logarithmic", fmt::format("Chart scale must be 'arithmetic' or 'logarithmic': {}", scale_i).c_str());
     scale_ = scale_i == "arithmetic" ? PF_Column::ColumnScale::e_arithmetic : PF_Column::ColumnScale::e_logarithmic;
+
+    if (scale_ == PF_Column::ColumnScale::e_logarithmic || boxsize_.GetExponent() < 0)
+    {
+        fractional_boxes_ = PF_Column::FractionalBoxes::e_fractional;
+    }
+    else 
+    {
+        fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+    }
 
 	return true ;
 }		// -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
@@ -229,14 +254,17 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("source",				po::value<std::string>(&this->source_i)->default_value("file"),	"source: either 'file' or 'streaming'. Default is 'file'")
 		("source_format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'")
 		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
-		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"intervale: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
-		("scale",				po::value<std::string>(&this->scale_i)->default_value("arithmetic"),	"scale: 'arithmetic', 'log'. Default is 'arithmetic'")
+		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
+		("scale",				po::value<std::string>(&this->scale_i)->default_value("arithmetic"),	"scale: 'arithmetic', 'logarithmic'. Default is 'arithmetic'")
 		("price_fld_name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
 		("output_dir,o",		po::value<fs::path>(&this->output_chart_directory_),	"output: directory for output files.")
 		("boxsize,b",			po::value<DprDecimal::DDecQuad>(&this->boxsize_)->required(),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<int32_t>(&this->reversal_boxes_)->default_value(2),		"reversal size in number of boxes. Default is 2")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
+        ("host",                po::value<std::string>(&this->host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
+        ("port",                po::value<std::string>(&this->host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
+        ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		;
 
 }		// -----  end of method PF_CollectDataApp::Do_SetupPrograoptions_  -----
@@ -302,6 +330,18 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
             }
         }
     }
+    else
+    {
+        // set up our charts 
+
+        for (const auto& symbol : symbol_list_)
+        {
+            charts_[symbol] = PF_Chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_};
+        }
+        // let's stream !
+        
+        CollectStreamingData();
+    }
 
 //	// open a stream on the specified input source.
 //	
@@ -365,7 +405,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name) const
 {
-    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_};
+    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_};
 
     AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
 
@@ -437,6 +477,107 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
 
 }		// -----  end of method PF_CollectDataApp::FindColumnIndex  ----- 
 
+void PF_CollectDataApp::CollectStreamingData ()
+{
+    // since this code can potentially run for hours on end 
+    // it's a good idea to provide a way to break into this processing and shut it down cleanly.
+    // so, a little bit of C...(taken from "Advanced Unix Programming" by Warren W. Gay, p. 317)
+
+    struct sigaction sa_old;
+    struct sigaction sa_new;
+
+    // ok, get ready to handle keyboard interrupts, if any.
+
+    sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
+    sigemptyset(&sa_new.sa_mask);
+    sa_new.sa_flags = 0;
+    sigaction(SIGINT, &sa_new, &sa_old);
+
+    PF_CollectDataApp::had_signal_= false;
+
+    // we're going to use 2 threads here -- a producer thread which collects streamed 
+    // data from Tiingo nad a consummer thread which will take that data, decode it 
+    // and load it into appropriate charts. 
+    // Processing continues until interrupted. 
+
+    std::string api_key = LoadDataFileForUse(tiingo_api_key_);
+    if (api_key.ends_with('\n'))
+    {
+        api_key.resize(api_key.size() - 1);
+    }
+
+    Tiingo quotes{host_name_, host_port_, "/iex", api_key, symbol_list_};
+    quotes.Connect();
+
+    std::mutex data_mutex;
+    std::queue<std::string> streamed_data;
+
+    auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+
+    
+    streaming_task.get();
+    processing_task.get();
+
+//    ASSERT_EXIT((the_task.get()),::testing::KilledBySignal(SIGINT),".*");
+    quotes.Disconnect();
+
+    for (const auto & value: quotes)
+    {
+        std::cout << value << '\n';
+    }
+
+    return ;
+}		// -----  end of method PF_CollectDataApp::CollectStreamingData  ----- 
+
+void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
+{
+    while(true)
+    {
+        if (! streamed_data->empty())
+        {
+            std::string new_data;
+            {
+                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+                new_data = streamed_data->front();
+                streamed_data->pop();
+            }
+            quotes->ExtractData(new_data);
+            std::vector<std::string> need_to_update_graph;
+            for (const auto& new_value: *quotes)
+            {
+                auto chart_changed = charts_[new_value.ticker_].AddValue(new_value.last_price_, PF_Column::tpt{std::chrono::nanoseconds{new_value.time_stamp_seconds_}});
+                if (chart_changed != PF_Column::Status::e_ignored)
+                {
+                    need_to_update_graph.push_back(new_value.ticker_);
+
+                    fs::path chart_file_path = output_chart_directory_ / (new_value.ticker_ + ".json");
+                    std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
+                    BOOST_ASSERT_MSG(updated_file.is_open(), fmt::format("Unable to open file: {} to write updated data.", chart_file_path).c_str());
+                    charts_[new_value.ticker_].ConvertChartToJsonAndWriteToStream(updated_file);
+                    updated_file.close();
+                }
+
+                quotes->ClearExtractedData();
+            }
+            for (const auto& ticker : need_to_update_graph)
+            {
+                fs::path graph_file_path = output_chart_directory_ / (ticker + ".svg");
+                charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path);
+            }
+        }
+        else
+        {
+            std::this_thread::sleep_for(2ms);
+        }
+        if (streamed_data->empty() && *had_signal == true)
+        {
+            break;
+        }
+    }
+    return ;
+}		// -----  end of method PF_CollectDataApp::ProcessStreamedData  ----- 
+
 void PF_CollectDataApp::Shutdown ()
 {
     if (destination_ == Destination::e_file)
@@ -452,5 +593,16 @@ void PF_CollectDataApp::Shutdown ()
 
     }
     spdlog::info(fmt::format("\n\n*** End run {} ***\n", LocalDateTimeAsString(std::chrono::system_clock::now())));
-}       // -----  end of method ExtractorApp::Shutdown  -----
+}       // -----  end of method PF_CollectDataApp::Shutdown  -----
+
+void PF_CollectDataApp::HandleSignal(int signal)
+
+{
+    std::signal(SIGINT, PF_CollectDataApp::HandleSignal);
+
+    // only thing we need to do
+
+    PF_CollectDataApp::had_signal_ = true;
+
+}		/* -----  end of method PF_CollectDataApp::HandleSignal  ----- */
 
