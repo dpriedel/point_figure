@@ -19,7 +19,9 @@
 
 #include <date/date.h>
 #include <deque>
-#include <string>
+#include <mutex>
+#include <queue>
+//#include <string>
 #include <vector>
 #include <sys/types.h>
 
@@ -68,27 +70,32 @@ public:
     ~Tiingo ();
     Tiingo(const std::string& host, const std::string& port, const std::string& api_key);
     Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
-            const std::string& api_key, const std::string& symbols);
+            const std::string& api_key, const std::vector<std::string>& symbols);
 
     Tiingo(const Tiingo& rhs) = delete;
     Tiingo(Tiingo&& rhs) = delete;
 
     // ====================  ACCESSORS     ======================================= 
 
-    [[nodiscard]] std::deque<PF_Data>::const_iterator begin() const { return pf_data_.begin(); }
-    [[nodiscard]] std::deque<PF_Data>::const_iterator end() const { return pf_data_.end(); }
+    [[nodiscard]] std::vector<PF_Data>::const_iterator begin() const { return pf_data_.begin(); }
+    [[nodiscard]] std::vector<PF_Data>::const_iterator end() const { return pf_data_.end(); }
 
     [[nodiscard]] bool empty() const { return pf_data_.empty(); }
 
     Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc);
     Json::Value GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous);
 
+    void ExtractData(const std::string& buffer);
+
     // ====================  MUTATORS      ======================================= 
 
     void Connect();
     void Disconnect();
-    void StreamData(bool* time_to_stop);
+    void StreamDataTest(bool* time_to_stop);
+    void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
     void StopStreaming();
+
+    void ClearExtractedData() { pf_data_.clear(); }
 
     // ====================  OPERATORS     ======================================= 
 
@@ -103,11 +110,9 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
-    void ExtractData(const std::string& buffer);
-
     // ====================  DATA MEMBERS  ======================================= 
 
-    std::deque<PF_Data> pf_data_;
+    std::vector<PF_Data> pf_data_;
     std::vector<std::string> symbol_list_;
     std::string api_key_;
     std::string host_;

@@ -16,11 +16,14 @@
 // the guts of this code comes from the examples distributed by Boost.
 
 #include <iostream>
+#include <mutex>
 #include <regex>
 #include <string_view>
 
 #include <date/date.h>
 #include <fmt/chrono.h>
+
+#include <range/v3/algorithm/for_each.hpp>
 
 #include "Tiingo.h"
 #include "boost/beast/core/buffers_to_string.hpp"
@@ -58,15 +61,10 @@ Tiingo::Tiingo (const std::string& host, const std::string& port, const std::str
 }  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
 
 Tiingo::Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
-            const std::string& api_key, const std::string& symbols)
-    : api_key_{api_key}, host_{host}, port_{port}, websocket_prefix_{prefix},
+            const std::string& api_key, const std::vector<std::string>& symbols)
+    : symbol_list_{symbols}, api_key_{api_key}, host_{host}, port_{port}, websocket_prefix_{prefix},
         ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
 {
-    // symbols is a string of one or more symbols to monitor.
-    // If more than 1 symbol, list is coma delimited.
-
-    symbol_list_ = split_string<std::string>(symbols, ',');
-
 }  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
 
 void Tiingo::Connect()
@@ -98,7 +96,7 @@ void Tiingo::Connect()
 
 
 }
-void Tiingo::StreamData(bool* time_to_stop)
+void Tiingo::StreamDataTest(bool* time_to_stop)
 {
 
     // put this here for now.
@@ -141,11 +139,61 @@ void Tiingo::StreamData(bool* time_to_stop)
             break;
         }
     }
-}
+}		// -----  end of method Tiingo::StreamData  ----- 
+
+void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
+{
+
+    // put this here for now.
+    // need to manually construct to get expected formate when serialized 
+
+    Json::Value connection_request;
+    connection_request["eventName"] = "subscribe";
+    connection_request["authorization"] = api_key_;
+    connection_request["eventData"]["thresholdLevel"] = 5;
+    Json::Value tickers(Json::arrayValue);
+    for (const auto& symbol : symbol_list_)
+    {
+        tickers.append(symbol);
+    }
+    
+    connection_request["eventData"]["tickers"] = tickers;
+
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";        // compact printing and string formatting 
+    const std::string connection_request_str = Json::writeString(builder, connection_request);
+//    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
+
+    // Send the message
+    ws_.write(net::buffer(connection_request_str));
+
+    // This buffer will hold the incoming message
+    beast::flat_buffer buffer;
+
+    while(true)
+    {
+        buffer.clear();
+        ws_.read(buffer);
+        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+        if (! buffer_content.empty())
+        {
+            const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+            streamed_data->push(std::move(buffer_content));
+        }
+        if (*had_signal == true)
+        {
+            StopStreaming();
+            break;
+        }
+    }
+}		// -----  end of method Tiingo::StreamData  ----- 
 
 void Tiingo::ExtractData (const std::string& buffer)
 {
-    const std::regex trade_price{R"***("T",(?:.*?.){8} ([0-9]*\.[0-9]*),)***"}; 
+    const std::regex numeric_trade_price{R"***(("T",(?:.*?,){8}) ([0-9]*\.[0-9]*),)***"}; 
+    const std::regex quoted_trade_price{R"***("T",(?:.*?,){8} "([0-9]*\.[0-9]*)",)***"}; 
+    const std::string string_trade_price{R"***($1 "$2",)***"};
+    auto zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
 
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
@@ -155,7 +203,7 @@ void Tiingo::ExtractData (const std::string& buffer)
     Json::CharReaderBuilder builder;
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
 //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
-    if (! reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, &err))
+    if (! reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
     {
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
@@ -173,8 +221,7 @@ void Tiingo::ExtractData (const std::string& buffer)
         // extract our data
 
         std::smatch m;
-        bool found_it = std::regex_search(buffer, m, trade_price);
-        if (! found_it)
+        if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); ! found_it)
         {
             std::cout << "can't find trade price in buffer: " << buffer << '\n';
         }
@@ -185,6 +232,7 @@ void Tiingo::ExtractData (const std::string& buffer)
             new_value.time_stamp_ = data[1].asString();
             new_value.time_stamp_seconds_ = data[2].asInt64();
             new_value.ticker_ = data[3].asString();
+            ranges::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
             new_value.last_price_ = DprDecimal::DDecQuad{m[1].str()};
             new_value.last_size_ = data[10].asInt();
 
