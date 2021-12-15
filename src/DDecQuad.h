@@ -85,6 +85,8 @@ public:
     [[nodiscard]] int32_t ToIntTruncated() const;
     [[nodiscard]] double ToDouble() const;
 
+    [[nodiscard]] int32_t GetExponent() const { return decQuadGetExponent(&decimal_); }
+
     [[nodiscard]] DDecQuad abs() const;
     [[nodiscard]] DDecQuad log_n() const;
     [[nodiscard]] DDecQuad exp_n() const;
