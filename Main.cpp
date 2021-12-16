@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 	int result = 0;
 	try
 	{
-		CMyApp myApp(argc, argv);
+		PF_CollectDataApp  myApp(argc, argv);
 		bool startup_ok = myApp.Startup();
         if (startup_ok)
         {
