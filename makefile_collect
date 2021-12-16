@@ -51,20 +51,26 @@ SRCS1 := $(SDIR1)/Main.cpp
 SDIR2 := ./src
 SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/DDecQuad.cpp \
+		$(SDIR2)/PF_Column.cpp \
 		$(SDIR2)/PF_Chart.cpp \
-		$(SDIR2)/PF_Column.cpp
+		$(SDIR2)/Tiingo.cpp #\
 
 SDIR3 := $(DECIMALSRCDIR)
 SRCS3 := $(SDIR3)/decQuad.c \
 		 $(SDIR3)/decNumber.c \
 		 $(SDIR3)/decContext.c
 
+# SDIR3a := $(DECIMALSRCDIR)/bid
+SDIR3a := $(DECIMALSRCDIR)
+SRCS3a := $(SDIR3a)/decimal128.c \
+		  $(SDIR3a)/decimal64.c
+
 SDIR4 := $(UTILITYDIR)/src
 SRCS4 := $(SDIR4)/utilities.cpp
 
-SRCS := $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS4)
+SRCS := $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS3a) $(SRCS4)
 
-VPATH := $(SDIR1):$(SDIR2):$(SDIR3):$(SDIR4)
+VPATH := $(SDIR1):$(SDIR2):$(SDIR3):$(SDIR3a):$(SDIR4)
 
 #
 # Configuration: Debug
@@ -74,6 +80,7 @@ ifeq "$(CFG)" "Debug"
 OUTDIR=Debug_collect
 
 CFG_LIB := -lpthread \
+		-lssl -lcrypto \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
 		-lboost_program_options-mt-x64 \
@@ -87,14 +94,16 @@ CFG_LIB := -lpthread \
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS3=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS3)))))
+OBJS3a=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS3a)))))
 OBJS4=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS4)))))
 
-OBJS=$(OBJS1) $(OBJS2) $(OBJS3) $(OBJS4)
+OBJS=$(OBJS1) $(OBJS2) $(OBJS3) $(OBJS3a) $(OBJS4)
 
 DEPS=$(OBJS:.o=.d)
 
 COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++20 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -108,7 +117,7 @@ $(OUTDIR)/%.o : %.cpp
 $(OUTDIR)/%.o : %.c
 	$(CCOMPILE)
 
-$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS4)
+$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS3a) $(OBJS4)
 	$(LINK)
 
 -include $(DEPS)
