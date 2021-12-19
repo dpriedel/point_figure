@@ -336,7 +336,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
         for (const auto& symbol : symbol_list_)
         {
-            charts_[symbol] = PF_Chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_};
+            charts_[symbol] = PF_Chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_, scale_};
         }
         // let's stream !
         
@@ -405,7 +405,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name) const
 {
-    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_};
+    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_, scale_};
 
     AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
 
