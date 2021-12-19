@@ -41,6 +41,7 @@ public:
     enum class Status { e_accepted, e_ignored, e_reversal };
     enum class FractionalBoxes { e_integral, e_fractional };
     enum class ColumnScale { e_arithmetic, e_logarithmic };
+    enum class BoxSizePerCent { e_scalar, e_percent };
 
     using tpt = std::chrono::time_point<std::chrono::system_clock>;
     using TimeSpan = std::pair<tpt, tpt>;
@@ -57,7 +58,8 @@ public:
             FractionalBoxes fractional_boxes = FractionalBoxes::e_integral,
             ColumnScale column_scale = ColumnScale::e_arithmetic,
             Direction direction = Direction::e_unknown,
-            DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
+            DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1,
+            BoxSizePerCent box_size_percent = BoxSizePerCent::e_scalar);
 
     PF_Column(const Json::Value& new_data);
 
@@ -133,6 +135,7 @@ private:
     Direction direction_ = Direction::e_unknown;
     FractionalBoxes fractional_boxes_ = FractionalBoxes::e_integral;      // whether to drop fractional part of new values.
     ColumnScale column_scale_ = ColumnScale::e_arithmetic;
+    BoxSizePerCent boxsize_percent_ = BoxSizePerCent::e_scalar;
 
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;

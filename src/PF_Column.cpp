@@ -41,10 +41,12 @@
 //--------------------------------------------------------------------------------------
 
 PF_Column::PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
-            ColumnScale column_scale, Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
+            ColumnScale column_scale, Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom,
+            BoxSizePerCent boxsize_percent)
     : box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
         column_scale_{column_scale},
-        direction_{direction}, top_{top}, bottom_{bottom}
+        direction_{direction}, top_{top}, bottom_{bottom},
+        boxsize_percent_{boxsize_percent}
 {
     if (column_scale_ == ColumnScale::e_logarithmic)
     {
@@ -68,7 +70,8 @@ PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQu
 {
     auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, column_scale_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
-            direction == Direction::e_down ? value : bottom_ + box_size_
+            direction == Direction::e_down ? value : bottom_ + box_size_,
+            boxsize_percent_
     };
     new_column.time_span_ = {the_time, the_time};
     return new_column;
@@ -468,6 +471,17 @@ Json::Value PF_Column::ToJSON () const
             break;
     };
 
+    switch(boxsize_percent_)
+    {
+        case BoxSizePerCent::e_scalar:
+            result["boxsize_percent"] = "scalar";
+            break;
+
+        case BoxSizePerCent::e_percent:
+            result["boxsize_percent"] = "percent";
+            break;
+    };
+
     result["had_reversal"] = had_reversal_;
     return result;
 }		// -----  end of method PF_Column::ToJSON  ----- 
@@ -520,7 +534,6 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     const auto column_scale = new_data["column_scale"].asString();
     if (column_scale  == "arithmetic")
     {
-
         column_scale_ = ColumnScale::e_arithmetic;
     }
     else if (column_scale == "logarithmic")
@@ -530,6 +543,20 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     else
     {
         throw std::invalid_argument{fmt::format("Invalid column_scale provided: {}. Must be 'arithmetic' or 'logarithmic'.", column_scale)};
+    }
+
+    const auto boxsize_percent = new_data["boxsize_percent"].asString();
+    if (boxsize_percent  == "scalar")
+    {
+        boxsize_percent_ = BoxSizePerCent::e_scalar;
+    }
+    else if (boxsize_percent == "percent")
+    {
+        boxsize_percent_ = BoxSizePerCent::e_percent;
+    }
+    else
+    {
+        throw std::invalid_argument{fmt::format("Invalid boxsize_percent provided: {}. Must be 'scalar' or 'percent'.", boxsize_percent)};
     }
 
     had_reversal_ = new_data["had_reversal"].asBool();
