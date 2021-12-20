@@ -35,10 +35,10 @@
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        PF_Column::FractionalBoxes fractional_boxes, PF_Column::ColumnScale use_logarithms)
-    : current_column_{box_size, reversal_boxes, fractional_boxes, use_logarithms}, symbol_{symbol},
-    box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
-    use_logarithms_{use_logarithms}
+        PF_Column::BoxType box_type, PF_Column::ColumnScale column_scale)
+    : current_column_{box_size, reversal_boxes, box_type, column_scale}, symbol_{symbol},
+    box_size_{box_size}, reversal_boxes_{reversal_boxes}, box_type_{box_type},
+    column_scale_{column_scale}
 
 {
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -85,12 +85,12 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     {
         return false;
     }
-    if (fractional_boxes_ != rhs.fractional_boxes_)
+    if (box_type_ != rhs.box_type_)
     {
         return false;
     }
 
-    if (use_logarithms_ != rhs.use_logarithms_)
+    if (column_scale_ != rhs.column_scale_)
     {
         return false;
     }
@@ -238,8 +238,8 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     c->setPlotArea(50, 50, 500, 550)->setGridColor(0xc0c0c0, 0xc0c0c0);
 
     c->addTitle(fmt::format("{}{} X {} for {}  {}", box_size_.ToDouble(),
-                (IsLogarithmic() ? "%" : ""), reversal_boxes_, symbol_,
-                (IsLogarithmic() ? "logarithmic" : "")).c_str());
+                (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
+                (IsPercent() ? "percent" : "")).c_str());
 
 //    c->xAxis()->setTitle("Jan 2001");
 
@@ -310,9 +310,9 @@ Json::Value PF_Chart::ToJSON () const
             break;
     };
 
-    result["fractional_boxes"] = fractional_boxes_ == PF_Column::FractionalBoxes::e_integral ? "integral" : "fractional";
+    result["box_type"] = box_type_ == PF_Column::BoxType::e_integral ? "integral" : "fractional";
     
-    result["use_logarithms"] = use_logarithms_ == PF_Column::ColumnScale::e_arithmetic ? "arithmetic" : "logarithmic";
+    result["column_scale"] = column_scale_ == PF_Column::ColumnScale::e_linear ? "linear" : "percent";
 
     Json::Value cols{Json::arrayValue};
     for (const auto& col : columns_)
@@ -358,33 +358,33 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
         throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
 
-    const auto fractional = new_data["fractional_boxes"].asString();
-    if (fractional  == "integral")
+    const auto box_type = new_data["box_type"].asString();
+    if (box_type  == "integral")
     {
 
-        fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+        box_type_ = PF_Column::BoxType::e_integral;
     }
     else if (direction == "fractional")
     {
-        fractional_boxes_ = PF_Column::FractionalBoxes::e_fractional;
+        box_type_ = PF_Column::BoxType::e_fractional;
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid fractional_boxes provided: {}. Must be 'integral' or 'fractional'.", fractional)};
+        throw std::invalid_argument{fmt::format("Invalid box_type provided: {}. Must be 'integral' or 'fractional'.", box_type)};
     }
 
-    const auto chart_scale = new_data["use_logarithms"].asString();
-    if (chart_scale == "arithmetic")
+    const auto column_scale = new_data["column_scale"].asString();
+    if (column_scale == "linear")
     {
-        use_logarithms_ = PF_Column::ColumnScale::e_arithmetic;
+        column_scale_ = PF_Column::ColumnScale::e_linear;
     }
-    else if (chart_scale == "logarithmic")
+    else if (column_scale == "percent")
     {
-        use_logarithms_ = PF_Column::ColumnScale::e_logarithmic;
+        column_scale_ = PF_Column::ColumnScale::e_percent;
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid chart_scale provided: {}. Must be 'arithmetic' or 'logarithmic'.", chart_scale)};
+        throw std::invalid_argument{fmt::format("Invalid chart_scale provided: {}. Must be 'linear' or 'percent'.", column_scale)};
     }
     
     // lastly, we can do our columns 

@@ -39,9 +39,8 @@ public:
 
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
-    enum class FractionalBoxes { e_integral, e_fractional };
-    enum class ColumnScale { e_arithmetic, e_logarithmic };
-    enum class BoxSizePerCent { e_scalar, e_percent };
+    enum class BoxType { e_integral, e_fractional };
+    enum class ColumnScale { e_linear, e_percent };
 
     using tpt = std::chrono::time_point<std::chrono::system_clock>;
     using TimeSpan = std::pair<tpt, tpt>;
@@ -55,18 +54,17 @@ public:
     PF_Column(PF_Column&& rhs) = default;
 
     PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes,
-            FractionalBoxes fractional_boxes = FractionalBoxes::e_integral,
-            ColumnScale column_scale = ColumnScale::e_arithmetic,
+            BoxType fractional_boxes = BoxType::e_integral,
+            ColumnScale column_scale = ColumnScale::e_linear,
             Direction direction = Direction::e_unknown,
-            DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1,
-            BoxSizePerCent box_size_percent = BoxSizePerCent::e_scalar);
+            DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
     PF_Column(const Json::Value& new_data);
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return column_scale_ == ColumnScale::e_arithmetic ? top_ : top_.exp_n(); }
-    [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return column_scale_ == ColumnScale::e_arithmetic ? bottom_ : bottom_.exp_n(); }
+    [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return column_scale_ == ColumnScale::e_linear ? top_ : top_.exp_n(); }
+    [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return column_scale_ == ColumnScale::e_linear ? bottom_ : bottom_.exp_n(); }
     [[nodiscard]] DprDecimal::DDecQuad GetTop_Raw() const { return top_; }
     [[nodiscard]] DprDecimal::DDecQuad GetBottom_Raw() const { return  bottom_ ; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
@@ -133,9 +131,8 @@ private:
     DprDecimal::DDecQuad bottom_;
     DprDecimal::DDecQuad top_;
     Direction direction_ = Direction::e_unknown;
-    FractionalBoxes fractional_boxes_ = FractionalBoxes::e_integral;      // whether to drop fractional part of new values.
-    ColumnScale column_scale_ = ColumnScale::e_arithmetic;
-    BoxSizePerCent boxsize_percent_ = BoxSizePerCent::e_scalar;
+    BoxType box_type_ = BoxType::e_integral;      // whether to drop fractional part of new values.
+    ColumnScale column_scale_ = ColumnScale::e_linear;
 
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;

@@ -55,8 +55,8 @@ public:
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
     PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-            PF_Column::FractionalBoxes fractional_boxes=PF_Column::FractionalBoxes::e_integral,
-            PF_Column::ColumnScale use_logarithms=PF_Column::ColumnScale::e_arithmetic);
+            PF_Column::BoxType box_type=PF_Column::BoxType::e_integral,
+            PF_Column::ColumnScale column_scale=PF_Column::ColumnScale::e_linear);
 
     explicit PF_Chart(const Json::Value& new_data);
 
@@ -82,7 +82,7 @@ public:
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
-    [[nodiscard]] bool IsLogarithmic() const { return use_logarithms_ == PF_Column::ColumnScale::e_logarithmic; }
+    [[nodiscard]] bool IsPercent() const { return column_scale_ == PF_Column::ColumnScale::e_percent; }
 
     // ====================  MUTATORS      =======================================
     
@@ -123,16 +123,16 @@ private:
     DprDecimal::DDecQuad y_max_ = -1;
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
-    PF_Column::FractionalBoxes fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+    PF_Column::BoxType box_type_ = PF_Column::BoxType::e_integral;
 
-    PF_Column::ColumnScale use_logarithms_ = PF_Column::ColumnScale::e_arithmetic;
+    PF_Column::ColumnScale column_scale_ = PF_Column::ColumnScale::e_linear;
 
 }; // -----  end of class PF_Chart  -----
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
     os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.box_size_ << " reversal boxes: " << chart.reversal_boxes_<< 
-        (chart.use_logarithms_ == PF_Column::ColumnScale::e_arithmetic ? " numeric scale" : " log scale") << '\n';
+        (chart.column_scale_ == PF_Column::ColumnScale::e_linear ? " linear scale" : " percent scale") << '\n';
     for (const auto& col : chart.columns_)
     {
         os << '\t' << col << '\n';

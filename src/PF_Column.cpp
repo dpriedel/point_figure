@@ -40,15 +40,13 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Column::PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes, FractionalBoxes fractional_boxes,
-            ColumnScale column_scale, Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom,
-            BoxSizePerCent boxsize_percent)
-    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, fractional_boxes_{fractional_boxes},
+PF_Column::PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes, BoxType box_type,
+            ColumnScale column_scale, Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
+    : box_size_{box_size}, reversal_boxes_{reversal_boxes}, box_type_{box_type},
         column_scale_{column_scale},
-        direction_{direction}, top_{top}, bottom_{bottom},
-        boxsize_percent_{boxsize_percent}
+        direction_{direction}, top_{top}, bottom_{bottom}
 {
-    if (column_scale_ == ColumnScale::e_logarithmic)
+    if (column_scale_ == ColumnScale::e_percent)
     {
         log_box_increment_ = (1.0 + box_size_).log_n();
     }
@@ -68,10 +66,9 @@ PF_Column::PF_Column (const Json::Value& new_data)
 PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQuad value,
         tpt the_time)
 {
-    auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, column_scale_, direction,
+    auto new_column = PF_Column{box_size_, reversal_boxes_, box_type_, column_scale_, direction,
             direction == Direction::e_down ? top_ - box_size_ : value,
-            direction == Direction::e_down ? value : bottom_ + box_size_,
-            boxsize_percent_
+            direction == Direction::e_down ? value : bottom_ + box_size_
     };
     new_column.time_span_ = {the_time, the_time};
     return new_column;
@@ -80,7 +77,7 @@ PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQu
 PF_Column PF_Column::MakeReversalColumnLog (Direction direction, DprDecimal::DDecQuad value,
         tpt the_time)
 {
-    auto new_column = PF_Column{box_size_, reversal_boxes_, fractional_boxes_, column_scale_, direction,
+    auto new_column = PF_Column{box_size_, reversal_boxes_, box_type_, column_scale_, direction,
             direction == Direction::e_down ? top_ - log_box_increment_ : value,
             direction == Direction::e_down ? value : bottom_ + log_box_increment_
     };
@@ -104,7 +101,7 @@ bool PF_Column::operator== (const PF_Column& rhs) const
 
 PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
-    if (column_scale_ == ColumnScale::e_logarithmic)
+    if (column_scale_ == ColumnScale::e_percent)
     {
         return AddValueLog(new_value.log_n(), the_time);
     }
@@ -117,7 +114,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     }
 
     DprDecimal::DDecQuad possible_value;
-    if (fractional_boxes_ == FractionalBoxes::e_integral)
+    if (box_type_ == BoxType::e_integral)
     {
         possible_value = new_value.ToIntTruncated();
     }
@@ -406,7 +403,7 @@ PF_Column::AddResult PF_Column::TryToExtendDownLog (const DprDecimal::DDecQuad& 
 DprDecimal::DDecQuad PF_Column::RoundDownToNearestBox (const DprDecimal::DDecQuad& a_value) const
 {
     DprDecimal::DDecQuad price_as_int;
-    if (fractional_boxes_ == FractionalBoxes::e_integral)
+    if (box_type_ == BoxType::e_integral)
     {
         price_as_int = a_value.ToIntTruncated();
     }
@@ -449,36 +446,25 @@ Json::Value PF_Column::ToJSON () const
             break;
     };
 
-    switch(fractional_boxes_)
+    switch(box_type_)
     {
-        case FractionalBoxes::e_integral:
-            result["fractional_boxes"] = "integral";
+        case BoxType::e_integral:
+            result["box_type"] = "integral";
             break;
 
-        case FractionalBoxes::e_fractional:
-            result["fractional_boxes"] = "fractional";
+        case BoxType::e_fractional:
+            result["box_type"] = "fractional";
             break;
     };
 
     switch(column_scale_)
     {
-        case ColumnScale::e_arithmetic:
-            result["column_scale"] = "arithmetic";
+        case ColumnScale::e_linear:
+            result["column_scale"] = "linear";
             break;
 
-        case ColumnScale::e_logarithmic:
-            result["column_scale"] = "logarithmic";
-            break;
-    };
-
-    switch(boxsize_percent_)
-    {
-        case BoxSizePerCent::e_scalar:
-            result["boxsize_percent"] = "scalar";
-            break;
-
-        case BoxSizePerCent::e_percent:
-            result["boxsize_percent"] = "percent";
+        case ColumnScale::e_percent:
+            result["column_scale"] = "percent";
             break;
     };
 
@@ -516,47 +502,33 @@ void PF_Column::FromJSON (const Json::Value& new_data)
         throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
 
-    const auto fractional = new_data["fractional_boxes"].asString();
-    if (fractional  == "integral")
+    const auto box_type = new_data["box_type"].asString();
+    if (box_type  == "integral")
     {
 
-        fractional_boxes_ = FractionalBoxes::e_integral;
+        box_type_ = BoxType::e_integral;
     }
-    else if (fractional == "fractional")
+    else if (box_type == "fractional")
     {
-        fractional_boxes_ = FractionalBoxes::e_fractional;
+        box_type_ = BoxType::e_fractional;
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid fractional_boxes provided: {}. Must be 'integral' or 'fractional'.", fractional)};
+        throw std::invalid_argument{fmt::format("Invalid box_type provided: {}. Must be 'integral' or 'fractional'.", box_type)};
     }
 
     const auto column_scale = new_data["column_scale"].asString();
-    if (column_scale  == "arithmetic")
+    if (column_scale  == "linear")
     {
-        column_scale_ = ColumnScale::e_arithmetic;
+        column_scale_ = ColumnScale::e_linear;
     }
-    else if (column_scale == "logarithmic")
+    else if (column_scale == "percent")
     {
-        column_scale_ = ColumnScale::e_logarithmic;
-    }
-    else
-    {
-        throw std::invalid_argument{fmt::format("Invalid column_scale provided: {}. Must be 'arithmetic' or 'logarithmic'.", column_scale)};
-    }
-
-    const auto boxsize_percent = new_data["boxsize_percent"].asString();
-    if (boxsize_percent  == "scalar")
-    {
-        boxsize_percent_ = BoxSizePerCent::e_scalar;
-    }
-    else if (boxsize_percent == "percent")
-    {
-        boxsize_percent_ = BoxSizePerCent::e_percent;
+        column_scale_ = ColumnScale::e_percent;
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid boxsize_percent provided: {}. Must be 'scalar' or 'percent'.", boxsize_percent)};
+        throw std::invalid_argument{fmt::format("Invalid column_scale provided: {}. Must be 'linear' or 'percent'.", column_scale)};
     }
 
     had_reversal_ = new_data["had_reversal"].asBool();
