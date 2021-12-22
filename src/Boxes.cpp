@@ -67,8 +67,17 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
         } while (new_value >= boxes.back());
         return prev_box;
     }
-    else {
-    // extend down 
+    else
+    {
+        // extend down 
+       
+        do 
+        {
+            Box new_box = boxes.front() - box_size_;
+            boxes.push_front(new_box);
+        } while (new_value < boxes.front());
+
+        return boxes.front();
     }
     return {};
 }		// -----  end of method Boxes::FindBox  ----- 
