@@ -212,22 +212,43 @@ DDecQuad DDecQuad::abs() const
     return result;
 }		// -----  end of method DDecQuad::abs  ----- 
 
-DDecQuad& DDecQuad::Rescale(std::string_view decimal_digits)
+//DDecQuad& DDecQuad::Rescale(std::string_view decimal_digits)
+//{
+////    char output [DECQUAD_String];
+////    decQuadToString(&this->decimal_, output);
+//    decNumber temp;
+//    decNumberZero(&temp);
+//    decQuadToNumber(&this->decimal_, &temp);
+//
+////    char output1 [DECQUAD_String];
+////    decNumberToString(&temp, output1);
+//    decNumber digits;
+//    decNumberFromString(&digits, decimal_digits.data(), &DDecQuad::mCtx_);
+//
+//    decNumber temp2;
+//    decNumberZero(&temp2);
+//    decNumberQuantize(&temp2, &temp, &digits, &DDecQuad::mCtx_);
+//
+//    decQuadFromNumber(&this->decimal_, &temp2, &DDecQuad::mCtx_);
+//    return *this;
+//}
+
+DDecQuad& DDecQuad::Rescale(int32_t exponent)
 {
-    char output [DECQUAD_String];
-    decQuadToString(&this->decimal_, output);
+//    char output [DECQUAD_String];
+//    decQuadToString(&this->decimal_, output);
     decNumber temp;
     decNumberZero(&temp);
     decQuadToNumber(&this->decimal_, &temp);
 
-    char output1 [DECQUAD_String];
-    decNumberToString(&temp, output1);
+//    char output1 [DECQUAD_String];
+//    decNumberToString(&temp, output1);
     decNumber digits;
-    decNumberFromString(&digits, decimal_digits.data(), &DDecQuad::mCtx_);
+    decNumberFromInt32(&digits, exponent);
 
     decNumber temp2;
     decNumberZero(&temp2);
-    decNumberQuantize(&temp2, &temp, &digits, &DDecQuad::mCtx_);
+    decNumberRescale(&temp2, &temp, &digits, &DDecQuad::mCtx_);
 
     decQuadFromNumber(&this->decimal_, &temp2, &DDecQuad::mCtx_);
     return *this;
@@ -254,6 +275,19 @@ DDecQuad DDecQuad::exp_n() const
     decQuadFromNumber(&result.decimal_, &exp_temp, &DDecQuad::mCtx_);
     return result;
 }		// -----  end of method DDecQuad::exp_n  ----- 
+
+DDecQuad DDecQuad::ToPower (const DDecQuad& power) const
+{
+    decNumber temp;
+    decQuadToNumber(&this->decimal_, &temp);
+    decNumber power_temp;
+    decQuadToNumber(&power.decimal_, &power_temp);
+    decNumber result_temp;
+    decNumberPower(&result_temp, &temp, &power_temp, &DDecQuad::mCtx_);
+    DDecQuad result;
+    decQuadFromNumber(&result.decimal_, &result_temp, &DDecQuad::mCtx_);
+    return result;
+}		// -----  end of method DDecQuad::ToPower  ----- 
 
 // ===  FUNCTION  ======================================================================
 //         Name:  max

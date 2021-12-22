@@ -90,10 +90,11 @@ public:
     [[nodiscard]] DDecQuad abs() const;
     [[nodiscard]] DDecQuad log_n() const;
     [[nodiscard]] DDecQuad exp_n() const;
+    [[nodiscard]] DDecQuad ToPower(const DDecQuad& the_power) const;
 
     // ====================  MUTATORS      =======================================
 
-    DDecQuad& Rescale(std::string_view decimal_digits);
+    DDecQuad& Rescale(int32_t exponent);
 
     // ====================  OPERATORS     =======================================
     
