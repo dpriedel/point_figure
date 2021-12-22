@@ -51,7 +51,7 @@ public:
 
     // ====================  MUTATORS      ======================================= 
 
-    Box NewBox(const DprDecimal::DDecQuad& start_at);
+    Box FindBox(const DprDecimal::DDecQuad& new_value);
 
     // ====================  OPERATORS     ======================================= 
 
@@ -63,6 +63,7 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
+    Box FirstBox(const DprDecimal::DDecQuad& start_at);
     [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
     // ====================  DATA MEMBERS  ======================================= 

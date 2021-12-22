@@ -14,8 +14,12 @@
 //
 // =====================================================================================
 
-#include "Boxes.h"
+#include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/adjacent_find.hpp>
 
+
+#include "Boxes.h"
+#include "utilities.h"
 
 //--------------------------------------------------------------------------------------
 //       Class:  Boxes
@@ -27,9 +31,56 @@ Boxes::Boxes (DprDecimal::DDecQuad box_size, BoxType box_type, BoxScale box_scal
 {
 }  // -----  end of method Boxes::Boxes  (constructor)  ----- 
 
-Boxes::Box Boxes::NewBox (const DprDecimal::DDecQuad& start_at)
+Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
 {
-    return RoundDownToNearestBox(start_at);
+    if (boxes.empty())
+    {
+        return FirstBox(new_value);
+    }
+    auto box_finder = [&new_value](const auto& a, const auto& b) { return new_value >= a && new_value < b; };
+
+    // this code will not match against the last value in the list 
+
+    if (auto found_it = ranges::adjacent_find(boxes, box_finder); found_it != boxes.end())
+    {
+        return *found_it;
+    }
+
+    if (new_value == boxes.back())
+    {
+        return boxes.back();
+    }
+    // may have to extend box list by multiple boxes 
+
+    if (new_value > boxes.back())
+    {
+        // extend up 
+
+        Box prev_box = boxes.back();
+        Box new_box = prev_box + box_size_;
+
+        do
+        {
+            prev_box = boxes.back();
+            boxes.push_back(new_box);
+            new_box += box_size_;
+        } while (new_value >= boxes.back());
+        return prev_box;
+    }
+    else {
+    // extend down 
+    }
+    return {};
+}		// -----  end of method Boxes::FindBox  ----- 
+
+Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
+{
+    BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes.");
+
+    boxes.clear();
+    auto new_box = RoundDownToNearestBox(start_at);
+    boxes.push_back(new_box);
+    return new_box;
 
 }		// -----  end of method Boxes::NewBox  ----- 
 
