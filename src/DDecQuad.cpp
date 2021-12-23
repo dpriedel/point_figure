@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include "DDecQuad.h"
+#include "decContext.h"
 
 
 using namespace DprDecimal;
@@ -34,6 +35,7 @@ void DDecQuad::InitContext()
     if (DDecQuad::context_initialized_ == false)
     {
         decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
+        decContextSetRounding(&DDecQuad::mCtx_, DEC_ROUND_HALF_UP);
         DDecQuad::context_initialized_ = true;
     }
 }
