@@ -29,6 +29,8 @@
 #include "DDecQuad.h"
 #include "utilities.h"
 
+class Boxes;
+
 // =====================================================================================
 //        Class:  PF_Column
 //  Description:  
@@ -39,8 +41,6 @@ public:
 
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
-    enum class BoxType { e_integral, e_fractional };
-    enum class ColumnScale { e_linear, e_percent };
 
     using tpt = std::chrono::time_point<std::chrono::system_clock>;
     using TimeSpan = std::pair<tpt, tpt>;
@@ -53,9 +53,7 @@ public:
     PF_Column(const PF_Column& rhs) = default;
     PF_Column(PF_Column&& rhs) = default;
 
-    PF_Column(const DprDecimal::DDecQuad& box_size, int reversal_boxes,
-            BoxType fractional_boxes = BoxType::e_integral,
-            ColumnScale column_scale = ColumnScale::e_linear,
+    PF_Column(Boxes* boxes, int reversal_boxes,
             Direction direction = Direction::e_unknown,
             DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
@@ -66,8 +64,6 @@ public:
     [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return top_; }
     [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return  bottom_ ; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
-    [[nodiscard]] ColumnScale GetColumnScale() const { return column_scale_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
     [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
@@ -97,7 +93,6 @@ protected:
     // make reversed column here because we know everything needed to do so.
 
     PF_Column MakeReversalColumn(Direction direction, DprDecimal::DDecQuad value, tpt the_time);
-    PF_Column MakeReversalColumnPercent(Direction direction, DprDecimal::DDecQuad value, tpt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -110,31 +105,16 @@ private:
     [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& possible_value, tpt the_time);
     [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& possible_value, tpt the_time);
 
-    [[nodiscard]] AddResult AddValuePercent(const DprDecimal::DDecQuad& new_value, tpt the_time);
-
-    [[nodiscard]] AddResult StartColumnPercent(const DprDecimal::DDecQuad& new_value, tpt the_time);
-    [[nodiscard]] AddResult TryToFindDirectionPercent(const DprDecimal::DDecQuad& possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendUpPercent(const DprDecimal::DDecQuad& possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendDownPercent(const DprDecimal::DDecQuad& possible_value, tpt the_time);
-
-    [[nodiscard]] DprDecimal::DDecQuad RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
-
     // ====================  DATA MEMBERS  =======================================
 
     TimeSpan time_span_;
-    DprDecimal::DDecQuad box_size_ = -1;
-    DprDecimal::DDecQuad percent_box_increment_up_ = -1;
-    DprDecimal::DDecQuad percent_box_increment_down_ = -1;
-    DprDecimal::DDecQuad reversal_factor_up_ = -1;
-    DprDecimal::DDecQuad reversal_factor_down_ = -1;
-    int32_t reversal_boxes_ = -1;
-    int32_t percent_exponent_ = 0;
 
-    DprDecimal::DDecQuad bottom_;
+    Boxes* boxes_ = nullptr;
+
+    int32_t reversal_boxes_ = -1;
     DprDecimal::DDecQuad top_;
+    DprDecimal::DDecQuad bottom_;
     Direction direction_ = Direction::e_unknown;
-    BoxType box_type_ = BoxType::e_integral;      // whether to drop fractional part of new values.
-    ColumnScale column_scale_ = ColumnScale::e_linear;
 
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;
