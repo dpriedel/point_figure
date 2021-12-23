@@ -20,6 +20,8 @@
 
 #include <deque>
 
+#include <json/json.h>
+
 #include "DDecQuad.h"
 
 // =====================================================================================
@@ -41,6 +43,8 @@ public:
 
     Boxes (DprDecimal::DDecQuad box_size, BoxType box_type=BoxType::e_integral, BoxScale box_scale=BoxScale::e_linear);
 
+    Boxes(const Json::Value& new_data);
+
     // ====================  ACCESSORS     ======================================= 
 
     [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
@@ -49,11 +53,18 @@ public:
 
     [[nodiscard]] const BoxList& GetBoxList() const { return boxes; }
 
+    [[nodiscard]] Json::Value ToJSON() const;
+
     // ====================  MUTATORS      ======================================= 
 
     Box FindBox(const DprDecimal::DDecQuad& new_value);
 
     // ====================  OPERATORS     ======================================= 
+
+    bool operator == (const Boxes& rhs) const;
+    bool operator != (const Boxes& rhs) const { return ! operator==(rhs); }
+
+    Boxes& operator= (const Json::Value& new_data);
 
 protected:
     // ====================  METHODS       ======================================= 
@@ -62,6 +73,8 @@ protected:
 
 private:
     // ====================  METHODS       ======================================= 
+
+    void FromJSON(const Json::Value& new_data);
 
     Box FirstBox(const DprDecimal::DDecQuad& start_at);
     Box FirstBoxPerCent(const DprDecimal::DDecQuad& start_at);
