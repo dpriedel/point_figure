@@ -64,6 +64,8 @@ private:
     // ====================  METHODS       ======================================= 
 
     Box FirstBox(const DprDecimal::DDecQuad& start_at);
+    Box FirstBoxPerCent(const DprDecimal::DDecQuad& start_at);
+    Box FindBoxPercent(const DprDecimal::DDecQuad& new_value);
     [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
     // ====================  DATA MEMBERS  ======================================= 
@@ -71,6 +73,10 @@ private:
     BoxList boxes;
 
     DprDecimal::DDecQuad box_size_ = -1;
+    DprDecimal::DDecQuad percent_box_factor_up_ = -1;
+    DprDecimal::DDecQuad percent_box_factor_down_ = -1;
+
+    int32_t percent_exponent_ = 0;
     BoxType box_type_ = BoxType::e_integral;      // whether to drop fractional part of new values.
     BoxScale box_scale_ = BoxScale::e_linear;
 
