@@ -18,6 +18,7 @@
 #ifndef  BOXES_INC
 #define  BOXES_INC
 
+#include <cstdint>
 #include <deque>
 
 #include <json/json.h>
@@ -51,13 +52,17 @@ public:
     [[nodiscard]] BoxType GetBoxType() const { return box_type_; }
     [[nodiscard]] BoxScale GetBoxScale() const { return box_scale_; }
 
-    [[nodiscard]] const BoxList& GetBoxList() const { return boxes; }
+    [[nodiscard]] const BoxList& GetBoxList() const { return boxes_; }
 
     [[nodiscard]] Json::Value ToJSON() const;
+
+    [[nodiscard]] int32_t Distance(const Box& from, const Box& to) const;
 
     // ====================  MUTATORS      ======================================= 
 
     Box FindBox(const DprDecimal::DDecQuad& new_value);
+    Box FindNextBox(const DprDecimal::DDecQuad& current_value);
+    Box FindPrevBox(const DprDecimal::DDecQuad& current_value);
 
     // ====================  OPERATORS     ======================================= 
 
@@ -83,7 +88,7 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
 
-    BoxList boxes;
+    BoxList boxes_;
 
     DprDecimal::DDecQuad box_size_ = -1;
     DprDecimal::DDecQuad percent_box_factor_up_ = -1;

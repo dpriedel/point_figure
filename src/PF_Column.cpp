@@ -60,10 +60,7 @@ PF_Column::PF_Column (const Json::Value& new_data)
 PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQuad value,
         tpt the_time)
 {
-    auto new_column = PF_Column{boxes_, reversal_boxes_, direction,
-            direction == Direction::e_down ? top_ : value,
-            direction == Direction::e_down ? value : bottom_
-    };
+    auto new_column = PF_Column{boxes_, reversal_boxes_, direction, value, value};
     new_column.time_span_ = {the_time, the_time};
     return new_column;
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
@@ -89,13 +86,11 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
         return StartColumn(new_value, the_time);
     }
 
-    Boxes::Box possible_value = boxes_->FindBox(new_value);
-
     // OK, we've got a value but may not yet have a direction.
 
     if (direction_ == Direction::e_unknown)
     {
-        return TryToFindDirection(possible_value, the_time);
+        return TryToFindDirection(new_value, the_time);
     }
 
     // If we're here, we have direction. We can either continue in 
@@ -105,9 +100,9 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
 
     if (direction_ == Direction::e_up)
     {
-        return TryToExtendUp(possible_value, the_time);
+        return TryToExtendUp(new_value, the_time);
     }
-    return TryToExtendDown(possible_value, the_time);
+    return TryToExtendDown(new_value, the_time);
 }		// -----  end of method PF_Column::AddValue  ----- 
 
 PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_value, tpt the_time)
@@ -115,7 +110,7 @@ PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_val
     // As this is the first entry in the column, just set fields 
     // to the input value rounded down to the nearest box value.
 
-    top_= new_value;
+    top_= boxes_->FindBox(new_value);
     bottom_ = top_;
     time_span_ = {the_time, the_time};
 
@@ -123,13 +118,15 @@ PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_val
 }		// -----  end of method PF_Column::StartColumn  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
     // NOTE: Since a new value may gap up or down, we could 
     // have multiple boxes to fill in. 
 
     // we can compare to either value since they 
     // are both the same at this point.
+
+    Boxes::Box possible_value = boxes_->FindBox(new_value);
 
     if (possible_value > top_)
     {
@@ -150,75 +147,111 @@ PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& 
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
-PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
-    if (possible_value > top_)
+    Boxes::Box possible_box = boxes_->FindBox(new_value);
+
+    if (possible_box > top_)
     {
-        top_ = possible_value;
+        top_ = possible_box;
         time_span_.second = the_time;
         return {Status::e_accepted, std::nullopt};
     }
     // look for a reversal 
 
-//    if (possible_value <= top_ - (box_size_ * reversal_boxes_))
-//    {
-//        // look for one-step-back reversal first.
-//
-//        if (reversal_boxes_ == 1)
-//        {
-//            if (bottom_ <= top_ - box_size_)
-//            {
-//                time_span_.second = the_time;
-//                // can't do it as box is occupied.
-//                return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - box_size_, the_time)};
-//            }
-//            int how_many_boxes = ((possible_value - bottom_) / box_size_).ToIntTruncated();
-//            bottom_ += how_many_boxes * box_size_;
-//            had_reversal_ = true;
-//            direction_ = Direction::e_down;
-//            time_span_.second = the_time;
-//            return {Status::e_accepted, std::nullopt};
-//        }
-//        time_span_.second = the_time;
-//        return {Status::e_reversal, MakeReversalColumn(Direction::e_down, top_ - (box_size_ * reversal_boxes_), the_time)};
-//    }
+    if (new_value > possible_box)
+    {
+        // could be in between, so can't move to this level. 
+        // must backup 1 box 
+
+        possible_box = boxes_->FindNextBox(possible_box);
+    }
+
+    Boxes::Box reversal_box = top_;
+    for (auto x = reversal_boxes_; x > 0; --x) 
+    {
+        reversal_box = boxes_->FindPrevBox(reversal_box);
+    }
+    if (new_value <= reversal_box)
+    {
+        // look for one-step-back reversal first.
+
+        if (reversal_boxes_ == 1)
+        {
+            if (bottom_ < top_)
+            {
+                // there are at least 2 boxes in column so 
+                // can't do 1-box reversal 
+
+                time_span_.second = the_time;
+                // can't do it as box is occupied.
+                return {Status::e_reversal, MakeReversalColumn(Direction::e_down, reversal_box, the_time)};
+            }
+            bottom_ = possible_box;
+            had_reversal_ = true;
+            direction_ = Direction::e_down;
+            time_span_.second = the_time;
+            return {Status::e_accepted, std::nullopt};
+        }
+        time_span_.second = the_time;
+        return {Status::e_reversal, MakeReversalColumn(Direction::e_down, possible_box, the_time)};
+    }
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Chart::TryToExtendUp  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& possible_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
-    if (possible_value < bottom_)
+    Boxes::Box possible_box = boxes_->FindBox(new_value);
+    if (new_value > possible_box)
     {
-        bottom_ = possible_value;
+        // could be in between, so can't move to this level. 
+        // must backup 1 box 
+
+        possible_box = boxes_->FindNextBox(possible_box);
+    }
+
+    if (possible_box < bottom_)
+    {
+        bottom_ = possible_box;
         time_span_.second = the_time;
         return {Status::e_accepted, std::nullopt};
     }
-    //
+
     // look for a reversal 
 
-//    if (possible_value >= bottom_ + (box_size_ * reversal_boxes_))
-//    {
-//        // look for one-step-back reversal first.
-//
-//        if (reversal_boxes_ == 1)
-//        {
-//            if (top_ >= bottom_ + box_size_)
-//            {
-//                time_span_.second = the_time;
-//                // can't do it as box is occupied.
-//                return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + box_size_, the_time)};
-//            }
-//            int how_many_boxes = ((possible_value - top_) / box_size_).ToIntTruncated();
-//            top_ += how_many_boxes * box_size_;
-//            had_reversal_ = true;
-//            direction_ = Direction::e_up;
-//            time_span_.second = the_time;
-//            return {Status::e_accepted, std::nullopt};
-//        }
-//        time_span_.second = the_time;
-//        return {Status::e_reversal, MakeReversalColumn(Direction::e_up, bottom_ + (box_size_ * reversal_boxes_), the_time)};
-//    }
+    // if we might b moving up, then reset this value 
+
+    possible_box = boxes_->FindBox(new_value);
+    Boxes::Box reversal_box = bottom_;
+    for (auto x = reversal_boxes_; x > 0; --x) 
+    {
+        reversal_box = boxes_->FindNextBox(reversal_box);
+    }
+    if (new_value >= reversal_box)
+    {
+        // look for one-step-back reversal first.
+
+        if (reversal_boxes_ == 1)
+        {
+            if (top_ > bottom_)
+            {
+                // there are at least 2 boxes in column so 
+                // can't do 1-box reversal
+
+                time_span_.second = the_time;
+                // can't do it as box is occupied.
+                return {Status::e_reversal, MakeReversalColumn(Direction::e_up, reversal_box, the_time)};
+            }
+            top_ = possible_box;
+            had_reversal_ = true;
+            direction_ = Direction::e_up;
+            time_span_.second = the_time;
+            return {Status::e_accepted, std::nullopt};
+        }
+        time_span_.second = the_time;
+        return {Status::e_reversal, MakeReversalColumn(Direction::e_up, possible_box, the_time)};
+    }
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendDown  ----- 
 

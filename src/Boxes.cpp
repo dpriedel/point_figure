@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  Boxes.cpp
+//       Filename:  boxes_.cpp
 //
 //    Description:  Manage creation and access to P&F boxes used in charts 
 //
@@ -14,8 +14,10 @@
 //
 // =====================================================================================
 
+#include <cstdint>
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/adjacent_find.hpp>
+#include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 
 
@@ -48,9 +50,29 @@ Boxes::Boxes (const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method Boxes::Boxes  (constructor)  ----- 
 
+int32_t Boxes::Distance (const Box& from, const Box& to) const
+{
+    if (from == to)
+    {
+        return 0;
+    }
+    
+    const auto x = ranges::find(boxes_, from);
+    BOOST_ASSERT_MSG(x != boxes_.end(), "Can't find 'from' box in list.");
+    const auto y = ranges::find(boxes_, to);
+    BOOST_ASSERT_MSG(y != boxes_.end(), "Can't find 'to' box in list.");
+
+    if (from < to)
+    {
+        return ranges::distance(x, y);
+    }
+    return ranges::distance(y, x);
+}		// -----  end of method Boxes::Distance  ----- 
+
+
 Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
 {
-    if (boxes.empty())
+    if (boxes_.empty())
     {
         return FirstBox(new_value);
     }
@@ -64,30 +86,30 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
 
     // this code will not match against the last value in the list 
 
-    if (auto found_it = ranges::adjacent_find(boxes, box_finder); found_it != boxes.end())
+    if (auto found_it = ranges::adjacent_find(boxes_, box_finder); found_it != boxes_.end())
     {
         return *found_it;
     }
 
-    if (new_value == boxes.back())
+    if (new_value == boxes_.back())
     {
-        return boxes.back();
+        return boxes_.back();
     }
     // may have to extend box list by multiple boxes 
 
-    if (new_value > boxes.back())
+    if (new_value > boxes_.back())
     {
         // extend up 
 
-        Box prev_box = boxes.back();
+        Box prev_box = boxes_.back();
         Box new_box = prev_box + box_size_;
 
         do
         {
-            prev_box = boxes.back();
-            boxes.push_back(new_box);
+            prev_box = boxes_.back();
+            boxes_.push_back(new_box);
             new_box += box_size_;
-        } while (new_value >= boxes.back());
+        } while (new_value >= boxes_.back());
         return prev_box;
     }
     else
@@ -96,11 +118,11 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
        
         do 
         {
-            Box new_box = boxes.front() - box_size_;
-            boxes.push_front(new_box);
-        } while (new_value < boxes.front());
+            Box new_box = boxes_.front() - box_size_;
+            boxes_.push_front(new_box);
+        } while (new_value < boxes_.front());
 
-        return boxes.front();
+        return boxes_.front();
     }
     return {};
 }		// -----  end of method Boxes::FindBox  ----- 
@@ -111,30 +133,30 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
 
     // this code will not match against the last value in the list 
 
-    if (auto found_it = ranges::adjacent_find(boxes, box_finder); found_it != boxes.end())
+    if (auto found_it = ranges::adjacent_find(boxes_, box_finder); found_it != boxes_.end())
     {
         return *found_it;
     }
 
-    if (new_value == boxes.back())
+    if (new_value == boxes_.back())
     {
-        return boxes.back();
+        return boxes_.back();
     }
     // may have to extend box list by multiple boxes 
 
-    if (new_value > boxes.back())
+    if (new_value > boxes_.back())
     {
         // extend up 
 
-        Box prev_box = boxes.back();
+        Box prev_box = boxes_.back();
         Box new_box = (prev_box * percent_box_factor_up_).Rescale(percent_exponent_);
 
         do
         {
-            prev_box = boxes.back();
-            boxes.push_back(new_box);
+            prev_box = boxes_.back();
+            boxes_.push_back(new_box);
             new_box = (new_box * percent_box_factor_up_).Rescale(percent_exponent_);
-        } while (new_value >= boxes.back());
+        } while (new_value >= boxes_.back());
         return prev_box;
     }
     else
@@ -143,14 +165,47 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
        
         do 
         {
-            Box new_box = (boxes.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-            boxes.push_front(new_box);
-        } while (new_value < boxes.front());
+            Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+            boxes_.push_front(new_box);
+        } while (new_value < boxes_.front());
 
-        return boxes.front();
+        return boxes_.front();
     }
     return {};
 }		// -----  end of method Boxes::FindBox  ----- 
+
+Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
+{
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    // this code will not match against the last value in the list 
+    // which is OK since that means there will be no next box and the
+    // index operator below will throw.
+
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
+
+    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    return boxes_[box_index + 1];
+}		// -----  end of method Boxes::FindNextBox  ----- 
+
+Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
+{
+    // this code will not match against the last value in the list 
+
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    if (current_value == boxes_.back())
+    {
+        int32_t box_index = boxes_.size() - 1;
+        return boxes_[box_index - 1];
+    }
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
+
+    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    return boxes_[box_index - 1];
+}		// -----  end of method Boxes::FindPrevBox  ----- 
 
 Boxes& Boxes::operator= (const Json::Value& new_data)
 {
@@ -174,31 +229,31 @@ bool Boxes::operator== (const Boxes& rhs) const
     {
         return false;
     }
-    return rhs.boxes == boxes;
+    return rhs.boxes_ == boxes_;
 }		// -----  end of method Boxes::operator==  ----- 
 
 Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 {
-    BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes.");
+    BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
 //    if (box_scale_ == BoxScale::e_percent)
 //    {
 //        return FirstBoxPerCent(start_at);
 //    }
-    boxes.clear();
+    boxes_.clear();
     auto new_box = RoundDownToNearestBox(start_at);
-    boxes.push_back(new_box);
+    boxes_.push_back(new_box);
     return new_box;
 
 }		// -----  end of method Boxes::NewBox  ----- 
 
 Boxes::Box Boxes::FirstBoxPerCent (const DprDecimal::DDecQuad& start_at)
 {
-    BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes.");
+    BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
-    boxes.clear();
+    boxes_.clear();
     auto new_box = RoundDownToNearestBox(start_at);
-    boxes.push_back(new_box);
+    boxes_.push_back(new_box);
     return new_box;
 
 }		// -----  end of method Boxes::NewBox  ----- 
@@ -252,7 +307,7 @@ Json::Value Boxes::ToJSON () const
     };
 
     Json::Value the_boxes{Json::arrayValue};
-    for (const auto& box : boxes)
+    for (const auto& box : boxes_)
     {
         the_boxes.append(box.ToStr());
     }
@@ -300,7 +355,7 @@ void Boxes::FromJSON (const Json::Value& new_data)
     // lastly, we can do our boxes 
 
     const auto& the_boxes = new_data["boxes"];
-    ranges::for_each(the_boxes, [this](const auto& next_box) { this->boxes.emplace_back(next_box.asString()); });
+    ranges::for_each(the_boxes, [this](const auto& next_box) { this->boxes_.emplace_back(next_box.asString()); });
 
 }		// -----  end of method Boxes::FromJSON  ----- 
 

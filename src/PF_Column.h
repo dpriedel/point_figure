@@ -101,9 +101,9 @@ private:
     void FromJSON(const Json::Value& new_data);
 
     [[nodiscard]] AddResult StartColumn(const DprDecimal::DDecQuad& new_value, tpt the_time);
-    [[nodiscard]] AddResult TryToFindDirection(const DprDecimal::DDecQuad& possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& possible_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& possible_value, tpt the_time);
+    [[nodiscard]] AddResult TryToFindDirection(const DprDecimal::DDecQuad& new_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& new_value, tpt the_time);
+    [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& new_value, tpt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
