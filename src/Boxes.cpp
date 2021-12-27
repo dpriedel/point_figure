@@ -183,7 +183,11 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
     // index operator below will throw.
 
     auto found_it = ranges::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
+//    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
+    if (found_it == boxes_.end())
+    {
+        return FindBox(current_value);
+    }
 
     int32_t box_index = ranges::distance(boxes_.begin(), found_it);
     return boxes_[box_index + 1];
@@ -201,7 +205,11 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
         return boxes_[box_index - 1];
     }
     auto found_it = ranges::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
+//    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
+    if (found_it == boxes_.end())
+    {
+        return FindBox(current_value);
+    }
 
     int32_t box_index = ranges::distance(boxes_.begin(), found_it);
     return boxes_[box_index - 1];
