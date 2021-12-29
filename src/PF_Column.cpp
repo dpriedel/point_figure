@@ -158,12 +158,22 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
     }
     // look for a reversal 
 
+    // to extend down a box, the new value must be <= the box 
+    // value so let's make sure it is.
+
+    if (new_value > possible_box)
+    {
+        // ok, we need to move up a box 
+
+        possible_box = boxes_->FindNextBox(possible_box);
+    }
+
     Boxes::Box reversal_box = top_;
     for (auto x = reversal_boxes_; x > 0; --x) 
     {
         reversal_box = boxes_->FindPrevBox(reversal_box);
     }
-    if (new_value <= reversal_box)
+    if (possible_box <= reversal_box)
     {
         // look for one-step-back reversal first.
 
@@ -194,10 +204,13 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
 PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
     Boxes::Box possible_box = boxes_->FindBox(new_value);
+
+    // to extend down a box, the new value must be <= the box 
+    // value so let's make sure it is.
+
     if (new_value > possible_box)
     {
-        // to move down a box, box must be <= new value.
-        // if not, then must backup 1 box 
+        // ok, we need to move up a box 
 
         possible_box = boxes_->FindNextBox(possible_box);
     }
@@ -219,7 +232,7 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new
     {
         reversal_box = boxes_->FindNextBox(reversal_box);
     }
-    if (new_value >= reversal_box)
+    if (possible_box >= reversal_box)
     {
         // look for one-step-back reversal first.
 
