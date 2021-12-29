@@ -143,7 +143,6 @@ PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& 
         return {Status::e_accepted, std::nullopt};
     }
 
-    // skip value
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
@@ -158,14 +157,6 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
         return {Status::e_accepted, std::nullopt};
     }
     // look for a reversal 
-
-    if (new_value > possible_box)
-    {
-        // could be in between, so can't move to this level. 
-        // must backup 1 box 
-
-        possible_box = boxes_->FindNextBox(possible_box);
-    }
 
     Boxes::Box reversal_box = top_;
     for (auto x = reversal_boxes_; x > 0; --x) 
@@ -194,7 +185,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
             return {Status::e_accepted, std::nullopt};
         }
         time_span_.second = the_time;
-        return {Status::e_reversal, MakeReversalColumn(Direction::e_down, possible_box, the_time)};
+        return {Status::e_reversal, MakeReversalColumn(Direction::e_down, boxes_->FindPrevBox(top_), the_time)};
     }
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Chart::TryToExtendUp  ----- 
@@ -205,8 +196,8 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new
     Boxes::Box possible_box = boxes_->FindBox(new_value);
     if (new_value > possible_box)
     {
-        // could be in between, so can't move to this level. 
-        // must backup 1 box 
+        // to move down a box, box must be <= new value.
+        // if not, then must backup 1 box 
 
         possible_box = boxes_->FindNextBox(possible_box);
     }
@@ -250,7 +241,7 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new
             return {Status::e_accepted, std::nullopt};
         }
         time_span_.second = the_time;
-        return {Status::e_reversal, MakeReversalColumn(Direction::e_up, possible_box, the_time)};
+        return {Status::e_reversal, MakeReversalColumn(Direction::e_up, boxes_->FindNextBox(bottom_), the_time)};
     }
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendDown  ----- 
