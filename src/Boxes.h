@@ -84,6 +84,8 @@ private:
     Box FirstBox(const DprDecimal::DDecQuad& start_at);
     Box FirstBoxPerCent(const DprDecimal::DDecQuad& start_at);
     Box FindBoxPercent(const DprDecimal::DDecQuad& new_value);
+    Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value);
+    Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value);
     [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
     // ====================  DATA MEMBERS  ======================================= 

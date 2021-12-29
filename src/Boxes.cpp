@@ -20,6 +20,7 @@
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 
+#include <fmt/format.h>
 
 #include "Boxes.h"
 #include "utilities.h"
@@ -35,8 +36,8 @@ Boxes::Boxes (DprDecimal::DDecQuad box_size, BoxType box_type, BoxScale box_scal
     if (box_scale_ == BoxScale::e_percent)
     {
         percent_box_factor_up_ = (1.0 + box_size_);
+        percent_box_factor_down_ = (1.0 - box_size_);
         percent_exponent_ = box_size_.GetExponent() - 1;
-        percent_box_factor_down_ = (box_size_ / percent_box_factor_up_).Rescale(percent_exponent_);
     }
 }  // -----  end of method Boxes::Boxes  (constructor)  ----- 
 
@@ -97,34 +98,29 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
     }
     // may have to extend box list by multiple boxes 
 
-    if (new_value > boxes_.back())
+    Box prev_back = boxes_.back();
+    if (prev_back < new_value)
     {
-        // extend up 
-
-        Box prev_box = boxes_.back();
-        Box new_box = prev_box + box_size_;
-
-        do
+        while (boxes_.back() < new_value)
         {
-            prev_box = boxes_.back();
-            boxes_.push_back(new_box);
-            new_box += box_size_;
-        } while (new_value >= boxes_.back());
-        return prev_box;
+            // extend up 
+
+            prev_back = boxes_.back();
+            Box new_box = prev_back + box_size_;
+            boxes_.push_back(std::move(new_box));
+        }
+        return (new_value < boxes_.back() ? prev_back : boxes_.back());
     }
-    else
+
+    // extend down 
+   
+    do 
     {
-        // extend down 
-       
-        do 
-        {
-            Box new_box = boxes_.front() - box_size_;
-            boxes_.push_front(new_box);
-        } while (new_value < boxes_.front());
+        Box new_box = boxes_.front() - box_size_;
+        boxes_.push_front(new_box);
+    } while (new_value < boxes_.front());
 
-        return boxes_.front();
-    }
-    return {};
+    return boxes_.front();
 }		// -----  end of method Boxes::FindBox  ----- 
 
 Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
@@ -144,37 +140,62 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
     }
     // may have to extend box list by multiple boxes 
 
-    if (new_value > boxes_.back())
+    Box prev_back = boxes_.back();
+    if (prev_back < new_value)
     {
-        // extend up 
-
-        Box prev_box = boxes_.back();
-        Box new_box = (prev_box * percent_box_factor_up_).Rescale(percent_exponent_);
-
-        do
+        while (boxes_.back() < new_value)
         {
-            prev_box = boxes_.back();
-            boxes_.push_back(new_box);
-            new_box = (new_box * percent_box_factor_up_).Rescale(percent_exponent_);
-        } while (new_value >= boxes_.back());
-        return prev_box;
+            // extend up 
+
+            prev_back = boxes_.back();
+            Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
+            boxes_.push_back(std::move(new_box));
+        }
+        return (new_value < boxes_.back() ? prev_back : boxes_.back());
     }
-    else
+
+    // extend down 
+   
+    do 
     {
-        // extend down 
-       
-        do 
-        {
-            Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-            boxes_.push_front(new_box);
-        } while (new_value < boxes_.front());
+        Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        boxes_.push_front(new_box);
+    } while (new_value < boxes_.front());
 
-        return boxes_.front();
-    }
-    return {};
+    return boxes_.front();
 }		// -----  end of method Boxes::FindBox  ----- 
 
 Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
+{
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), fmt::format("Current value: {} is not contained in boxes.", current_value).c_str());
+
+    if (box_scale_ == BoxScale::e_percent)
+    {
+        return FindNextBoxPercent(current_value);
+    }
+
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    // this code will not match against the last value in the list 
+    // which is OK since that means there will be no next box and the
+    // index operator below will throw.
+
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    if (found_it == boxes_.end())
+    {
+        if (current_value == boxes_.back())
+        {
+            Box new_box = boxes_.back() + box_size_;
+            boxes_.push_back(new_box);
+            return new_box;
+        }
+    }
+
+    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    return boxes_.at(box_index + 1);
+}		// -----  end of method Boxes::FindNextBox  ----- 
+
+Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
 {
     auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
 
@@ -183,37 +204,90 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
     // index operator below will throw.
 
     auto found_it = ranges::adjacent_find(boxes_, box_finder);
-//    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
     if (found_it == boxes_.end())
     {
-        return FindBox(current_value);
+        if (current_value == boxes_.back())
+        {
+            Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
+            boxes_.push_back(new_box);
+            return new_box;
+        }
     }
 
     int32_t box_index = ranges::distance(boxes_.begin(), found_it);
-    return boxes_[box_index + 1];
-}		// -----  end of method Boxes::FindNextBox  ----- 
+    return boxes_.at(box_index + 1);
+}		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
 Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
 {
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), fmt::format("Current value: {} is not contained in boxes.", current_value).c_str());
+
+    if (box_scale_ == BoxScale::e_percent)
+    {
+        return FindPrevBoxPercent(current_value);
+    }
+
+    if (boxes_.size() == 1)
+    {
+        Box new_box = boxes_.front() - box_size_;
+        boxes_.push_front(new_box);
+        return new_box;
+    }
+
     // this code will not match against the last value in the list 
 
     auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
 
-    if (current_value == boxes_.back())
-    {
-        int32_t box_index = boxes_.size() - 1;
-        return boxes_[box_index - 1];
-    }
     auto found_it = ranges::adjacent_find(boxes_, box_finder);
-//    BOOST_ASSERT_MSG(found_it != boxes_.end(), "Can't find 'current box' box in list.");
     if (found_it == boxes_.end())
     {
-        return FindBox(current_value);
+        if (current_value == boxes_.back())
+        {
+            return boxes_.back();
+        }
     }
 
     int32_t box_index = ranges::distance(boxes_.begin(), found_it);
-    return boxes_[box_index - 1];
+    if (box_index == 0)
+    {
+        Box new_box = boxes_.front() - box_size_;
+        boxes_.push_front(new_box);
+        return boxes_.front();
+    }
+    return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindPrevBox  ----- 
+
+Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
+{
+    if (boxes_.size() == 1)
+    {
+        Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        boxes_.push_front(new_box);
+        return new_box;
+    }
+
+    // this code will not match against the last value in the list 
+
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    if (found_it == boxes_.end())
+    {
+        if (current_value == boxes_.back())
+        {
+            return boxes_.at(boxes_.size() - 2);
+        }
+    }
+
+    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    if (box_index == 0)
+    {
+        Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        boxes_.push_front(new_box);
+        return boxes_.front();
+    }
+    return boxes_.at(box_index - 1);
+}		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
 Boxes& Boxes::operator= (const Json::Value& new_data)
 {
