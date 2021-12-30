@@ -1,6 +1,6 @@
 // =====================================================================================
 // 
-//       Filename:  p_f_data.cpp
+//       Filename:  PF_Chart.cpp
 // 
 //    Description:  Implementation of class which contains Point & Figure data for a symbol.
 // 
@@ -35,10 +35,10 @@
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        PF_Column::BoxType box_type, PF_Column::ColumnScale column_scale)
-    : current_column_{box_size, reversal_boxes, box_type, column_scale}, symbol_{symbol},
+        Boxes::BoxType box_type, Boxes::BoxScale box_scale)
+    : boxes_{box_size, box_type, box_scale}, current_column_{&boxes_, reversal_boxes}, symbol_{symbol},
     box_size_{box_size}, reversal_boxes_{reversal_boxes}, box_type_{box_type},
-    column_scale_{column_scale}
+    box_scale_{box_scale}
 
 {
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -90,7 +90,7 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
         return false;
     }
 
-    if (column_scale_ != rhs.column_scale_)
+    if (box_scale_ != rhs.box_scale_)
     {
         return false;
     }
@@ -310,9 +310,11 @@ Json::Value PF_Chart::ToJSON () const
             break;
     };
 
-    result["box_type"] = box_type_ == PF_Column::BoxType::e_integral ? "integral" : "fractional";
+    result["box_type"] = box_type_ == Boxes::BoxType::e_integral ? "integral" : "fractional";
     
-    result["column_scale"] = column_scale_ == PF_Column::ColumnScale::e_linear ? "linear" : "percent";
+    result["box_scale"] = box_scale_ == Boxes::BoxScale::e_linear ? "linear" : "percent";
+
+    result["boxes"] = boxes_.ToJSON();
 
     Json::Value cols{Json::arrayValue};
     for (const auto& col : columns_)
@@ -361,32 +363,33 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     const auto box_type = new_data["box_type"].asString();
     if (box_type  == "integral")
     {
-
-        box_type_ = PF_Column::BoxType::e_integral;
+        box_type_ = Boxes::BoxType::e_integral;
     }
-    else if (direction == "fractional")
+    else if (box_type == "fractional")
     {
-        box_type_ = PF_Column::BoxType::e_fractional;
+        box_type_ = Boxes::BoxType::e_fractional;
     }
     else
     {
         throw std::invalid_argument{fmt::format("Invalid box_type provided: {}. Must be 'integral' or 'fractional'.", box_type)};
     }
 
-    const auto column_scale = new_data["column_scale"].asString();
-    if (column_scale == "linear")
+    const auto box_scale = new_data["box_scale"].asString();
+    if (box_scale == "linear")
     {
-        column_scale_ = PF_Column::ColumnScale::e_linear;
+        box_scale_ = Boxes::BoxScale::e_linear;
     }
-    else if (column_scale == "percent")
+    else if (box_scale == "percent")
     {
-        column_scale_ = PF_Column::ColumnScale::e_percent;
+        box_scale_ = Boxes::BoxScale::e_percent;
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid chart_scale provided: {}. Must be 'linear' or 'percent'.", column_scale)};
+        throw std::invalid_argument{fmt::format("Invalid box_scale provided: {}. Must be 'linear' or 'percent'.", box_scale)};
     }
     
+    boxes_ = new_data["boxes"];
+
     // lastly, we can do our columns 
 
     const auto& cols = new_data["columns"];

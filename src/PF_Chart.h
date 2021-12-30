@@ -1,6 +1,6 @@
 // =====================================================================================
 // 
-//       Filename:  p_f_data.h
+//       Filename:  PF_Chart.h
 // 
 //    Description:  class to manage Point & Figure data for a symbol.
 // 
@@ -33,10 +33,11 @@
 
 #include <date/date.h>
 
-namespace fs = std::filesystem;
+//namespace fs = std::filesystem;
 
 //using namespace std::chrono_literals;
 
+#include "Boxes.h"
 #include "PF_Column.h"
 #include "utilities.h"
 
@@ -55,8 +56,8 @@ public:
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
     PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-            PF_Column::BoxType box_type=PF_Column::BoxType::e_integral,
-            PF_Column::ColumnScale column_scale=PF_Column::ColumnScale::e_linear);
+            Boxes::BoxType box_type=Boxes::BoxType::e_integral,
+            Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear);
 
     explicit PF_Chart(const Json::Value& new_data);
 
@@ -82,7 +83,7 @@ public:
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
-    [[nodiscard]] bool IsPercent() const { return column_scale_ == PF_Column::ColumnScale::e_percent; }
+    [[nodiscard]] bool IsPercent() const { return box_scale_ == Boxes::BoxScale::e_percent; }
 
     // ====================  MUTATORS      =======================================
     
@@ -108,6 +109,7 @@ private:
 
     // ====================  DATA MEMBERS  =======================================
 
+    Boxes boxes_;
     std::vector<PF_Column> columns_;
     PF_Column current_column_;
 
@@ -123,16 +125,16 @@ private:
     DprDecimal::DDecQuad y_max_ = -1;
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
-    PF_Column::BoxType box_type_ = PF_Column::BoxType::e_integral;
+    Boxes::BoxType box_type_ = Boxes::BoxType::e_integral;
 
-    PF_Column::ColumnScale column_scale_ = PF_Column::ColumnScale::e_linear;
+    Boxes::BoxScale box_scale_ = Boxes::BoxScale::e_linear;
 
 }; // -----  end of class PF_Chart  -----
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
     os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.box_size_ << " reversal boxes: " << chart.reversal_boxes_<< 
-        (chart.column_scale_ == PF_Column::ColumnScale::e_linear ? " linear scale" : " percent scale") << '\n';
+        (chart.box_scale_ == Boxes::BoxScale::e_linear ? " linear scale" : " percent scale") << '\n';
     for (const auto& col : chart.columns_)
     {
         os << '\t' << col << '\n';
