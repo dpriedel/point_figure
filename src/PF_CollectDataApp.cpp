@@ -226,16 +226,17 @@ bool PF_CollectDataApp::CheckArgs ()
     {
         interval_ = Interval::e_min5;
     }
-    BOOST_ASSERT_MSG(scale_i == "arithmetic" | scale_i == "logarithmic", fmt::format("Chart scale must be 'arithmetic' or 'logarithmic': {}", scale_i).c_str());
-    scale_ = scale_i == "arithmetic" ? PF_Column::ColumnScale::e_arithmetic : PF_Column::ColumnScale::e_logarithmic;
 
-    if (scale_ == PF_Column::ColumnScale::e_logarithmic || boxsize_.GetExponent() < 0)
+    BOOST_ASSERT_MSG(scale_i == "linear" | scale_i == "percent", fmt::format("Chart scale must be 'linear' or 'percent': {}", scale_i).c_str());
+    scale_ = scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent;
+
+    if (scale_ == Boxes::BoxScale::e_percent || boxsize_.GetExponent() < 0)
     {
-        fractional_boxes_ = PF_Column::FractionalBoxes::e_fractional;
+        fractional_boxes_ = Boxes::BoxType::e_fractional;
     }
     else 
     {
-        fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+        fractional_boxes_ = Boxes::BoxType::e_integral;
     }
 
 	return true ;
@@ -255,7 +256,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("source_format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'")
 		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
-		("scale",				po::value<std::string>(&this->scale_i)->default_value("arithmetic"),	"scale: 'arithmetic', 'logarithmic'. Default is 'arithmetic'")
+		("scale",				po::value<std::string>(&this->scale_i)->default_value("linear"),	"scale: 'linear', 'percent'. Default is 'linear'")
 		("price_fld_name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
 		("output_dir,o",		po::value<fs::path>(&this->output_chart_directory_),	"output: directory for output files.")
 		("boxsize,b",			po::value<DprDecimal::DDecQuad>(&this->boxsize_)->required(),   	"box step size. 'n', 'm.n'")

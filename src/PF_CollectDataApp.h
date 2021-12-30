@@ -27,7 +27,7 @@
 #include <string>
 #include <tuple>
 
-namespace fs = std::filesystem;
+//namespace fs = std::filesystem;
 
 #include <boost/program_options.hpp>
 
@@ -36,6 +36,7 @@ namespace po = boost::program_options;
 #include <date/date.h>
 #include <spdlog/spdlog.h>
 
+#include "Boxes.h"
 #include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "Tiingo.h"
@@ -154,8 +155,8 @@ private:
     Destination destination_ = Destination::e_unknown;
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
-    PF_Column::ColumnScale scale_ = PF_Column::ColumnScale::e_arithmetic;
-    PF_Column::FractionalBoxes fractional_boxes_ = PF_Column::FractionalBoxes::e_integral;
+    Boxes::BoxScale scale_ = Boxes::BoxScale::e_linear;
+    Boxes::BoxType fractional_boxes_ = Boxes::BoxType::e_integral;
     std::string price_fld_name_;
 
     DprDecimal::DDecQuad boxsize_;
