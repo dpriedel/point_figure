@@ -408,7 +408,6 @@ void Boxes::FromJSON (const Json::Value& new_data)
     const auto box_type = new_data["box_type"].asString();
     if (box_type  == "integral")
     {
-
         box_type_ = BoxType::e_integral;
     }
     else if (box_type == "fractional")
@@ -437,6 +436,7 @@ void Boxes::FromJSON (const Json::Value& new_data)
     // lastly, we can do our boxes 
 
     const auto& the_boxes = new_data["boxes"];
+    boxes_.clear();
     ranges::for_each(the_boxes, [this](const auto& next_box) { this->boxes_.emplace_back(next_box.asString()); });
 
 }		// -----  end of method Boxes::FromJSON  ----- 
