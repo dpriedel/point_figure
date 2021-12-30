@@ -51,6 +51,7 @@ SRCS1 := $(SDIR1)/Main.cpp
 SDIR2 := ./src
 SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/DDecQuad.cpp \
+		$(SDIR2)/Boxes.cpp \
 		$(SDIR2)/PF_Column.cpp \
 		$(SDIR2)/PF_Chart.cpp \
 		$(SDIR2)/Tiingo.cpp #\
