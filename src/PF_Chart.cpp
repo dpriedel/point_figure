@@ -256,7 +256,14 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     // Add a title to the y axis
     c->yAxis()->setTitle("Tick data");
 
-    c->yAxis()->setTickDensity(20, 10);
+    if (! IsPercent())
+    {
+        c->yAxis()->setTickDensity(20, 10);
+    }
+    else
+    {
+        c->yAxis()->setLogScale(GetYLimits().first.ToDouble(), GetYLimits().second.ToDouble());
+    }
     c->yAxis2()->copyAxis(c->yAxis());
 
     auto* layer = c->addCandleStickLayer(DoubleArray(highData.data(), highData.size()),
@@ -391,11 +398,13 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     boxes_ = new_data["boxes"];
 
     // lastly, we can do our columns 
+    // need to hook them up with current boxes_ data
 
     const auto& cols = new_data["columns"];
-    ranges::for_each(cols, [this](const auto& next_val) { this->columns_.emplace_back(next_val); });
+    ranges::for_each(cols, [this](const auto& next_val) { PF_Column new_col{next_val}; new_col.UseTheseBoxes(&this->boxes_); this->columns_.push_back(new_col); });
 
     current_column_ = {new_data["current_column"]};
+    current_column_.UseTheseBoxes(&boxes_);
 
 }		// -----  end of method PF_Chart::FromJSON  ----- 
 

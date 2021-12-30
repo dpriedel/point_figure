@@ -74,6 +74,10 @@ public:
 
     [[nodiscard]] AddResult AddValue(const DprDecimal::DDecQuad& new_value, tpt the_time);
 
+    // should be a better way of doing this 
+
+    void UseTheseBoxes(Boxes* boxes) { boxes_ = boxes; }
+
     // ====================  OPERATORS     =======================================
 
     PF_Column& operator= (const PF_Column& rhs) = default;

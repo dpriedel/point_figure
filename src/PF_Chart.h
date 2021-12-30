@@ -134,7 +134,7 @@ private:
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
     os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.box_size_ << " reversal boxes: " << chart.reversal_boxes_<< 
-        (chart.box_scale_ == Boxes::BoxScale::e_linear ? " linear scale" : " percent scale") << '\n';
+        " scale: " << (chart.box_scale_ == Boxes::BoxScale::e_linear ? " linear" : " percent") << '\n';
     for (const auto& col : chart.columns_)
     {
         os << '\t' << col << '\n';
