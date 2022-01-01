@@ -52,7 +52,8 @@ PF_Column::PF_Column(Boxes* boxes, int reversal_boxes,
 //      Method:  PF_Column
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Column::PF_Column (const Json::Value& new_data)
+PF_Column::PF_Column (Boxes* boxes, const Json::Value& new_data)
+    : boxes_{boxes}
 {
     this->FromJSON(new_data);
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
@@ -64,12 +65,6 @@ PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQu
     new_column.time_span_ = {the_time, the_time};
     return new_column;
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
-
-PF_Column& PF_Column::operator= (const Json::Value& new_data)
-{
-    this->FromJSON(new_data);
-    return *this;
-}		// -----  end of method PF_Column::operator=  ----- 
 
 bool PF_Column::operator== (const PF_Column& rhs) const
 {

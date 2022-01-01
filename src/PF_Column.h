@@ -57,7 +57,7 @@ public:
             Direction direction = Direction::e_unknown,
             DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
-    PF_Column(const Json::Value& new_data);
+    PF_Column(Boxes* boxes, const Json::Value& new_data);
 
     // ====================  ACCESSORS     =======================================
 
@@ -74,16 +74,10 @@ public:
 
     [[nodiscard]] AddResult AddValue(const DprDecimal::DDecQuad& new_value, tpt the_time);
 
-    // should be a better way of doing this 
-
-    void UseTheseBoxes(Boxes* boxes) { boxes_ = boxes; }
-
     // ====================  OPERATORS     =======================================
 
     PF_Column& operator= (const PF_Column& rhs) = default;
     PF_Column& operator= (PF_Column&& rhs) = default;
-
-    PF_Column& operator= (const Json::Value& new_data);
 
     // NOTE: time_span_ is excluded from equality comparison so it can be used
     // when looking for patterns over time.

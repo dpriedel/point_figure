@@ -26,6 +26,7 @@
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
+#include "PF_Column.h"
 #include "utilities.h"
 
 //--------------------------------------------------------------------------------------
@@ -401,11 +402,9 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     // need to hook them up with current boxes_ data
 
     const auto& cols = new_data["columns"];
-    ranges::for_each(cols, [this](const auto& next_val) { PF_Column new_col{next_val}; new_col.UseTheseBoxes(&this->boxes_); this->columns_.push_back(new_col); });
+    ranges::for_each(cols, [this](const auto& next_val) { this->columns_.emplace_back(&boxes_, next_val); });
 
-    current_column_ = {new_data["current_column"]};
-    current_column_.UseTheseBoxes(&boxes_);
-
+    current_column_ = PF_Column{&boxes_, new_data["current_column"]};
 }		// -----  end of method PF_Chart::FromJSON  ----- 
 
 
