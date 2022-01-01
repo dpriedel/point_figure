@@ -20,7 +20,6 @@
 
 #include <cstdint>
 #include <deque>
-
 #include <json/json.h>
 
 #include "DDecQuad.h"
@@ -38,6 +37,7 @@ public:
 
     using Box = DprDecimal::DDecQuad;
     using BoxList = std::deque<Box>;
+//    using BoxList = std::deque<Box>;
 
     // ====================  LIFECYCLE     ======================================= 
     Boxes () = default;                             // constructor 

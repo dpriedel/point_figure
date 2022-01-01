@@ -117,7 +117,7 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
     do 
     {
         Box new_box = boxes_.front() - box_size_;
-        boxes_.push_front(new_box);
+        boxes_.insert(boxes_.begin(), new_box);
     } while (new_value < boxes_.front());
 
     return boxes_.front();
@@ -159,7 +159,7 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
     do 
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-        boxes_.push_front(new_box);
+        boxes_.insert(boxes_.begin(), new_box);
     } while (new_value < boxes_.front());
 
     return boxes_.front();
@@ -230,7 +230,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
     if (boxes_.size() == 1)
     {
         Box new_box = boxes_.front() - box_size_;
-        boxes_.push_front(new_box);
+        boxes_.insert(boxes_.begin(), new_box);
         return new_box;
     }
 
@@ -251,7 +251,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
     if (box_index == 0)
     {
         Box new_box = boxes_.front() - box_size_;
-        boxes_.push_front(new_box);
+        boxes_.insert(boxes_.begin(), new_box);
         return boxes_.front();
     }
     return boxes_.at(box_index - 1);
@@ -262,7 +262,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     if (boxes_.size() == 1)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-        boxes_.push_front(new_box);
+        boxes_.insert(boxes_.begin(), new_box);
         return new_box;
     }
 
@@ -283,7 +283,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     if (box_index == 0)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-        boxes_.push_front(new_box);
+        boxes_.insert(boxes_.begin(), new_box);
         return boxes_.front();
     }
     return boxes_.at(box_index - 1);
@@ -439,5 +439,9 @@ void Boxes::FromJSON (const Json::Value& new_data)
     boxes_.clear();
     ranges::for_each(the_boxes, [this](const auto& next_box) { this->boxes_.emplace_back(next_box.asString()); });
 
+    // we expect these values to be in ascending order, so let'ts make sure 
+
+    auto x = ranges::adjacent_find(boxes_, ranges::greater());
+    BOOST_ASSERT_MSG(x == boxes_.end(), "boxes must be in ascending order and it isn't.");
 }		// -----  end of method Boxes::FromJSON  ----- 
 
