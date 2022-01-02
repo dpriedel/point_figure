@@ -428,12 +428,10 @@ void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, c
 
     ranges::for_each(symbol_data_records | ranges::views::drop(1), [&new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
         {
-//            std::cout << "len: " << record.size() << "  " << record << '\n';
             const auto fields = split_string<std::string_view> (record, ',');
             new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToTimePoint("%Y-%m-%d", fields[date_col]));
         });
 
-    return ;
 }		// -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV  ----- 
 
 PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const std::string& symbol, const fs::path& symbol_file_name) const
