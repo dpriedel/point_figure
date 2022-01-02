@@ -35,6 +35,45 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
+PF_Chart::PF_Chart (const PF_Chart& rhs)
+    : boxes_{rhs.boxes_}, columns_{rhs.columns_}, current_column_{rhs.current_column_}, symbol_{rhs.symbol_},
+    first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_}, last_checked_date_{rhs.last_checked_date_},
+    box_size_{rhs.box_size_}, reversal_boxes_{rhs.reversal_boxes_}, y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
+    current_direction_{rhs.current_direction_}, box_type_{rhs.box_type_}, box_scale_{rhs.box_scale_}
+
+{
+    // now, the reason for doing this explicitly is to fix the column box pointers.
+
+    ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+    current_column_.boxes_ = &boxes_;
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+
+//--------------------------------------------------------------------------------------
+//       Class:  PF_Chart
+//      Method:  PF_Chart
+// Description:  constructor
+//--------------------------------------------------------------------------------------
+
+PF_Chart::PF_Chart (PF_Chart&& rhs)
+    : boxes_{std::move(rhs.boxes_)}, columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
+    symbol_{rhs.symbol_}, first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
+    last_checked_date_{rhs.last_checked_date_}, box_size_{std::move(rhs.box_size_)},
+    reversal_boxes_{std::move(rhs.reversal_boxes_)}, y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
+    current_direction_{rhs.current_direction_}, box_type_{rhs.box_type_}, box_scale_{rhs.box_scale_}
+
+{
+    // now, the reason for doing this explicitly is to fix the column box pointers.
+
+    ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+    current_column_.boxes_ = &boxes_;
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+
+//--------------------------------------------------------------------------------------
+//       Class:  PF_Chart
+//      Method:  PF_Chart
+// Description:  constructor
+//--------------------------------------------------------------------------------------
+
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
         Boxes::BoxType box_type, Boxes::BoxScale box_scale)
     : boxes_{box_size, box_type, box_scale}, current_column_{&boxes_, reversal_boxes}, symbol_{symbol},
@@ -53,6 +92,60 @@ PF_Chart::PF_Chart (const Json::Value& new_data)
 {
     this->FromJSON(new_data);
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  ----- 
+
+PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
+{
+    if (this != &rhs)
+    {
+        boxes_ = rhs.boxes_;
+        columns_ = rhs.columns_;
+        current_column_ = rhs.current_column_;
+        symbol_ = rhs.symbol_;
+        first_date_ = rhs.first_date_;
+        last_change_date_ = rhs.last_change_date_;
+        last_checked_date_ = rhs.last_checked_date_;
+        box_size_ = rhs.box_size_;
+        reversal_boxes_ = rhs.reversal_boxes_;
+        y_min_ = rhs.y_min_;
+        y_max_ = rhs.y_max_;
+        current_direction_ = rhs.current_direction_;
+        box_type_ = rhs.box_type_;
+        box_scale_ = rhs.box_scale_;
+
+        // now, the reason for doing this explicitly is to fix the column box pointers.
+
+        ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+        current_column_.boxes_ = &boxes_;
+    }
+    return *this;
+}		// -----  end of method PF_Chart::operator=  ----- 
+
+PF_Chart& PF_Chart::operator= (PF_Chart&& rhs)
+{
+    if (this != &rhs)
+    {
+        boxes_ = std::move(rhs.boxes_);
+        columns_ = std::move(rhs.columns_);
+        current_column_ = std::move(rhs.current_column_);
+        symbol_ = rhs.symbol_;
+        first_date_ = rhs.first_date_;
+        last_change_date_ = rhs.last_change_date_;
+        last_checked_date_ = rhs.last_checked_date_;
+        box_size_ = std::move(rhs.box_size_);
+        reversal_boxes_ = std::move(rhs.reversal_boxes_);
+        y_min_ = std::move(rhs.y_min_);
+        y_max_ = std::move(rhs.y_max_);
+        current_direction_ = rhs.current_direction_;
+        box_type_ = rhs.box_type_;
+        box_scale_ = rhs.box_scale_;
+
+        // now, the reason for doing this explicitly is to fix the column box pointers.
+
+        ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+        current_column_.boxes_ = &boxes_;
+    }
+    return *this;
+}		// -----  end of method PF_Chart::operator=  ----- 
 
 PF_Chart& PF_Chart::operator= (const Json::Value& new_data)
 {
@@ -112,7 +205,6 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
 
 PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time)
 {
-//    std::cout << "Adding value: " << new_value << '\n';
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
 
     if (status == PF_Column::Status::e_accepted)
@@ -232,7 +324,6 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     std::vector<const char*> x_labels;
 
     ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
-//    ranges::for_each(x_labels, [](const auto x){ std::cout << x << '\n'; } );
 
     std::unique_ptr<XYChart> c = std::make_unique<XYChart>(600, 700);
 
@@ -450,7 +541,7 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_
         }
     }
 
-    std::cout << "total: " << total << '\n';
+//    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
 }		// -----  end of function ComputeATR  -----
 

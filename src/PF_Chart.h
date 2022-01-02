@@ -55,6 +55,9 @@ public:
 
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
+    PF_Chart (const PF_Chart& rhs);
+    PF_Chart (PF_Chart&& rhs);
+
     PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
             Boxes::BoxType box_type=Boxes::BoxType::e_integral,
             Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear);
@@ -85,6 +88,10 @@ public:
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return box_scale_ == Boxes::BoxScale::e_percent; }
 
+    // for testing
+
+    const Boxes& GetBoxes() const { return boxes_; }
+
     // ====================  MUTATORS      =======================================
     
     PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time);
@@ -92,7 +99,10 @@ public:
 
     // ====================  OPERATORS     =======================================
 
-    PF_Chart& operator = (const Json::Value& new_data);
+    PF_Chart& operator= (const PF_Chart& rhs);
+    PF_Chart& operator= (PF_Chart&& rhs);
+
+    PF_Chart& operator= (const Json::Value& new_data);
 
     bool operator== (const PF_Chart& rhs) const;
     bool operator!= (const PF_Chart& rhs) const { return ! operator==(rhs); }
@@ -126,7 +136,6 @@ private:
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
     Boxes::BoxType box_type_ = Boxes::BoxType::e_integral;
-
     Boxes::BoxScale box_scale_ = Boxes::BoxScale::e_linear;
 
 }; // -----  end of class PF_Chart  -----
@@ -141,6 +150,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
     }
     os << '\t' << chart.current_column_ << '\n';
     os << "number of columns: " << chart.GetNumberOfColumns() << " min value: " << chart.y_min_ << " max value: " << chart.y_max_ << '\n';
+    os << "boxes at: " << &chart.boxes_ << " " << chart.boxes_ << '\n';
     return os;
 }
 
