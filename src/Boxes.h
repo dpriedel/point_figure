@@ -41,8 +41,10 @@ public:
 
     // ====================  LIFECYCLE     ======================================= 
     Boxes () = default;                             // constructor 
+    Boxes (const Boxes& rhs) = default;
+    Boxes (Boxes&& rhs) = default;
 
-    Boxes (DprDecimal::DDecQuad box_size, BoxType box_type=BoxType::e_integral, BoxScale box_scale=BoxScale::e_linear);
+    Boxes (const DprDecimal::DDecQuad& box_size, BoxType box_type=BoxType::e_integral, BoxScale box_scale=BoxScale::e_linear);
 
     Boxes(const Json::Value& new_data);
 
@@ -58,6 +60,8 @@ public:
 
     [[nodiscard]] int32_t Distance(const Box& from, const Box& to) const;
 
+	friend std::ostream& operator<<(std::ostream& os, const Boxes& boxes);
+
     // ====================  MUTATORS      ======================================= 
 
     Box FindBox(const DprDecimal::DDecQuad& new_value);
@@ -70,6 +74,9 @@ public:
     bool operator != (const Boxes& rhs) const { return ! operator==(rhs); }
 
     Boxes& operator= (const Json::Value& new_data);
+
+    Boxes& operator= (const Boxes& rhs) = default;
+    Boxes& operator= (Boxes&& rhs) = default; 
 
 protected:
     // ====================  METHODS       ======================================= 
@@ -101,5 +108,51 @@ private:
     BoxScale box_scale_ = BoxScale::e_linear;
 
 }; // -----  end of class Boxes  ----- 
+
+inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxType box_type)
+{
+    switch(box_type)
+    {
+        case Boxes::BoxType::e_integral:
+            os << "integral";
+            break;
+
+        case Boxes::BoxType::e_fractional:
+            os << "fractional";
+            break;
+    };
+
+	return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxScale box_scale)
+{
+    switch(box_scale)
+    {
+        case Boxes::BoxScale::e_linear:
+            os << "linear";
+            break;
+
+        case Boxes::BoxScale::e_percent:
+            os << "percent";
+            break;
+    };
+
+	return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
+{
+    os << "box size: " << boxes.box_size_ << " factor_up: " << boxes.percent_box_factor_up_ << " factor down: " << boxes.percent_box_factor_down_
+        << " exponent: " << boxes.percent_exponent_ << " box type: " << boxes.box_type_ << " box scale: " << boxes.box_scale_ << '\n';
+    os << "Box values [ ";
+    for (const auto& box : boxes.boxes_)
+    {
+        os << box << ", ";
+    }
+    os << " ]\n";
+
+    return os;
+}
 
 #endif   // ----- #ifndef BOXES_INC  ----- 

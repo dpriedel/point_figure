@@ -30,7 +30,7 @@
 //      Method:  Boxes
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-Boxes::Boxes (DprDecimal::DDecQuad box_size, BoxType box_type, BoxScale box_scale)
+Boxes::Boxes (const DprDecimal::DDecQuad& box_size, BoxType box_type, BoxScale box_scale)
     : box_size_{box_size}, box_type_{box_type}, box_scale_{box_scale}
 {
     if (box_scale_ == BoxScale::e_percent)
