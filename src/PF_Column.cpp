@@ -58,7 +58,7 @@ PF_Column::PF_Column (Boxes* boxes, const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
 
-PF_Column PF_Column::MakeReversalColumn (Direction direction, DprDecimal::DDecQuad value,
+PF_Column PF_Column::MakeReversalColumn (Direction direction, const DprDecimal::DDecQuad& value,
         tpt the_time)
 {
     auto new_column = PF_Column{boxes_, reversal_boxes_, direction, value, value};
