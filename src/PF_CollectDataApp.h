@@ -103,6 +103,8 @@ protected:
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
+    DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol) const;
+
     // ====================  DATA MEMBERS  =======================================
 
 private:
@@ -149,6 +151,7 @@ private:
     std::string interval_i;
     std::string scale_i;
     std::string use_adjusted_i;
+    std::string api_key_;
 
     Source source_ = Source::e_unknown;
     SourceFormat source_format_ = SourceFormat::e_csv;
@@ -159,10 +162,12 @@ private:
     Boxes::BoxType fractional_boxes_ = Boxes::BoxType::e_integral;
     std::string price_fld_name_;
 
-    DprDecimal::DDecQuad boxsize_;
-    int32_t reversal_boxes_;
-    bool input_is_path_;
-    bool output_is_path_;
+    DprDecimal::DDecQuad box_size_ = -1;
+    int32_t reversal_boxes_ = 0;
+    int32_t number_of_days_history_for_ATR_ = 0;
+    bool input_is_path_ = false;
+    bool output_is_path_ = false;
+    bool use_ATR_  = false;
 
     static bool had_signal_;
 }; // -----  end of class PF_CollectDataApp  -----

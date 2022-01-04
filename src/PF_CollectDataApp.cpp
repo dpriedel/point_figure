@@ -230,7 +230,7 @@ bool PF_CollectDataApp::CheckArgs ()
     BOOST_ASSERT_MSG(scale_i == "linear" | scale_i == "percent", fmt::format("Chart scale must be 'linear' or 'percent': {}", scale_i).c_str());
     scale_ = scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent;
 
-    if (scale_ == Boxes::BoxScale::e_percent || boxsize_.GetExponent() < 0)
+    if (scale_ == Boxes::BoxScale::e_percent || box_size_.GetExponent() < 0)
     {
         fractional_boxes_ = Boxes::BoxType::e_fractional;
     }
@@ -259,13 +259,14 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("scale",				po::value<std::string>(&this->scale_i)->default_value("linear"),	"scale: 'linear', 'percent'. Default is 'linear'")
 		("price_fld_name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
 		("output_dir,o",		po::value<fs::path>(&this->output_chart_directory_),	"output: directory for output files.")
-		("boxsize,b",			po::value<DprDecimal::DDecQuad>(&this->boxsize_)->required(),   	"box step size. 'n', 'm.n'")
+		("boxsize,b",			po::value<DprDecimal::DDecQuad>(&this->box_size_)->required(),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<int32_t>(&this->reversal_boxes_)->default_value(2),		"reversal size in number of boxes. Default is 2")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
         ("host",                po::value<std::string>(&this->host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
         ("port",                po::value<std::string>(&this->host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
+		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
 		;
 
 }		// -----  end of method PF_CollectDataApp::Do_SetupPrograoptions_  -----
@@ -333,11 +334,22 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
     }
     else
     {
+        api_key_ = LoadDataFileForUse(tiingo_api_key_);
+        if (api_key_.ends_with('\n'))
+        {
+            api_key_.resize(api_key_.size() - 1);
+        }
+
+        // this should be a program param... 
+
+        number_of_days_history_for_ATR_ = 22;
+
         // set up our charts 
 
         for (const auto& symbol : symbol_list_)
         {
-            charts_[symbol] = PF_Chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_, scale_};
+            auto box_size = ComputeBoxSizeUsingATR(symbol);
+            charts_[symbol] = PF_Chart{symbol, box_size, reversal_boxes_, fractional_boxes_, scale_};
         }
         // let's stream !
         
@@ -389,7 +401,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 ////	std:transform(itor, itor_end, otor,
 ////				[] (const aLine& data) {DprDecimal::DDecDouble aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
 //
-//    PF_Chart chart{symbol_, boxsize_, reversalboxes_};
+//    PF_Chart chart{symbol_, box_size_, reversalboxes_};
 //
 ////    chart.LoadData<DprDecimal::DDecQuad>(theInput);
 //    std::cout << "chart info: " << chart.GetNumberOfColumns() << '\n';
@@ -406,7 +418,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name) const
 {
-    PF_Chart new_chart{symbol, boxsize_, reversal_boxes_, fractional_boxes_, scale_};
+    PF_Chart new_chart{symbol, box_size_, reversal_boxes_, fractional_boxes_, scale_};
 
     AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
 
@@ -475,6 +487,20 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
     return {};
 
 }		// -----  end of method PF_CollectDataApp::FindColumnIndex  ----- 
+
+
+DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::string& symbol) const
+{
+    Tiingo history_getter{host_name_, host_port_, api_key_};
+
+    auto today = floor<date::days>(std::chrono::system_clock::now());
+    const auto history = history_getter.GetMostRecentTickerData(symbol, date::year_month_day{today}, number_of_days_history_for_ATR_ + 1);
+
+    auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_ - 2, UseAdjusted::e_No);
+
+    auto box_size = (box_size_ * atr).Rescale(box_size_.GetExponent() - 1);
+    return box_size;
+}		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
 
 void PF_CollectDataApp::CollectStreamingData ()
 {
