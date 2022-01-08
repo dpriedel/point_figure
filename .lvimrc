@@ -2,3 +2,6 @@
 " let's help our file searchs
 
 set path+=./src
+set path+=../common_utilities
+set path+=../common_utilities/include
+
