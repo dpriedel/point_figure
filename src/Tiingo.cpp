@@ -336,11 +336,11 @@ void Tiingo::Disconnect()
     ws_.close(websocket::close_code::normal);
 }
 
-Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous)
+Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
 
-    auto business_days = ConstructeBusinessDayRange(start_from, how_many_previous, UpOrDown::e_Down);
+    auto business_days = ConstructeBusinessDayRange(start_from, how_many_previous, UpOrDown::e_Down, holidays);
 //    std::cout << "business days: " << business_days.first << " : " << business_days.second << '\n';
 
     // we reverse the dates because we worked backwards from our given starting point and 
