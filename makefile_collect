@@ -19,7 +19,7 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.77_gcc-11
+BOOSTDIR := /extra/boost/boost-1.78_gcc-11
 GCCDIR := /extra/gcc/gcc-11
 GTESTDIR := /usr/local/include
 DECIMALSRCDIR := /extra/gcc/decNumber_old
@@ -67,7 +67,8 @@ SRCS3a := $(SDIR3a)/decimal128.c \
 		  $(SDIR3a)/decimal64.c
 
 SDIR4 := $(UTILITYDIR)/src
-SRCS4 := $(SDIR4)/utilities.cpp
+SRCS4 := $(SDIR4)/utilities.cpp \
+		 $(SDIR4)/calfaq.c
 
 SRCS := $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS3a) $(SRCS4)
 
