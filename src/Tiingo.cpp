@@ -287,7 +287,7 @@ void Tiingo::StopStreaming ()
     ssl::context ctx{ssl::context::tlsv12_client};
 
     tcp::resolver resolver{ioc};
-    websocket::stream<beast::ssl_stream<tcp::socket>> ws{ioc, ctx};
+    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws{ioc, ctx};
 
     auto host = host_;
     auto port = port_;
@@ -323,6 +323,7 @@ void Tiingo::StopStreaming ()
 
     ws.read(buffer);
 
+    get_lowest_layer(ws).cancel();
     ws.close(websocket::close_code::normal);
 
 //    std::cout << beast::make_printable(buffer.data()) << std::endl;
@@ -333,6 +334,7 @@ void Tiingo::Disconnect()
 {
 
     // Close the WebSocket connection
+    get_lowest_layer(ws_).cancel();
     ws_.close(websocket::close_code::normal);
 }
 

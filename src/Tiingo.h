@@ -124,7 +124,7 @@ private:
     net::io_context ioc_;
     ssl::context ctx_;
     tcp::resolver resolver_;
-    websocket::stream<beast::ssl_stream<tcp::socket>> ws_;
+    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
 }; // -----  end of class Tiingo  ----- 
 
 inline std::ostream& operator<<(std::ostream& os, const Tiingo::PF_Data pf_data)
