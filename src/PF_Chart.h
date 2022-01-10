@@ -71,7 +71,7 @@ public:
 
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
-    [[nodiscard]] std::string ChartName() const;
+    [[nodiscard]] std::string ChartName(std::string_view suffix) const;
 
     // includes 'current_column'
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size() + 1; }

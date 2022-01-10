@@ -262,10 +262,10 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
     }
 }
 
-std::string PF_Chart::ChartName () const
+std::string PF_Chart::ChartName (std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.json", symbol_, GetBoxsize(), (IsPercent() ? "%" : ""),
-            GetReversalboxes(), (box_scale_ == Boxes::BoxScale::e_linear ? "linear" : "percent"));
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, GetBoxsize(), (IsPercent() ? "%" : ""),
+            GetReversalboxes(), (box_scale_ == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
