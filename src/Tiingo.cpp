@@ -323,8 +323,15 @@ void Tiingo::StopStreaming ()
 
     ws.read(buffer);
 
-    get_lowest_layer(ws).cancel();
-    ws.close(websocket::close_code::normal);
+    try
+    {
+        beast::close_socket(get_lowest_layer(ws));
+//        ws.close(websocket::close_code::normal);
+    }
+    catch (std::exception& e)
+    {
+        std::cout << "Problem closing socket after clearing streaming symbols."s + e.what() << '\n';
+    }
 
 //    std::cout << beast::make_printable(buffer.data()) << std::endl;
  
@@ -332,10 +339,17 @@ void Tiingo::StopStreaming ()
 
 void Tiingo::Disconnect()
 {
+    beast::flat_buffer buffer;
 
-    // Close the WebSocket connection
-    get_lowest_layer(ws_).cancel();
-    ws_.close(websocket::close_code::normal);
+    try
+    {
+//        ws_.close(websocket::close_code::normal);
+        beast::close_socket(get_lowest_layer(ws_));
+    }
+    catch (std::exception& e)
+    {
+        std::cout << "Problem closing socket after disconnect command."s + e.what() << '\n';
+    }
 }
 
 Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays)
