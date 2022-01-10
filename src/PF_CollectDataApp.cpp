@@ -319,8 +319,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
             for (const auto& symbol : symbol_list_)
             {
-                PF_Chart new_chart;
-                fs::path existing_data_file_name = input_chart_directory_ / (symbol + ".json");
+                PF_Chart new_chart{symbol, box_size_, reversal_boxes_, fractional_boxes_, scale_};
+                fs::path existing_data_file_name = input_chart_directory_ / new_chart.ChartName("json");
                 if (fs::exists(existing_data_file_name))
                 {
                     new_chart = LoadAndParsePriceDataJSON(symbol, existing_data_file_name);
@@ -342,13 +342,13 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
         // this should be a program param... 
 
-        number_of_days_history_for_ATR_ = 22;
+        number_of_days_history_for_ATR_ = 20;
 
         // set up our charts 
 
         for (const auto& symbol : symbol_list_)
         {
-            auto box_size = ComputeBoxSizeUsingATR(symbol);
+            auto box_size = use_ATR_ ? ComputeBoxSizeUsingATR(symbol) : box_size_;
             charts_[symbol] = PF_Chart{symbol, box_size, reversal_boxes_, fractional_boxes_, scale_};
         }
         // let's stream !
@@ -576,7 +576,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
                 {
                     need_to_update_graph.push_back(new_value.ticker_);
 
-                    fs::path chart_file_path = output_chart_directory_ / (new_value.ticker_ + ".json");
+                    fs::path chart_file_path = output_chart_directory_ / (charts_[new_value.ticker_].ChartName("json"));
                     std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
                     BOOST_ASSERT_MSG(updated_file.is_open(), fmt::format("Unable to open file: {} to write updated data.", chart_file_path).c_str());
                     charts_[new_value.ticker_].ConvertChartToJsonAndWriteToStream(updated_file);
@@ -587,7 +587,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             }
             for (const auto& ticker : need_to_update_graph)
             {
-                fs::path graph_file_path = output_chart_directory_ / (ticker + ".svg");
+                fs::path graph_file_path = output_chart_directory_ / (charts_[ticker].ChartName("svg"));
                 charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path);
             }
         }
@@ -609,7 +609,7 @@ void PF_CollectDataApp::Shutdown ()
     {
         for (const auto& [symbol, chart] : charts_)
         {
-            fs::path output_file_name = output_chart_directory_ / chart.ChartName();
+            fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
             std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
             BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
             chart.ConvertChartToJsonAndWriteToStream(output);
