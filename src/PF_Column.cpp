@@ -267,15 +267,16 @@ Json::Value PF_Column::ToJSON () const
 
     switch(direction_)
     {
-        case Direction::e_unknown:
+        using enum Direction;
+        case e_unknown:
             result["direction"] = "unknown";
             break;
 
-        case Direction::e_down:
+        case e_down:
             result["direction"] = "down";
             break;
 
-        case Direction::e_up:
+        case e_up:
             result["direction"] = "up";
             break;
     };

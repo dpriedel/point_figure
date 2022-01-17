@@ -396,15 +396,16 @@ Json::Value PF_Chart::ToJSON () const
 
     switch(current_direction_)
     {
-        case PF_Column::Direction::e_unknown:
+        using enum PF_Column::Direction;
+        case e_unknown:
             result["current_direction"] = "unknown";
             break;
 
-        case PF_Column::Direction::e_down:
+        case e_down:
             result["current_direction"] = "down";
             break;
 
-        case PF_Column::Direction::e_up:
+        case e_up:
             result["current_direction"] = "up";
             break;
     };
