@@ -348,7 +348,16 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
         for (const auto& symbol : symbol_list_)
         {
-            auto box_size = use_ATR_ ? ComputeBoxSizeUsingATR(symbol) : box_size_;
+            DprDecimal::DDecQuad box_size;
+            if (use_ATR_)
+            {
+                box_size = ComputeBoxSizeUsingATR(symbol) * box_size_;
+                box_size = box_size.Rescale(box_size.GetExponent() -1);
+            }
+            else
+            {
+                box_size = box_size_;
+            }
             charts_[symbol] = PF_Chart{symbol, box_size, reversal_boxes_, fractional_boxes_, scale_};
         }
         // let's stream !
@@ -493,10 +502,20 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::strin
 {
     Tiingo history_getter{host_name_, host_port_, api_key_};
 
-    auto today = floor<date::days>(std::chrono::system_clock::now());
-    const auto history = history_getter.GetMostRecentTickerData(symbol, date::year_month_day{today}, number_of_days_history_for_ATR_ + 1);
+    // we need to start from yesterday since we won't get history data for today 
+    // since we are doing this while the market is open
 
-    auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_ - 2, UseAdjusted::e_No);
+    date::year_month_day today{--floor<date::days>(std::chrono::system_clock::now())};
+
+    // use our new holidays capability 
+    // we look backwards here. so add an extra year in case we are near New Years.
+    
+    auto holidays = MakeHolidayList(today.year());
+    ranges::for_each(MakeHolidayList(--(today.year())), [&holidays](const auto& e) { holidays.push_back(e); });
+
+    const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, &holidays);
+
+    auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_No);
 
     auto box_size = (box_size_ * atr).Rescale(box_size_.GetExponent() - 1);
     return box_size;
@@ -547,10 +566,9 @@ void PF_CollectDataApp::CollectStreamingData ()
 //    ASSERT_EXIT((the_task.get()),::testing::KilledBySignal(SIGINT),".*");
     quotes.Disconnect();
 
-    for (const auto & value: quotes)
-    {
-        std::cout << value << '\n';
-    }
+    // make a last check to be sure we  didn't leave any data unprocessed 
+
+    ProcessStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
     return ;
 }		// -----  end of method PF_CollectDataApp::CollectStreamingData  ----- 
