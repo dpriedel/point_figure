@@ -183,6 +183,17 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
         if (*had_signal == true)
         {
             StopStreaming();
+            
+            // do a last check for data
+
+            buffer.clear();
+            ws_.read(buffer);
+            std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+            if (! buffer_content.empty())
+            {
+                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+                streamed_data->push(std::move(buffer_content));
+            }
             break;
         }
     }
