@@ -508,7 +508,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
 DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days, UseAdjusted use_adjusted)
 {
-    BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided. Need at least: {} values", how_many_days).c_str());
+    BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided. Need at least: {} values. Got {}.", how_many_days, the_data.size()).c_str());
 
     DprDecimal::DDecQuad total;
 
