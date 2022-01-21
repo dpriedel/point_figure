@@ -47,6 +47,8 @@ public:
 
     using Y_Limits = std::pair<DprDecimal::DDecQuad, DprDecimal::DDecQuad>;
 
+    enum  class Y_AxisFormat {e_show_date, e_show_time};
+
     // make it look like a range
     //TODO: use a custom iterator which will include current_column_ in 
     // the iteration.
@@ -78,10 +80,12 @@ public:
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
+    [[nodiscard]] PF_Column::tpt GetLastChangeTime(void) const { return last_change_date_; }
+
 //    [[nodiscard]] const_iterator begin() const { return columns_.begin(); }
 //    [[nodiscard]] const_iterator end() const { return columns_.end(); }
 
-    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename) const;
+    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, Y_AxisFormat date_or_time=Y_AxisFormat::e_show_date) const;
 
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 

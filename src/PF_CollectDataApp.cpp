@@ -606,7 +606,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             for (const auto& ticker : need_to_update_graph)
             {
                 fs::path graph_file_path = output_chart_directory_ / (charts_[ticker].ChartName("svg"));
-                charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path);
+                charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
             }
         }
         else
@@ -632,6 +632,9 @@ void PF_CollectDataApp::Shutdown ()
             BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
             chart.ConvertChartToJsonAndWriteToStream(output);
             output.close();
+
+            fs::path graph_file_path = output_chart_directory_ / (chart.ChartName("svg"));
+            chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ == Interval::e_live ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
         }
 
     }

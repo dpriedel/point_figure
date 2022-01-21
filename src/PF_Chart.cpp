@@ -217,6 +217,8 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         {
             y_min_ = current_column_.GetBottom();
         }
+
+        last_change_date_ = the_time;
     }
     else if (status == PF_Column::Status::e_reversal)
     {
@@ -227,6 +229,8 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         
         status = current_column_.AddValue(new_value, the_time).first;
         current_direction_ = current_column_.GetDirection();
+
+        last_change_date_ = the_time;
     }
     return status;
 }		// -----  end of method PF_Chart::AddValue  ----- 
@@ -269,7 +273,7 @@ std::string PF_Chart::ChartName (std::string_view suffix) const
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
-void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename) const
+void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, Y_AxisFormat date_or_time) const
 {
     // this code comes pretty much right out of the cppdemo code
     // with some modifications for good memory management practices.
@@ -303,7 +307,14 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             openData.push_back(col.GetTop().ToDouble());
             closeData.push_back(col.GetBottom().ToDouble());
         }
-        x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
+        if (date_or_time == Y_AxisFormat::e_show_date)
+        {
+            x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
+        }
+        else
+        {
+            x_axis_labels.push_back(TimePointToHMSString(col.GetTimeSpan().first));
+        }
     }
 
     lowData.push_back(current_column_.GetBottom().ToDouble());
@@ -319,7 +330,14 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         openData.push_back(current_column_.GetTop().ToDouble());
         closeData.push_back(current_column_.GetBottom().ToDouble());
     }
-    x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
+    if (date_or_time == Y_AxisFormat::e_show_date)
+    {
+        x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
+    }
+    else
+    {
+        x_axis_labels.push_back(TimePointToHMSString(current_column_.GetTimeSpan().first));
+    }
 
     std::vector<const char*> x_labels;
 
@@ -340,7 +358,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 //    {
         auto* textbox = c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()));
         textbox->setFontStyle("Times new Roman");
-//        textbox->setFontAngle(45);
+        textbox->setFontAngle(45);
         c->xAxis()->setLabelStep(10);
 //        c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()))->setFontAngle(180);
 //    }
