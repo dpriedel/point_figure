@@ -351,17 +351,21 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
                 (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
                 (IsPercent() ? "percent" : "")).c_str());
 
-//    c->xAxis()->setTitle("Jan 2001");
+    // set up x-axis labels so they are readable
 
-    // Set the labels on the x axis. Rotate the labels by 45 degrees.
-//    if (x_labels.size() < 100)
-//    {
-        auto* textbox = c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()));
-        textbox->setFontStyle("Times new Roman");
-        textbox->setFontAngle(45);
-        c->xAxis()->setLabelStep(10);
-//        c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()))->setFontAngle(180);
-//    }
+    auto* textbox = c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()));
+    textbox->setFontStyle("Times new Roman");
+    textbox->setFontAngle(45);
+
+    // limit the number of labels so they are not too cluttered
+
+    int label_step_size = 2;
+    if (GetNumberOfColumns() > 40)
+    {
+        const int how_many_labels = 20;
+        label_step_size = GetNumberOfColumns() / how_many_labels;
+    }
+    c->xAxis()->setLabelStep(label_step_size);
 
     // Add a title to the y axis
     c->yAxis()->setTitle("Tick data");
