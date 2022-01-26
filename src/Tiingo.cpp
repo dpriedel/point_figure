@@ -88,12 +88,23 @@ void Tiingo::Connect()
     // See https://tools.ietf.org/html/rfc7230#section-5.4
     auto host = host_ + ':' + std::to_string(ep.port());
 
+//    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    beast::websocket::stream_base::timeout opt
+    {
+        std::chrono::seconds(30),   // handshake timeout
+        std::chrono::seconds(20),   // idle timeout
+        true                        // enable keep-alive pings
+    };
+
+    // Set the timeout options on the stream.
+    ws_.set_option(opt);
+
     // Perform the SSL handshake
     ws_.next_layer().handshake(ssl::stream_base::client);
 
     // Perform the websocket handshake
     ws_.handshake(host, websocket_prefix_);
-
+    BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
 
 }
 void Tiingo::StreamDataTest(bool* time_to_stop)
@@ -325,6 +336,17 @@ void Tiingo::StopStreaming ()
                 std::string(BOOST_BEAST_VERSION_STRING) +
                     " websocket-client-coro");
         }));
+
+//    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    beast::websocket::stream_base::timeout opt
+    {
+        std::chrono::seconds(30),   // handshake timeout
+        std::chrono::seconds(20),   // idle timeout
+        true                        // enable keep-alive pings
+    };
+
+    // Set the timeout options on the stream.
+    ws.set_option(opt);
 
     ws.handshake(host, websocket_prefix_);
 
