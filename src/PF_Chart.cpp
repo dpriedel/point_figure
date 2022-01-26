@@ -343,13 +343,13 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
     ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
 
-    std::unique_ptr<XYChart> c = std::make_unique<XYChart>(600, 700);
+    std::unique_ptr<XYChart> c = std::make_unique<XYChart>(1200, 1000);
 
-    c->setPlotArea(50, 50, 500, 550)->setGridColor(0xc0c0c0, 0xc0c0c0);
+    c->setPlotArea(50, 50, 1100, 850)->setGridColor(0xc0c0c0, 0xc0c0c0);
 
-    c->addTitle(fmt::format("{}{} X {} for {}  {}", box_size_.ToDouble(),
+    c->addTitle(fmt::format("{}{} X {} for {}  {}.\nMost recent change: {}", box_size_.ToDouble(),
                 (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
-                (IsPercent() ? "percent" : "")).c_str());
+                (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_)).c_str());
 
     // set up x-axis labels so they are readable
 
