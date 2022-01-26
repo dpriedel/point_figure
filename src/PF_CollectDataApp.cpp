@@ -447,10 +447,11 @@ void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, c
     auto close_column = FindColumnIndex(header_record, price_fld_name_, ',');
     BOOST_ASSERT_MSG(close_column.has_value(), fmt::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
 
-    ranges::for_each(symbol_data_records | ranges::views::drop(1), [&new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
+    ranges::for_each(symbol_data_records | ranges::views::drop(1), [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
         {
             const auto fields = split_string<std::string_view> (record, ',');
-            new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToTimePoint("%Y-%m-%d", fields[date_col]));
+            auto dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+            new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToTimePoint(dt_format, fields[date_col]));
         });
 
 }		// -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV  ----- 
@@ -634,7 +635,7 @@ void PF_CollectDataApp::Shutdown ()
             output.close();
 
             fs::path graph_file_path = output_chart_directory_ / (chart.ChartName("svg"));
-            chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ == Interval::e_live ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
+            chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
         }
 
     }
