@@ -89,6 +89,10 @@ void Tiingo::Connect()
     auto host = host_ + ':' + std::to_string(ep.port());
 
 //    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+
+    // set timeout options so we don't hang forever if the
+    // exchange is closed. 
+
     beast::websocket::stream_base::timeout opt
     {
         std::chrono::seconds(30),   // handshake timeout
@@ -96,7 +100,6 @@ void Tiingo::Connect()
         true                        // enable keep-alive pings
     };
 
-    // Set the timeout options on the stream.
     ws_.set_option(opt);
 
     // Perform the SSL handshake
@@ -136,7 +139,7 @@ void Tiingo::StreamDataTest(bool* time_to_stop)
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
 
-    while(true)
+    while(ws_.is_open())
     {
         buffer.clear();
         ws_.read(buffer);
@@ -181,7 +184,7 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
 
-    while(true)
+    while(ws_.is_open())
     {
         buffer.clear();
         ws_.read(buffer);
@@ -207,6 +210,14 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
             }
             break;
         }
+    }
+    // if the websocket is closed on the server side or there is a timeout which in turn 
+    // will cause the websocket to be closed, let's set this flag so other processes which 
+    // may be watching it can know.
+
+    if (! ws_.is_open())
+    {
+        *had_signal = true;
     }
 }		// -----  end of method Tiingo::StreamData  ----- 
 
@@ -337,7 +348,9 @@ void Tiingo::StopStreaming ()
                     " websocket-client-coro");
         }));
 
-//    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    // set timeout options so we don't hang forever if the
+    // exchange is closed. 
+
     beast::websocket::stream_base::timeout opt
     {
         std::chrono::seconds(30),   // handshake timeout
@@ -345,7 +358,6 @@ void Tiingo::StopStreaming ()
         true                        // enable keep-alive pings
     };
 
-    // Set the timeout options on the stream.
     ws.set_option(opt);
 
     ws.handshake(host, websocket_prefix_);
