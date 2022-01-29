@@ -594,12 +594,6 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
                 if (chart_changed != PF_Column::Status::e_ignored)
                 {
                     need_to_update_graph.push_back(new_value.ticker_);
-
-                    fs::path chart_file_path = output_chart_directory_ / (charts_[new_value.ticker_].ChartName("json"));
-                    std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
-                    BOOST_ASSERT_MSG(updated_file.is_open(), fmt::format("Unable to open file: {} to write updated data.", chart_file_path).c_str());
-                    charts_[new_value.ticker_].ConvertChartToJsonAndWriteToStream(updated_file);
-                    updated_file.close();
                 }
 
                 quotes->ClearExtractedData();
@@ -608,6 +602,12 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             {
                 fs::path graph_file_path = output_chart_directory_ / (charts_[ticker].ChartName("svg"));
                 charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
+
+                fs::path chart_file_path = output_chart_directory_ / (charts_[ticker].ChartName("json"));
+                std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
+                BOOST_ASSERT_MSG(updated_file.is_open(), fmt::format("Unable to open file: {} to write updated data.", chart_file_path).c_str());
+                charts_[ticker].ConvertChartToJsonAndWriteToStream(updated_file);
+                updated_file.close();
             }
         }
         else
