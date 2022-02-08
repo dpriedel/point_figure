@@ -18,8 +18,9 @@
 //#include <iterator>
 #include <chrono>
 #include <iostream>
+#include <fstream>
 
-#include <chartdir.h>
+//#include <chartdir.h>
 #include <fmt/format.h>
 
 #include <range/v3/algorithm/for_each.hpp>
@@ -275,6 +276,125 @@ std::string PF_Chart::ChartName (std::string_view suffix) const
 
 void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, Y_AxisFormat date_or_time) const
 {
+//    // this code comes pretty much right out of the cppdemo code
+//    // with some modifications for good memory management practices.
+//
+//    // NOTE: there are a bunch of numeric constants here related to 
+//    // chart configuration. These should be paramets eventually.
+//
+//    std::vector<double> highData;
+//    std::vector<double> lowData;
+//    std::vector<double> openData;
+//    std::vector<double> closeData;
+//
+//    // for x-axis label, we use the begin date for each column 
+//    // the chart software wants an array of const char*.
+//    // this will take several steps.
+//
+//    std::vector<std::string> x_axis_labels;
+//
+//    for (const auto& col : columns_)
+//    {
+//        lowData.push_back(col.GetBottom().ToDouble());
+//        highData.push_back(col.GetTop().ToDouble());
+//
+//        if (col.GetDirection() == PF_Column::Direction::e_up)
+//        {
+//            openData.push_back(col.GetBottom().ToDouble());
+//            closeData.push_back(col.GetTop().ToDouble());
+//        }
+//        else
+//        {
+//            openData.push_back(col.GetTop().ToDouble());
+//            closeData.push_back(col.GetBottom().ToDouble());
+//        }
+//        if (date_or_time == Y_AxisFormat::e_show_date)
+//        {
+//            x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
+//        }
+//        else
+//        {
+//            x_axis_labels.push_back(TimePointToHMSString(col.GetTimeSpan().first));
+//        }
+//    }
+//
+//    lowData.push_back(current_column_.GetBottom().ToDouble());
+//    highData.push_back(current_column_.GetTop().ToDouble());
+//
+//    if (current_column_.GetDirection() == PF_Column::Direction::e_up)
+//    {
+//        openData.push_back(current_column_.GetBottom().ToDouble());
+//        closeData.push_back(current_column_.GetTop().ToDouble());
+//    }
+//    else
+//    {
+//        openData.push_back(current_column_.GetTop().ToDouble());
+//        closeData.push_back(current_column_.GetBottom().ToDouble());
+//    }
+//    if (date_or_time == Y_AxisFormat::e_show_date)
+//    {
+//        x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
+//    }
+//    else
+//    {
+//        x_axis_labels.push_back(TimePointToHMSString(current_column_.GetTimeSpan().first));
+//    }
+//
+//    std::vector<const char*> x_labels;
+//
+//    ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
+//
+//    std::unique_ptr<XYChart> c = std::make_unique<XYChart>(1200, 1000);
+//
+//    c->setPlotArea(50, 50, 1100, 850)->setGridColor(0xc0c0c0, 0xc0c0c0);
+//
+//    c->addTitle(fmt::format("{}{} X {} for {}  {}.\nMost recent change: {}", box_size_.ToDouble(),
+//                (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
+//                (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_)).c_str());
+//
+//    // set up x-axis labels so they are readable
+//
+//    auto* textbox = c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()));
+//    textbox->setFontStyle("Times new Roman");
+//    textbox->setFontAngle(45);
+//
+//    // limit the number of labels so they are not too cluttered
+//
+//    int label_step_size = 2;
+//    if (GetNumberOfColumns() > 40)
+//    {
+//        const int how_many_labels = 20;
+//        label_step_size = GetNumberOfColumns() / how_many_labels;
+//    }
+//    c->xAxis()->setLabelStep(label_step_size);
+//
+//    // Add a title to the y axis
+//    c->yAxis()->setTitle("Tick data");
+//
+//    if (! IsPercent())
+//    {
+//        c->yAxis()->setTickDensity(20, 10);
+//    }
+//    else
+//    {
+//        c->yAxis()->setLogScale(GetYLimits().first.ToDouble(), GetYLimits().second.ToDouble());
+//    }
+//    c->yAxis2()->copyAxis(c->yAxis());
+//
+//    auto* layer = c->addCandleStickLayer(DoubleArray(highData.data(), highData.size()),
+//        DoubleArray(lowData.data(), lowData.size()), DoubleArray(openData.data(), openData.size()),
+//        DoubleArray( closeData.data(), closeData.size()), 0x00ff00, 0xff0000);
+//
+//    // Set the line width to 2 pixels
+//    layer->setLineWidth(2);
+//
+//    // Output the chart
+//    c->makeChart(output_filename.c_str());
+//
+}		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
+
+void PF_Chart::MPL_ConstructChartGraphAndWriteToFile (const fs::path& output_filename, Y_AxisFormat date_or_time) const
+{
     // this code comes pretty much right out of the cppdemo code
     // with some modifications for good memory management practices.
 
@@ -285,6 +405,8 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     std::vector<double> lowData;
     std::vector<double> openData;
     std::vector<double> closeData;
+    std::vector<bool> had_step_back;
+    std::vector<bool> direction_is_up;
 
     // for x-axis label, we use the begin date for each column 
     // the chart software wants an array of const char*.
@@ -301,11 +423,13 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         {
             openData.push_back(col.GetBottom().ToDouble());
             closeData.push_back(col.GetTop().ToDouble());
+            direction_is_up.push_back(true);
         }
         else
         {
             openData.push_back(col.GetTop().ToDouble());
             closeData.push_back(col.GetBottom().ToDouble());
+            direction_is_up.push_back(false);
         }
         if (date_or_time == Y_AxisFormat::e_show_date)
         {
@@ -315,6 +439,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         {
             x_axis_labels.push_back(TimePointToHMSString(col.GetTimeSpan().first));
         }
+        had_step_back.push_back(col.GetHadReversal());
     }
 
     lowData.push_back(current_column_.GetBottom().ToDouble());
@@ -324,11 +449,13 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     {
         openData.push_back(current_column_.GetBottom().ToDouble());
         closeData.push_back(current_column_.GetTop().ToDouble());
+        direction_is_up.push_back(true);
     }
     else
     {
         openData.push_back(current_column_.GetTop().ToDouble());
         closeData.push_back(current_column_.GetBottom().ToDouble());
+        direction_is_up.push_back(false);
     }
     if (date_or_time == Y_AxisFormat::e_show_date)
     {
@@ -339,58 +466,23 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         x_axis_labels.push_back(TimePointToHMSString(current_column_.GetTimeSpan().first));
     }
 
+    had_step_back.push_back(current_column_.GetHadReversal());
+
     std::vector<const char*> x_labels;
 
     ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
 
-    std::unique_ptr<XYChart> c = std::make_unique<XYChart>(1200, 1000);
+    // output data so can manually create chart in python to work out the required python code 
 
-    c->setPlotArea(50, 50, 1100, 850)->setGridColor(0xc0c0c0, 0xc0c0c0);
-
-    c->addTitle(fmt::format("{}{} X {} for {}  {}.\nMost recent change: {}", box_size_.ToDouble(),
-                (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
-                (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_)).c_str());
-
-    // set up x-axis labels so they are readable
-
-    auto* textbox = c->xAxis()->setLabels(StringArray(x_labels.data(), x_labels.size()));
-    textbox->setFontStyle("Times new Roman");
-    textbox->setFontAngle(45);
-
-    // limit the number of labels so they are not too cluttered
-
-    int label_step_size = 2;
-    if (GetNumberOfColumns() > 40)
+    std::ofstream out{"/tmp/data_for_python.csv"};
+    for (int i = 0; i < openData.size(); ++i)
     {
-        const int how_many_labels = 20;
-        label_step_size = GetNumberOfColumns() / how_many_labels;
+        auto output = fmt::format("{},{},{},{},{},{},{}\n", x_axis_labels[i], openData[i], highData[i], lowData[i], closeData[i], direction_is_up[i], had_step_back[i]);
+        out.write(output.data(), output.size());
     }
-    c->xAxis()->setLabelStep(label_step_size);
-
-    // Add a title to the y axis
-    c->yAxis()->setTitle("Tick data");
-
-    if (! IsPercent())
-    {
-        c->yAxis()->setTickDensity(20, 10);
-    }
-    else
-    {
-        c->yAxis()->setLogScale(GetYLimits().first.ToDouble(), GetYLimits().second.ToDouble());
-    }
-    c->yAxis2()->copyAxis(c->yAxis());
-
-    auto* layer = c->addCandleStickLayer(DoubleArray(highData.data(), highData.size()),
-        DoubleArray(lowData.data(), lowData.size()), DoubleArray(openData.data(), openData.size()),
-        DoubleArray( closeData.data(), closeData.size()), 0x00ff00, 0xff0000);
-
-    // Set the line width to 2 pixels
-    layer->setLineWidth(2);
-
-    // Output the chart
-    c->makeChart(output_filename.c_str());
-
+    out.close();
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
+
 
 void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
 {

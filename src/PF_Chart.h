@@ -86,6 +86,7 @@ public:
 //    [[nodiscard]] const_iterator end() const { return columns_.end(); }
 
     void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, Y_AxisFormat date_or_time=Y_AxisFormat::e_show_date) const;
+    void MPL_ConstructChartGraphAndWriteToFile(const fs::path& output_filename, Y_AxisFormat date_or_time=Y_AxisFormat::e_show_date) const;
 
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
