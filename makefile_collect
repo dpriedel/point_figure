@@ -41,7 +41,8 @@ CFG_INC := -I$(HOME)/projects/point_figure/src \
 	-I$(BOOSTDIR) \
 	-I$(DECIMALSRCDIR) \
 	-I$(UTILITYDIR)/include \
-	-I/usr/local/include/ChartDirector
+	-I/usr/include/python3.10 \
+	-I/usr/lib/python3.10/site-packages/pybind11/include/pybind11
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
@@ -81,7 +82,11 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug_collect
 
-CFG_LIB := -lpthread \
+CFG_LIB := -L/usr/lib \
+		-lcrypt \
+		-lpthread \
+		-lpython3.10 \
+		-ldl -lutil -lm -lm \
 		-lssl -lcrypto \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
@@ -90,8 +95,7 @@ CFG_LIB := -lpthread \
 		-lfmt \
 		-lspdlog \
 		-ljsoncpp \
-		-ldate-tz \
-		-lchartdir
+		-ldate-tz 
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
