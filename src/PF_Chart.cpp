@@ -17,6 +17,7 @@
 
 //#include <iterator>
 #include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <fstream>
 
@@ -24,6 +25,12 @@
 #include <fmt/format.h>
 
 #include <range/v3/algorithm/for_each.hpp>
+
+#include <pybind11/embed.h> // everything needed for embedding
+#include <pybind11/stl.h>
+
+namespace py = pybind11;
+using namespace py::literals;
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
@@ -434,10 +441,12 @@ void PF_Chart::MPL_ConstructChartGraphAndWriteToFile (const fs::path& output_fil
         if (date_or_time == Y_AxisFormat::e_show_date)
         {
             x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
+//            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
         }
         else
         {
             x_axis_labels.push_back(TimePointToHMSString(col.GetTimeSpan().first));
+//            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
         }
         had_step_back.push_back(col.GetHadReversal());
     }
@@ -460,27 +469,81 @@ void PF_Chart::MPL_ConstructChartGraphAndWriteToFile (const fs::path& output_fil
     if (date_or_time == Y_AxisFormat::e_show_date)
     {
         x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
+//        x_axis_labels.push_back(current_column_.GetTimeSpan().first.time_since_epoch().count());
     }
     else
     {
         x_axis_labels.push_back(TimePointToHMSString(current_column_.GetTimeSpan().first));
+//        x_axis_labels.push_back(current_column_.GetTimeSpan().first.time_since_epoch().count());
     }
 
     had_step_back.push_back(current_column_.GetHadReversal());
 
-    std::vector<const char*> x_labels;
+    auto chart_title = fmt::format("{}{} X {} for {}  {}.\nMost recent change: {}", box_size_.ToDouble(),
+                (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
+                (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_));
 
-    ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date.data()); });
+//    std::vector<const char*> x_labels;
+//
+//    ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date()); });
 
-    // output data so can manually create chart in python to work out the required python code 
+//    // output data so can manually create chart in python to work out the required python code 
+//
+//    std::ofstream out{"/tmp/data_for_python.csv"};
+//    for (int i = 0; i < openData.size(); ++i)
+//    {
+//        auto output = fmt::format("{},{},{},{},{},{},{}\n", x_axis_labels[i], openData[i], highData[i], lowData[i], closeData[i], direction_is_up[i], had_step_back[i]);
+//        out.write(output.data(), output.size());
+//    }
+//    out.close();
+    py::dict locals = py::dict{
+        "the_data"_a = py::dict{
+            "Date"_a = x_axis_labels,
+            "Open"_a = openData,
+            "High"_a = highData,
+            "Low"_a = lowData,
+            "Close"_a = closeData
+        },
+        "IsUp"_a = direction_is_up,
+        "StepBack"_a = had_step_back,
+        "ChartTitle"_a = chart_title,
+        "ChartFileName"_a = output_filename.string()
+    };
 
-    std::ofstream out{"/tmp/data_for_python.csv"};
-    for (int i = 0; i < openData.size(); ++i)
-    {
-        auto output = fmt::format("{},{},{},{},{},{},{}\n", x_axis_labels[i], openData[i], highData[i], lowData[i], closeData[i], direction_is_up[i], had_step_back[i]);
-        out.write(output.data(), output.size());
-    }
-    out.close();
+        // Execute Python code, using the variables saved in `locals`
+        py::exec(R"(
+        the_data["Date"] = pd.to_datetime(the_data["Date"])
+        xxx = pd.DataFrame(the_data)
+        xxx.set_index("Date", inplace=True)
+
+        #print(xxx)
+        
+        def func (x,y) : 
+            if x:
+                if y:
+                    return "blue"
+            if not x:
+                if y:
+                    return "yellow"
+            return None
+
+        mco = []
+        for i in range(len(IsUp)):
+            mco.append(func(IsUp[i], StepBack[i]))
+
+        mc = mpf.make_marketcolors(up='g',down='r')
+        s  = mpf.make_mpf_style(marketcolors=mc, gridstyle="dashed")
+
+        fig, axlist = mpf.plot(xxx, type="candle", style=s, marketcolor_overrides=mco, title=ChartTitle, returnfig=True)
+        axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
+
+         
+        # plt.show()
+
+        plt.savefig(ChartFileName)
+        del(fig)
+        )",
+                 py::globals(), locals);
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
 
 

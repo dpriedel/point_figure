@@ -39,6 +39,10 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
 
+#include <pybind11/embed.h> // everything needed for embedding
+namespace py = pybind11;
+using namespace py::literals;
+
 #include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "PF_CollectDataApp.h"
@@ -576,6 +580,14 @@ void PF_CollectDataApp::CollectStreamingData ()
 
 void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
+        py::scoped_interpreter guard{}; // start the interpreter and keep it alive
+
+        py::exec(R"(
+            import pandas as pd 
+            import matplotlib.pyplot as plt
+            import mplfinance as mpf)"
+        );
+
     while(true)
     {
         if (! streamed_data->empty())
@@ -601,7 +613,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             for (const auto& ticker : need_to_update_graph)
             {
                 fs::path graph_file_path = output_chart_directory_ / (charts_[ticker].ChartName("svg"));
-                charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
+                charts_[ticker].MPL_ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
 
                 fs::path chart_file_path = output_chart_directory_ / (charts_[ticker].ChartName("json"));
                 std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
@@ -626,6 +638,14 @@ void PF_CollectDataApp::Shutdown ()
 {
     if (destination_ == Destination::e_file)
     {
+        py::scoped_interpreter guard{}; // start the interpreter and keep it alive
+
+        py::exec(R"(
+            import pandas as pd 
+            import matplotlib.pyplot as plt
+            import mplfinance as mpf)"
+        );
+
         for (const auto& [symbol, chart] : charts_)
         {
             fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
@@ -635,7 +655,7 @@ void PF_CollectDataApp::Shutdown ()
             output.close();
 
             fs::path graph_file_path = output_chart_directory_ / (chart.ChartName("svg"));
-            chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
+            chart.MPL_ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
         }
 
     }
