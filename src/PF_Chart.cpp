@@ -479,9 +479,17 @@ void PF_Chart::MPL_ConstructChartGraphAndWriteToFile (const fs::path& output_fil
 
     had_step_back.push_back(current_column_.GetHadReversal());
 
-    auto chart_title = fmt::format("{}{} X {} for {}  {}.\nMost recent change: {}", box_size_.ToDouble(),
+    // some explanation for custom box colors. 
+
+    std::string explanation_text;
+    if (reversal_boxes_ == 1)
+    {
+        explanation_text = "\nYellow: 1-step back then Down. Blue: 1-step back then Up.";
+    }
+    auto chart_title = fmt::format("\n{}{} X {} for {}  {}.\nMost recent change: {}{}", box_size_.ToDouble(),
                 (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
-                (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_));
+                (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_),
+                explanation_text);
 
 //    std::vector<const char*> x_labels;
 //
@@ -507,7 +515,8 @@ void PF_Chart::MPL_ConstructChartGraphAndWriteToFile (const fs::path& output_fil
         "IsUp"_a = direction_is_up,
         "StepBack"_a = had_step_back,
         "ChartTitle"_a = chart_title,
-        "ChartFileName"_a = output_filename.string()
+        "ChartFileName"_a = output_filename.string(),
+        "DateTimeFormat"_a = date_or_time == Y_AxisFormat::e_show_date ? "%Y-%m-%d" : "%H:%M:%S"
     };
 
         // Execute Python code, using the variables saved in `locals`
@@ -518,12 +527,12 @@ void PF_Chart::MPL_ConstructChartGraphAndWriteToFile (const fs::path& output_fil
 
         #print(xxx)
         
-        def func (x,y) : 
-            if x:
-                if y:
+        def func (is_up, stepped_back) : 
+            if is_up:
+                if stepped_back:
                     return "blue"
-            if not x:
-                if y:
+            if not is_up:
+                if stepped_back:
                     return "yellow"
             return None
 
@@ -534,14 +543,20 @@ void PF_Chart::MPL_ConstructChartGraphAndWriteToFile (const fs::path& output_fil
         mc = mpf.make_marketcolors(up='g',down='r')
         s  = mpf.make_mpf_style(marketcolors=mc, gridstyle="dashed")
 
-        fig, axlist = mpf.plot(xxx, type="candle", style=s, marketcolor_overrides=mco, title=ChartTitle, returnfig=True)
+        fig, axlist = mpf.plot(xxx,
+            type="candle",
+            style=s,
+            marketcolor_overrides=mco,
+            title=ChartTitle,
+            figsize=(12, 10),
+            datetime_format=DateTimeFormat,
+            returnfig=True)
         axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
-
          
         # plt.show()
 
         plt.savefig(ChartFileName)
-        del(fig)
+        del(fig, axlist)
         )",
                  py::globals(), locals);
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
