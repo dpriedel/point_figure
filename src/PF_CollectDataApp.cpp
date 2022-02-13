@@ -20,7 +20,6 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
-#include <csignal>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -38,10 +37,6 @@
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
-
-#include <pybind11/embed.h> // everything needed for embedding
-namespace py = pybind11;
-using namespace py::literals;
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
@@ -528,14 +523,19 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::strin
 
 void PF_CollectDataApp::CollectStreamingData ()
 {
+    // we're going to use 2 threads here -- a producer thread which collects streamed 
+    // data from Tiingo nad a consummer thread which will take that data, decode it 
+    // and load it into appropriate charts. 
+    // Processing continues until interrupted. 
+
     // since this code can potentially run for hours on end 
     // it's a good idea to provide a way to break into this processing and shut it down cleanly.
     // so, a little bit of C...(taken from "Advanced Unix Programming" by Warren W. Gay, p. 317)
 
+    // ok, get ready to handle keyboard interrupts, if any.
+
     struct sigaction sa_old;
     struct sigaction sa_new;
-
-    // ok, get ready to handle keyboard interrupts, if any.
 
     sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
     sigemptyset(&sa_new.sa_mask);
@@ -543,11 +543,6 @@ void PF_CollectDataApp::CollectStreamingData ()
     sigaction(SIGINT, &sa_new, &sa_old);
 
     PF_CollectDataApp::had_signal_= false;
-
-    // we're going to use 2 threads here -- a producer thread which collects streamed 
-    // data from Tiingo nad a consummer thread which will take that data, decode it 
-    // and load it into appropriate charts. 
-    // Processing continues until interrupted. 
 
     std::string api_key = LoadDataFileForUse(tiingo_api_key_);
     if (api_key.ends_with('\n'))
@@ -564,30 +559,19 @@ void PF_CollectDataApp::CollectStreamingData ()
     auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
-    
     streaming_task.get();
     processing_task.get();
 
-//    ASSERT_EXIT((the_task.get()),::testing::KilledBySignal(SIGINT),".*");
     quotes.Disconnect();
 
     // make a last check to be sure we  didn't leave any data unprocessed 
 
     ProcessStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
-    return ;
 }		// -----  end of method PF_CollectDataApp::CollectStreamingData  ----- 
 
 void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
-        py::scoped_interpreter guard{}; // start the interpreter and keep it alive
-
-        py::exec(R"(
-            import pandas as pd 
-            import matplotlib.pyplot as plt
-            import mplfinance as mpf)"
-        );
-
     while(true)
     {
         if (! streamed_data->empty())
@@ -613,7 +597,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             for (const auto& ticker : need_to_update_graph)
             {
                 fs::path graph_file_path = output_chart_directory_ / (charts_[ticker].ChartName("svg"));
-                charts_[ticker].MPL_ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
+                charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
 
                 fs::path chart_file_path = output_chart_directory_ / (charts_[ticker].ChartName("json"));
                 std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
@@ -631,21 +615,12 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             break;
         }
     }
-    return ;
 }		// -----  end of method PF_CollectDataApp::ProcessStreamedData  ----- 
 
 void PF_CollectDataApp::Shutdown ()
 {
     if (destination_ == Destination::e_file)
     {
-        py::scoped_interpreter guard{}; // start the interpreter and keep it alive
-
-        py::exec(R"(
-            import pandas as pd 
-            import matplotlib.pyplot as plt
-            import mplfinance as mpf)"
-        );
-
         for (const auto& [symbol, chart] : charts_)
         {
             fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
@@ -655,9 +630,8 @@ void PF_CollectDataApp::Shutdown ()
             output.close();
 
             fs::path graph_file_path = output_chart_directory_ / (chart.ChartName("svg"));
-            chart.MPL_ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
+            chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
         }
-
     }
     spdlog::info(fmt::format("\n\n*** End run {} ***\n", LocalDateTimeAsString(std::chrono::system_clock::now())));
 }       // -----  end of method PF_CollectDataApp::Shutdown  -----
@@ -665,8 +639,6 @@ void PF_CollectDataApp::Shutdown ()
 void PF_CollectDataApp::HandleSignal(int signal)
 
 {
-    std::signal(SIGINT, PF_CollectDataApp::HandleSignal);
-
     // only thing we need to do
 
     PF_CollectDataApp::had_signal_ = true;

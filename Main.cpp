@@ -37,6 +37,10 @@
  
 #include <fmt/format.h>
 
+#include <pybind11/embed.h> // everything needed for embedding
+namespace py = pybind11;
+using namespace py::literals;
+
 #include "PF_CollectDataApp.h"
 
 int main(int argc, char** argv)
@@ -51,8 +55,17 @@ int main(int argc, char** argv)
     signal(SIGPIPE, SIG_IGN);
 
 	int result = 0;
+
+    py::scoped_interpreter guard{false}; // start the interpreter and keep it alive
+
 	try
 	{
+        py::exec(R"(
+            import pandas as pd 
+            import matplotlib.pyplot as plt
+            import mplfinance as mpf
+            )"
+        );
 		PF_CollectDataApp  myApp(argc, argv);
 		bool startup_ok = myApp.Startup();
         if (startup_ok)
