@@ -436,11 +436,11 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             datetime_format=DateTimeFormat,
             returnfig=True)
 
+        axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
         if UseLogScale:
             plt.ylim(Y_min, Y_max)
             axlist[0].set_yscale("log")
             axlist[0].grid(which='both', axis='both', ls='-')
-            axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
             axlist[0].yaxis.set_major_formatter(ScalarFormatter())
             axlist[0].yaxis.set_minor_formatter(ScalarFormatter()) 
 
