@@ -64,7 +64,7 @@ int main(int argc, char** argv)
             import pandas as pd 
             import matplotlib.pyplot as plt
             import mplfinance as mpf
-            )"
+            from matplotlib.ticker import ScalarFormatter)"
         );
 		PF_CollectDataApp  myApp(argc, argv);
 		bool startup_ok = myApp.Startup();
