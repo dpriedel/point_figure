@@ -38,6 +38,12 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
 
+#include <pybind11/embed.h>
+#include <pybind11/gil.h>
+
+namespace py = pybind11;
+using namespace py::literals;
+
 #include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "PF_CollectDataApp.h"
@@ -544,18 +550,13 @@ void PF_CollectDataApp::CollectStreamingData ()
 
     PF_CollectDataApp::had_signal_= false;
 
-    std::string api_key = LoadDataFileForUse(tiingo_api_key_);
-    if (api_key.ends_with('\n'))
-    {
-        api_key.resize(api_key.size() - 1);
-    }
-
-    Tiingo quotes{host_name_, host_port_, "/iex", api_key, symbol_list_};
+    Tiingo quotes{host_name_, host_port_, "/iex", api_key_, symbol_list_};
     quotes.Connect();
 
     std::mutex data_mutex;
     std::queue<std::string> streamed_data;
 
+    py::gil_scoped_release gil{};
     auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
@@ -572,6 +573,7 @@ void PF_CollectDataApp::CollectStreamingData ()
 
 void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
+    py::gil_scoped_acquire gil{};
     while(true)
     {
         if (! streamed_data->empty())

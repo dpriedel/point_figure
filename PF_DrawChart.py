@@ -8,9 +8,14 @@
 """
 
 import pandas as pd 
+import matplotlib
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 from matplotlib.ticker import ScalarFormatter
+
+# load a non-GUI back end since we only produce graphic files as output
+
+matplotlib.use("SVG")
 
 def SetStepbackColor (is_up, stepped_back) : 
     if is_up:
@@ -51,8 +56,6 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
         axlist[0].grid(which='both', axis='both', ls='-')
         axlist[0].yaxis.set_major_formatter(ScalarFormatter())
         axlist[0].yaxis.set_minor_formatter(ScalarFormatter()) 
-
-    # plt.show()
 
     plt.savefig(ChartFileName)
     for ax in axlist:

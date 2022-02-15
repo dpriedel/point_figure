@@ -406,7 +406,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
         // Execute Python code, using the variables saved in `locals`
 
-        py::gil_scoped_acquire gil{};
+//        py::gil_scoped_acquire gil{};
         py::exec(R"(
         PF_DrawChart.DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, UseLogScale, Y_min, Y_max)
         )", py::globals(), locals);
