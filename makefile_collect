@@ -84,14 +84,15 @@ OUTDIR=Debug_collect
 
 CFG_LIB := -L/usr/local/lib \
 		-lfmt \
-		-ljsoncpp \
 		-lspdlog \
 		-ldate-tz \
+		-L/usr/lib \
 		-lcrypt \
 		-lpthread \
 		-lpython3.10 \
 		-ldl -lutil -lm -lm \
 		-lssl -lcrypto \
+		-ljsoncpp \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
 		-lboost_program_options-mt-x64 
