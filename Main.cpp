@@ -61,10 +61,8 @@ int main(int argc, char** argv)
 	try
 	{
         py::exec(R"(
-            import pandas as pd 
-            import matplotlib.pyplot as plt
-            import mplfinance as mpf
-            from matplotlib.ticker import ScalarFormatter)"
+            import PF_DrawChart
+            )"
         );
 		PF_CollectDataApp  myApp(argc, argv);
 		bool startup_ok = myApp.Startup();
