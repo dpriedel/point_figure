@@ -6,6 +6,8 @@ Debug_e2e/*
 Debug_collect/*
 decimal_test/*
 Debug_test/*
+Release/*
+
 src/tags
 tags
 # our executables
@@ -15,9 +17,18 @@ DDecimal_test
 EndToEnd_Test
 p_f_collect
 
+# files we're not actually using now 
+makefile
+makefile_test
+src/DDecimal.h
+src/DDecimal_16.h
+src/DDecimal_32.h
+src/aLine.h
+symbol_plot.gpl
 
 *pyc
 .ycm_extra_conf.py
+.vimrc
 
 # for clang
 .cache/*
