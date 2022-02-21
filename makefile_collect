@@ -75,13 +75,6 @@ SRCS := $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS3a) $(SRCS4)
 
 VPATH := $(SDIR1):$(SDIR2):$(SDIR3):$(SDIR3a):$(SDIR4)
 
-#
-# Configuration: Debug
-#
-ifeq "$(CFG)" "Debug"
-
-OUTDIR=Debug_collect
-
 CFG_LIB := -L/usr/local/lib \
 		-lfmt \
 		-lspdlog \
@@ -107,12 +100,33 @@ OBJS=$(OBJS1) $(OBJS2) $(OBJS3) $(OBJS3a) $(OBJS4)
 
 DEPS=$(OBJS:.o=.d)
 
+#
+# Configuration: Debug
+#
+ifeq "$(CFG)" "Debug"
+
+OUTDIR=Debug_collect
+
 COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++20 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
+
+#
+# Configuration: Release
+#
+ifeq "$(CFG)" "Release"
+
+OUTDIR=Release
+
+COMPILE=$(CPP) -c  -x c++  -O3 -std=c++20 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+CCOMPILE=$(GCC) -c  -O3  -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+
+LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
+
+endif #	RELEASE configuration
 
 # Build rules
 all: $(OUTFILE)
