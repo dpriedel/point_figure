@@ -573,7 +573,7 @@ void PF_CollectDataApp::CollectStreamingData ()
 
 void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
-    py::gil_scoped_acquire gil{};
+//    py::gil_scoped_acquire gil{};
     while(true)
     {
         if (! streamed_data->empty())
@@ -598,6 +598,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             }
             for (const auto& ticker : need_to_update_graph)
             {
+                py::gil_scoped_acquire gil{};
                 fs::path graph_file_path = output_chart_directory_ / (charts_[ticker].ChartName("svg"));
                 charts_[ticker].ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
 
