@@ -111,7 +111,7 @@ The program will look for files with file names in the pattern: `<symbol>.<sourc
 <pre>  ./PF_CollectData --symbol spy,aapl,goog,rsp,iwr,iwm --source streaming --mode load --interval live --scale linear --price-fld-name close --destination file --chart-data-dir /tmp/collected_charts --use-ATR --boxsize 0.1 --reversal 1 --key ../PF_Test/tiingo_key.dat
 </pre>
 
-This will collect live streaming data from Tiingo (IEX data) and constructs chart files and render them to SVG graphics files for the provided list of symbols. All charts use the same box size and reversal boxes.  
+This will collect live streaming data from Tiingo (IEX data) and construct chart files and render them to SVG graphics files for the provided list of symbols. All charts use the same box size and reversal boxes.  
 
 # Important note
 
