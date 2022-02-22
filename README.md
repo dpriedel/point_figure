@@ -88,19 +88,21 @@ If you run **./PF_CollectData** with no arguments, it will output help informati
 
 **new-data-dir**: If you have JSON or CSV files containing EOD or other interval data to be loaded into charts, this argument points to the directory containing them.
 
+The program will look for files with file names in the pattern: `<symbol>.<source-format>`. For example: GOOG.json or AAPL.cvs
+
 **chart-data-dir**: If you have existing charts that you want to add data to, this points to the directory containing them.
 
 **destination**: Currently, only file output is supported. Database (Postgres) is coming.
 
 **interval**: Only **live** and **eod** actually do anything right now.
 
-**scale**: If you choose **percent** then this functions as logarithmic.
+**scale**: If you choose **percent** then this functions as logarithmic. **boxsize** must be specified as a fraction.  Box size will vary by a fixed percent, not a fixed point size.
 
 **price-fld-name**: Which data field contains the price data to be used for the charts.  Typically, one chooses between **close** and **adjusted close**.
 
 **boxsize**: This is the box size in dollars if an integer value.  When you are setting the box size using Average True Range, then specifying a fraction means to use that fraction as a percent of the ATR for boxsize.
 
---boxsize 50 means each box represents a 50-dollar change.
+--boxsize 50 means each box represents a 50 point change.
 
 --use-ATR --boxsize .1 means that if the ATR is calculated as, say 2.32, then the boxsize will be set to 0.1 * 2.32 or 0.232. The scale will be linear unless **percent** is specified.
 
