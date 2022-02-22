@@ -18,6 +18,7 @@ EndToEnd_Test
 p_f_collect
 
 # files we're not actually using now 
+ExtractData.py
 makefile
 makefile_test
 src/DDecimal.h
