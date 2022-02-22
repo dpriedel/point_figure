@@ -105,13 +105,13 @@ If you run **./PF_CollectData** with no arguments, it will output help informati
 --use-ATR --boxsize .1 means that if the ATR is calculated as, say 2.32, then the boxsize will be set to 0.1 * 2.32 or 0.232. The scale will be linear unless **percent** is specified.
 
 
-##Example invocation:
-
-./PF_CollectData --symbol spy,aapl,goog,rsp,iwr,iwm --source streaming --mode load --interval live --scale linear --price-fld-name close --destination file --chart-data-dir /tmp/collected_charts --use-ATR --boxsize 0.1 --reversal 1 --key ../PF_Test/tiingo_key.dat
+## Example invocation:
+<pre>  ./PF_CollectData --symbol spy,aapl,goog,rsp,iwr,iwm --source streaming --mode load --interval live --scale linear --price-fld-name close --destination file --chart-data-dir /tmp/collected_charts --use-ATR --boxsize 0.1 --reversal 1 --key ../PF_Test/tiingo_key.dat
+</pre>
 
 This will collect live streaming data from Tiingo (IEX data) and constructs chart files and render them to SVG graphics files for the provided list of symbols. All charts use the same box size and reversal boxes.  
 
-#Important note
+# Important note
 
 This program can run all day if you are collecting streaming data.  When the stream data feed ends, the program will appear to hang.  Actually, it is just waiting for more streamed data. I don't see that Tiingo sends and kind of **end of data** indicator. You can interrupt the program at any time by pressing **Control-C**.  In my testing, it can take up to **4 minutes** for the Beast code to finally time out and the program will then shut down cleanly.
 
