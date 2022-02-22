@@ -12,14 +12,104 @@ I have this idea that it is possible to build machine learning processes to iden
 
 At this point, I believe the code produces usable output so I am going to tag it as a release.
 
-BUILDING:
+## BUILDING:
+
+This code relies on a number of libraries, one of which is now hard to find. Here is a list of references to sources for the various libraries I have used.
+
+**GCC-11**: https://gcc.gnu.org. I use std=c++20.
+
+**Boost**: https://www.boost.org. Boost Beast and Program Options are used.  Boost Beast provides synchronous websocket support which I use to retrieve live streamed data from Tiingo. Also, I use Beast for various data retrieval functions -- for example: retrieving historical data for ATR calculation.
+
+**Jsoncpp**: https://github.com/open-source-parsers/jsoncpp
+
+**libdecnumber**: http://speleotrove.com/decimal/decnumber.html. This web page refers you the version of libdecnumber shipped with GCC. I had problems actually building my code when using that version -- linker errors about multiple definitions of some symbol which I couldn't figure out -- so I used an old version which I had.  This old version was not GCC-ified and I had no linker problems with it.  I should look into replacing libdecnumber with mpdecimal.
+
+**Range-v3**: https://github.com/ericniebler/range-v3. I use this library instead of std::ranges because it has more view types and functions available.
+
+**date**: https://github.com/HowardHinnant/date.  I use a number of facilities from this library such as formatting and parsing and timezone processing.  Also, I have built a __US Market holiday calculator__ using the library's calendar functions. I use this library because it is more complete than what is currently available from GCC.
+
+**spdlog**: https://github.com/gabime/spdlog.
+
+**fmtlib**: https://github.com/fmtlib/fmt. I use this library for Python-like string formatting for error messages and constructing file names, etc.
+
+**MPLFinace**: https://pypi.org/project/mplfinance. I use this library via an embedded Python interpreter to render my chart data as SVG images which are written to disk where they can be viewed from any compatible image viewing program.  For live-streamed data, the images are continually refreshed.  MPLFinace includes its own functions for building point and figure charts.  However, I use the candlestick charts for my images.  When the chart has a lot of columns, I find using colors rather than X's and O's easier to read.  Also, I customize the column colors when the charts are 1-box reversals so I can indicate columns with 1-step-back reversals. MPLFinace provides a nice way to do this.
+
+# Running Make
+
+I provide my own make file: **makefile_collect**. This provides Debug and Release builds.
+
+make -f makefile_collect CFG=Debug or CFG=Release.
 
 
+# Running PF_CollectData
+
+If you run **./PF_CollectData** with no arguments, it will output help information listing all the possible options for running the program.
+<pre>  -h [ --help ]                         produce help message
+  -s [ --symbol ] arg                   name of symbol we are processing data 
+                                        for. May be a comma-delimited list.
+  --new-data-dir arg                    name of directory containing files with
+                                        new data for symbols we are using.
+  --chart-data-dir arg                  name of directory containing existing 
+                                        files with data for symbols we are 
+                                        using.
+  --destination arg (=file)             destination: send data to file or 
+                                        DB. Default is file.
+  --source arg (=file)                  source: either file or streaming. 
+                                        Default is file
+  --source-format arg (=csv)            source data format: either csv or 
+                                        json. Default is csv
+  -m [ --mode ] arg (=load)             mode: either load new data or 
+                                        update existing data. Default is 
+                                        load
+  -i [ --interval ] arg (=eod)          interval: eod, live, 1sec, 
+                                        5sec, 1min, 5min. Default is 
+                                        eod
+  --scale arg (=linear)                 scale: linear, percent. Default is 
+                                        linear
+  --price-fld-name arg (=Close)         price_fld_name: which data field to use
+                                        for price value. Default is Close.
+  -o [ --output-dir ] arg               output: directory for output files.
+  -b [ --boxsize ] arg                  box step size. n, m.n
+  -r [ --reversal ] arg (=2)            reversal size in number of boxes. 
+                                        Default is 2
+  --log-path arg                        path name for log file.
+  -l [ --log-level ] arg (=information) logging level. Must be 
+                                        none|error|information|debug. Default
+                                        is information.
+  --host arg (=api.tiingo.com)          web site we download from. Default is 
+                                        api.tiingo.com.
+  --port arg (=443)                     Port number to use for web site. 
+                                        Default is 443.
+  --key arg (./tiingo_key.dat)          Path to file containing tiingo api key.
+                                        Default is ./tiingo_key.dat.
+  --use-ATR [=arg(=1)] (=0)             compute Average True Value and use to 
+                                        compute box size for streaming.
+</pre>
+
+**new-data-dir**: If you have JSON or CSV files containing EOD or other interval data to be loaded into charts, this argument points to the directory containing them.
+
+**chart-data-dir**: If you have existing charts that you want to add data to, this points to the directory containing them.
+
+**destination**: Currently, only file output is supported. Database (Postgres) is coming.
+
+**interval**: Only **live** and **eod** actually do anything right now.
+
+**scale**: If you choose **percent** then this functions as logarithmic.
+
+**price-fld-name**: Which data field contains the price data to be used for the charts.  Typically, one chooses between **close** and **adjusted close**.
+
+**boxsize**: This is the box size in dollars if an integer value.  When you are setting the box size using Average True Range, then specifying a fraction means to use that fraction as a percent of the ATR for boxsize.
+
+--boxsize 50 means each box represents a 50-dollar change.
+
+--use-ATR --boxsize .1 means that if the ATR is calculated as, say 2.32, then the boxsize will be set to 0.1 * 2.32 or 0.232. The scale will be linear unless **percent** is specified.
 
 
+##Example invocation:
 
+./PF_CollectData --symbol spy,aapl,goog,rsp,iwr,iwm --source streaming --mode load --interval live --scale linear --price-fld-name close --destination file --chart-data-dir /tmp/collected_charts --use-ATR --boxsize 0.1 --reversal 1 --key ../PF_Test/tiingo_key.dat
 
-
+This will collect live streaming data from Tiingo (IEX data) and constructs chart files and render them to SVG graphics files for the provided list of symbols. All charts use the same box size and reversal boxes.  
 
 
 
