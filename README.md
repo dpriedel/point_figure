@@ -111,5 +111,9 @@ If you run **./PF_CollectData** with no arguments, it will output help informati
 
 This will collect live streaming data from Tiingo (IEX data) and constructs chart files and render them to SVG graphics files for the provided list of symbols. All charts use the same box size and reversal boxes.  
 
+#Important note
+
+This program can run all day if you are collecting streaming data.  When the stream data feed ends, the program will appear to hang.  Actually, it is just waiting for more streamed data. I don't see that Tiingo sends and kind of **end of data** indicator. You can interrupt the program at any time by pressing **Control-C**.  In my testing, it can take up to **4 minutes** for the Beast code to finally time out and the program will then shut down cleanly.
+
 
 
