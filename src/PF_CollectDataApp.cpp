@@ -355,6 +355,15 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
     }
     else
     {
+        auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+        auto can_we_stream = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time()) == US_MarketStatus::e_OpenForTrading;
+
+        if (! can_we_stream)
+        {
+            std::cout << "Market not open for trading now so we can't stream quotes.\n";
+            return {};
+        }
+
         api_key_ = LoadDataFileForUse(tiingo_api_key_);
         if (api_key_.ends_with('\n'))
         {
