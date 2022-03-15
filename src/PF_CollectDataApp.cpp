@@ -356,12 +356,17 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
     else
     {
         auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-        auto can_we_stream = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time()) == US_MarketStatus::e_OpenForTrading;
+        auto market_status = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time());
 
-        if (! can_we_stream)
+        if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
         {
             std::cout << "Market not open for trading now so we can't stream quotes.\n";
             return {};
+        }
+
+        if (market_status == US_MarketStatus::e_NotOpenYet)
+        {
+            std::cout << "Market not open for trading YET so we'll wait.\n";
         }
 
         api_key_ = LoadDataFileForUse(tiingo_api_key_);
