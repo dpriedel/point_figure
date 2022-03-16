@@ -82,6 +82,7 @@ public:
 
     [[nodiscard]] bool empty() const { return pf_data_.empty(); }
 
+    Json::Value GetTopOfBookAndLastClose();
     Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc);
     Json::Value GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays=nullptr);
 

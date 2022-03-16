@@ -397,6 +397,84 @@ void Tiingo::Disconnect()
     }
 }
 
+Json::Value Tiingo::GetTopOfBookAndLastClose ()
+{
+    // using the REST API for iex.
+
+    // if any problems occur here, we'll just let beast throw an exception.
+
+    tcp::resolver resolver(ioc_);
+    beast::ssl_stream<beast::tcp_stream> stream(ioc_, ctx_);
+
+    if(! SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
+    {
+        beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
+        throw beast::system_error{ec};
+    }
+
+    auto const results = resolver.resolve(host_, port_);
+    beast::get_lowest_layer(stream).connect(results);
+    stream.handshake(ssl::stream_base::client);
+
+    // we use our custom formatter for year_month_day objects because converting to sys_days 
+    // and then formatting changes the date (becomes a day earlier) for some reason (time zone 
+    // related maybe?? )
+
+    std::string symbols;
+    auto s = symbol_list_.begin();
+    symbols += *s;
+    for (++s; s != symbol_list_.end(); ++s)
+    {
+        symbols += ',';
+        symbols += *s;
+    }
+
+    const std::string request = fmt::format("https://{}{}/?tickers={}&token={}", host_, websocket_prefix_, symbols, api_key_);
+
+    http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
+    req.set(http::field::host, host_);
+    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+    http::write(stream, req);
+
+    beast::flat_buffer buffer;
+
+    http::response<http::string_body> res;
+
+    http::read(stream, buffer, res);
+    std::string result = res.body();
+
+    // shutdown without causing a 'stream_truncated' error.
+
+    beast::get_lowest_layer(stream).cancel();
+    beast::get_lowest_layer(stream).close();
+
+//    std::cout << "raw data: " << result << '\n';
+
+    // I need to convert some numeric fields to string fields so they
+    // won't be converted to floats and give me a bunch of extra decimal digits.
+    // These values are nicely rounded by Tiingo.
+
+    const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":([0-9]*\.[0-9]*))***"}; 
+    const std::string dest{R"***("$1":"$2")***"};
+    auto result1 = std::regex_replace(result, source, dest);
+
+//    std::cout << "modified data: " << result1 << '\n';
+
+    // now, just convert to JSON 
+
+    JSONCPP_STRING err;
+    Json::Value response;
+
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    if (! reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
+    {
+        throw std::runtime_error("Problem parsing tiingo response: "s + err);
+    }
+    return response;
+}		// -----  end of method Tiingo::GetTopOfBookAndLastClose  ----- 
+
 Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
