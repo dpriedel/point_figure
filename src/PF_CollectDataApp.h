@@ -116,6 +116,7 @@ protected:
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
     std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim) const;
 
+    void    PrimeChartsForStreaming();
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 

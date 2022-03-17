@@ -46,6 +46,7 @@
 #include <string_view>
 #include <thread>
 
+#include <range/v3/algorithm/copy.hpp>
 #include <range/v3/algorithm/equal.hpp>
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
@@ -397,62 +398,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         }
         // let's stream !
         
+        PrimeChartsForStreaming();
         CollectStreamingData();
     }
 
-//	// open a stream on the specified input source.
-//	
-//	std::istream* theInput{nullptr};
-//	std::ifstream iFile;
-//
-//	if (source_ == Source::stdin)
-//    {
-//		theInput = &std::cin;
-//    }
-//	else if (source_ == Source::file)
-//	{
-//		iFile.open(inputpath_.string(), std::ios_base::in | std::ios_base::binary);
-//        BOOST_ASSERT_MSG(iFile.is_open(), fmt::format("Unable to open input file: {}", inputpath_).c_str());
-//		theInput = &iFile;
-//	}
-//	else
-//    {
-//        throw std::invalid_argument("Unspecified input.");
-//    }
-//
-//	std::istream_iterator<aLine> itor{*theInput};
-//	std::istream_iterator<aLine> itor_end;
-//
-//	std::ostream* theOutput{nullptr};
-//	std::ofstream oFile;
-//
-//	if (destination_ == Destination::stdout)
-//    {
-//		theOutput = &std::cout;
-//    }
-//	else
-//	{
-//		oFile.open(outputpath_.string(), std::ios::out | std::ios::binary);
-//        BOOST_ASSERT_MSG(oFile.is_open(), fmt::format("Unable to open output file: {}", inputpath_).c_str());
-//		theOutput = &oFile;
-//	}
-//
-////	std::ostream_iterator<aLine> otor{*theOutput, "\n"};
-////
-//////	std::copy(itor, itor_end, otor);
-////
-////	// sampel code using a lambda
-////	std:transform(itor, itor_end, otor,
-////				[] (const aLine& data) {DprDecimal::DDecDouble aa(data.lineData); aLine bb; bb.lineData = aa.ToStr(); return bb; });
-//
-//    PF_Chart chart{symbol_, box_size_, reversalboxes_};
-//
-////    chart.LoadData<DprDecimal::DDecQuad>(theInput);
-//    std::cout << "chart info: " << chart.GetNumberOfColumns() << '\n';
-//
-//    chart.ConstructChartAndWriteToFile(outputpath_);
-//	//	play with decimal support in c++11
-//	
 	return {} ;
 }		// -----  end of method PF_CollectDataApp::Do_Run  -----
 
@@ -556,6 +505,48 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::strin
     auto box_size = (box_size_ * atr).Rescale(box_size_.GetExponent() - 1);
     return box_size;
 }		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
+
+void PF_CollectDataApp::PrimeChartsForStreaming ()
+{
+    // for streaming, we want to retrieve the previous day's close and, if the markets 
+    // are already open, the day's open.  We do this to capture 'gaps' and to set 
+    // the direction at little sooner.
+
+    auto today = date::year_month_day{floor<date::days>(std::chrono::system_clock::now())};
+    date::year which_year = today.year();
+    auto holidays = MakeHolidayList(which_year);
+    ranges::copy(MakeHolidayList(--which_year), std::back_inserter(holidays));
+    
+    auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    auto market_status = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time());
+
+    Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
+
+    if (market_status == US_MarketStatus::e_NotOpenYet)
+    {
+        for (const auto& symbol : symbol_list_)
+        {
+            auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, &holidays);
+            charts_[symbol].AddValue(DprDecimal::DDecQuad{history[price_fld_name_].asString()}, current_local_time.get_sys_time());
+        }
+    }
+    else if (market_status == US_MarketStatus::e_OpenForTrading)
+    {
+        auto history = history_getter.GetTopOfBookAndLastClose();
+        for (const auto& e : history)
+        {
+            const std::string ticker = e["ticker"].asString();
+            const std::string tstmp = e["timestamp"].asString();
+            const auto time_stamp = StringToTimePoint("%FT%T%z", tstmp);
+
+            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, time_stamp);
+            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["open"].asString()}, time_stamp);
+            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["last"].asString()}, time_stamp);
+        }
+    }
+
+    return ;
+}		// -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  ----- 
 
 void PF_CollectDataApp::CollectStreamingData ()
 {
