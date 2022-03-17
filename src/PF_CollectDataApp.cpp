@@ -69,6 +69,7 @@ using namespace py::literals;
 #include "utilities.h"
 
 using namespace std::string_literals;
+using namespace date::literals;
 using namespace std::literals::chrono_literals;
 
 bool PF_CollectDataApp::had_signal_ = false;
@@ -537,11 +538,13 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
         {
             const std::string ticker = e["ticker"].asString();
             const std::string tstmp = e["timestamp"].asString();
-            const auto time_stamp = StringToTimePoint("%FT%T%z", tstmp);
+            const auto quote_time_stamp = StringToTimePoint("%FT%T%z", tstmp);
+            const auto close_time_stamp = GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60};
+            const auto open_time_stamp = GetUS_MarketOpenTime(today).get_sys_time();
 
-            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, time_stamp);
-            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["open"].asString()}, time_stamp);
-            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["last"].asString()}, time_stamp);
+            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
+            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
+            charts_[ticker].AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
         }
     }
 
