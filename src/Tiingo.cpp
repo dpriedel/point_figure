@@ -110,50 +110,6 @@ void Tiingo::Connect()
     BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
 
 }
-void Tiingo::StreamDataTest(bool* time_to_stop)
-{
-
-    // put this here for now.
-    // need to manually construct to get expected formate when serialized 
-
-    Json::Value connection_request;
-    connection_request["eventName"] = "subscribe";
-    connection_request["authorization"] = api_key_;
-    connection_request["eventData"]["thresholdLevel"] = 5;
-    Json::Value tickers(Json::arrayValue);
-    for (const auto& symbol : symbol_list_)
-    {
-        tickers.append(symbol);
-    }
-    
-    connection_request["eventData"]["tickers"] = tickers;
-
-    Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";        // compact printing and string formatting 
-    const std::string connection_request_str = Json::writeString(builder, connection_request);
-//    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
-
-    // Send the message
-    ws_.write(net::buffer(connection_request_str));
-
-    // This buffer will hold the incoming message
-    beast::flat_buffer buffer;
-
-    while(ws_.is_open())
-    {
-        buffer.clear();
-        ws_.read(buffer);
-        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-        // The make_printable() function helps print a ConstBufferSequence
-//        std::cout << buffer_content << std::endl;
-        ExtractData(buffer_content);
-        if (*time_to_stop == true)
-        {
-            StopStreaming();
-            break;
-        }
-    }
-}		// -----  end of method Tiingo::StreamData  ----- 
 
 void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
