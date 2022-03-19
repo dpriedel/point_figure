@@ -388,8 +388,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
             DprDecimal::DDecQuad box_size;
             if (use_ATR_)
             {
-                box_size = ComputeBoxSizeUsingATR(symbol) * box_size_;
-                box_size = box_size.Rescale(box_size.GetExponent() -1);
+                box_size = ComputeBoxSizeUsingATR(symbol);
             }
             else
             {
@@ -405,10 +404,6 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 	return {} ;
 }		// -----  end of method PF_CollectDataApp::Do_Run  -----
-
-// function to find out which column number is the specifed column.
-
-
 
 PF_Chart PF_CollectDataApp::LoadSymbolPriceDataCSV (const std::string& symbol, const fs::path& symbol_file_name) const
 {
@@ -497,11 +492,11 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::strin
     // we look backwards here. so add an extra year in case we are near New Years.
     
     auto holidays = MakeHolidayList(today.year());
-    ranges::for_each(MakeHolidayList(--(today.year())), [&holidays](const auto& e) { holidays.push_back(e); });
+    ranges::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
 
     const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, &holidays);
 
-    auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_No);
+    auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_Yes);
 
     auto box_size = (box_size_ * atr).Rescale(box_size_.GetExponent() - 1);
     return box_size;
