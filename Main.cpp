@@ -49,11 +49,6 @@ int main(int argc, char** argv)
 
 	std::ios_base::sync_with_stdio(false);
 
-    // getting disconnected from DB can terminate the program
-    // so, let's avoid it.  (apparently, this is an OK strategy)
-    //
-    signal(SIGPIPE, SIG_IGN);
-
 	int result = 0;
 
     py::scoped_interpreter guard{false}; // start the interpreter and keep it alive
