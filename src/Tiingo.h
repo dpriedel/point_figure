@@ -64,6 +64,8 @@ public:
         DprDecimal::DDecQuad last_price_;         // Last Price
         int32_t last_size_;                         // Last Size
     };
+    
+    using StreamedData = std::vector<PF_Data>;
 
     // ====================  LIFECYCLE     ======================================= 
     Tiingo ();                             // constructor 
@@ -77,16 +79,11 @@ public:
 
     // ====================  ACCESSORS     ======================================= 
 
-    [[nodiscard]] std::vector<PF_Data>::const_iterator begin() const { return pf_data_.begin(); }
-    [[nodiscard]] std::vector<PF_Data>::const_iterator end() const { return pf_data_.end(); }
-
-    [[nodiscard]] bool empty() const { return pf_data_.empty(); }
-
     Json::Value GetTopOfBookAndLastClose();
     Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc);
     Json::Value GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays=nullptr);
 
-    void ExtractData(const std::string& buffer);
+    StreamedData ExtractData(const std::string& buffer);
 
     // ====================  MUTATORS      ======================================= 
 
@@ -95,8 +92,6 @@ public:
     void StreamDataTest(bool* time_to_stop);
     void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
     void StopStreaming();
-
-    void ClearExtractedData() { pf_data_.clear(); }
 
     // ====================  OPERATORS     ======================================= 
 
@@ -113,7 +108,6 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
 
-    std::vector<PF_Data> pf_data_;
     std::vector<std::string> symbol_list_;
     std::string api_key_;
     std::string host_;

@@ -221,7 +221,7 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
     }
 }		// -----  end of method Tiingo::StreamData  ----- 
 
-void Tiingo::ExtractData (const std::string& buffer)
+Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
 {
     const std::regex numeric_trade_price{R"***(("T",(?:.*?,){8}) ([0-9]*\.[0-9]*),)***"}; 
     const std::regex quoted_trade_price{R"***("T",(?:.*?,){8} "([0-9]*\.[0-9]*)",)***"}; 
@@ -242,6 +242,8 @@ void Tiingo::ExtractData (const std::string& buffer)
     }
 //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
+    StreamedData pf_data;
+
     auto message_type = response["messageType"];
     if (message_type == "A")
     {
@@ -249,7 +251,7 @@ void Tiingo::ExtractData (const std::string& buffer)
 
         if (data[0] != "T")
         {
-            return;
+            return pf_data;
         }
         // extract our data
 
@@ -269,7 +271,7 @@ void Tiingo::ExtractData (const std::string& buffer)
             new_value.last_price_ = DprDecimal::DDecQuad{m[1].str()};
             new_value.last_size_ = data[10].asInt();
 
-            pf_data_.push_back(std::move(new_value));        
+            pf_data.push_back(std::move(new_value));        
         }
 
 //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ << '\n';
@@ -278,19 +280,20 @@ void Tiingo::ExtractData (const std::string& buffer)
     {
         subscription_id_ = response["data"]["subscriptionId"].asInt();
 //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-        return;
+        return pf_data;
     }
     else if (message_type == "H")
     {
         // heartbeat , just return
 
-        return;
+        return pf_data;
     }
     else
     {
         throw std::runtime_error("unexpected message type: "s + message_type.asString());
     }
 
+    return pf_data;
 }		// -----  end of method Tiingo::ExtractData  ----- 
 
 void Tiingo::StopStreaming ()
