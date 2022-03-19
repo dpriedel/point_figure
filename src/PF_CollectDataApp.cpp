@@ -51,6 +51,8 @@
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/drop.hpp>
+#include <range/v3/action/sort.hpp>
+#include <range/v3/action/unique.hpp>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
@@ -542,14 +544,12 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
             charts_[ticker].AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
         }
     }
-
-    return ;
 }		// -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  ----- 
 
 void PF_CollectDataApp::CollectStreamingData ()
 {
     // we're going to use 2 threads here -- a producer thread which collects streamed 
-    // data from Tiingo nad a consummer thread which will take that data, decode it 
+    // data from Tiingo and a consummer thread which will take that data, decode it 
     // and load it into appropriate charts. 
     // Processing continues until interrupted. 
 
@@ -603,18 +603,23 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
                 new_data = streamed_data->front();
                 streamed_data->pop();
             }
-            quotes->ExtractData(new_data);
+            const auto pf_data = quotes->ExtractData(new_data);
             std::vector<std::string> need_to_update_graph;
-            for (const auto& new_value: *quotes)
+            for (const auto& new_value: pf_data)
             {
-                auto chart_changed = charts_[new_value.ticker_].AddValue(new_value.last_price_, PF_Column::tpt{std::chrono::nanoseconds{new_value.time_stamp_seconds_}});
+                auto chart_changed = charts_[new_value.ticker_].AddValue(new_value.last_price_,
+                        PF_Column::tpt{std::chrono::nanoseconds{new_value.time_stamp_seconds_}});
                 if (chart_changed != PF_Column::Status::e_ignored)
                 {
                     need_to_update_graph.push_back(new_value.ticker_);
                 }
-
-                quotes->ClearExtractedData();
             }
+
+            // we could have multiple chart updates for any given symbol but we only
+            // want to update files and graphic once per symbol.
+
+            need_to_update_graph |= ranges::actions::sort | ranges::actions::unique;
+
             for (const auto& ticker : need_to_update_graph)
             {
                 py::gil_scoped_acquire gil{};
@@ -623,7 +628,8 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
 
                 fs::path chart_file_path = output_chart_directory_ / (charts_[ticker].ChartName("json"));
                 std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
-                BOOST_ASSERT_MSG(updated_file.is_open(), fmt::format("Unable to open file: {} to write updated data.", chart_file_path).c_str());
+                BOOST_ASSERT_MSG(updated_file.is_open(), fmt::format("Unable to open file: {} to write updated data.",
+                            chart_file_path).c_str());
                 charts_[ticker].ConvertChartToJsonAndWriteToStream(updated_file);
                 updated_file.close();
             }
