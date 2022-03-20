@@ -184,7 +184,7 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction dir
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Column& column)
 {
-    os << "boxes: " << column.boxes_ << " bottom: " << column.GetBottom() << " top: " << column.GetTop() << " direction: " << column.direction_
+    os << " bottom: " << column.GetBottom() << " top: " << column.GetTop() << " direction: " << column.direction_
         << " begin date: " << TimePointToYMDString(column.GetTimeSpan().first) << (column.had_reversal_ ? " one-step-back reversal" : "");
     return os;
 }
