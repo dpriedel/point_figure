@@ -339,7 +339,19 @@ Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 //        return FirstBoxPerCent(start_at);
 //    }
     boxes_.clear();
-    auto new_box = RoundDownToNearestBox(start_at);
+
+    DprDecimal::DDecQuad price_as_int;
+    if (box_type_ == BoxType::e_integral)
+    {
+        price_as_int = start_at.ToIntTruncated();
+    }
+    else
+    {
+        price_as_int = start_at;
+    }
+
+//    auto new_box = RoundDownToNearestBox(start_at);
+    Box new_box{price_as_int};
     boxes_.push_back(new_box);
     return new_box;
 
@@ -350,7 +362,8 @@ Boxes::Box Boxes::FirstBoxPerCent (const DprDecimal::DDecQuad& start_at)
     BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
     boxes_.clear();
-    auto new_box = RoundDownToNearestBox(start_at);
+//    auto new_box = RoundDownToNearestBox(start_at);
+    Box new_box{start_at};
     boxes_.push_back(new_box);
     return new_box;
 
