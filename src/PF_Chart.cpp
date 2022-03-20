@@ -253,10 +253,10 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         // now continue on processing the value.
         
         status = current_column_.AddValue(new_value, the_time).first;
-        current_direction_ = current_column_.GetDirection();
 
         last_change_date_ = the_time;
     }
+    current_direction_ = current_column_.GetDirection();
     return status;
 }		// -----  end of method PF_Chart::AddValue  ----- 
 
@@ -289,6 +289,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
     {
         y_min_ = current_column_.GetBottom();
     }
+    current_direction_ = current_column_.GetDirection();
 }
 
 std::string PF_Chart::ChartName (std::string_view suffix) const
