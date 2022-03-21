@@ -525,7 +525,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
         for (const auto& symbol : symbol_list_)
         {
             auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, &holidays);
-            charts_[symbol].AddValue(DprDecimal::DDecQuad{history[price_fld_name_].asString()}, current_local_time.get_sys_time());
+            charts_[symbol].AddValue(DprDecimal::DDecQuad{history[0][price_fld_name_].asString()}, current_local_time.get_sys_time());
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
