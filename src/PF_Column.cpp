@@ -169,8 +169,9 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
     }
     // look for a reversal 
 
-    // to extend down a box, the new value must be <= the box 
-    // value so let's make sure it is.
+    // if the new value is in the 'middle' of a box ( > than lower bound)
+    // then we need to use the next box up as our test value since we need 
+    // to be at least a whole box down.
 
     if (new_value > possible_box)
     {
@@ -235,7 +236,7 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new
 
     // look for a reversal 
 
-    // if we might b moving up, then reset this value 
+    // if we might be moving up, then reset this value 
 
     possible_box = boxes_->FindBox(new_value);
     Boxes::Box reversal_box = bottom_;
