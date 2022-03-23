@@ -370,7 +370,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
         if (market_status == US_MarketStatus::e_NotOpenYet)
         {
-            std::cout << "Market not open for trading YET so we'll wait.\n";
+            std::cout << "Market not open for trading YET so we'll wait." << std::endl;
         }
 
         api_key_ = LoadDataFileForUse(tiingo_api_key_);
