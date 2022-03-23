@@ -107,7 +107,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     // If we're here, we have direction. We can either continue in 
     // that direction, ignore the value or reverse our direction 
     // in which case, we start a new column (unless this is 
-    // a 1-box reversal and we can revers in place)
+    // a 1-box reversal and we can reverse in place)
 
     if (direction_ == Direction::e_up)
     {
@@ -190,22 +190,16 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
 
         if (reversal_boxes_ == 1)
         {
-            if (bottom_ < top_)
+            if (bottom_ == top_)
             {
-                // there are at least 2 boxes in current column so 
-                // can't do in-column reversal 
+                // OK, down we go with in-column reversal...
 
+                bottom_ = possible_new_column_top;      // from loop above
+                had_reversal_ = true;
+                direction_ = Direction::e_down;
                 time_span_.second = the_time;
-                return {Status::e_reversal, MakeReversalColumn(Direction::e_down, boxes_->FindPrevBox(top_), the_time)};
+                return {Status::e_accepted, std::nullopt};
             }
-
-            // OK, down we go with in-column reversal...
-
-            bottom_ = possible_new_column_top;      // from loop above
-            had_reversal_ = true;
-            direction_ = Direction::e_down;
-            time_span_.second = the_time;
-            return {Status::e_accepted, std::nullopt};
         }
 
         time_span_.second = the_time;
@@ -213,7 +207,6 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
     }
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Chart::TryToExtendUp  ----- 
-
 
 PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
@@ -248,22 +241,16 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new
 
         if (reversal_boxes_ == 1)
         {
-            if (bottom_ < top_)
+            if (bottom_ == top_)
             {
-                // there are at least 2 boxes in current column so 
-                // can't do in-column reversal 
+                // OK, up we go with in-column reversal...
 
+                top_ = possible_new_column_bottom;      // from loop above
+                had_reversal_ = true;
+                direction_ = Direction::e_up;
                 time_span_.second = the_time;
-                return {Status::e_reversal, MakeReversalColumn(Direction::e_up, boxes_->FindNextBox(bottom_), the_time)};
+                return {Status::e_accepted, std::nullopt};
             }
-
-            // OK, up we go with in-column reversal...
-
-            top_ = possible_new_column_bottom;      // from loop above
-            had_reversal_ = true;
-            direction_ = Direction::e_up;
-            time_span_.second = the_time;
-            return {Status::e_accepted, std::nullopt};
         }
 
         time_span_.second = the_time;
