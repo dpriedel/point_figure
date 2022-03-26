@@ -171,4 +171,30 @@ inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
     return os;
 }
 
+// custom fmtlib formatter for BoxType
+
+template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
+{
+    // parse is inherited from formatter<string_view>.
+    template <typename FormatContext>
+    auto format(const Boxes::BoxType& box_type, FormatContext& ctx)
+    {
+        std::string s = box_type == Boxes::BoxType::e_integral ? " integral " : " fractional ";
+        return formatter<std::string>::format(s, ctx);
+    }
+};
+
+// custom fmtlib formatter for BoxScale
+
+template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
+{
+    // parse is inherited from formatter<string_view>.
+    template <typename FormatContext>
+    auto format(const Boxes::BoxScale& box_scale, FormatContext& ctx)
+    {
+        std::string s = box_scale == Boxes::BoxScale::e_linear ? " linear " : " percent ";
+        return formatter<std::string>::format(s, ctx);
+    }
+};
+
 #endif   // ----- #ifndef BOXES_INC  ----- 
