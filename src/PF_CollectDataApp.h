@@ -36,7 +36,6 @@
 
 
 #include <filesystem>
-//#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -91,7 +90,7 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-//    const PF_Chart& GetChart(const std::string& symbol) const { return charts_.at(symbol); }
+    const PF_Data& GetCharts(const std::string& symbol) const { return charts_; }
 
     // ====================  MUTATORS      =======================================
 
@@ -121,7 +120,7 @@ protected:
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
-    DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol, DprDecimal::DDecQuad& box_size) const;
+    DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol, const DprDecimal::DDecQuad& box_size) const;
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -142,49 +141,46 @@ private:
 	const std::vector<std::string> tokens_;
     std::string logging_level_{"information"};
 
-    fs::path new_data_input_directory_;
     fs::path input_chart_directory_;
-    fs::path output_chart_directory_;
     fs::path log_file_path_name_;
+    fs::path new_data_input_directory_;
+    fs::path output_chart_directory_;
     fs::path tiingo_api_key_;
 
-//    std::string symbol_;
-    std::vector<std::string> symbol_list_;
     std::string dbname_;
     std::string host_name_;
     std::string host_port_;
 
     std::shared_ptr<spdlog::logger> logger_;
 
+    enum class Destination { e_unknown, e_DB, e_file };
+    enum class Interval { e_unknown, e_eod, e_sec1, e_sec5, e_min1, e_min5, e_live };
+    enum class Mode { e_unknown, e_load, e_update };
     enum class Source { e_unknown, e_file, e_streaming };
     enum class SourceFormat { e_unknown, e_csv, e_json };
-    enum class Destination { e_unknown, e_DB, e_file };
-    enum class Mode { e_unknown, e_load, e_update };
-    enum class Interval { e_unknown, e_eod, e_sec1, e_sec5, e_min1, e_min5, e_live };
 
-    std::string source_i;
-    std::string source_format_i;
-    std::string destination_i;
-    std::string mode_i;
-    std::string interval_i;
-    std::vector<std::string> scale_i_list_;
-    std::string use_adjusted_i;
     std::string api_key_;
+    std::string destination_i;
+    std::string interval_i;
+    std::string mode_i;
+    std::string source_format_i;
+    std::string source_i;
+    std::string use_adjusted_i;
+    std::vector<std::string> scale_i_list_;
 
     Source source_ = Source::e_unknown;
     SourceFormat source_format_ = SourceFormat::e_csv;
     Destination destination_ = Destination::e_unknown;
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
-    std::vector<Boxes::BoxScale> scale_list_;
-//    Boxes::BoxType fractional_boxes_ = Boxes::BoxType::e_integral;
-    std::vector<Boxes::BoxType> fractional_boxes_list_;
-    std::string price_fld_name_;
 
-//    DprDecimal::DDecQuad box_size_ = -1;
+    std::vector<std::string> symbol_list_;
+    std::vector<Boxes::BoxScale> scale_list_;
+    std::vector<Boxes::BoxType> fractional_boxes_list_;
     std::vector<DprDecimal::DDecQuad> box_size_list_;
-//    int32_t reversal_boxes_ = 0;
     std::vector<int32_t> reversal_boxes_list_;
+
+    std::string price_fld_name_;
 
     int32_t number_of_days_history_for_ATR_ = 0;
     bool input_is_path_ = false;

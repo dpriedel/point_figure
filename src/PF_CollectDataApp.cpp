@@ -38,7 +38,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <future>
-#include <initializer_list>
 #include <iostream>
 #include <iterator>
 #include <mutex>
@@ -264,7 +263,6 @@ bool PF_CollectDataApp::CheckArgs ()
     }
     ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" | scale == "percent", fmt::format("Chart scale must be 'linear' or 'percent': {}", scale).c_str()); });
     ranges::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
-//    scale_ = scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent;
 
     ranges::for_each(scale_list_, [this] (const auto& scale) { this->fractional_boxes_list_.emplace_back(scale == Boxes::BoxScale::e_percent ? Boxes::BoxType::e_fractional : Boxes::BoxType::e_integral); });
     fractional_boxes_list_ |= ranges::actions::sort | ranges::actions::unique;
@@ -342,6 +340,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
                 auto symbol = std::get<0>(val);
                 fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
                 BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {} for update.", symbol).c_str());
+                // TODO: add json code
                 auto chart = LoadSymbolPriceDataCSV(symbol, symbol_file_name, val);
                 charts_.emplace_back(std::make_pair(symbol, chart));
             }
@@ -363,6 +362,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
                 }
                 fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
                 BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
+                // TODO: add json code
                 AddPriceDataToExistingChartCSV(new_chart, update_file_name);
                 charts_.emplace_back(std::make_pair(symbol, new_chart));
             }
@@ -390,7 +390,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
             api_key_.resize(api_key_.size() - 1);
         }
 
-        // this should be a program param... 
+        // TODO: this should be a program param... 
 
         number_of_days_history_for_ATR_ = 20;
 
@@ -404,20 +404,17 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
         for (PF_Chart::PF_ChartParams val : params)
         {
-            fmt::print("{}\n", val); 
             auto symbol = std::get<0>(val);
             if (use_ATR_)
             {
                 auto box_size = ComputeBoxSizeUsingATR(symbol, std::get<1>(val));
                 std::get<1>(val) = box_size;
             }
-            fmt::print("{}\n", val); 
             PF_Chart new_chart{val};
             charts_.emplace_back(std::make_pair(symbol, new_chart));
         }
         // let's stream !
         
-//    ranges::for_each(params, [](const auto& x) {fmt::print("{}\n", x); });
         PrimeChartsForStreaming();
         CollectStreamingData();
     }
@@ -499,7 +496,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
 }		// -----  end of method PF_CollectDataApp::FindColumnIndex  ----- 
 
 
-DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::string& symbol, DprDecimal::DDecQuad& box_size) const
+DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::string& symbol, const DprDecimal::DDecQuad& box_size) const
 {
     Tiingo history_getter{host_name_, host_port_, api_key_};
 
@@ -557,20 +554,15 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
             const auto close_time_stamp = GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60};
             const auto open_time_stamp = GetUS_MarketOpenTime(today).get_sys_time();
 
-            ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),  [&] (auto& symbol_and_chart)
-            {
-                symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
-                symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
-                symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
-            });
+            ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+                [&] (auto& symbol_and_chart)
+                {
+                    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
+                    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
+                    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
+                });
         }
     }
-//    std::cout << "finished priming\n";
-//    for (const auto& [symbol, chart] : charts_)
-//    {
-//        std::cout << symbol << '\n';
-//        std::cout << chart << std::endl;
-//    }
 }		// -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  ----- 
 
 void PF_CollectDataApp::CollectStreamingData ()
@@ -637,21 +629,20 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
             std::vector<PF_Chart*> need_to_update_graph;
 
             // since we can have multiple charts for each symbol, we need to pass the new value
-            // to all appropriate charts so we'll find all the charts for each symbol give each a 
+            // to all appropriate charts so we find all the charts for each symbol and give each a 
             // chance at the new data.
 
             for (const auto& new_value: pf_data)
             {
-                ranges::for_each(charts_ | ranges::views::filter([&new_value] (const auto& symbol_and_chart) { return symbol_and_chart.first == new_value.ticker_; }),  [&] (auto& symbol_and_chart)
-                {
-                    auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::tpt{std::chrono::nanoseconds{new_value.time_stamp_seconds_}});
-//                    std::cout << "result: " << chart_changed << " for value: " << new_value.last_price_ << std::endl;
-                    if (chart_changed != PF_Column::Status::e_ignored)
+                ranges::for_each(charts_ | ranges::views::filter([&new_value] (const auto& symbol_and_chart) { return symbol_and_chart.first == new_value.ticker_; }),
+                    [&] (auto& symbol_and_chart)
                     {
-                        need_to_update_graph.push_back(&symbol_and_chart.second);
-//                        std::cout << "need to update chart: " << symbol_and_chart.first << std::endl;
-                    }
-                });
+                        auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::tpt{std::chrono::nanoseconds{new_value.time_stamp_seconds_}});
+                        if (chart_changed != PF_Column::Status::e_ignored)
+                        {
+                            need_to_update_graph.push_back(&symbol_and_chart.second);
+                        }
+                    });
             }
 
             // we could have multiple chart updates for any given symbol but we only
@@ -659,7 +650,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
 
             need_to_update_graph |= ranges::actions::sort | ranges::actions::unique;
 
-            for (PF_Chart* chart : need_to_update_graph)
+            for (const PF_Chart* chart : need_to_update_graph)
             {
                 py::gil_scoped_acquire gil{};
                 fs::path graph_file_path = output_chart_directory_ / (chart->ChartName("svg"));
