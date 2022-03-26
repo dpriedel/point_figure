@@ -300,13 +300,13 @@ inline std::istream& operator>>(std::istream& is, DDecQuad& item)
 
 };
 
-// custom fmtlib formatter for date year_month_day
+// custom fmtlib formatter for DDecQuad
 
 template <> struct fmt::formatter<DprDecimal::DDecQuad>: formatter<std::string>
 {
     // parse is inherited from formatter<string_view>.
     template <typename FormatContext>
-    auto format(DprDecimal::DDecQuad number, FormatContext& ctx)
+    auto format(const DprDecimal::DDecQuad& number, FormatContext& ctx)
     {
         std::string s = number.ToStr();
         return formatter<std::string>::format(s, ctx);
