@@ -36,12 +36,13 @@
 
 
 #include <filesystem>
-#include <map>
+//#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
 #include <string>
 #include <tuple>
+#include <utility>
 
 //namespace fs = std::filesystem;
 
@@ -66,7 +67,7 @@ class PF_CollectDataApp
 {
 public:
 
-    using PF_Data = std::map<std::string, PF_Chart>;
+    using PF_Data = std::vector<std::pair<std::string, PF_Chart>>;
 
     // ====================  LIFECYCLE     =======================================
     PF_CollectDataApp (int argc, char* argv[]);                             // constructor
@@ -90,7 +91,7 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-    const PF_Chart& GetChart(const std::string& symbol) const { return charts_.at(symbol); }
+//    const PF_Chart& GetChart(const std::string& symbol) const { return charts_.at(symbol); }
 
     // ====================  MUTATORS      =======================================
 
@@ -111,8 +112,8 @@ protected:
 	bool	CheckArgs ();
 	void	Do_Quit ();
 
-    PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name) const;
-    PF_Chart    LoadAndParsePriceDataJSON(const std::string& symbol, const fs::path& symbol_file_name) const;
+    PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name, const PF_Chart::PF_ChartParams& args) const;
+    PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name) const;
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
     std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim) const;
 
@@ -120,7 +121,7 @@ protected:
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
-    DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol) const;
+    DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol, DprDecimal::DDecQuad& box_size) const;
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -147,7 +148,7 @@ private:
     fs::path log_file_path_name_;
     fs::path tiingo_api_key_;
 
-    std::string symbol_;
+//    std::string symbol_;
     std::vector<std::string> symbol_list_;
     std::string dbname_;
     std::string host_name_;
@@ -166,7 +167,7 @@ private:
     std::string destination_i;
     std::string mode_i;
     std::string interval_i;
-    std::string scale_i;
+    std::vector<std::string> scale_i_list_;
     std::string use_adjusted_i;
     std::string api_key_;
 
@@ -175,12 +176,16 @@ private:
     Destination destination_ = Destination::e_unknown;
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
-    Boxes::BoxScale scale_ = Boxes::BoxScale::e_linear;
-    Boxes::BoxType fractional_boxes_ = Boxes::BoxType::e_integral;
+    std::vector<Boxes::BoxScale> scale_list_;
+//    Boxes::BoxType fractional_boxes_ = Boxes::BoxType::e_integral;
+    std::vector<Boxes::BoxType> fractional_boxes_list_;
     std::string price_fld_name_;
 
-    DprDecimal::DDecQuad box_size_ = -1;
-    int32_t reversal_boxes_ = 0;
+//    DprDecimal::DDecQuad box_size_ = -1;
+    std::vector<DprDecimal::DDecQuad> box_size_list_;
+//    int32_t reversal_boxes_ = 0;
+    std::vector<int32_t> reversal_boxes_list_;
+
     int32_t number_of_days_history_for_ATR_ = 0;
     bool input_is_path_ = false;
     bool output_is_path_ = false;
