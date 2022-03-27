@@ -91,8 +91,10 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
-    [[nodiscard]] int32_t GetReversalboxes() const { return reversal_boxes_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return boxes_.GetBoxsize(); }
+    [[nodiscard]] int32_t GetReversalboxes() const { return current_column_.GetReversalboxes(); }
+    [[nodiscard]] Boxes::BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
+    [[nodiscard]] Boxes::BoxType GetBoxType() const { return boxes_.GetBoxType(); }
 
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
@@ -113,7 +115,7 @@ public:
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
-    [[nodiscard]] bool IsPercent() const { return box_scale_ == Boxes::BoxScale::e_percent; }
+    [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
 
     // for testing
 
@@ -156,21 +158,21 @@ private:
     PF_Column::tpt last_change_date_;		//	date of last change to data
     PF_Column::tpt last_checked_date_;	    //	last time checked to see if update needed
 
-    DprDecimal::DDecQuad box_size_ = -1;
-    int32_t reversal_boxes_ = -1;
+//    DprDecimal::DDecQuad box_size_ = -1;
+//    int32_t reversal_boxes_ = -1;
     DprDecimal::DDecQuad y_min_ = 100000;         // just a number
     DprDecimal::DDecQuad y_max_ = -1;
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
-    Boxes::BoxType box_type_ = Boxes::BoxType::e_integral;
-    Boxes::BoxScale box_scale_ = Boxes::BoxScale::e_linear;
+//    Boxes::BoxType box_type_ = Boxes::BoxType::e_integral;
+//    Boxes::BoxScale box_scale_ = Boxes::BoxScale::e_linear;
 
 }; // -----  end of class PF_Chart  -----
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
-    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.box_size_ << " reversal boxes: " << chart.reversal_boxes_<< 
-        " scale: " << (chart.box_scale_ == Boxes::BoxScale::e_linear ? " linear" : " percent") << '\n';
+    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.GetBoxsize() << " reversal boxes: " << chart.GetReversalboxes()<< 
+        " scale: " << (chart.GetBoxScale() == Boxes::BoxScale::e_linear ? " linear" : " percent") << '\n';
     for (const auto& col : chart.columns_)
     {
         os << '\t' << col << '\n';

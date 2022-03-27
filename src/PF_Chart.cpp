@@ -63,8 +63,8 @@ using namespace py::literals;
 PF_Chart::PF_Chart (const PF_Chart& rhs)
     : boxes_{rhs.boxes_}, columns_{rhs.columns_}, current_column_{rhs.current_column_}, symbol_{rhs.symbol_},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_}, last_checked_date_{rhs.last_checked_date_},
-    box_size_{rhs.box_size_}, reversal_boxes_{rhs.reversal_boxes_}, y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
-    current_direction_{rhs.current_direction_}, box_type_{rhs.box_type_}, box_scale_{rhs.box_scale_}
+    y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
+    current_direction_{rhs.current_direction_} 
 
 {
     // now, the reason for doing this explicitly is to fix the column box pointers.
@@ -82,9 +82,9 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
 PF_Chart::PF_Chart (PF_Chart&& rhs)
     : boxes_{std::move(rhs.boxes_)}, columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
     symbol_{rhs.symbol_}, first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
-    last_checked_date_{rhs.last_checked_date_}, box_size_{std::move(rhs.box_size_)},
-    reversal_boxes_{std::move(rhs.reversal_boxes_)}, y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
-    current_direction_{rhs.current_direction_}, box_type_{rhs.box_type_}, box_scale_{rhs.box_scale_}
+    last_checked_date_{rhs.last_checked_date_}, 
+    y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
+    current_direction_{rhs.current_direction_} 
 
 {
     // now, the reason for doing this explicitly is to fix the column box pointers.
@@ -101,9 +101,8 @@ PF_Chart::PF_Chart (PF_Chart&& rhs)
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
         Boxes::BoxType box_type, Boxes::BoxScale box_scale)
-    : boxes_{box_size, box_type, box_scale}, current_column_{&boxes_, reversal_boxes}, symbol_{symbol},
-    box_size_{box_size}, reversal_boxes_{reversal_boxes}, box_type_{box_type},
-    box_scale_{box_scale}
+    : boxes_{box_size, box_type, box_scale}, current_column_{&boxes_, reversal_boxes}, symbol_{symbol}
+    
 
 {
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -129,13 +128,9 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
         first_date_ = rhs.first_date_;
         last_change_date_ = rhs.last_change_date_;
         last_checked_date_ = rhs.last_checked_date_;
-        box_size_ = rhs.box_size_;
-        reversal_boxes_ = rhs.reversal_boxes_;
         y_min_ = rhs.y_min_;
         y_max_ = rhs.y_max_;
         current_direction_ = rhs.current_direction_;
-        box_type_ = rhs.box_type_;
-        box_scale_ = rhs.box_scale_;
 
         // now, the reason for doing this explicitly is to fix the column box pointers.
 
@@ -156,13 +151,9 @@ PF_Chart& PF_Chart::operator= (PF_Chart&& rhs)
         first_date_ = rhs.first_date_;
         last_change_date_ = rhs.last_change_date_;
         last_checked_date_ = rhs.last_checked_date_;
-        box_size_ = std::move(rhs.box_size_);
-        reversal_boxes_ = std::move(rhs.reversal_boxes_);
         y_min_ = std::move(rhs.y_min_);
         y_max_ = std::move(rhs.y_max_);
         current_direction_ = rhs.current_direction_;
-        box_type_ = rhs.box_type_;
-        box_scale_ = rhs.box_scale_;
 
         // now, the reason for doing this explicitly is to fix the column box pointers.
 
@@ -184,11 +175,11 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     {
         return false;
     }
-    if (box_size_ != rhs.box_size_)
+    if (GetBoxsize() != rhs.GetBoxsize())
     {
         return false;
     }
-    if (reversal_boxes_ != rhs.reversal_boxes_)
+    if (GetReversalboxes() != rhs.GetReversalboxes())
     {
         return false;
     }
@@ -204,12 +195,12 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     {
         return false;
     }
-    if (box_type_ != rhs.box_type_)
+    if (GetBoxType() != rhs.GetBoxType())
     {
         return false;
     }
 
-    if (box_scale_ != rhs.box_scale_)
+    if (GetBoxScale() != rhs.GetBoxScale())
     {
         return false;
     }
@@ -295,7 +286,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 std::string PF_Chart::ChartName (std::string_view suffix) const
 {
     std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, GetBoxsize(), (IsPercent() ? "%" : ""),
-            GetReversalboxes(), (box_scale_ == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
+            GetReversalboxes(), (GetBoxScale() == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
@@ -344,7 +335,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         }
         else
         {
-            x_axis_labels.push_back(TimePointToHMSString(col.GetTimeSpan().first));
+            x_axis_labels.push_back(TimePointToLocalHMSString(col.GetTimeSpan().first));
 //            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
         }
         had_step_back.push_back(col.GetHadReversal());
@@ -372,7 +363,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     }
     else
     {
-        x_axis_labels.push_back(TimePointToHMSString(current_column_.GetTimeSpan().first));
+        x_axis_labels.push_back(TimePointToLocalHMSString(current_column_.GetTimeSpan().first));
 //        x_axis_labels.push_back(current_column_.GetTimeSpan().first.time_since_epoch().count());
     }
 
@@ -381,12 +372,12 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     // some explanation for custom box colors. 
 
     std::string explanation_text;
-    if (reversal_boxes_ == 1)
+    if (GetReversalboxes() == 1)
     {
         explanation_text = "\nYellow: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
     }
-    auto chart_title = fmt::format("\n{}{} X {} for {}  {}.\nMost recent change: {}{}", box_size_.ToDouble(),
-                (IsPercent() ? "%" : ""), reversal_boxes_, symbol_,
+    auto chart_title = fmt::format("\n{}{} X {} for {}  {}.\nMost recent change: {}{}", GetBoxsize().ToDouble(),
+                (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
                 (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_),
                 explanation_text);
 
@@ -445,12 +436,11 @@ Json::Value PF_Chart::ToJSON () const
 {
     Json::Value result;
     result["symbol"] = symbol_;
+    result["boxes"] = boxes_.ToJSON();
     result["first_date"] = first_date_.time_since_epoch().count();
     result["last_change_date"] = last_change_date_.time_since_epoch().count();
     result["last_check_date"] = last_checked_date_.time_since_epoch().count();
 
-    result["box_size"] = box_size_.ToStr();
-    result["reversal_boxes"] = reversal_boxes_;
     result["y_min"] = y_min_.ToStr();
     result["y_max"] = y_max_.ToStr();
 
@@ -470,12 +460,6 @@ Json::Value PF_Chart::ToJSON () const
             break;
     };
 
-    result["box_type"] = box_type_ == Boxes::BoxType::e_integral ? "integral" : "fractional";
-    
-    result["box_scale"] = box_scale_ == Boxes::BoxScale::e_linear ? "linear" : "percent";
-
-    result["boxes"] = boxes_.ToJSON();
-
     Json::Value cols{Json::arrayValue};
     for (const auto& col : columns_)
     {
@@ -492,13 +476,12 @@ Json::Value PF_Chart::ToJSON () const
 void PF_Chart::FromJSON (const Json::Value& new_data)
 {
     symbol_ = new_data["symbol"].asString();
+    boxes_ = new_data["boxes"];
 
     first_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
     last_change_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
     last_checked_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
 
-    box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
-    reversal_boxes_ = new_data["reversal_boxes"].asInt();
     y_min_ = DprDecimal::DDecQuad{new_data["y_min"].asString()};
     y_max_ = DprDecimal::DDecQuad{new_data["y_max"].asString()};
 
@@ -519,36 +502,6 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     {
         throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
-
-    const auto box_type = new_data["box_type"].asString();
-    if (box_type  == "integral")
-    {
-        box_type_ = Boxes::BoxType::e_integral;
-    }
-    else if (box_type == "fractional")
-    {
-        box_type_ = Boxes::BoxType::e_fractional;
-    }
-    else
-    {
-        throw std::invalid_argument{fmt::format("Invalid box_type provided: {}. Must be 'integral' or 'fractional'.", box_type)};
-    }
-
-    const auto box_scale = new_data["box_scale"].asString();
-    if (box_scale == "linear")
-    {
-        box_scale_ = Boxes::BoxScale::e_linear;
-    }
-    else if (box_scale == "percent")
-    {
-        box_scale_ = Boxes::BoxScale::e_percent;
-    }
-    else
-    {
-        throw std::invalid_argument{fmt::format("Invalid box_scale provided: {}. Must be 'linear' or 'percent'.", box_scale)};
-    }
-    
-    boxes_ = new_data["boxes"];
 
     // lastly, we can do our columns 
     // need to hook them up with current boxes_ data
