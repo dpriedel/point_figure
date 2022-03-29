@@ -21,6 +21,8 @@
 #include <string_view>
 
 #include <date/date.h>
+
+#include <fmt/format.h>
 #include <fmt/chrono.h>
 
 #include <range/v3/algorithm/for_each.hpp>
@@ -414,7 +416,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
     // won't be converted to floats and give me a bunch of extra decimal digits.
     // These values are nicely rounded by Tiingo.
 
-    const std::regex source{R"***("(open|prevClose)":([0-9]*\.[0-9]*))***"}; 
+    const std::regex source{R"***("(open|prevClose|last)":([0-9]*\.[0-9]*))***"}; 
     const std::string dest{R"***("$1":"$2")***"};
     auto result1 = std::regex_replace(result, source, dest);
 
