@@ -31,7 +31,6 @@
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
 
-#include <csignal>
 #include <exception>
 #include <iostream>
  
