@@ -39,6 +39,7 @@
 
 //#include <chartdir.h>
 #include <fmt/format.h>
+#include <fmt/chrono.h>
 
 #include <range/v3/algorithm/for_each.hpp>
 
@@ -175,7 +176,7 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     {
         return false;
     }
-    if (GetBoxsize() != rhs.GetBoxsize())
+    if (GetBoxSize() != rhs.GetBoxSize())
     {
         return false;
     }
@@ -285,7 +286,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
 std::string PF_Chart::ChartName (std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, GetBoxsize(), (IsPercent() ? "%" : ""),
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, GetBoxSize(), (IsPercent() ? "%" : ""),
             GetReversalboxes(), (GetBoxScale() == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
@@ -330,7 +331,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         }
         if (date_or_time == Y_AxisFormat::e_show_date)
         {
-            x_axis_labels.push_back(TimePointToYMDString(col.GetTimeSpan().first));
+            x_axis_labels.push_back(fmt::format("{:%F}", col.GetTimeSpan().first));
 //            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
         }
         else
@@ -358,7 +359,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     }
     if (date_or_time == Y_AxisFormat::e_show_date)
     {
-        x_axis_labels.push_back(TimePointToYMDString(current_column_.GetTimeSpan().first));
+        x_axis_labels.push_back(fmt::format("{:%F}", current_column_.GetTimeSpan().first));
 //        x_axis_labels.push_back(current_column_.GetTimeSpan().first.time_since_epoch().count());
     }
     else
@@ -376,9 +377,9 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     {
         explanation_text = "\nYellow: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
     }
-    auto chart_title = fmt::format("\n{}{} X {} for {}  {}.\nMost recent change: {}{}", GetBoxsize().ToDouble(),
+    auto chart_title = fmt::format("\n{}{} X {} for {}  {}.\nMost recent change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}{}", GetBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
-                (IsPercent() ? "percent" : ""), LocalDateTimeAsString(last_change_date_),
+                (IsPercent() ? "percent" : ""), last_change_date_,
                 explanation_text);
 
 //    std::vector<const char*> x_labels;
