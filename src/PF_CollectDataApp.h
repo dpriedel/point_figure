@@ -90,7 +90,7 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-    const PF_Data& GetCharts(const std::string& symbol) const { return charts_; }
+    const PF_Data& GetCharts() const { return charts_; }
 
     // ====================  MUTATORS      =======================================
 

@@ -148,7 +148,7 @@ void PF_CollectDataApp::ConfigureLogging ()
 
 bool PF_CollectDataApp::Startup ()
 {
-    spdlog::info(fmt::format("\n\n*** Begin run {}  ***\n", LocalDateTimeAsString(std::chrono::system_clock::now())));
+    spdlog::info(fmt::format("\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n", std::chrono::system_clock::now()));
     bool result{true};
 	try
 	{	
@@ -219,7 +219,7 @@ bool PF_CollectDataApp::CheckArgs ()
     else
     {
         BOOST_ASSERT_MSG(! tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
-        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't tiingo api key file: {}", tiingo_api_key_).c_str());
+        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
     }
     
     BOOST_ASSERT_MSG(destination_i == "file" | destination_i == "DB", fmt::format("Data destination must be 'file' or 'DB': {}", destination_i).c_str());
@@ -691,7 +691,7 @@ void PF_CollectDataApp::Shutdown ()
             chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
         }
     }
-    spdlog::info(fmt::format("\n\n*** End run {} ***\n", LocalDateTimeAsString(std::chrono::system_clock::now())));
+    spdlog::info(fmt::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
 }       // -----  end of method PF_CollectDataApp::Shutdown  -----
 
 void PF_CollectDataApp::HandleSignal(int signal)
