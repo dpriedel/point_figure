@@ -29,6 +29,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 from matplotlib.ticker import ScalarFormatter
+import numpy as np
 
 # load a non-GUI back end since we only produce graphic files as output
 
@@ -44,11 +45,22 @@ def SetStepbackColor (is_up, stepped_back) :
     return None
 
 def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, UseLogScale, Y_min, Y_max):
-    the_data["Date"] = pd.to_datetime(the_data["Date"])
     chart_data = pd.DataFrame(the_data)
-    chart_data.set_index("Date", inplace=True)
+    chart_data["Date"] = pd.to_datetime(chart_data["Date"])
+    chart_data.set_index("Date", drop=False, inplace=True)
 
-    #print(chart_data)
+    chart_data["row_number"] = np.arange(chart_data.shape[0])
+
+    # print(chart_data.dtypes)
+    # print(chart_data)
+
+    def date2index(a_date):
+        print("date2index: ", a_date)
+        return chart_data.loc[a_date[1]]["row_number"]
+
+    def index2date(row_number):
+        print("index2date: ", row_number)
+        return chart_data.at[chart_data.index[row_number], "date"]
 
     mco = []
     for i in range(len(IsUp)):
@@ -73,6 +85,9 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
         axlist[0].grid(which='both', axis='both', ls='-')
         axlist[0].yaxis.set_major_formatter(ScalarFormatter())
         axlist[0].yaxis.set_minor_formatter(ScalarFormatter()) 
+
+    # secax = axlist[0].secondary_xaxis('top', functions=(date2index, index2date))
+    secax = axlist[0].secondary_xaxis('top')
 
     plt.savefig(ChartFileName)
     for ax in axlist:
