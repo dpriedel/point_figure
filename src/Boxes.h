@@ -38,6 +38,9 @@
 #include <deque>
 #include <json/json.h>
 
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
 #include "DDecQuad.h"
 
 // =====================================================================================
@@ -66,17 +69,18 @@ public:
 
     // ====================  ACCESSORS     ======================================= 
 
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return box_size_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxSize() const { return box_size_; }
     [[nodiscard]] BoxType GetBoxType() const { return box_type_; }
     [[nodiscard]] BoxScale GetBoxScale() const { return box_scale_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetScaleUpFactor() const { return percent_box_factor_up_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetScaleDownFactor() const { return percent_box_factor_down_; }
+    [[nodiscard]] int32_t GetExponent() const { return percent_exponent_; }
 
     [[nodiscard]] const BoxList& GetBoxList() const { return boxes_; }
 
     [[nodiscard]] Json::Value ToJSON() const;
 
     [[nodiscard]] int32_t Distance(const Box& from, const Box& to) const;
-
-	friend std::ostream& operator<<(std::ostream& os, const Boxes& boxes);
 
     // ====================  MUTATORS      ======================================= 
 
@@ -125,57 +129,11 @@ private:
 
 }; // -----  end of class Boxes  ----- 
 
-inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxType box_type)
-{
-    switch(box_type)
-    {
-        case Boxes::BoxType::e_integral:
-            os << "integral";
-            break;
-
-        case Boxes::BoxType::e_fractional:
-            os << "fractional";
-            break;
-    };
-
-	return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxScale box_scale)
-{
-    switch(box_scale)
-    {
-        case Boxes::BoxScale::e_linear:
-            os << "linear";
-            break;
-
-        case Boxes::BoxScale::e_percent:
-            os << "percent";
-            break;
-    };
-
-	return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
-{
-    os << "box size: " << boxes.box_size_ << " factor_up: " << boxes.percent_box_factor_up_ << " factor down: " << boxes.percent_box_factor_down_
-        << " exponent: " << boxes.percent_exponent_ << " box type: " << boxes.box_type_ << " box scale: " << boxes.box_scale_ << '\n';
-    os << "Box values [ ";
-    for (const auto& box : boxes.boxes_)
-    {
-        os << box << ", ";
-    }
-    os << " ]\n";
-
-    return os;
-}
-
 // custom fmtlib formatter for BoxType
 
 template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
 {
-    // parse is inherited from formatter<string_view>.
+    // parse is inherited from formatter<string>.
     template <typename FormatContext>
     auto format(const Boxes::BoxType& box_type, FormatContext& ctx)
     {
@@ -188,7 +146,7 @@ template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
 
 template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
 {
-    // parse is inherited from formatter<string_view>.
+    // parse is inherited from formatter<string>.
     template <typename FormatContext>
     auto format(const Boxes::BoxScale& box_scale, FormatContext& ctx)
     {
@@ -196,5 +154,37 @@ template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
         return formatter<std::string>::format(s, ctx);
     }
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxType box_type)
+{
+    fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_type);
+
+	return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxScale box_scale)
+{
+    fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_scale);
+
+	return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
+{
+    fmt::format_to(std::ostream_iterator<char>{os},
+        "box size: {} factor up: {} factor down: {} exponent: {} box type: {} box scale: {}\n",
+        boxes.GetBoxSize(), boxes.GetScaleDownFactor(), boxes.GetScaleUpFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
+
+    // format ranges doesn't seem to work for custom types. so do it the long way.
+
+    os << "Boxes [";
+    for(auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
+    {
+        os << box << (--i > 0 ? ", " : "");
+    }
+    os << ']';
+
+    return os;
+}
 
 #endif   // ----- #ifndef BOXES_INC  ----- 

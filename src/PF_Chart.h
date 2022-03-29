@@ -91,10 +91,11 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxsize() const { return boxes_.GetBoxsize(); }
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxSize() const { return boxes_.GetBoxSize(); }
     [[nodiscard]] int32_t GetReversalboxes() const { return current_column_.GetReversalboxes(); }
     [[nodiscard]] Boxes::BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
     [[nodiscard]] Boxes::BoxType GetBoxType() const { return boxes_.GetBoxType(); }
+    [[nodiscard]] std::string GetSymbol() const { return symbol_; }
 
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
@@ -107,9 +108,6 @@ public:
 
     [[nodiscard]] PF_Column::tpt GetLastChangeTime(void) const { return last_change_date_; }
 
-//    [[nodiscard]] const_iterator begin() const { return columns_.begin(); }
-//    [[nodiscard]] const_iterator end() const { return columns_.end(); }
-
     void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, Y_AxisFormat date_or_time=Y_AxisFormat::e_show_date) const;
 
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
@@ -117,9 +115,9 @@ public:
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
 
-    // for testing
-
     const Boxes& GetBoxes() const { return boxes_; }
+    const std::vector<PF_Column>& GetColumns() const { return columns_; }
+    const PF_Column& GetCurrentColumn() const { return current_column_; }
 
     // ====================  MUTATORS      =======================================
     
@@ -137,7 +135,6 @@ public:
     bool operator!= (const PF_Chart& rhs) const { return ! operator==(rhs); }
 
     const PF_Column& operator[](size_t which) const { return (which < columns_.size() ? columns_[which] : current_column_); }
-	friend std::ostream& operator<<(std::ostream& os, const PF_Chart& chart);
 
 protected:
     // ====================  DATA MEMBERS  =======================================
@@ -169,17 +166,32 @@ private:
 
 }; // -----  end of class PF_Chart  -----
 
+template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
+{
+    // parse is inherited from formatter<string>.
+    template <typename FormatContext>
+    auto format(const PF_Chart& chart, FormatContext& ctx)
+    {
+        std::string s = fmt::format("chart for ticker: {} box size: {} reversal boxes: {} scale: {}",
+            chart.GetSymbol(), chart.GetBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
+        return formatter<std::string>::format(s, ctx);
+    }
+};
+
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
-    os << "chart for ticker: " << chart.symbol_ << " box size: " << chart.GetBoxsize() << " reversal boxes: " << chart.GetReversalboxes()<< 
-        " scale: " << (chart.GetBoxScale() == Boxes::BoxScale::e_linear ? " linear" : " percent") << '\n';
-    for (const auto& col : chart.columns_)
+    fmt::format_to(std::ostream_iterator<char>{os}, "{}\n", chart);
+
+    for (const auto& col : chart.GetColumns())
     {
-        os << '\t' << col << '\n';
+        fmt::format_to(std::ostream_iterator<char>{os}, "\t{}\n", col);
     }
-    os << '\t' << chart.current_column_ << '\n';
-    os << "number of columns: " << chart.GetNumberOfColumns() << " min value: " << chart.y_min_ << " max value: " << chart.y_max_ << '\n';
-    os << "boxes at: " << &chart.boxes_ << " " << chart.boxes_ << '\n';
+    fmt::format_to(std::ostream_iterator<char>{os}, "\tcurrent column: {}\n", chart.GetCurrentColumn());
+    fmt::format_to(std::ostream_iterator<char>{os}, "number of columns: {} min value: {} max value: {}\n",
+        chart.GetNumberOfColumns(), chart.GetYLimits().first, chart.GetYLimits().second);
+
+    os << chart.GetBoxes();
+
     return os;
 }
 

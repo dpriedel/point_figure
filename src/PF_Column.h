@@ -40,6 +40,9 @@
 //#include <memory>
 #include <optional>
 
+#include <fmt/format.h>
+#include <fmt/chrono.h>
+
 #include <json/json.h>
 
 #include "DDecQuad.h"
@@ -104,8 +107,6 @@ public:
     bool operator==(const PF_Column& rhs) const;
     bool operator!=(const PF_Column& rhs) const { return !operator==(rhs); };
 
-	friend std::ostream& operator<<(std::ostream& os, const PF_Column& column);
-
 protected:
     // make reversed column here because we know everything needed to do so.
 
@@ -142,50 +143,94 @@ private:
 //	stream inserter
 //
 
+// custom fmtlib formatter for Direction
+
+template <> struct fmt::formatter<PF_Column::Direction>: formatter<std::string>
+{
+    // parse is inherited from formatter<string>.
+    template <typename FormatContext>
+    auto format(const PF_Column::Direction& direction, FormatContext& ctx)
+    {
+        std::string s;
+        switch(direction)
+        {
+            using enum PF_Column::Direction;
+            case e_unknown:
+                s = "unknown";
+                break;
+
+            case e_down:
+                s = "down";
+                break;
+
+            case e_up:
+                s = "up";
+                break;
+        };
+        return formatter<std::string>::format(s, ctx);
+    }
+};
+
+// custom fmtlib formatter for Status
+
+template <> struct fmt::formatter<PF_Column::Status>: formatter<std::string>
+{
+    // parse is inherited from formatter<string>.
+    template <typename FormatContext>
+    auto format(const PF_Column::Status& status, FormatContext& ctx)
+    {
+        std::string s;
+        switch(status)
+        {
+            using enum PF_Column::Status;
+            case e_accepted:
+                s = "accepted";
+                break;
+
+            case e_ignored:
+                s = "ignored";
+                break;
+
+            case e_reversal:
+                s = "reversed";
+                break;
+        };
+        return formatter<std::string>::format(s, ctx);
+    }
+};
+
 inline std::ostream& operator<<(std::ostream& os, const PF_Column::Status status)
 {
-    switch(status)
-    {
-        case PF_Column::Status::e_accepted:
-            os << "accepted";
-            break;
-
-        case PF_Column::Status::e_ignored:
-            os << "ignored";
-            break;
-
-        case PF_Column::Status::e_reversal:
-            os << "reversed";
-            break;
-    };
+    fmt::format_to(std::ostream_iterator<char>{os}, "{}", status);
 
 	return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction direction)
 {
-    switch(direction)
-    {
-        case PF_Column::Direction::e_unknown:
-            os << "unknown";
-            break;
-
-        case PF_Column::Direction::e_down:
-            os << "down";
-            break;
-
-        case PF_Column::Direction::e_up:
-            os << "up";
-            break;
-    };
+    fmt::format_to(std::ostream_iterator<char>{os}, "{}", direction);
 
 	return os;
 }
 
+template <> struct fmt::formatter<PF_Column>: formatter<std::string>
+{
+    // parse is inherited from formatter<string>.
+    template <typename FormatContext>
+    auto format(const PF_Column& column, FormatContext& ctx)
+    {
+        std::string s = fmt::format("bottom: {} top: {} direction: {} begin date: {:%F} {}",
+            column.GetBottom(), column.GetTop(), column.GetDirection(), column.GetTimeSpan().first,
+            (column.GetHadReversal() ? " one-step-back reversal" : ""));
+
+        return formatter<std::string>::format(s, ctx);
+    }
+};
+
 inline std::ostream& operator<<(std::ostream& os, const PF_Column& column)
 {
-    os << " bottom: " << column.GetBottom() << " top: " << column.GetTop() << " direction: " << column.direction_
-        << " begin date: " << TimePointToYMDString(column.GetTimeSpan().first) << (column.had_reversal_ ? " one-step-back reversal" : "");
+    fmt::format_to(std::ostream_iterator<char>{os}, "{}", column);
+
     return os;
 }
 
