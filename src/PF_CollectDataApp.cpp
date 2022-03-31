@@ -572,6 +572,10 @@ void PF_CollectDataApp::CollectStreamingData ()
     // and load it into appropriate charts. 
     // Processing continues until interrupted. 
 
+    // we've added a third thread to manage a countdown timer which will interrupt our 
+    // producer thread at market close.  Otherwise, the producer thread will hang forever 
+    // or until interrupted.
+
     // since this code can potentially run for hours on end 
     // it's a good idea to provide a way to break into this processing and shut it down cleanly.
     // so, a little bit of C...(taken from "Advanced Unix Programming" by Warren W. Gay, p. 317)
@@ -591,15 +595,23 @@ void PF_CollectDataApp::CollectStreamingData ()
     Tiingo quotes{host_name_, host_port_, "/iex", api_key_, symbol_list_};
     quotes.Connect();
 
+    // if we are here then we already know that the US market is open for trading.
+
+    auto today = date::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
+    auto local_market_close = date::zoned_seconds(date::current_zone(), GetUS_MarketCloseTime(today));
+
     std::mutex data_mutex;
     std::queue<std::string> streamed_data;
 
     py::gil_scoped_release gil{};
+
+    auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, this, local_market_close);
     auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
     streaming_task.get();
     processing_task.get();
+    timer_task.get();
 
     quotes.Disconnect();
 
@@ -693,6 +705,33 @@ void PF_CollectDataApp::Shutdown ()
     }
     spdlog::info(fmt::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
 }       // -----  end of method PF_CollectDataApp::Shutdown  -----
+
+void PF_CollectDataApp::WaitForTimer (const date::zoned_seconds& stop_at)
+{
+    while(true)
+    {
+        // if the user has signaled time to leave, then do it 
+
+        if (PF_CollectDataApp::had_signal_ == true)
+        {
+            std::cout << "\n*** User interrupted. ***" << std::endl;
+            break;
+        }
+
+        const date::zoned_seconds now = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+        if (now.get_sys_time() < stop_at.get_sys_time())
+        {
+            std::this_thread::sleep_for(1min);
+        }
+        else
+        {
+            std::cout << "\n*** Timer expired. ***" << std::endl;
+            PF_CollectDataApp::had_signal_ = true;
+            break;
+        }
+    }
+}		// -----  end of method PF_CollectDataApp::WaitForTimer  ----- 
+
 
 void PF_CollectDataApp::HandleSignal(int signal)
 

@@ -50,6 +50,8 @@
 namespace po = boost::program_options;
 
 #include <date/date.h>
+#include <date/tz.h>
+
 #include <spdlog/spdlog.h>
 
 #include "Boxes.h"
@@ -81,23 +83,28 @@ public:
 
     ~PF_CollectDataApp() = default;
 
-    static bool SignalReceived() { return had_signal_ ; }
-
-    bool Startup();
-    std::tuple<int, int, int> Run();
-    void Shutdown();
-
-
     // ====================  ACCESSORS     =======================================
+
+    static bool SignalReceived() { return had_signal_ ; }
 
     const PF_Data& GetCharts() const { return charts_; }
 
     // ====================  MUTATORS      =======================================
 
+    bool Startup();
+    std::tuple<int, int, int> Run();
+    void Shutdown();
+
+    // for testing 
+
+    static void SetSignal() { PF_CollectDataApp::had_signal_ = true; }
+
     // ====================  OPERATORS     =======================================
 
     PF_CollectDataApp& operator=(const PF_CollectDataApp& rhs) = delete;
     PF_CollectDataApp& operator=(PF_CollectDataApp&& rhs) = delete;
+
+    void WaitForTimer(const date::zoned_seconds& stop_at);
 
 protected:
 
