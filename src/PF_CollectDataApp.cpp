@@ -598,7 +598,8 @@ void PF_CollectDataApp::CollectStreamingData ()
     // if we are here then we already know that the US market is open for trading.
 
     auto today = date::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
-    auto local_market_close = date::zoned_seconds(date::current_zone(), GetUS_MarketCloseTime(today));
+    // add a couple minutes for padding
+    auto local_market_close = date::zoned_seconds(date::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
 
     std::mutex data_mutex;
     std::queue<std::string> streamed_data;
