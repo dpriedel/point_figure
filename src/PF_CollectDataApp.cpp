@@ -216,7 +216,7 @@ bool PF_CollectDataApp::CheckArgs ()
         BOOST_ASSERT_MSG(source_format_i == "csv" | source_format_i == "json", fmt::format("Data source must be 'csv' or 'json': {}", source_format_i).c_str());
         source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
     }
-    else
+    if (source_ == Source::e_streaming || use_ATR_)
     {
         BOOST_ASSERT_MSG(! tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
         BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
@@ -330,19 +330,43 @@ void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tok
 
 std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
+    api_key_ = LoadDataFileForUse(tiingo_api_key_);
+    if (api_key_.ends_with('\n'))
+    {
+        api_key_.resize(api_key_.size() - 1);
+    }
+
+    // TODO: this should be a program param... 
+
+    number_of_days_history_for_ATR_ = 20;
+
+    // set up our charts 
+
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+
     if(source_ == Source::e_file)
     {
         if (mode_ == Mode::e_load)
         {
-            auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
-            for (const auto& val : params)
+            // we instantiate a copy of our param values because we may need to modify it.
+            // std::get returns a refernce to the underlying value so we don't want to modify
+            // that because it may be shared with others instances.
+
+            for (PF_Chart::PF_ChartParams val : params)
             {
                 auto symbol = std::get<0>(val);
                 fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-                BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {} for update.", symbol).c_str());
+                BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {}.", symbol).c_str());
                 // TODO: add json code
-                auto chart = LoadSymbolPriceDataCSV(symbol, symbol_file_name, val);
-                charts_.emplace_back(std::make_pair(symbol, chart));
+                BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
+                if (use_ATR_)
+                {
+                    auto box_size = ComputeBoxSizeUsingATR(symbol, std::get<1>(val));
+                    std::get<1>(val) = box_size;
+                }
+                PF_Chart new_chart{val};
+                AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
+                charts_.emplace_back(std::make_pair(symbol, new_chart));
             }
         }
         else if (mode_ == Mode::e_update)
@@ -350,19 +374,19 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
             // look for existing data and load the saved JSON data if we have it.
             // then add the new data to the chart.
 
-            auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
             for (const auto& val : params)
             {
-                PF_Chart new_chart{val};
-                fs::path existing_data_file_name = input_chart_directory_ / new_chart.ChartName("json");
-                const auto& symbol = std::get<0>(val);
+                fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
+                PF_Chart new_chart;
                 if (fs::exists(existing_data_file_name))
                 {
                     new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
                 }
+                const auto& symbol = std::get<0>(val);
                 fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
                 BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
                 // TODO: add json code
+                BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
                 AddPriceDataToExistingChartCSV(new_chart, update_file_name);
                 charts_.emplace_back(std::make_pair(symbol, new_chart));
             }
@@ -384,23 +408,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
             std::cout << "Market not open for trading YET so we'll wait." << std::endl;
         }
 
-        api_key_ = LoadDataFileForUse(tiingo_api_key_);
-        if (api_key_.ends_with('\n'))
-        {
-            api_key_.resize(api_key_.size() - 1);
-        }
-
-        // TODO: this should be a program param... 
-
-        number_of_days_history_for_ATR_ = 20;
-
-        // set up our charts 
-
-        auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
-
         // we instantiate a copy of our param values because we may need to modify it.
-        // std::get retruns a refernce to the underlying value so we don't want to modify
-        // that becase it may be shared with others instances.
+        // std::get returns a refernce to the underlying value so we don't want to modify
+        // that because it may be shared with others instances.
 
         for (PF_Chart::PF_ChartParams val : params)
         {
