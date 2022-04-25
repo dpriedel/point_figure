@@ -19,7 +19,7 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.78_gcc-11
+BOOSTDIR := /extra/boost/boost-1.79_gcc-11
 GCCDIR := /extra/gcc/gcc-11
 GTESTDIR := /usr/local/include
 DECIMALSRCDIR := /extra/gcc/decNumber_old
