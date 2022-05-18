@@ -61,7 +61,7 @@ public:
         std::string ticker_;                        // Ticker
         std::string time_stamp_;                    // Date
         int64_t time_stamp_seconds_;                // Nanoseconds
-        DprDecimal::DDecQuad last_price_;         // Last Price
+        DprDecimal::DDecQuad last_price_;           // Last Price
         int32_t last_size_;                         // Last Size
     };
     
@@ -112,7 +112,7 @@ private:
     std::string host_;
     std::string port_;
     std::string websocket_prefix_;
-    int32_t subscription_id_ = -1;
+    std::string subscription_id_;
     int version_ = 11;
 
     net::io_context ioc_;

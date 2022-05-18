@@ -336,7 +336,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         api_key_.resize(api_key_.size() - 1);
     }
 
-    // TODO: this should be a program param... 
+    // TODO(dpriedel): this should be a program param... 
 
     number_of_days_history_for_ATR_ = 20;
 
@@ -357,7 +357,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
                 auto symbol = std::get<0>(val);
                 fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
                 BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {}.", symbol).c_str());
-                // TODO: add json code
+                // TODO(dpriedel): add json code
                 BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
                 if (use_ATR_)
                 {
@@ -385,7 +385,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
                 const auto& symbol = std::get<0>(val);
                 fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
                 BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
-                // TODO: add json code
+                // TODO(dpriedel): add json code
                 BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
                 AddPriceDataToExistingChartCSV(new_chart, update_file_name);
                 charts_.emplace_back(std::make_pair(symbol, new_chart));
@@ -457,13 +457,13 @@ void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, c
     ranges::for_each(symbol_data_records | ranges::views::drop(1), [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
         {
             const auto fields = split_string<std::string_view> (record, ',');
-            auto dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+            const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
             new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToTimePoint(dt_format, fields[date_col]));
         });
 
 }		// -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV  ----- 
 
-PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const fs::path& symbol_file_name) const
+ PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const fs::path& symbol_file_name) 
 {
     const std::string file_content = LoadDataFileForUse(symbol_file_name);
 
@@ -481,7 +481,7 @@ PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const fs::path& symbol_fi
     return new_chart;
 }		// -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  ----- 
 
-std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim) const
+std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim) 
 {
     auto fields = rng_split_string<std::string_view>(header, delim);
     auto do_compare([&column_name](const auto& field_name)
@@ -592,8 +592,8 @@ void PF_CollectDataApp::CollectStreamingData ()
 
     // ok, get ready to handle keyboard interrupts, if any.
 
-    struct sigaction sa_old;
-    struct sigaction sa_new;
+    struct sigaction sa_old{};
+    struct sigaction sa_new{};
 
     sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
     sigemptyset(&sa_new.sa_mask);
@@ -616,7 +616,7 @@ void PF_CollectDataApp::CollectStreamingData ()
 
     py::gil_scoped_release gil{};
 
-    auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, this, local_market_close);
+    auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
     auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
@@ -632,7 +632,7 @@ void PF_CollectDataApp::CollectStreamingData ()
 
 }		// -----  end of method PF_CollectDataApp::CollectStreamingData  ----- 
 
-void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
+void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
 //    py::gil_scoped_acquire gil{};
     while(true)
@@ -691,7 +691,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, bool* had_signal, s
         {
             std::this_thread::sleep_for(2ms);
         }
-        if (streamed_data->empty() && *had_signal == true)
+        if (streamed_data->empty() && *had_signal)
         {
             break;
         }
@@ -723,7 +723,7 @@ void PF_CollectDataApp::WaitForTimer (const date::zoned_seconds& stop_at)
     {
         // if the user has signaled time to leave, then do it 
 
-        if (PF_CollectDataApp::had_signal_ == true)
+        if (PF_CollectDataApp::had_signal_)
         {
             std::cout << "\n*** User interrupted. ***" << std::endl;
             break;

@@ -31,7 +31,6 @@
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <cstdint>
-#include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/adjacent_find.hpp>
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/for_each.hpp>
@@ -77,7 +76,7 @@ Boxes::Boxes (const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method Boxes::Boxes  (constructor)  ----- 
 
-int32_t Boxes::Distance (const Box& from, const Box& to) const
+size_t Boxes::Distance (const Box& from, const Box& to) const
 {
     if (from == to)
     {
@@ -240,7 +239,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
@@ -273,7 +272,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
     if (box_index == 0)
     {
         Box new_box = boxes_.front() - box_size_;
@@ -305,7 +304,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
     if (box_index == 0)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);

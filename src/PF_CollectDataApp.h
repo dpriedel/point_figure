@@ -87,7 +87,7 @@ public:
 
     static bool SignalReceived() { return had_signal_ ; }
 
-    const PF_Data& GetCharts() const { return charts_; }
+    [[nodiscard]] const PF_Data& GetCharts() const { return charts_; }
 
     // ====================  MUTATORS      =======================================
 
@@ -98,13 +98,12 @@ public:
     // for testing 
 
     static void SetSignal() { PF_CollectDataApp::had_signal_ = true; }
+    static void WaitForTimer(const date::zoned_seconds& stop_at);
 
     // ====================  OPERATORS     =======================================
 
     PF_CollectDataApp& operator=(const PF_CollectDataApp& rhs) = delete;
     PF_CollectDataApp& operator=(PF_CollectDataApp&& rhs) = delete;
-
-    void WaitForTimer(const date::zoned_seconds& stop_at);
 
 protected:
 
@@ -118,16 +117,16 @@ protected:
 	bool	CheckArgs ();
 	void	Do_Quit ();
 
-    PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name, const PF_Chart::PF_ChartParams& args) const;
-    PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name) const;
+    [[nodiscard]] PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name, const PF_Chart::PF_ChartParams& args) const;
+    [[nodiscard]] static PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name);
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
-    std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim) const;
+    [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
 
     void    PrimeChartsForStreaming();
     void    CollectStreamingData();
-    void    ProcessStreamedData(Tiingo* quotes, bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
+    void    ProcessStreamedData(Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
-    DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol, const DprDecimal::DDecQuad& box_size) const;
+    [[nodiscard]] DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol, const DprDecimal::DDecQuad& box_size) const;
 
     // ====================  DATA MEMBERS  =======================================
 

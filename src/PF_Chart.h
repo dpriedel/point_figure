@@ -68,7 +68,7 @@ public:
     enum  class Y_AxisFormat {e_show_date, e_show_time};
 
     // make it look like a range
-    //TODO: use a custom iterator which will include current_column_ in 
+    // TODO(dpriedel): use a custom iterator which will include current_column_ in 
     // the iteration.
 
 //    using const_iterator = std::vector<PF_Column>::const_iterator;
@@ -76,18 +76,20 @@ public:
     // ====================  LIFECYCLE     =======================================
     PF_Chart () = default;                             // constructor
     PF_Chart (const PF_Chart& rhs);
-    PF_Chart (PF_Chart&& rhs);
+    PF_Chart (PF_Chart&& rhs) noexcept ;
 
     PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
             Boxes::BoxType box_type=Boxes::BoxType::e_integral,
             Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear);
 
-    PF_Chart(const PF_ChartParams& vals)
+    explicit PF_Chart(const PF_ChartParams& vals)
         : PF_Chart(std::get<0>(vals), std::get<1>(vals), std::get<2>(vals), std::get<3>(vals), std::get<4>(vals))
     {
     }
 
     explicit PF_Chart(const Json::Value& new_data);
+
+    ~PF_Chart() = default;
 
     // ====================  ACCESSORS     =======================================
 
@@ -101,12 +103,16 @@ public:
 
     [[nodiscard]] std::string ChartName(std::string_view suffix) const;
 
+    // for those times you need a name but don't have the chart object yet.
+
+    static std::string ChartName(const PF_ChartParams& vals, std::string_view suffix);
+
     // includes 'current_column'
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size() + 1; }
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
-    [[nodiscard]] PF_Column::tpt GetLastChangeTime(void) const { return last_change_date_; }
+    [[nodiscard]] PF_Column::tpt GetLastChangeTime() const { return last_change_date_; }
 
     void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, Y_AxisFormat date_or_time=Y_AxisFormat::e_show_date) const;
 
@@ -115,9 +121,9 @@ public:
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
 
-    const Boxes& GetBoxes() const { return boxes_; }
-    const std::vector<PF_Column>& GetColumns() const { return columns_; }
-    const PF_Column& GetCurrentColumn() const { return current_column_; }
+    [[nodiscard]] const Boxes& GetBoxes() const { return boxes_; }
+    [[nodiscard]] const std::vector<PF_Column>& GetColumns() const { return columns_; }
+    [[nodiscard]] const PF_Column& GetCurrentColumn() const { return current_column_; }
 
     // ====================  MUTATORS      =======================================
     
@@ -127,7 +133,7 @@ public:
     // ====================  OPERATORS     =======================================
 
     PF_Chart& operator= (const PF_Chart& rhs);
-    PF_Chart& operator= (PF_Chart&& rhs);
+    PF_Chart& operator= (PF_Chart&& rhs) noexcept ;
 
     PF_Chart& operator= (const Json::Value& new_data);
 

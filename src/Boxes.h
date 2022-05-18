@@ -63,9 +63,11 @@ public:
     Boxes (const Boxes& rhs) = default;
     Boxes (Boxes&& rhs) = default;
 
-    Boxes (const DprDecimal::DDecQuad& box_size, BoxType box_type=BoxType::e_integral, BoxScale box_scale=BoxScale::e_linear);
+    explicit Boxes (const DprDecimal::DDecQuad& box_size, BoxType box_type=BoxType::e_integral, BoxScale box_scale=BoxScale::e_linear);
 
-    Boxes(const Json::Value& new_data);
+    explicit Boxes(const Json::Value& new_data);
+
+	~Boxes() = default;
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -80,7 +82,7 @@ public:
 
     [[nodiscard]] Json::Value ToJSON() const;
 
-    [[nodiscard]] int32_t Distance(const Box& from, const Box& to) const;
+    [[nodiscard]] size_t Distance(const Box& from, const Box& to) const;
 
     // ====================  MUTATORS      ======================================= 
 

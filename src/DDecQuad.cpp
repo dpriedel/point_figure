@@ -32,7 +32,7 @@ bool DDecQuad::context_initialized_ = false;
 
 void DDecQuad::InitContext()
 {
-    if (DDecQuad::context_initialized_ == false)
+    if (!DDecQuad::context_initialized_)
     {
         decContextDefault(&DDecQuad::mCtx_, DEC_INIT_DECQUAD);
         decContextSetRounding(&DDecQuad::mCtx_, DEC_ROUND_HALF_UP);
@@ -41,19 +41,22 @@ void DDecQuad::InitContext()
 }
 
 DDecQuad::DDecQuad()
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
 }
 
 DDecQuad::DDecQuad(const DDecQuad& rhs)
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
     decQuadCopy(&this->decimal_, &rhs.decimal_);
 }
 
-DDecQuad::DDecQuad(DDecQuad&& rhs)
+DDecQuad::DDecQuad(DDecQuad&& rhs) noexcept
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
@@ -62,6 +65,7 @@ DDecQuad::DDecQuad(DDecQuad&& rhs)
 }
 
 DDecQuad::DDecQuad(const char* number)
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
@@ -69,6 +73,7 @@ DDecQuad::DDecQuad(const char* number)
 }
 
 DDecQuad::DDecQuad(const std::string& number)
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
@@ -81,6 +86,7 @@ DDecQuad::DDecQuad(std::string_view number)
 }
 
 DDecQuad::DDecQuad(int32_t number)
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
@@ -88,6 +94,7 @@ DDecQuad::DDecQuad(int32_t number)
 }
 
 DDecQuad::DDecQuad(uint32_t number)
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
@@ -95,6 +102,7 @@ DDecQuad::DDecQuad(uint32_t number)
 }
 
 DDecQuad::DDecQuad(const decNumber& number)
+    : decimal_{}
 {
     DDecQuad::InitContext();
     decQuadZero(&this->decimal_);
@@ -102,6 +110,7 @@ DDecQuad::DDecQuad(const decNumber& number)
 }
 
 DDecQuad::DDecQuad(double number)
+    : decimal_{}
 {
     std::array<char, 30> buf{};
     if (auto [p, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed);
@@ -129,7 +138,7 @@ DDecQuad& DDecQuad::operator=(const DDecQuad& rhs)
     return *this;
 }
 
-DDecQuad& DDecQuad::operator=(DDecQuad&& rhs)
+DDecQuad& DDecQuad::operator=(DDecQuad&& rhs) noexcept
 {
     if (this != &rhs)
     {

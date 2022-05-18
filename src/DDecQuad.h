@@ -68,7 +68,7 @@ public:
     // ====================  LIFECYCLE     =======================================
     DDecQuad ();                             // constructor
     DDecQuad (const DDecQuad& rhs);
-    DDecQuad (DDecQuad&& rhs);
+    DDecQuad (DDecQuad&& rhs) noexcept ;
     DDecQuad (const char* number);              // constructor
     DDecQuad (const std::string& number);       // constructor
     DDecQuad (std::string_view number);         // constructor
@@ -77,6 +77,8 @@ public:
     DDecQuad (const decNumber& number);         // constructor
 
     DDecQuad (double number);	 // constructor
+
+    ~DDecQuad() = default;
 
     // ====================  ACCESSORS     =======================================
     
@@ -104,7 +106,7 @@ public:
     DDecQuad& operator/=(const DDecQuad& rhs);
 
     DDecQuad& operator=(const DDecQuad& rhs);
-    DDecQuad& operator=(DDecQuad&& rhs);
+    DDecQuad& operator=(DDecQuad&& rhs) noexcept ;
     DDecQuad& operator=(int32_t rhs);
     DDecQuad& operator=(uint32_t rhs);
     DDecQuad& operator=(double rhs);
@@ -137,7 +139,7 @@ inline std::string DDecQuad::ToStr() const
 {
     char output [DECQUAD_String];
     decQuadToString(&this->decimal_, output);
-    return std::string(output);
+    return {output};
 }
 
 //
@@ -298,7 +300,7 @@ inline std::istream& operator>>(std::istream& is, DDecQuad& item)
 	return is;
 }
 
-};
+}  // namespace DprDecimal
 
 // custom fmtlib formatter for DDecQuad
 

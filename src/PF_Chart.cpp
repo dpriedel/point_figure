@@ -80,9 +80,9 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart (PF_Chart&& rhs)
+PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
     : boxes_{std::move(rhs.boxes_)}, columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
-    symbol_{rhs.symbol_}, first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
+    symbol_{std::move(rhs.symbol_)}, first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
     last_checked_date_{rhs.last_checked_date_}, 
     y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
     current_direction_{rhs.current_direction_} 
@@ -141,7 +141,7 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
     return *this;
 }		// -----  end of method PF_Chart::operator=  ----- 
 
-PF_Chart& PF_Chart::operator= (PF_Chart&& rhs)
+PF_Chart& PF_Chart::operator= (PF_Chart&& rhs) noexcept
 {
     if (this != &rhs)
     {
@@ -287,7 +287,14 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 std::string PF_Chart::ChartName (std::string_view suffix) const
 {
     std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, GetBoxSize(), (IsPercent() ? "%" : ""),
-            GetReversalboxes(), (GetBoxScale() == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
+            GetReversalboxes(), (IsPercent() ? "percent" : "linear"), suffix);
+    return chart_name;
+}		// -----  end of method PF_Chart::ChartName  ----- 
+
+std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view suffix)
+{
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", std::get<0>(vals), std::get<1>(vals), (std::get<4>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
+            std::get<2>(vals), (std::get<4>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
@@ -429,7 +436,6 @@ void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
     std::unique_ptr<Json::StreamWriter> const writer( builder.newStreamWriter());
     writer->write(this->ToJSON(), &stream);
     stream << std::endl;  // add lf and flush
-    return ;
 }		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  ----- 
 
 
@@ -522,7 +528,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
 DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days, UseAdjusted use_adjusted)
 {
-    BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided. Need at least: {} values. Got {}.", how_many_days, the_data.size()).c_str());
+    BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
     DprDecimal::DDecQuad total;
 

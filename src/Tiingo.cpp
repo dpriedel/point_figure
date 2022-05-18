@@ -79,11 +79,13 @@ void Tiingo::Connect()
 
     // Set SNI Hostname (many hosts need this to handshake successfully)
     if(! SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
+    {
         throw beast::system_error(
             beast::error_code(
                 static_cast<int>(::ERR_get_error()),
                 net::error::get_ssl_category()),
             "Failed to set SNI Hostname");
+    }
 
     // Update the host_ string. This will provide the value of the
     // Host HTTP header during the WebSocket handshake.
@@ -236,7 +238,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
     }
     else if (message_type == "I")
     {
-        subscription_id_ = response["data"]["subscriptionId"].asInt();
+        subscription_id_ = response["data"]["subscriptionId"].asString();
 //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
         return pf_data;
     }
@@ -291,11 +293,13 @@ void Tiingo::StopStreaming ()
     auto ep = net::connect(get_lowest_layer(ws), results);
 
     if(! SSL_set_tlsext_host_name(ws.next_layer().native_handle(), host.c_str()))
+    {
         throw beast::system_error(
             beast::error_code(
                 static_cast<int>(::ERR_get_error()),
                 net::error::get_ssl_category()),
             "Failed to set SNI Hostname");
+    }
 
     host += ':' + std::to_string(ep.port());
 
