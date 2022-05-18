@@ -77,7 +77,7 @@ public:
 
     PF_Column(Boxes* boxes, int reversal_boxes,
             Direction direction = Direction::e_unknown,
-            DprDecimal::DDecQuad top =DprDecimal::DDecQuad{-1}, DprDecimal::DDecQuad bottom =DprDecimal::DDecQuad{-1});
+            DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
     PF_Column(Boxes* boxes, const Json::Value& new_data);
 
