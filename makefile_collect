@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.79_gcc-11
-GCCDIR := /extra/gcc/gcc-11
+BOOSTDIR := /extra/boost/boost-1.79_gcc-12
+GCCDIR := /extra/gcc/gcc-12
 GTESTDIR := /usr/local/include
 DECIMALSRCDIR := /extra/gcc/decNumber_old
 UTILITYDIR := $(HOME)/projects/common_utilities
@@ -76,10 +76,10 @@ SRCS := $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS3a) $(SRCS4)
 VPATH := $(SDIR1):$(SDIR2):$(SDIR3):$(SDIR3a):$(SDIR4)
 
 CFG_LIB := -L/usr/local/lib \
-		-lfmt \
-		-lspdlog \
 		-ldate-tz \
 		-L/usr/lib \
+		-lfmt \
+		-lspdlog \
 		-lcrypt \
 		-lpthread \
 		-lpython3.10 \
@@ -107,7 +107,7 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug_collect
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++20 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++23 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
@@ -121,10 +121,10 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
 
-COMPILE=$(CPP) -c  -x c++  -O3 -std=c++20 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3 -std=c++23 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O3  -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
-LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
+LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
 
