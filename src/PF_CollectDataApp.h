@@ -151,6 +151,7 @@ private:
     fs::path log_file_path_name_;
     fs::path new_data_input_directory_;
     fs::path output_chart_directory_;
+    fs::path output_graphs_directory_;
     fs::path tiingo_api_key_;
 
     std::string dbname_;

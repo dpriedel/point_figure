@@ -205,6 +205,15 @@ bool PF_CollectDataApp::CheckArgs ()
         fs::create_directories(output_chart_directory_);
     }
 
+    if (output_graphs_directory_.empty())
+    {
+        output_graphs_directory_ = output_chart_directory_;
+    }
+    if (! fs::exists(output_graphs_directory_))
+    {
+        fs::create_directories(output_graphs_directory_);
+    }
+
     BOOST_ASSERT_MSG(source_i == "file" | source_i == "streaming", fmt::format("Data source must be 'file' or 'streaming': {}", source_i).c_str());
     source_ = source_i == "file" ? Source::e_file : Source::e_streaming;
     
@@ -288,7 +297,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'")
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
-		("output-dir,o",		po::value<fs::path>(&this->output_chart_directory_),	"output: directory for output files.")
+		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
+		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
 		("boxsize,b",			po::value<std::vector<DprDecimal::DDecQuad>>(&this->box_size_list_)->required(),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_)->required(),		"reversal size in number of boxes. Default is 2")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
@@ -698,7 +708,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
             for (const PF_Chart* chart : need_to_update_graph)
             {
                 py::gil_scoped_acquire gil{};
-                fs::path graph_file_path = output_chart_directory_ / (chart->ChartName("svg"));
+                fs::path graph_file_path = output_graphs_directory_ / (chart->ChartName("svg"));
                 chart->ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
 
                 fs::path chart_file_path = output_chart_directory_ / (chart->ChartName("json"));
@@ -732,7 +742,7 @@ void PF_CollectDataApp::Shutdown ()
             chart.ConvertChartToJsonAndWriteToStream(output);
             output.close();
 
-            fs::path graph_file_path = output_chart_directory_ / (chart.ChartName("svg"));
+            fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
             chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
         }
     }
