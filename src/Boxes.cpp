@@ -216,7 +216,7 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    int32_t box_index = ranges::distance(boxes_.begin(), found_it);
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBox  ----- 
 

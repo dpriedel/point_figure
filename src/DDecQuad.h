@@ -69,14 +69,14 @@ public:
     DDecQuad ();                             // constructor
     DDecQuad (const DDecQuad& rhs);
     DDecQuad (DDecQuad&& rhs) noexcept ;
-    DDecQuad (const char* number);              // constructor
-    DDecQuad (const std::string& number);       // constructor
-    DDecQuad (std::string_view number);         // constructor
-    DDecQuad (int32_t number);                  // constructor
-    DDecQuad (uint32_t number);                 // constructor
-    DDecQuad (const decNumber& number);         // constructor
 
-    DDecQuad (double number);	 // constructor
+    DDecQuad (const char* number);              // NOLINT(google-explicit-constructor)
+    DDecQuad (const std::string& number);       // NOLINT(google-explicit-constructor)
+    DDecQuad (std::string_view number);         // NOLINT(google-explicit-constructor)
+    DDecQuad (int32_t number);                  // NOLINT(google-explicit-constructor)
+    DDecQuad (uint32_t number);                 // NOLINT(google-explicit-constructor)
+    DDecQuad (const decNumber& number);         // NOLINT(google-explicit-constructor)
+    DDecQuad (double number);	                // NOLINT(google-explicit-constructor)
 
     ~DDecQuad() = default;
 

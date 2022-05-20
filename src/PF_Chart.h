@@ -157,9 +157,9 @@ private:
 
     std::string symbol_;
 
-    PF_Column::tpt first_date_;			    //	earliest entry for symbol
-    PF_Column::tpt last_change_date_;		//	date of last change to data
-    PF_Column::tpt last_checked_date_;	    //	last time checked to see if update needed
+    PF_Column::tpt first_date_ = {};			    //	earliest entry for symbol
+    PF_Column::tpt last_change_date_ = {};		//	date of last change to data
+    PF_Column::tpt last_checked_date_ = {};	    //	last time checked to see if update needed
 
 //    DprDecimal::DDecQuad box_size_ = -1;
 //    int32_t reversal_boxes_ = -1;

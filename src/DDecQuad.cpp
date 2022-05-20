@@ -114,14 +114,14 @@ DDecQuad::DDecQuad(double number)
 {
     std::array<char, 30> buf{};
     if (auto [p, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), number, std::chars_format::fixed);
-            ec != std::errc())
-    {
-        throw std::runtime_error(fmt::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
-    }
-    else
+            ec == std::errc())
     {
         // string is NOT NULL terminated
         *p = '\0';
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
     }
 
     DDecQuad::InitContext();
