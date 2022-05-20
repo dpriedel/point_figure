@@ -382,7 +382,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     std::string explanation_text;
     if (GetReversalboxes() == 1)
     {
-        explanation_text = "Yellow: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
+        explanation_text = "Orange: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
     }
     auto chart_title = fmt::format("\n{}{} X {} for {}  {}.\nMost recent change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,

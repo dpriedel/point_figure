@@ -41,7 +41,7 @@ def SetStepbackColor (is_up, stepped_back) :
             return "blue"
     if not is_up:
         if stepped_back:
-            return "yellow"
+            return "orange"
     return None
 
 def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, UseLogScale, Y_min, Y_max):
