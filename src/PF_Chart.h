@@ -161,14 +161,10 @@ private:
     PF_Column::tpt last_change_date_ = {};		//	date of last change to data
     PF_Column::tpt last_checked_date_ = {};	    //	last time checked to see if update needed
 
-//    DprDecimal::DDecQuad box_size_ = -1;
-//    int32_t reversal_boxes_ = -1;
     DprDecimal::DDecQuad y_min_ = 100000;         // just a number
     DprDecimal::DDecQuad y_max_ = -1;
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
-//    Boxes::BoxType box_type_ = Boxes::BoxType::e_integral;
-//    Boxes::BoxScale box_scale_ = Boxes::BoxScale::e_linear;
 
 }; // -----  end of class PF_Chart  -----
 
