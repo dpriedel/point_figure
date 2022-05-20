@@ -354,19 +354,26 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
             for (PF_Chart::PF_ChartParams val : params)
             {
-                auto symbol = std::get<0>(val);
-                fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-                BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {}.", symbol).c_str());
-                // TODO(dpriedel): add json code
-                BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
-                if (use_ATR_)
-                {
-                    auto box_size = ComputeBoxSizeUsingATR(symbol, std::get<1>(val));
-                    std::get<1>(val) = box_size;
-                }
-                PF_Chart new_chart{val};
-                AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
-                charts_.emplace_back(std::make_pair(symbol, new_chart));
+            	try
+            	{
+                	auto symbol = std::get<0>(val);
+                	fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+                	BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file for symbol: {}.", symbol).c_str());
+                	// TODO(dpriedel): add json code
+                	BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
+                	if (use_ATR_)
+                	{
+                    	auto box_size = ComputeBoxSizeUsingATR(symbol, std::get<1>(val));
+                    	std::get<1>(val) = box_size;
+                	}
+                	PF_Chart new_chart{val};
+                	AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
+                	charts_.emplace_back(std::make_pair(symbol, new_chart));
+            	}
+            	catch (const std::exception& e)
+            	{
+					std::cout << "Unable to load data for symbol: " << std::get<0>(val) << " because: " << e.what() << std::endl;	
+            	}
             }
         }
         else if (mode_ == Mode::e_update)
@@ -376,19 +383,26 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
             for (const auto& val : params)
             {
-                fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
-                PF_Chart new_chart;
-                if (fs::exists(existing_data_file_name))
-                {
-                    new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
-                }
-                const auto& symbol = std::get<0>(val);
-                fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-                BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
-                // TODO(dpriedel): add json code
-                BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
-                AddPriceDataToExistingChartCSV(new_chart, update_file_name);
-                charts_.emplace_back(std::make_pair(symbol, new_chart));
+            	try
+            	{
+                	fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
+                	PF_Chart new_chart;
+                	if (fs::exists(existing_data_file_name))
+                	{
+                    	new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
+                	}
+                	const auto& symbol = std::get<0>(val);
+                	fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+                	BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
+                	// TODO(dpriedel): add json code
+                	BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
+                	AddPriceDataToExistingChartCSV(new_chart, update_file_name);
+                	charts_.emplace_back(std::make_pair(symbol, new_chart));
+            	}
+            	catch (const std::exception& e)
+            	{
+					std::cout << "Unable to update data for symbol: " << std::get<0>(val) << " because: " << e.what() << std::endl;	
+            	}
             }
         }
     }
@@ -526,6 +540,14 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeBoxSizeUsingATR (const std::strin
     auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_Yes);
 
     auto runtime_box_size = (box_size * atr).Rescale(box_size.GetExponent() - 1);
+
+    // it seems that the rescaled box size value can turn out to be zero. If that 
+    // is the case, then go with the unscaled box size. 
+
+    if (runtime_box_size == 0.0)
+    {
+    	runtime_box_size = box_size * atr;
+    }
     return runtime_box_size;
 }		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
 
