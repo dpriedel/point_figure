@@ -93,6 +93,7 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
+	[[nodiscard]] bool IsEmpty() const { return columns_.empty() && current_column_.IsEmpty(); }
     [[nodiscard]] DprDecimal::DDecQuad GetBoxSize() const { return boxes_.GetBoxSize(); }
     [[nodiscard]] int32_t GetReversalboxes() const { return current_column_.GetReversalboxes(); }
     [[nodiscard]] Boxes::BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
@@ -113,6 +114,7 @@ public:
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
     [[nodiscard]] PF_Column::tpt GetLastChangeTime() const { return last_change_date_; }
+    [[nodiscard]] PF_Column::tpt GetLastCheckedTime() const { return last_checked_date_; }
 
     void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, Y_AxisFormat date_or_time=Y_AxisFormat::e_show_date) const;
 

@@ -85,6 +85,7 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
+	[[nodiscard]] bool IsEmpty() const { return top_ == -1 && bottom_ == -1; }
     [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return top_; }
     [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return  bottom_ ; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }

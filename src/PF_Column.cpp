@@ -90,7 +90,7 @@ bool PF_Column::operator== (const PF_Column& rhs) const
 
 PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value, tpt the_time)
 {
-    if (top_ == -1 && bottom_ == -1)
+    if (IsEmpty())
     {
         // OK, first time here for this column.
 

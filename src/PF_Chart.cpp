@@ -222,6 +222,16 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
 
 PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time)
 {
+    // when extending the chart, don't add 'old' data.
+
+    if (! IsEmpty())
+    {
+    	if (the_time <= last_checked_date_)
+    	{
+    		return PF_Column::Status::e_ignored;
+    	}
+    }
+
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
 
     if (status == PF_Column::Status::e_accepted)
@@ -249,6 +259,7 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         last_change_date_ = the_time;
     }
     current_direction_ = current_column_.GetDirection();
+    last_checked_date_ = the_time;
     return status;
 }		// -----  end of method PF_Chart::AddValue  ----- 
 
