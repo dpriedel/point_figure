@@ -117,7 +117,6 @@ protected:
 	bool	CheckArgs ();
 	void	Do_Quit ();
 
-    [[nodiscard]] PF_Chart    LoadSymbolPriceDataCSV(const std::string& symbol, const fs::path& symbol_file_name, const PF_Chart::PF_ChartParams& args) const;
     [[nodiscard]] static PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name);
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
     [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
@@ -126,7 +125,7 @@ protected:
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
-    [[nodiscard]] DprDecimal::DDecQuad ComputeBoxSizeUsingATR(const std::string& symbol, const DprDecimal::DDecQuad& box_size) const;
+    [[nodiscard]] DprDecimal::DDecQuad ComputeATRForChart(const std::string& symbol) const;
 
     // ====================  DATA MEMBERS  =======================================
 
