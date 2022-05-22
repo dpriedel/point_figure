@@ -66,7 +66,13 @@ public:
     using PF_ChartParams = std::tuple<std::string, DprDecimal::DDecQuad, int32_t, Boxes::BoxType, Boxes::BoxScale>;
 
     enum  class Y_AxisFormat {e_show_date, e_show_time};
-
+	enum {
+		e_symbol = 0,
+		e_box_size,
+		e_reversal,
+		e_box_type,
+		e_box_scale
+	};
     // make it look like a range
     // TODO(dpriedel): use a custom iterator which will include current_column_ in 
     // the iteration.
@@ -80,10 +86,12 @@ public:
 
     PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
             Boxes::BoxType box_type=Boxes::BoxType::e_integral,
-            Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear);
+            Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear,
+            DprDecimal::DDecQuad atr=0);
 
-    explicit PF_Chart(const PF_ChartParams& vals)
-        : PF_Chart(std::get<0>(vals), std::get<1>(vals), std::get<2>(vals), std::get<3>(vals), std::get<4>(vals))
+    PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad atr)
+        : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals), std::get<e_box_type>(vals),
+        		std::get<e_box_scale>(vals), atr)
     {
     }
 
@@ -158,6 +166,8 @@ private:
     PF_Column current_column_;
 
     std::string symbol_;
+	DprDecimal::DDecQuad fname_box_size_ = 0;	// box size to use when constructing file name 
+	DprDecimal::DDecQuad atr_ = 0;
 
     PF_Column::tpt first_date_ = {};			    //	earliest entry for symbol
     PF_Column::tpt last_change_date_ = {};		//	date of last change to data

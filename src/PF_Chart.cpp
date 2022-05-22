@@ -63,6 +63,7 @@ using namespace py::literals;
 
 PF_Chart::PF_Chart (const PF_Chart& rhs)
     : boxes_{rhs.boxes_}, columns_{rhs.columns_}, current_column_{rhs.current_column_}, symbol_{rhs.symbol_},
+    fname_box_size_{rhs.fname_box_size_}, atr_{rhs.atr_},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_}, last_checked_date_{rhs.last_checked_date_},
     y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
     current_direction_{rhs.current_direction_} 
@@ -82,7 +83,8 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
 
 PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
     : boxes_{std::move(rhs.boxes_)}, columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
-    symbol_{std::move(rhs.symbol_)}, first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
+    symbol_{std::move(rhs.symbol_)}, fname_box_size_{std::move(rhs.fname_box_size_)}, atr_{std::move(rhs.atr_)},
+    first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
     last_checked_date_{rhs.last_checked_date_}, 
     y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
     current_direction_{rhs.current_direction_} 
@@ -101,11 +103,25 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        Boxes::BoxType box_type, Boxes::BoxScale box_scale)
-    : boxes_{box_size, box_type, box_scale}, current_column_{&boxes_, reversal_boxes}, symbol_{symbol}
-    
+        Boxes::BoxType box_type, Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr)
+    : symbol_{symbol}, fname_box_size_{box_size}, atr_{atr}
 
 {
+	DprDecimal::DDecQuad runtime_box_size = fname_box_size_;
+    if (atr_ != 0.0)
+    {
+    	runtime_box_size = (fname_box_size_ * atr_).Rescale(box_size.GetExponent() - 1);
+
+    	// it seems that the rescaled box size value can turn out to be zero. If that 
+    	// is the case, then go with the unscaled box size. 
+
+    	if (runtime_box_size == 0.0)
+    	{
+    		runtime_box_size = fname_box_size_ * atr_;
+    	}
+    }
+	boxes_ = Boxes{runtime_box_size, box_type, box_scale};
+	current_column_ = PF_Column{&boxes_, reversal_boxes}; 
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
@@ -126,6 +142,8 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
         columns_ = rhs.columns_;
         current_column_ = rhs.current_column_;
         symbol_ = rhs.symbol_;
+        fname_box_size_ = rhs.fname_box_size_;
+        atr_ = rhs.atr_;
         first_date_ = rhs.first_date_;
         last_change_date_ = rhs.last_change_date_;
         last_checked_date_ = rhs.last_checked_date_;
@@ -149,6 +167,8 @@ PF_Chart& PF_Chart::operator= (PF_Chart&& rhs) noexcept
         columns_ = std::move(rhs.columns_);
         current_column_ = std::move(rhs.current_column_);
         symbol_ = rhs.symbol_;
+        fname_box_size_ = rhs.fname_box_size_;
+        atr_ = rhs.atr_;
         first_date_ = rhs.first_date_;
         last_change_date_ = rhs.last_change_date_;
         last_checked_date_ = rhs.last_checked_date_;
@@ -297,7 +317,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
 std::string PF_Chart::ChartName (std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, GetBoxSize(), (IsPercent() ? "%" : ""),
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, fname_box_size_, (IsPercent() ? "%" : ""),
             GetReversalboxes(), (IsPercent() ? "percent" : "linear"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
@@ -459,6 +479,8 @@ Json::Value PF_Chart::ToJSON () const
     result["last_change_date"] = last_change_date_.time_since_epoch().count();
     result["last_check_date"] = last_checked_date_.time_since_epoch().count();
 
+    result["fname_box_size"] = fname_box_size_.ToStr();
+    result["atr"] = atr_.ToStr();
     result["y_min"] = y_min_.ToStr();
     result["y_max"] = y_max_.ToStr();
 
@@ -500,6 +522,8 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     last_change_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
     last_checked_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
 
+    fname_box_size_ = DprDecimal::DDecQuad{new_data["fname_box_size"].asString()};
+    atr_ = DprDecimal::DDecQuad{new_data["atr"].asString()};
     y_min_ = DprDecimal::DDecQuad{new_data["y_min"].asString()};
     y_max_ = DprDecimal::DDecQuad{new_data["y_max"].asString()};
 
