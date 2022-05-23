@@ -115,6 +115,11 @@ protected:
     void    ConfigureLogging();
 
 	bool	CheckArgs ();
+	
+	void	Run_Load();
+	void	Run_Update();
+	void	Run_Streaming();
+
 	void	Do_Quit ();
 
     [[nodiscard]] static PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name);

@@ -350,100 +350,118 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
     number_of_days_history_for_ATR_ = 20;
 
-    // set up our charts 
-
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
-
     if(source_ == Source::e_file)
     {
         if (mode_ == Mode::e_load)
         {
-            for (const auto& val : params)
-            {
-                const auto& symbol = std::get<0>(val);
-            	try
-            	{
-                	fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-                	BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
-                	// TODO(dpriedel): add json code
-                	BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
-                	auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-                	PF_Chart new_chart{val, atr};
-                	AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
-                	charts_.emplace_back(std::make_pair(symbol, new_chart));
-            	}
-            	catch (const std::exception& e)
-            	{
-					std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;	
-            	}
-            }
+			Run_Load();
         }
         else if (mode_ == Mode::e_update)
         {
-            // look for existing data and load the saved JSON data if we have it.
-            // then add the new data to the chart.
-
-            for (const auto& val : params)
-            {
-                const auto& symbol = std::get<0>(val);
-            	try
-            	{
-                	fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
-                	PF_Chart new_chart;
-                	if (fs::exists(existing_data_file_name))
-                	{
-                    	new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
-                	}
-                	else
-                	{
-                		auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-                		PF_Chart new_chart{val, atr};
-                	}
-                	fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-                	BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
-                	// TODO(dpriedel): add json code
-                	BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
-                	AddPriceDataToExistingChartCSV(new_chart, update_file_name);
-                	charts_.emplace_back(std::make_pair(symbol, new_chart));
-            	}
-            	catch (const std::exception& e)
-            	{
-					std::cout << "Unable to update data for symbol: " << symbol << " because: " << e.what() << std::endl;	
-            	}
-            }
+            Run_Update();
         }
     }
     else
     {
-        auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-        auto market_status = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time());
-
-        if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
-        {
-            std::cout << "Market not open for trading now so we can't stream quotes.\n";
-            return {};
-        }
-
-        if (market_status == US_MarketStatus::e_NotOpenYet)
-        {
-            std::cout << "Market not open for trading YET so we'll wait." << std::endl;
-        }
-
-        for (const auto& val : params)
-        {
-            const auto& symbol = std::get<0>(val);
-            auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-            PF_Chart new_chart{val, atr};
-            charts_.emplace_back(std::make_pair(symbol, new_chart));
-        }
-        // let's stream !
-        
-        PrimeChartsForStreaming();
-        CollectStreamingData();
+        Run_Streaming();
     }
 
 	return {} ;
 }		// -----  end of method PF_CollectDataApp::Do_Run  -----
+
+void PF_CollectDataApp::Run_Load()
+{
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+
+    for (const auto& val : params)
+    {
+        const auto& symbol = std::get<0>(val);
+        try
+        {
+            fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+            BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
+            // TODO(dpriedel): add json code
+            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
+            auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
+            PF_Chart new_chart{val, atr};
+            AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
+            charts_.emplace_back(std::make_pair(symbol, new_chart));
+        }
+        catch (const std::exception& e)
+        {
+			std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;	
+        }
+    }
+
+}
+
+void PF_CollectDataApp::Run_Update()
+{
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+
+    // look for existing data and load the saved JSON data if we have it.
+    // then add the new data to the chart.
+
+    for (const auto& val : params)
+    {
+        const auto& symbol = std::get<0>(val);
+        try
+        {
+            fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
+            PF_Chart new_chart;
+            if (fs::exists(existing_data_file_name))
+            {
+                new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
+            }
+            else
+            {
+                auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
+                PF_Chart new_chart{val, atr};
+            }
+            fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+            BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
+            // TODO(dpriedel): add json code
+            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
+            AddPriceDataToExistingChartCSV(new_chart, update_file_name);
+            charts_.emplace_back(std::make_pair(symbol, new_chart));
+        }
+        catch (const std::exception& e)
+        {
+			std::cout << "Unable to update data for symbol: " << symbol << " because: " << e.what() << std::endl;	
+        }
+    }
+}
+
+void PF_CollectDataApp::Run_Streaming()
+{
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+
+    auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    auto market_status = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time());
+
+    if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
+    {
+        std::cout << "Market not open for trading now so we can't stream quotes.\n";
+        return;
+    }
+
+    if (market_status == US_MarketStatus::e_NotOpenYet)
+    {
+        std::cout << "Market not open for trading YET so we'll wait." << std::endl;
+    }
+
+    for (const auto& val : params)
+    {
+        const auto& symbol = std::get<0>(val);
+        auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
+        PF_Chart new_chart{val, atr};
+        charts_.emplace_back(std::make_pair(symbol, new_chart));
+    }
+    // let's stream !
+    
+    PrimeChartsForStreaming();
+    CollectStreamingData();
+}
 
 void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const
 {
