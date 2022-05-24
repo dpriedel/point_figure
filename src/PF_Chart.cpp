@@ -331,11 +331,7 @@ std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view su
 
 void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, Y_AxisFormat date_or_time) const
 {
-    // this code comes pretty much right out of the cppdemo code
-    // with some modifications for good memory management practices.
-
-    // NOTE: there are a bunch of numeric constants here related to 
-    // chart configuration. These should be paramets eventually.
+	BOOST_ASSERT_MSG(! IsEmpty(), fmt::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
 
     std::vector<double> highData;
     std::vector<double> lowData;
@@ -408,6 +404,30 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
     had_step_back.push_back(current_column_.GetHadReversal());
 
+	// want to show approximate overall change in value (computed from boxes, not actual prices)
+	
+	DprDecimal::DDecQuad first_value = 0;
+	DprDecimal::DDecQuad last_value = 0;
+
+	if (GetNumberOfColumns() > 1)
+	{
+		auto first_col = columns_[0];
+		first_value = first_col.GetDirection() == PF_Column::Direction::e_up ? first_col.GetBottom() : first_col.GetTop();
+		// apparently, this can happen 
+
+		if (first_value == 0.0)
+		{
+			first_value = 0.01;
+		}
+	}
+	else
+	{
+		first_value = current_column_.GetDirection() == PF_Column::Direction::e_up ? current_column_.GetBottom() : current_column_.GetTop();
+	}
+	last_value = current_column_.GetDirection() == PF_Column::Direction::e_up ? current_column_.GetTop() : current_column_.GetBottom();
+
+	DprDecimal::DDecQuad overall_pct_chg = ((last_value - first_value) / first_value * 100).Rescale(-2);
+
     // some explanation for custom box colors. 
 
     std::string explanation_text;
@@ -415,10 +435,9 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     {
         explanation_text = "Orange: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
     }
-    auto chart_title = fmt::format("\n{}{} X {} for {}  {}.\nMost recent change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetBoxSize(),
+    auto chart_title = fmt::format("\n{}{} X {} for {} {}. Overall % change: {}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
-                (IsPercent() ? "percent" : ""), last_change_date_,
-                explanation_text);
+                (IsPercent() ? "percent" : ""), overall_pct_chg, last_change_date_, explanation_text);
 
 //    std::vector<const char*> x_labels;
 //
