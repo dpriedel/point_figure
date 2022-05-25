@@ -413,6 +413,10 @@ void PF_CollectDataApp::Run_Update()
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
+                if (max_columns_for_graph_ > 0)
+                {
+                	new_chart.SetMaxGraphicColumns(max_columns_for_graph_);
+                }
             }
             else
             {

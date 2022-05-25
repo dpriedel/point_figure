@@ -140,6 +140,8 @@ public:
     PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, char delim);
 
+    void SetMaxGraphicColumns(size_t max_cols) { max_columns_for_graph_ = max_cols; }
+
     // ====================  OPERATORS     =======================================
 
     PF_Chart& operator= (const PF_Chart& rhs);
