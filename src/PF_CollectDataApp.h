@@ -193,6 +193,7 @@ private:
 
     std::string price_fld_name_;
 
+    size_t max_columns_for_graph_ = 0;
     int32_t number_of_days_history_for_ATR_ = 0;
     bool input_is_path_ = false;
     bool output_is_path_ = false;

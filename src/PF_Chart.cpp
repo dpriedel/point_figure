@@ -42,6 +42,7 @@
 #include <fmt/chrono.h>
 
 #include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/view/drop.hpp>
 
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/gil.h>
@@ -66,7 +67,7 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
     fname_box_size_{rhs.fname_box_size_}, atr_{rhs.atr_},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_}, last_checked_date_{rhs.last_checked_date_},
     y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
-    current_direction_{rhs.current_direction_} 
+    current_direction_{rhs.current_direction_}, max_columns_for_graph_{rhs.max_columns_for_graph_}
 
 {
     // now, the reason for doing this explicitly is to fix the column box pointers.
@@ -87,7 +88,7 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
     last_checked_date_{rhs.last_checked_date_}, 
     y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
-    current_direction_{rhs.current_direction_} 
+    current_direction_{rhs.current_direction_}, max_columns_for_graph_{rhs.max_columns_for_graph_} 
 
 {
     // now, the reason for doing this explicitly is to fix the column box pointers.
@@ -103,8 +104,8 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        Boxes::BoxType box_type, Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr)
-    : symbol_{symbol}, fname_box_size_{box_size}, atr_{atr}
+        Boxes::BoxType box_type, Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr, size_t max_columns_for_graph)
+    : symbol_{symbol}, fname_box_size_{box_size}, atr_{atr}, max_columns_for_graph_{max_columns_for_graph}
 
 {
 	DprDecimal::DDecQuad runtime_box_size = fname_box_size_;
@@ -150,6 +151,7 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
         y_min_ = rhs.y_min_;
         y_max_ = rhs.y_max_;
         current_direction_ = rhs.current_direction_;
+        max_columns_for_graph_ = rhs.max_columns_for_graph_;
 
         // now, the reason for doing this explicitly is to fix the column box pointers.
 
@@ -175,6 +177,7 @@ PF_Chart& PF_Chart::operator= (PF_Chart&& rhs) noexcept
         y_min_ = std::move(rhs.y_min_);
         y_max_ = std::move(rhs.y_max_);
         current_direction_ = rhs.current_direction_;
+        max_columns_for_graph_ = rhs.max_columns_for_graph_;
 
         // now, the reason for doing this explicitly is to fix the column box pointers.
 
@@ -346,7 +349,11 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
     std::vector<std::string> x_axis_labels;
 
-    for (const auto& col : columns_)
+	// limit the number of columns shown on graphic if requested 
+	
+	size_t skipped_columns = max_columns_for_graph_ == 0 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
+
+    for (const auto& col : columns_ | ranges::views::drop(skipped_columns))
     {
         lowData.push_back(col.GetBottom().ToDouble());
         highData.push_back(col.GetTop().ToDouble());
@@ -363,12 +370,12 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             closeData.push_back(col.GetBottom().ToDouble());
             direction_is_up.push_back(false);
         }
-        if (date_or_time == Y_AxisFormat::e_show_date)
+		if (date_or_time == Y_AxisFormat::e_show_date)
         {
             x_axis_labels.push_back(fmt::format("{:%F}", col.GetTimeSpan().first));
 //            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
         }
-        else
+		else
         {
             x_axis_labels.push_back(TimePointToLocalHMSString(col.GetTimeSpan().first));
 //            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
@@ -428,6 +435,11 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
 	DprDecimal::DDecQuad overall_pct_chg = ((last_value - first_value) / first_value * 100).Rescale(-2);
 
+	std::string skipped_columns_text;
+	if (skipped_columns > 0)
+	{
+		skipped_columns_text = fmt::format(" (last {} cols)", max_columns_for_graph_);
+	}
     // some explanation for custom box colors. 
 
     std::string explanation_text;
@@ -435,9 +447,9 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     {
         explanation_text = "Orange: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
     }
-    auto chart_title = fmt::format("\n{}{} X {} for {} {}. Overall % change: {}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetBoxSize(),
+    auto chart_title = fmt::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
-                (IsPercent() ? "percent" : ""), overall_pct_chg, last_change_date_, explanation_text);
+                (IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, last_change_date_, explanation_text);
 
 //    std::vector<const char*> x_labels;
 //
@@ -518,6 +530,7 @@ Json::Value PF_Chart::ToJSON () const
             result["current_direction"] = "up";
             break;
     };
+    result["max_columns"] = max_columns_for_graph_;
 
     Json::Value cols{Json::arrayValue};
     for (const auto& col : columns_)
@@ -563,6 +576,8 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     {
         throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
+
+	max_columns_for_graph_ = new_data["max_columns"].asUInt();
 
     // lastly, we can do our columns 
     // need to hook them up with current boxes_ data

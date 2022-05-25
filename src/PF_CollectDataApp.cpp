@@ -301,6 +301,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
 		("boxsize,b",			po::value<std::vector<DprDecimal::DDecQuad>>(&this->box_size_list_)->required(),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_)->required(),		"reversal size in number of boxes. Default is 2")
+		("max-graphic-cols",	po::value<size_t>(&this->max_columns_for_graph_)->default_value(0),		"maximum number of columns to show in graphic. Default is 0 (meaning ALL).")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
         ("host",                po::value<std::string>(&this->host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
@@ -383,7 +384,7 @@ void PF_CollectDataApp::Run_Load()
             // TODO(dpriedel): add json code
             BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
             auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-            PF_Chart new_chart{val, atr};
+            PF_Chart new_chart{val, atr, max_columns_for_graph_};
             AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
             charts_.emplace_back(std::make_pair(symbol, new_chart));
         }
@@ -416,7 +417,7 @@ void PF_CollectDataApp::Run_Update()
             else
             {
                 auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-                PF_Chart new_chart{val, atr};
+                PF_Chart new_chart{val, atr, max_columns_for_graph_};
             }
             fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
             BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
@@ -454,7 +455,7 @@ void PF_CollectDataApp::Run_Streaming()
     {
         const auto& symbol = std::get<0>(val);
         auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-        PF_Chart new_chart{val, atr};
+        PF_Chart new_chart{val, atr, max_columns_for_graph_};
         charts_.emplace_back(std::make_pair(symbol, new_chart));
     }
     // let's stream !
