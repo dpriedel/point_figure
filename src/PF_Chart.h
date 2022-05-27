@@ -87,9 +87,9 @@ public:
     PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
             Boxes::BoxType box_type=Boxes::BoxType::e_integral,
             Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear,
-            DprDecimal::DDecQuad atr=0, size_t max_columns_for_graph=0);
+            DprDecimal::DDecQuad atr=0, int64_t max_columns_for_graph=0);
 
-    PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad atr, size_t max_columns_for_graph)
+    PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
         : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals), std::get<e_box_type>(vals),
         		std::get<e_box_scale>(vals), atr, max_columns_for_graph)
     {
@@ -180,7 +180,7 @@ private:
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
 
-	size_t max_columns_for_graph_ = 0;			// how many columns to show in graphic
+	int64_t max_columns_for_graph_ = 0;			// how many columns to show in graphic
 }; // -----  end of class PF_Chart  -----
 
 template <> struct fmt::formatter<PF_Chart>: formatter<std::string>

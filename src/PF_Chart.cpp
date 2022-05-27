@@ -104,14 +104,14 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        Boxes::BoxType box_type, Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr, size_t max_columns_for_graph)
+        Boxes::BoxType box_type, Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
     : symbol_{symbol}, fname_box_size_{box_size}, atr_{atr}, max_columns_for_graph_{max_columns_for_graph}
 
 {
 	DprDecimal::DDecQuad runtime_box_size = fname_box_size_;
     if (atr_ != 0.0)
     {
-    	runtime_box_size = (fname_box_size_ * atr_).Rescale(box_size.GetExponent() - 1);
+    	runtime_box_size = (fname_box_size_ * atr_).Rescale(std::min(fname_box_size_.GetExponent(), atr_.GetExponent()) - 1);
 
     	// it seems that the rescaled box size value can turn out to be zero. If that 
     	// is the case, then go with the unscaled box size. 
@@ -351,7 +351,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
 	// limit the number of columns shown on graphic if requested 
 	
-	size_t skipped_columns = max_columns_for_graph_ == 0 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
+	size_t skipped_columns = max_columns_for_graph_ < 1 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
 
     for (const auto& col : columns_ | ranges::views::drop(skipped_columns))
     {
@@ -577,7 +577,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
         throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
 
-	max_columns_for_graph_ = new_data["max_columns"].asUInt();
+	max_columns_for_graph_ = new_data["max_columns"].asInt64();
 
     // lastly, we can do our columns 
     // need to hook them up with current boxes_ data
