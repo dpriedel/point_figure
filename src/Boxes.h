@@ -175,7 +175,7 @@ inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
 {
     fmt::format_to(std::ostream_iterator<char>{os},
         "box size: {} factor up: {} factor down: {} exponent: {} box type: {} box scale: {}\n",
-        boxes.GetBoxSize(), boxes.GetScaleDownFactor(), boxes.GetScaleUpFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
+        boxes.GetBoxSize(), boxes.GetScaleUpFactor(), boxes.GetScaleDownFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
 
     // format ranges doesn't seem to work for custom types. so do it the long way.
 
