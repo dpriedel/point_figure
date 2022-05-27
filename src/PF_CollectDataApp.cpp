@@ -214,7 +214,7 @@ bool PF_CollectDataApp::CheckArgs ()
         fs::create_directories(output_graphs_directory_);
     }
 
-    BOOST_ASSERT_MSG(source_i == "file" | source_i == "streaming", fmt::format("Data source must be 'file' or 'streaming': {}", source_i).c_str());
+    BOOST_ASSERT_MSG(source_i == "file" || source_i == "streaming", fmt::format("Data source must be 'file' or 'streaming': {}", source_i).c_str());
     source_ = source_i == "file" ? Source::e_file : Source::e_streaming;
     
     if (source_ == Source::e_file)
@@ -222,7 +222,7 @@ bool PF_CollectDataApp::CheckArgs ()
         BOOST_ASSERT_MSG(! new_data_input_directory_.empty(), "Must specify 'new_data_dir' when data source is 'file'.");
         BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), fmt::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
 
-        BOOST_ASSERT_MSG(source_format_i == "csv" | source_format_i == "json", fmt::format("Data source must be 'csv' or 'json': {}", source_format_i).c_str());
+        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json", fmt::format("Data source must be 'csv' or 'json': {}", source_format_i).c_str());
         source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
     }
     if (source_ == Source::e_streaming || use_ATR_)
@@ -231,10 +231,12 @@ bool PF_CollectDataApp::CheckArgs ()
         BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
     }
     
-    BOOST_ASSERT_MSG(destination_i == "file" | destination_i == "DB", fmt::format("Data destination must be 'file' or 'DB': {}", destination_i).c_str());
+    BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
+
+    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "DB", fmt::format("Data destination must be 'file' or 'DB': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
-    BOOST_ASSERT_MSG(mode_i == "load" | mode_i == "update", fmt::format("Mode must be 'load' or 'update': {}", mode_i).c_str());
+    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update", fmt::format("Mode must be 'load' or 'update': {}", mode_i).c_str());
     mode_ = mode_i == "load" ? Mode::e_load : Mode::e_update;
 
     const std::set<std::string> possible_intervals = {"eod", "live", "sec1", "sec5", "min1", "min5"};
@@ -270,7 +272,7 @@ bool PF_CollectDataApp::CheckArgs ()
     {
         scale_i_list_.emplace_back("linear");
     }
-    ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" | scale == "percent", fmt::format("Chart scale must be 'linear' or 'percent': {}", scale).c_str()); });
+    ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", fmt::format("Chart scale must be 'linear' or 'percent': {}", scale).c_str()); });
     ranges::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
 
     ranges::for_each(scale_list_, [this] (const auto& scale) { this->fractional_boxes_list_.emplace_back(scale == Boxes::BoxScale::e_percent ? Boxes::BoxType::e_fractional : Boxes::BoxType::e_integral); });
@@ -301,7 +303,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
 		("boxsize,b",			po::value<std::vector<DprDecimal::DDecQuad>>(&this->box_size_list_)->required(),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_)->required(),		"reversal size in number of boxes. Default is 2")
-		("max-graphic-cols",	po::value<size_t>(&this->max_columns_for_graph_)->default_value(0),		"maximum number of columns to show in graphic. Default is 0 (meaning ALL).")
+		("max-graphic-cols",	po::value<int32_t>(&this->max_columns_for_graph_)->default_value(-1),
+									"maximum number of columns to show in graphic. Use -1 for ALL, 0 to keep existing value, if any, otherwise -1. >0 to specify how many columns.")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
         ("host",                po::value<std::string>(&this->host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
@@ -376,7 +379,7 @@ void PF_CollectDataApp::Run_Load()
 
     for (const auto& val : params)
     {
-        const auto& symbol = std::get<0>(val);
+        const auto& symbol = std::get<PF_Chart::e_symbol>(val);
         try
         {
             fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
@@ -384,7 +387,7 @@ void PF_CollectDataApp::Run_Load()
             // TODO(dpriedel): add json code
             BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
             auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-            PF_Chart new_chart{val, atr, max_columns_for_graph_};
+            PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
             charts_.emplace_back(std::make_pair(symbol, new_chart));
         }
@@ -405,7 +408,7 @@ void PF_CollectDataApp::Run_Update()
 
     for (const auto& val : params)
     {
-        const auto& symbol = std::get<0>(val);
+        const auto& symbol = std::get<PF_Chart::e_symbol>(val);
         try
         {
             fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
@@ -413,15 +416,17 @@ void PF_CollectDataApp::Run_Update()
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
-                if (max_columns_for_graph_ > 0)
+                if (max_columns_for_graph_ != 0)
                 {
                 	new_chart.SetMaxGraphicColumns(max_columns_for_graph_);
                 }
             }
             else
             {
+                // no existing data to update, so make a new chart
+
                 auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-                PF_Chart new_chart{val, atr, max_columns_for_graph_};
+				new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             }
             fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
             BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
@@ -457,9 +462,9 @@ void PF_CollectDataApp::Run_Streaming()
 
     for (const auto& val : params)
     {
-        const auto& symbol = std::get<0>(val);
+        const auto& symbol = std::get<PF_Chart::e_symbol>(val);
         auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-        PF_Chart new_chart{val, atr, max_columns_for_graph_};
+        PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
         charts_.emplace_back(std::make_pair(symbol, new_chart));
     }
     // let's stream !
