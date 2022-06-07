@@ -22,6 +22,10 @@
 
 	/* You should have received a copy of the GNU General Public License */
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
+
+
+use axline to plot 45 degree trend lines
+
 """
 
 import pandas as pd 
@@ -69,6 +73,14 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
     mc = mpf.make_marketcolors(up='g',down='r')
     s  = mpf.make_mpf_style(marketcolors=mc, gridstyle="dashed")
 
+    # now generate a sequence of date pairs:
+    dates = chart_data["Date"]
+    # datepairs = [(d1,d2) for d1,d2 in zip(dates,dates[1:])]
+
+    d1 = chart_data.index[ 0]
+    d2 = chart_data.index[-1]
+    tdates = [(d1,d2)]
+    
     fig, axlist = mpf.plot(chart_data,
         type="candle",
         style=s,
@@ -76,18 +88,19 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
         title=ChartTitle,
         figsize=(12, 10),
         datetime_format=DateTimeFormat,
+        tlines=[dict(tlines=tdates,tline_use='High',tline_method="point-to-point",colors='r'),
+            dict(tlines=tdates,tline_use='Low',tline_method="point-to-point",colors='b')],
         returnfig=True)
 
     axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
+    # secax = axlist[0].secondary_xaxis('top')
+
     if UseLogScale:
         plt.ylim(Y_min, Y_max)
         axlist[0].set_yscale("log")
         axlist[0].grid(which='both', axis='both', ls='-')
         axlist[0].yaxis.set_major_formatter(ScalarFormatter())
         axlist[0].yaxis.set_minor_formatter(ScalarFormatter()) 
-
-    # secax = axlist[0].secondary_xaxis('top', functions=(date2index, index2date))
-    secax = axlist[0].secondary_xaxis('top')
 
     plt.savefig(ChartFileName)
     for ax in axlist:
