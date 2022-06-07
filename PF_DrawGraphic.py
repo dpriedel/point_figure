@@ -59,6 +59,8 @@ def GetArgs():
                         help="Path name of file to process.")
     parser.add_argument("--format", action="store", dest="y_axis_format_", required=True,
                         help="Use 'time' or 'date' for y-axis labels.")
+    parser.add_argument("-t", "--trend-lines", action="store", dest="trend_lines_", default="no",
+                        help="Draw trend lines on graphic. Default is 'no'. Can be 'data' or 'angle'.")
     parser.add_argument("-l", "--logging", action="store", dest="log_level_", default="warning",
                         help="logging level: info, debug, warning, error, critical. Default is 'warning'.")
     parser.add_argument("-u", "--user", action="store", dest="user_name_", default="data_updater_pg", required=False,
@@ -95,7 +97,11 @@ def makes_sense_to_run(args):
         return False
 
     if (args.y_axis_format_ != "date" and args.y_axis_format_ != "time"):
-        print("Format: %s must be either 'date' or 'time'.")
+        print("Format: %s must be either: 'date' or 'time'.")
+        return False
+
+    if (args.trend_lines_ != "no" and args.trend_lines_ != "data" and args.trend_lines_ != "angle"):
+        print("Trend lines: %s must be either: 'no' or 'data' or 'angle'.")
         return False
 
     return True
@@ -163,8 +169,8 @@ def ProcessChartFile(args):
     the_data["Close"] = closeData
 
     date_time_format = "%Y-%m-%d" if args.y_axis_format_ == "date" else "%H:%M:%S"
-    PF_DrawChart.DrawChart(the_data, direction_is_up, had_step_back, chart_title, "/tmp/test.svg", date_time_format, False,
-        float(chart_data["y_min"]), float(chart_data["y_max"]))
+    PF_DrawChart.DrawChart(the_data, direction_is_up, had_step_back, chart_title, "/tmp/test.svg", date_time_format,
+            args.trend_lines_, False, float(chart_data["y_min"]), float(chart_data["y_max"]))
     pass
 
 

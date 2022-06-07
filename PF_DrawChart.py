@@ -39,6 +39,26 @@ import numpy as np
 
 matplotlib.use("SVG")
 
+SLOPE = 0.707
+
+# some functions to use for trend lines 
+
+
+def FindFirstMinimum(is_up):
+    # we expect a data_frame 
+
+    for i in range(len(is_up)):
+        if not is_up[i]:
+            # a down column
+            return i
+
+    return -1   # no down column so no up trend line possible
+
+
+def FindNextMaximum(data, start_at):
+    pass
+
+
 def SetStepbackColor (is_up, stepped_back) : 
     if is_up:
         if stepped_back:
@@ -48,7 +68,8 @@ def SetStepbackColor (is_up, stepped_back) :
             return "orange"
     return None
 
-def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, UseLogScale, Y_min, Y_max):
+def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, ShowTrendLines, UseLogScale, Y_min, Y_max):
+
     chart_data = pd.DataFrame(the_data)
     chart_data["Date"] = pd.to_datetime(chart_data["Date"])
     chart_data.set_index("Date", drop=False, inplace=True)
@@ -58,14 +79,6 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
     # print(chart_data.dtypes)
     # print(chart_data)
 
-    def date2index(a_date):
-        print("date2index: ", a_date)
-        return chart_data.loc[a_date[1]]["row_number"]
-
-    def index2date(row_number):
-        print("index2date: ", row_number)
-        return chart_data.at[chart_data.index[row_number], "date"]
-
     mco = []
     for i in range(len(IsUp)):
         mco.append(SetStepbackColor(IsUp[i], StepBack[i]))
@@ -74,26 +87,63 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
     s  = mpf.make_mpf_style(marketcolors=mc, gridstyle="dashed")
 
     # now generate a sequence of date pairs:
-    dates = chart_data["Date"]
+    # dates = chart_data["Date"]
     # datepairs = [(d1,d2) for d1,d2 in zip(dates,dates[1:])]
 
-    d1 = chart_data.index[ 0]
-    d2 = chart_data.index[-1]
-    tdates = [(d1,d2)]
+    if ShowTrendLines == "no":
+
+        fig, axlist = mpf.plot(chart_data,
+            type="candle",
+            style=s,
+            marketcolor_overrides=mco,
+            title=ChartTitle,
+            figsize=(12, 10),
+            datetime_format=DateTimeFormat,
+            returnfig=True)
+
+    elif ShowTrendLines == "angle":
+
+        # 45 degree trend line.
+        # need 2 points: first down column bottom and computed value for last column 
+
+        x1 = FindFirstMinimum(IsUp)
+        y1 = chart_data.iloc[x1]["Low"]
+        x2 = chart_data.shape[0] - 1
+
+        # formula for point slope line equation
+        # y = slope(x - x1) + y1
+
+        y2 = SLOPE * (x2 - x1) + y1
+        a_line_points = [(chart_data.iloc[x1]["Date"], y1), (chart_data.iloc[x2]["Date"], y2)]
+        fig, axlist = mpf.plot(chart_data,
+            type="candle",
+            style=s,
+            marketcolor_overrides=mco,
+            title=ChartTitle,
+            figsize=(12, 10),
+            datetime_format=DateTimeFormat,
+            alines=a_line_points,
+            returnfig=True)
+
+    else:
+
+        d1 = chart_data.index[ 0]
+        d2 = chart_data.index[-1]
+        tdates = [(d1,d2)]
     
-    fig, axlist = mpf.plot(chart_data,
-        type="candle",
-        style=s,
-        marketcolor_overrides=mco,
-        title=ChartTitle,
-        figsize=(12, 10),
-        datetime_format=DateTimeFormat,
-        tlines=[dict(tlines=tdates,tline_use='High',tline_method="point-to-point",colors='r'),
-            dict(tlines=tdates,tline_use='Low',tline_method="point-to-point",colors='b')],
-        returnfig=True)
+        fig, axlist = mpf.plot(chart_data,
+            type="candle",
+            style=s,
+            marketcolor_overrides=mco,
+            title=ChartTitle,
+            figsize=(12, 10),
+            datetime_format=DateTimeFormat,
+            tlines=[dict(tlines=tdates,tline_use='High',tline_method="point-to-point",colors='r'),
+                dict(tlines=tdates,tline_use='Low',tline_method="point-to-point",colors='b')],
+            returnfig=True)
 
     axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
-    # secax = axlist[0].secondary_xaxis('top')
+    secax = axlist[0].secondary_xaxis('top')
 
     if UseLogScale:
         plt.ylim(Y_min, Y_max)
