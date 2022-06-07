@@ -177,6 +177,7 @@ private:
     std::string source_format_i;
     std::string source_i;
     std::string use_adjusted_i;
+    std::string symbol_list_i_;
     std::vector<std::string> scale_i_list_;
 
     Source source_ = Source::e_unknown;

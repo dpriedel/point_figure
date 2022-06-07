@@ -182,7 +182,16 @@ bool PF_CollectDataApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
-    // first, we want upper case symbols.
+	// we now have to possible sources for symbols. We need to be sure we have 1 of them.
+	
+	BOOST_ASSERT_MSG(! symbol_list_.empty() || ! symbol_list_i_.empty(), "Must provide either 1 or more '-s' values or 'symbol-list' list.");
+
+	if (! symbol_list_i_.empty())
+	{
+		symbol_list_ = split_string<std::string>(symbol_list_i_, ',');
+	}
+
+    // now we want upper case symbols.
 
     ranges::for_each(symbol_list_, [](auto& symbol) { ranges::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
 
@@ -289,7 +298,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 
 	newoptions_->add_options()
 		("help,h",											"produce help message")
-		("symbol,s",			po::value<std::vector<std::string>>(&this->symbol_list_)->required(),	"name of symbol we are processing data for. May be a comma-delimited list.")
+		("symbol,s",			po::value<std::vector<std::string>>(&this->symbol_list_),	"name of symbol we are processing data for. Repeat for multiple symbols.")
+		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process.")
 		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
 		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_)->required(),	"name of directory containing existing files with data for symbols we are using.")
 		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'DB'. Default is 'file'.")
