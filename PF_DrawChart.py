@@ -44,15 +44,20 @@ SLOPE = 0.707
 # some functions to use for trend lines 
 
 
-def FindFirstMinimum(is_up):
+def FindMinimum(is_up, chart_data):
     # we expect a data_frame 
+
+    minimum = 100000
+    minimum_column = 0
 
     for i in range(len(is_up)):
         if not is_up[i]:
             # a down column
-            return i
+            if chart_data.iloc[i]["Low"] < minimum:
+                minimum = chart_data.iloc[i]["Low"]
+                minimum_column = i
 
-    return -1   # no down column so no up trend line possible
+    return minimum_column
 
 
 def FindNextMaximum(data, start_at):
@@ -90,6 +95,9 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
     # dates = chart_data["Date"]
     # datepairs = [(d1,d2) for d1,d2 in zip(dates,dates[1:])]
 
+    if chart_data.shape[0] < 3:
+        ShowTrendLines = "no"
+
     if ShowTrendLines == "no":
 
         fig, axlist = mpf.plot(chart_data,
@@ -97,7 +105,7 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
             style=s,
             marketcolor_overrides=mco,
             title=ChartTitle,
-            figsize=(12, 10),
+            figsize=(14, 10),
             datetime_format=DateTimeFormat,
             returnfig=True)
 
@@ -106,7 +114,7 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
         # 45 degree trend line.
         # need 2 points: first down column bottom and computed value for last column 
 
-        x1 = FindFirstMinimum(IsUp)
+        x1 = FindMinimum(IsUp, chart_data)
         y1 = chart_data.iloc[x1]["Low"]
         x2 = chart_data.shape[0] - 1
 
@@ -120,7 +128,7 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
             style=s,
             marketcolor_overrides=mco,
             title=ChartTitle,
-            figsize=(12, 10),
+            figsize=(14, 10),
             datetime_format=DateTimeFormat,
             alines=a_line_points,
             returnfig=True)
@@ -136,14 +144,14 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
             style=s,
             marketcolor_overrides=mco,
             title=ChartTitle,
-            figsize=(12, 10),
+            figsize=(14, 10),
             datetime_format=DateTimeFormat,
             tlines=[dict(tlines=tdates,tline_use='High',tline_method="point-to-point",colors='r'),
                 dict(tlines=tdates,tline_use='Low',tline_method="point-to-point",colors='b')],
             returnfig=True)
 
     axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
-    secax = axlist[0].secondary_xaxis('top')
+    axlist[0].secondary_xaxis('top')
 
     if UseLogScale:
         plt.ylim(Y_min, Y_max)
