@@ -327,12 +327,12 @@ std::string PF_Chart::ChartName (std::string_view suffix) const
 
 std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view suffix)
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", std::get<0>(vals), std::get<1>(vals), (std::get<4>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
-            std::get<2>(vals), (std::get<4>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", std::get<e_symbol>(vals), std::get<e_box_size>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
+            std::get<e_reversal>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
-void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, Y_AxisFormat date_or_time) const
+void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, const std::string& show_trend_lines, Y_AxisFormat date_or_time) const
 {
 	BOOST_ASSERT_MSG(! IsEmpty(), fmt::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
 
@@ -479,14 +479,15 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         "DateTimeFormat"_a = date_or_time == Y_AxisFormat::e_show_date ? "%Y-%m-%d" : "%H:%M:%S",
         "Y_min"_a = GetYLimits().first.ToDouble(),
         "Y_max"_a = GetYLimits().second.ToDouble(),
-        "UseLogScale"_a = IsPercent()
+        "UseLogScale"_a = IsPercent(),
+        "ShowTrendLines"_a = show_trend_lines
     };
 
         // Execute Python code, using the variables saved in `locals`
 
 //        py::gil_scoped_acquire gil{};
         py::exec(R"(
-        PF_DrawChart.DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, UseLogScale, Y_min, Y_max)
+        PF_DrawChart.DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, ShowTrendLines, UseLogScale, Y_min, Y_max)
         )", py::globals(), locals);
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
 

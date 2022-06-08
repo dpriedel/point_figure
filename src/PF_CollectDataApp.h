@@ -193,6 +193,7 @@ private:
     std::vector<int32_t> reversal_boxes_list_;
 
     std::string price_fld_name_;
+	std::string trend_lines_;
 
     int32_t max_columns_for_graph_ = -1;
     int32_t number_of_days_history_for_ATR_ = 0;

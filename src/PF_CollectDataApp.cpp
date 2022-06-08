@@ -223,7 +223,7 @@ bool PF_CollectDataApp::CheckArgs ()
         fs::create_directories(output_graphs_directory_);
     }
 
-    BOOST_ASSERT_MSG(source_i == "file" || source_i == "streaming", fmt::format("Data source must be 'file' or 'streaming': {}", source_i).c_str());
+    BOOST_ASSERT_MSG(source_i == "file" || source_i == "streaming", fmt::format("Data source must be: 'file' or 'streaming': {}", source_i).c_str());
     source_ = source_i == "file" ? Source::e_file : Source::e_streaming;
     
     if (source_ == Source::e_file)
@@ -231,7 +231,7 @@ bool PF_CollectDataApp::CheckArgs ()
         BOOST_ASSERT_MSG(! new_data_input_directory_.empty(), "Must specify 'new_data_dir' when data source is 'file'.");
         BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), fmt::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
 
-        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json", fmt::format("Data source must be 'csv' or 'json': {}", source_format_i).c_str());
+        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json", fmt::format("Data source must be: 'csv' or 'json': {}", source_format_i).c_str());
         source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
     }
     if (source_ == Source::e_streaming || use_ATR_)
@@ -242,14 +242,16 @@ bool PF_CollectDataApp::CheckArgs ()
     
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
 
-    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "DB", fmt::format("Data destination must be 'file' or 'DB': {}", destination_i).c_str());
+    BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle", fmt::format("show-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
+
+    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "DB", fmt::format("Data destination must be: 'file' or 'DB': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
-    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update", fmt::format("Mode must be 'load' or 'update': {}", mode_i).c_str());
+    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update", fmt::format("Mode must be: 'load' or 'update': {}", mode_i).c_str());
     mode_ = mode_i == "load" ? Mode::e_load : Mode::e_update;
 
     const std::set<std::string> possible_intervals = {"eod", "live", "sec1", "sec5", "min1", "min5"};
-    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), fmt::format("Interval must be 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
+    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), fmt::format("Interval must be: 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
     if (interval_i == "eod")
     {
         interval_ = Interval::e_eod;
@@ -281,7 +283,7 @@ bool PF_CollectDataApp::CheckArgs ()
     {
         scale_i_list_.emplace_back("linear");
     }
-    ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", fmt::format("Chart scale must be 'linear' or 'percent': {}", scale).c_str()); });
+    ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", fmt::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str()); });
     ranges::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
 
     ranges::for_each(scale_list_, [this] (const auto& scale) { this->fractional_boxes_list_.emplace_back(scale == Boxes::BoxScale::e_percent ? Boxes::BoxType::e_fractional : Boxes::BoxType::e_integral); });
@@ -315,6 +317,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_)->required(),		"reversal size in number of boxes. Default is 2")
 		("max-graphic-cols",	po::value<int32_t>(&this->max_columns_for_graph_)->default_value(-1),
 									"maximum number of columns to show in graphic. Use -1 for ALL, 0 to keep existing value, if any, otherwise -1. >0 to specify how many columns.")
+		("show-trend-lines",	po::value<std::string>(&this->trend_lines_)->default_value("no"),	"Show trend lines on graphic. Can be 'data' or 'angle'. Default is 'no'.")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
         ("host",                po::value<std::string>(&this->host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
@@ -718,7 +721,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
             {
                 py::gil_scoped_acquire gil{};
                 fs::path graph_file_path = output_graphs_directory_ / (chart->ChartName("svg"));
-                chart->ConstructChartGraphAndWriteToFile(graph_file_path, PF_Chart::Y_AxisFormat::e_show_time);
+                chart->ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, PF_Chart::Y_AxisFormat::e_show_time);
 
                 fs::path chart_file_path = output_chart_directory_ / (chart->ChartName("json"));
                 std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
@@ -752,7 +755,7 @@ void PF_CollectDataApp::Shutdown ()
             output.close();
 
             fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
-            chart.ConstructChartGraphAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
+            chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
         }
     }
     spdlog::info(fmt::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
