@@ -57,10 +57,14 @@ def GetArgs():
     parser = argparse.ArgumentParser(description='Draw the graphic for the specified PF_Chart file.')
     parser.add_argument("-f", "--file", action="store", dest="input_file_name_", required=True,
                         help="Path name of file to process.")
+    parser.add_argument("-o", "--output-dir", action="store", dest="output_directory_name_", default="/tmp",
+                        help="Path name of directory to write output file to. Default is '/tmp'.")
     parser.add_argument("--format", action="store", dest="y_axis_format_", required=True,
                         help="Use 'time' or 'date' for y-axis labels.")
     parser.add_argument("-t", "--trend-lines", action="store", dest="trend_lines_", default="no",
                         help="Draw trend lines on graphic. Default is 'no'. Can be 'data' or 'angle'.")
+    parser.add_argument("-n", "--number-cols", type=int, action="store", dest="number_columns_", default=0,
+                        help="Maximun number of columns to show in graph. Default is '0' which means 'all'.")
     parser.add_argument("-l", "--logging", action="store", dest="log_level_", default="warning",
                         help="logging level: info, debug, warning, error, critical. Default is 'warning'.")
     parser.add_argument("-u", "--user", action="store", dest="user_name_", default="data_updater_pg", required=False,
@@ -159,6 +163,17 @@ def ProcessChartFile(args):
 
     had_step_back.append(chart_data["current_column"]["had_reversal"])
 
+    # see if we need to grab n most recent columns 
+
+    if args.number_columns_ > 0:
+        x_axis_labels = x_axis_labels[:-args.number_columns_]
+        direction_is_up = direction_is_up[:-args.number_columns_]
+        had_step_back = had_step_back[:-args.number_columns_]
+        openData = openData[:-args.number_columns_]
+        closeData = closeData[:-args.number_columns_]
+        highData = highData[:-args.number_columns_]
+        lowData = lowData[:-args.number_columns_]
+
     chart_title = "just testing"
 
     the_data = {}
@@ -169,9 +184,17 @@ def ProcessChartFile(args):
     the_data["Close"] = closeData
 
     date_time_format = "%Y-%m-%d" if args.y_axis_format_ == "date" else "%H:%M:%S"
-    PF_DrawChart.DrawChart(the_data, direction_is_up, had_step_back, chart_title, "/tmp/test.svg", date_time_format,
+
+    chart_name = MakeChartName(chart_data)
+    graphic_file_name = os.path.join(args.output_directory_name_, chart_name)
+
+    PF_DrawChart.DrawChart(the_data, direction_is_up, had_step_back, chart_title, graphic_file_name, date_time_format,
             args.trend_lines_, False, float(chart_data["y_min"]), float(chart_data["y_max"]))
-    pass
+
+def MakeChartName (chart_data):
+    chart_name = "{}_{}{}X{}_{}.{}".format(chart_data["symbol"], chart_data["fname_box_size"], ("%" if chart_data["boxes"]["box_scale"] == "percent" else ""),
+            chart_data["current_column"]["reversal_boxes"], ("linear" if chart_data["boxes"]["box_scale"] == "linear" else "percent"), "svg");
+    return chart_name
 
 
 if __name__ == '__main__':
