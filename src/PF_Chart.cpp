@@ -44,6 +44,10 @@
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/drop.hpp>
 
+#include <pqxx/pqxx>
+#include <pqxx/transaction.hxx>
+
+
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/gil.h>
 #include <pybind11/stl.h>
@@ -253,6 +257,10 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
     	{
     		return PF_Column::Status::e_ignored;
     	}
+    }
+    else
+    {
+		first_date_ = the_time;
     }
 
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
@@ -500,6 +508,41 @@ void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
     writer->write(this->ToJSON(), &stream);
     stream << std::endl;  // add lf and flush
 }		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  ----- 
+
+void PF_Chart::StoreChartInChartsDB() const
+{
+    pqxx::connection c{"dbname=finance user=data_updater_pg"};
+    pqxx::work trxn{c};
+
+    auto delete_existing_data_cmd = fmt::format("DELETE FROM point_and_figure.pf_charts WHERE file_name = {0}", trxn.quote(ChartName("json")));
+    trxn.exec(delete_existing_data_cmd);
+
+	auto the_chart = ToJSON();
+	Json::StreamWriterBuilder wbuilder;
+	wbuilder["indentation"] = "";
+	std::string for_db = Json::writeString(wbuilder, the_chart);
+
+    auto add_new_data_cmd = fmt::format("INSERT INTO point_and_figure.pf_charts "
+    		" ({}, {}, {}, {}, {}, {}, {}, {}, {}) "
+    		" VALUES({}, {}, {}, {}, {}, {}, {}, {}, '{}')",
+    		"symbol", "fname_box_size", "reversal_boxes", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data",
+			trxn.quote(GetSymbol()),
+			trxn.quote(GetBoxSize().ToStr()),
+			GetReversalboxes(),
+			trxn.quote(ChartName("json")),
+			trxn.quote(fmt::format("{:%F %T}", first_date_)),
+			trxn.quote(fmt::format("{:%F %T}", last_change_date_)),
+			trxn.quote(fmt::format("{:%F %T}", last_checked_date_)),
+			trxn.quote(the_chart["current_direction"].asString()),
+			for_db
+    	);
+
+	// std::cout << add_new_data_cmd << std::endl;
+    trxn.exec(add_new_data_cmd);
+
+	trxn.commit();
+
+}		// -----  end of method PF_Chart::StoreChartInChartsDB  ----- 
 
 
 Json::Value PF_Chart::ToJSON () const
