@@ -112,6 +112,9 @@ PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, in
     : symbol_{symbol}, fname_box_size_{box_size}, atr_{atr}, max_columns_for_graph_{max_columns_for_graph}
 
 {
+	// stock prices are listed to 2 decimals.  If we are doing integral scale, then
+	// we limit box size to that.
+	
 	DprDecimal::DDecQuad runtime_box_size = fname_box_size_;
     if (atr_ != 0.0)
     {
@@ -123,6 +126,14 @@ PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, in
     	if (runtime_box_size == 0.0)
     	{
     		runtime_box_size = fname_box_size_ * atr_;
+    	}
+
+    	if (box_scale == Boxes::BoxScale::e_linear)
+    	{
+    		if (runtime_box_size.GetExponent() < -2)
+    		{
+    			runtime_box_size.Rescale(-2);
+    		}
     	}
     }
 	boxes_ = Boxes{runtime_box_size, box_type, box_scale};
