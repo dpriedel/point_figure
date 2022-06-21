@@ -77,6 +77,8 @@ VPATH := $(SDIR1):$(SDIR2):$(SDIR3):$(SDIR3a):$(SDIR4)
 
 CFG_LIB := -L/usr/local/lib \
 		-ldate-tz \
+		-lpqxx \
+		-lpq \
 		-L/usr/lib \
 		-lfmt \
 		-lspdlog \
