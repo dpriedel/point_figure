@@ -54,6 +54,7 @@
 
 namespace py = pybind11;
 using namespace py::literals;
+using namespace std::string_literals;
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
@@ -149,6 +150,31 @@ PF_Chart::PF_Chart (const Json::Value& new_data)
 {
     this->FromJSON(new_data);
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  ----- 
+
+PF_Chart PF_Chart::MakeChartFromDB(const DB_Params& db_info, PF_ChartParams vals)
+{
+    pqxx::connection c{fmt::format("dbname={} user={}", db_info.db_name_, db_info.user_name_)};
+    pqxx::work trxn{c};
+
+	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM point_and_figure.pf_charts WHERE file_name = {}", trxn.quote(PF_Chart::ChartName(vals, "json")));
+	auto row = trxn.exec1(retrieve_chart_data_cmd);
+	trxn.commit();
+    auto the_data =  row[0].as<std::string>();
+
+	// TODO(dpriedel): ?? write a converter for pqxx library 
+
+    JSONCPP_STRING err;
+    Json::Value chart_data;
+
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    if (! reader->parse(the_data.data(), the_data.data() + the_data.size(), &chart_data, &err))
+    {
+        throw std::runtime_error("Problem parsing data from DB: "s + err);
+    }
+    PF_Chart chart_from_db{chart_data};
+	return chart_from_db;
+}
 
 PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
 {
@@ -520,31 +546,35 @@ void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
     stream << std::endl;  // add lf and flush
 }		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  ----- 
 
-void PF_Chart::StoreChartInChartsDB() const
+void PF_Chart::StoreChartInChartsDB(const DB_Params& db_info, const PF_Chart& the_chart)
 {
-    pqxx::connection c{"dbname=finance user=data_updater_pg"};
+    pqxx::connection c{fmt::format("dbname={} user={}", db_info.db_name_, db_info.user_name_)};
     pqxx::work trxn{c};
 
-    auto delete_existing_data_cmd = fmt::format("DELETE FROM point_and_figure.pf_charts WHERE file_name = {0}", trxn.quote(ChartName("json")));
+    auto delete_existing_data_cmd = fmt::format("DELETE FROM point_and_figure.pf_charts WHERE file_name = {}", trxn.quote(the_chart.ChartName("json")));
     trxn.exec(delete_existing_data_cmd);
 
-	auto the_chart = ToJSON();
+	auto json = the_chart.ToJSON();
 	Json::StreamWriterBuilder wbuilder;
 	wbuilder["indentation"] = "";
-	std::string for_db = Json::writeString(wbuilder, the_chart);
+	std::string for_db = Json::writeString(wbuilder, json);
+
+	auto chart_params = the_chart.GetChartParams();
 
     auto add_new_data_cmd = fmt::format("INSERT INTO point_and_figure.pf_charts "
-    		" ({}, {}, {}, {}, {}, {}, {}, {}, {}) "
-    		" VALUES({}, {}, {}, {}, {}, {}, {}, {}, '{}')",
-    		"symbol", "fname_box_size", "reversal_boxes", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data",
-			trxn.quote(GetSymbol()),
-			trxn.quote(GetBoxSize().ToStr()),
-			GetReversalboxes(),
-			trxn.quote(ChartName("json")),
-			trxn.quote(fmt::format("{:%F %T}", first_date_)),
-			trxn.quote(fmt::format("{:%F %T}", last_change_date_)),
-			trxn.quote(fmt::format("{:%F %T}", last_checked_date_)),
-			trxn.quote(the_chart["current_direction"].asString()),
+    		" ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) "
+    		" VALUES({}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}')",
+    		"symbol", "fname_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data",
+			trxn.quote(std::get<e_symbol>(chart_params)),
+			trxn.quote(std::get<e_box_size>(chart_params).ToStr()),
+			std::get<e_reversal>(chart_params),
+			json["boxes"]["box_type"].asString(),
+			json["boxes"]["box_scale"].asString(),
+			trxn.quote(the_chart.ChartName("json")),
+			trxn.quote(fmt::format("{:%F %T}", the_chart.GetFirstTime())),
+			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastChangeTime())),
+			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),
+			json["current_direction"].asString(),
 			for_db
     	);
 

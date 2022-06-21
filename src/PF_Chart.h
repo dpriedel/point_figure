@@ -58,6 +58,14 @@
 #include "PF_Column.h"
 #include "utilities.h"
 
+struct DB_Params
+{
+	std::string user_name_;
+	std::string db_name_;
+	std::string host_name_;
+	int32_t port_number_;
+};
+
 class PF_Chart
 {
 public:
@@ -99,6 +107,8 @@ public:
 
     ~PF_Chart() = default;
 
+    static PF_Chart MakeChartFromDB(const DB_Params& db_info, PF_ChartParams vals);
+
     // ====================  ACCESSORS     =======================================
 
 	[[nodiscard]] bool IsEmpty() const { return columns_.empty() && current_column_.IsEmpty(); }
@@ -121,6 +131,7 @@ public:
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
+    [[nodiscard]] PF_Column::tpt GetFirstTime() const { return first_date_; }
     [[nodiscard]] PF_Column::tpt GetLastChangeTime() const { return last_change_date_; }
     [[nodiscard]] PF_Column::tpt GetLastCheckedTime() const { return last_checked_date_; }
 
@@ -128,7 +139,7 @@ public:
 
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
-    void StoreChartInChartsDB() const;
+    static void StoreChartInChartsDB(const DB_Params& db_info, const PF_Chart& the_chart);
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
@@ -136,6 +147,8 @@ public:
     [[nodiscard]] const Boxes& GetBoxes() const { return boxes_; }
     [[nodiscard]] const std::vector<PF_Column>& GetColumns() const { return columns_; }
     [[nodiscard]] const PF_Column& GetCurrentColumn() const { return current_column_; }
+
+    [[nodiscard]] PF_ChartParams GetChartParams() const { return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxType(), boxes_.GetBoxScale()}; }
 
     // ====================  MUTATORS      =======================================
     
