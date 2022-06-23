@@ -158,16 +158,17 @@ private:
     fs::path output_graphs_directory_;
     fs::path tiingo_api_key_;
 
-    std::string dbname_;
-    std::string host_name_;
-    std::string host_port_;
+    std::string quote_host_name_;
+    std::string quote_host_port_;
+
+	DB_Params db_params_;
 
     std::shared_ptr<spdlog::logger> logger_;
 
     enum class Destination { e_unknown, e_DB, e_file };
     enum class Interval { e_unknown, e_eod, e_sec1, e_sec5, e_min1, e_min5, e_live };
     enum class Mode { e_unknown, e_load, e_update };
-    enum class Source { e_unknown, e_file, e_streaming };
+    enum class Source { e_unknown, e_file, e_streaming, e_DB };
     enum class SourceFormat { e_unknown, e_csv, e_json };
 
     std::string api_key_;

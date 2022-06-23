@@ -195,45 +195,68 @@ bool PF_CollectDataApp::CheckArgs ()
 
     ranges::for_each(symbol_list_, [](auto& symbol) { ranges::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
 
+    // now make sure we can find our data for input and output.
+
+    BOOST_ASSERT_MSG(source_i == "file" || source_i == "streaming" || source_i == "database", fmt::format("Data source must be: 'file', 'streaming' or 'database': {}", source_i).c_str());
+    source_ = source_i == "file" ? Source::e_file : source_i == "database" ? Source::e_DB : Source::e_streaming;
+    
+    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database", fmt::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
+    destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
+
+    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update", fmt::format("Mode must be: 'load' or 'update': {}", mode_i).c_str());
+    mode_ = mode_i == "load" ? Mode::e_load : Mode::e_update;
+
     // possibly empty if this is our first time or we are starting over
 
-    if (! fs::exists(input_chart_directory_))
+    if (source_ == Source::e_file)
     {
-        fs::create_directories(input_chart_directory_);
+        // for file input, we always need to have our raw data inputs 
+
+        BOOST_ASSERT_MSG(! new_data_input_directory_.empty(), "Must specify 'new-data-dir' when data source is 'file'.");
+        BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), fmt::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
+
+        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json", fmt::format("New data files must be: 'csv' or 'json': {}", source_format_i).c_str());
+        source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
+
+        // if we are adding to existing data then we need to know where to find that data  
+
+        if (mode_ == Mode::e_update)
+        {
+        	BOOST_ASSERT_MSG(! input_chart_directory_.empty(), "Must specify 'chart-data-dir' when data source is 'file' and mode is 'update'.");
+        	BOOST_ASSERT_MSG(fs::exists(input_chart_directory_), fmt::format("Can't find new existing chart data directory: {}", input_chart_directory_).c_str());
+
+    		// we could write out data to a separate location if we want 
+    		// otherwise, use the charts directory. 
+
+        	if (output_chart_directory_.empty())
+        	{
+        		output_chart_directory_ = input_chart_directory_;
+        	}
+        }
     }
 
-    // we could write out data to a separate location if we want 
-    // otherwise, use the charts directory. 
+    if (destination_ == Destination::e_file)
+    {
+        BOOST_ASSERT_MSG(! output_chart_directory_.empty(), "Must specify 'output-chart-dir' when data destination is 'file'.");
+    	if (! fs::exists(output_chart_directory_))
+    	{
+        	fs::create_directories(output_chart_directory_);
+    	}
 
-    if (output_chart_directory_.empty())
-    {
-        output_chart_directory_ = input_chart_directory_;
-    }
-    if (! fs::exists(output_chart_directory_))
-    {
-        fs::create_directories(output_chart_directory_);
-    }
+    	// we can share the charts directory if we must 
 
-    if (output_graphs_directory_.empty())
-    {
-        output_graphs_directory_ = output_chart_directory_;
-    }
+    	if (output_graphs_directory_.empty())
+    	{
+        	output_graphs_directory_ = output_chart_directory_;
+    	}
+	}
+
+    BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
     if (! fs::exists(output_graphs_directory_))
     {
         fs::create_directories(output_graphs_directory_);
     }
 
-    BOOST_ASSERT_MSG(source_i == "file" || source_i == "streaming", fmt::format("Data source must be: 'file' or 'streaming': {}", source_i).c_str());
-    source_ = source_i == "file" ? Source::e_file : Source::e_streaming;
-    
-    if (source_ == Source::e_file)
-    {
-        BOOST_ASSERT_MSG(! new_data_input_directory_.empty(), "Must specify 'new_data_dir' when data source is 'file'.");
-        BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), fmt::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
-
-        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json", fmt::format("Data source must be: 'csv' or 'json': {}", source_format_i).c_str());
-        source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
-    }
     if (source_ == Source::e_streaming || use_ATR_)
     {
         BOOST_ASSERT_MSG(! tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
@@ -243,12 +266,6 @@ bool PF_CollectDataApp::CheckArgs ()
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
 
     BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle", fmt::format("show-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
-
-    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "DB", fmt::format("Data destination must be: 'file' or 'DB': {}", destination_i).c_str());
-    destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
-
-    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update", fmt::format("Mode must be: 'load' or 'update': {}", mode_i).c_str());
-    mode_ = mode_i == "load" ? Mode::e_load : Mode::e_update;
 
     const std::set<std::string> possible_intervals = {"eod", "live", "sec1", "sec5", "min1", "min5"};
     BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), fmt::format("Interval must be: 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
@@ -303,7 +320,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("symbol,s",			po::value<std::vector<std::string>>(&this->symbol_list_),	"name of symbol we are processing data for. Repeat for multiple symbols.")
 		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process.")
 		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
-		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_)->required(),	"name of directory containing existing files with data for symbols we are using.")
+		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_),	"name of directory containing existing files with data for symbols we are using.")
 		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'DB'. Default is 'file'.")
 		("source",				po::value<std::string>(&this->source_i)->default_value("file"),	"source: either 'file' or 'streaming'. Default is 'file'")
 		("source-format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'")
@@ -320,8 +337,15 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("show-trend-lines",	po::value<std::string>(&this->trend_lines_)->default_value("no"),	"Show trend lines on graphic. Can be 'data' or 'angle'. Default is 'no'.")
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
-        ("host",                po::value<std::string>(&this->host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
-        ("port",                po::value<std::string>(&this->host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
+
+        ("quote_host",          po::value<std::string>(&this->quote_host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
+        ("quote_port",          po::value<std::string>(&this->quote_host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
+
+        ("db_host",             po::value<std::string>(&this->db_params_.host_name_)->default_value("localhost"), "web location where database is running. Default is 'localhost'.")
+        ("db_port",             po::value<int32_t>(&this->db_params_.port_number_)->default_value(5432), "Port number to use for database access. Default is '5432'.")
+        ("db_user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
+        ("db_name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
+
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
 		;
@@ -553,7 +577,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
 
 DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& symbol) const
 {
-    Tiingo history_getter{host_name_, host_port_, api_key_};
+    Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_};
 
     // we need to start from yesterday since we won't get history data for today 
     // since we are doing this while the market is open
@@ -646,7 +670,7 @@ void PF_CollectDataApp::CollectStreamingData ()
 
     PF_CollectDataApp::had_signal_= false;
 
-    Tiingo quotes{host_name_, host_port_, "/iex", api_key_, symbol_list_};
+    Tiingo quotes{quote_host_name_, quote_host_port_, "/iex", api_key_, symbol_list_};
     quotes.Connect();
 
     // if we are here then we already know that the US market is open for trading.
