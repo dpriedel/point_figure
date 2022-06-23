@@ -365,15 +365,15 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
 std::string PF_Chart::ChartName (std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, fname_box_size_, (IsPercent() ? "%" : ""),
-            GetReversalboxes(), (IsPercent() ? "percent" : "linear"), suffix);
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}_{}.{}", symbol_, fname_box_size_, (IsPercent() ? "%" : ""),
+            GetReversalboxes(), (IsPercent() ? "percent" : "linear"), (IsFractional() ? "fractions" : "integers"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
 std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view suffix)
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", std::get<e_symbol>(vals), std::get<e_box_size>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
-            std::get<e_reversal>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}_{}.{}", std::get<e_symbol>(vals), std::get<e_box_size>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
+            std::get<e_reversal>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), (std::get<e_box_type>(vals) == Boxes::BoxType::e_fractional ? "fractions" : "integers"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 

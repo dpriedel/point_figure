@@ -58,14 +58,6 @@
 #include "PF_Column.h"
 #include "utilities.h"
 
-struct DB_Params
-{
-	std::string user_name_;
-	std::string db_name_;
-	std::string host_name_;
-	int32_t port_number_;
-};
-
 class PF_Chart
 {
 public:
@@ -143,6 +135,7 @@ public:
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
+    [[nodiscard]] bool IsFractional() const { return boxes_.GetBoxType() == Boxes::BoxType::e_fractional; }
 
     [[nodiscard]] const Boxes& GetBoxes() const { return boxes_; }
     [[nodiscard]] const std::vector<PF_Column>& GetColumns() const { return columns_; }
