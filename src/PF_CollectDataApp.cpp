@@ -42,7 +42,7 @@
 #include <iterator>
 #include <mutex>
 #include <queue>
-#include <set>
+#include <map>
 #include <string_view>
 #include <thread>
 
@@ -234,6 +234,13 @@ bool PF_CollectDataApp::CheckArgs ()
         	}
         }
     }
+    else if (source_ == Source::e_DB)
+    {
+        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source is 'database'.");
+        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source is 'database'.");
+    }
 
     if (destination_ == Destination::e_file)
     {
@@ -250,6 +257,13 @@ bool PF_CollectDataApp::CheckArgs ()
         	output_graphs_directory_ = output_chart_directory_;
     	}
 	}
+    else if (destination_ == Destination::e_DB)
+    {
+        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source is 'database'.");
+        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source is 'database'.");
+    }
 
     BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
     if (! fs::exists(output_graphs_directory_))
@@ -267,47 +281,32 @@ bool PF_CollectDataApp::CheckArgs ()
 
     BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle", fmt::format("show-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
 
-    const std::set<std::string> possible_intervals = {"eod", "live", "sec1", "sec5", "min1", "min5"};
+    const std::map<std::string, Interval> possible_intervals = {{"eod", Interval::e_eod}, {"live", Interval::e_live}, {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5}, {"min1", Interval::e_min1}, {"min5", Interval::e_min5}};
     BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), fmt::format("Interval must be: 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
-    if (interval_i == "eod")
-    {
-        interval_ = Interval::e_eod;
-    }
-    else if (interval_i == "live")
-    {
-        interval_ = Interval::e_live;
-    }
-    else if (interval_i == "sec1")
-    {
-        interval_ = Interval::e_sec1;
-    }
-    else if (interval_i == "sec5")
-    {
-        interval_ = Interval::e_sec5;
-    }
-    else if (interval_i == "min1")
-    {
-        interval_ = Interval::e_min1;
-    }
-    else if (interval_i == "min5")
-    {
-        interval_ = Interval::e_min5;
-    }
-
+    interval_ = possible_intervals.find(interval_i)->second;
+  
     // provide our default value here.
 
     if (scale_i_list_.empty())
     {
         scale_i_list_.emplace_back("linear");
     }
+
+    // edit and translate from text to enums...
+
     ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", fmt::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str()); });
     ranges::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
+
+    // we can compute whether boxes are fractions or intergers from input. This may be changed by the Boxes code later. 
 
     ranges::for_each(scale_list_, [this] (const auto& scale) { this->fractional_boxes_list_.emplace_back(scale == Boxes::BoxScale::e_percent ? Boxes::BoxType::e_fractional : Boxes::BoxType::e_integral); });
     fractional_boxes_list_ |= ranges::actions::sort | ranges::actions::unique;
 
+    // generate PF_Chart type combinations from input params.
+
     auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
     ranges::for_each(params, [](const auto& x) {fmt::print("{}\n", x); });
+
 	return true ;
 }		// -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
 
@@ -338,13 +337,13 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
 
-        ("quote_host",          po::value<std::string>(&this->quote_host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
-        ("quote_port",          po::value<std::string>(&this->quote_host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
+        ("quote-host",          po::value<std::string>(&this->quote_host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
+        ("quote-port",          po::value<std::string>(&this->quote_host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
 
-        ("db_host",             po::value<std::string>(&this->db_params_.host_name_)->default_value("localhost"), "web location where database is running. Default is 'localhost'.")
-        ("db_port",             po::value<int32_t>(&this->db_params_.port_number_)->default_value(5432), "Port number to use for database access. Default is '5432'.")
-        ("db_user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
-        ("db_name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
+        ("db-host",             po::value<std::string>(&this->db_params_.host_name_)->default_value("localhost"), "web location where database is running. Default is 'localhost'.")
+        ("db-port",             po::value<int32_t>(&this->db_params_.port_number_)->default_value(5432), "Port number to use for database access. Default is '5432'.")
+        ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
+        ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
