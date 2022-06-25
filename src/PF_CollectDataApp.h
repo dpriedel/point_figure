@@ -117,14 +117,19 @@ protected:
 	bool	CheckArgs ();
 	
 	void	Run_Load();
+	void	Run_LoadFromDB();
 	void	Run_Update();
+	void	Run_UpdateFromDB();
 	void	Run_Streaming();
+	void	Run_DailyScan();
 
 	void	Do_Quit ();
 
     [[nodiscard]] static PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name);
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
     [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
+
+	std::vector<std::string> GetSymbolsFromDatabase();
 
     void    PrimeChartsForStreaming();
     void    CollectStreamingData();
@@ -167,7 +172,7 @@ private:
 
     enum class Destination { e_unknown, e_DB, e_file };
     enum class Interval { e_unknown, e_eod, e_sec1, e_sec5, e_min1, e_min5, e_live };
-    enum class Mode { e_unknown, e_load, e_update };
+    enum class Mode { e_unknown, e_load, e_update, e_daily_scan };
     enum class Source { e_unknown, e_file, e_streaming, e_DB };
     enum class SourceFormat { e_unknown, e_csv, e_json };
 

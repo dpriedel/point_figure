@@ -50,6 +50,7 @@
 
 #include <range/v3/action/sort.hpp>
 #include <range/v3/action/unique.hpp>
+#include <range/v3/action/push_back.hpp>
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/algorithm/equal.hpp>
 #include <range/v3/algorithm/find_if.hpp>
@@ -60,6 +61,9 @@
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
+
+#include <pqxx/pqxx>
+#include <pqxx/transaction.hxx>
 
 #include <pybind11/embed.h>
 #include <pybind11/gil.h>
@@ -182,13 +186,21 @@ bool PF_CollectDataApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
-	// we now have to possible sources for symbols. We need to be sure we have 1 of them.
+	// we now have two possible sources for symbols. We need to be sure we have 1 of them.
 	
 	BOOST_ASSERT_MSG(! symbol_list_.empty() || ! symbol_list_i_.empty(), "Must provide either 1 or more '-s' values or 'symbol-list' list.");
 
-	if (! symbol_list_i_.empty())
+	if (! symbol_list_i_.empty() && symbol_list_i_ != "*")
 	{
-		symbol_list_ = split_string<std::string>(symbol_list_i_, ',');
+		ranges::actions::push_back(symbol_list_, split_string<std::string>(symbol_list_i_, ','));
+		symbol_list_ |= ranges::actions::sort | ranges::actions::unique;
+	}
+
+	// if symbol-list is '*' then we will generate a list of symbols from our source database.
+	
+	if (symbol_list_i_ == "*")
+	{
+		symbol_list_i_.clear();
 	}
 
     // now we want upper case symbols.
@@ -203,8 +215,8 @@ bool PF_CollectDataApp::CheckArgs ()
     BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database", fmt::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
-    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update", fmt::format("Mode must be: 'load' or 'update': {}", mode_i).c_str());
-    mode_ = mode_i == "load" ? Mode::e_load : Mode::e_update;
+    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan", fmt::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
+    mode_ = mode_i == "load" ? Mode::e_load : mode_i == "update" ? Mode::e_update : Mode::e_daily_scan;
 
     // possibly empty if this is our first time or we are starting over
 
@@ -258,6 +270,10 @@ bool PF_CollectDataApp::CheckArgs ()
         BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
+        if (source_ == Source::e_DB)
+        {
+			BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified when load source is 'database'.");
+		}
     }
 
     BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
@@ -312,13 +328,13 @@ void PF_CollectDataApp::SetupProgramOptions ()
 	newoptions_->add_options()
 		("help,h",											"produce help message")
 		("symbol,s",			po::value<std::vector<std::string>>(&this->symbol_list_),	"name of symbol we are processing data for. Repeat for multiple symbols.")
-		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process.")
+		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process OR '*' to use all symbols from the database.")
 		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
 		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_),	"name of directory containing existing files with data for symbols we are using.")
-		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'DB'. Default is 'file'.")
-		("source",				po::value<std::string>(&this->source_i)->default_value("file"),	"source: either 'file' or 'streaming'. Default is 'file'")
+		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'database'. Default is 'file'.")
+		("source",				po::value<std::string>(&this->source_i)->default_value("file"),	"source: either 'file', 'streaming' or 'database'. Default is 'file'")
 		("source-format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'")
-		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data or 'update' existing data. Default is 'load'")
+		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data, 'update' existing data or 'daily-scan'. Default is 'load'")
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'")
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
@@ -340,6 +356,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
+        ("db-data-sourcee",     po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data.current_data"), "table containing symbol data. Default is 'stock_data.current_data'.")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
@@ -386,22 +403,39 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
     number_of_days_history_for_ATR_ = 20;
 
-    if(source_ == Source::e_file)
-    {
-        if (mode_ == Mode::e_load)
-        {
-			Run_Load();
-        }
-        else if (mode_ == Mode::e_update)
-        {
-            Run_Update();
-        }
-    }
-    else
-    {
-        Run_Streaming();
-    }
-
+	if (mode_ == Mode::e_daily_scan)
+	{
+		Run_DailyScan();
+	}
+	else
+	{
+    	if(source_ == Source::e_file)
+    	{
+        	if (mode_ == Mode::e_load)
+        	{
+				Run_Load();
+        	}
+        	else if (mode_ == Mode::e_update)
+        	{
+            	Run_Update();
+        	}
+    	}
+    	else if(source_ == Source::e_DB)
+    	{
+        	if (mode_ == Mode::e_load)
+        	{
+				Run_LoadFromDB();
+        	}
+        	else if (mode_ == Mode::e_update)
+        	{
+            	Run_UpdateFromDB();
+        	}
+    	}
+    	else
+    	{
+        	Run_Streaming();
+    	}
+	}
 	return {} ;
 }		// -----  end of method PF_CollectDataApp::Do_Run  -----
 
@@ -428,8 +462,55 @@ void PF_CollectDataApp::Run_Load()
 			std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;	
         }
     }
+}		// -----  end of method PF_CollectDataApp::Run_Load  -----
 
-}
+void PF_CollectDataApp::Run_LoadFromDB()
+{
+	if (symbol_list_i_ == "*")
+	{
+		symbol_list_ = GetSymbolsFromDatabase();
+	}
+
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+
+    for (const auto& val : params)
+    {
+        const auto& symbol = std::get<PF_Chart::e_symbol>(val);
+   //      try
+   //      {
+   //          fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+   //          BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
+   //          // TODO(dpriedel): add json code
+   //          BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
+   //          auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
+   //          PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+   //          AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
+   //          charts_.emplace_back(std::make_pair(symbol, new_chart));
+   //      }
+   //      catch (const std::exception& e)
+   //      {
+			// std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;	
+   //      }
+    }
+}		// -----  end of method PF_CollectDataApp::Run_Load  -----
+
+std::vector<std::string> PF_CollectDataApp::GetSymbolsFromDatabase()
+{
+//     pqxx::connection c{fmt::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
+//     pqxx::work trxn{c};
+//
+// 	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params.db_mode_, trxn.quote(PF_Chart::ChartName(vals, "json")));
+// 	auto row = trxn.exec1(retrieve_chart_data_cmd);
+// 	trxn.commit();
+//     auto the_data =  row[0].as<std::string>();
+//
+//
+// for (auto [id, name, x, y] :
+//     tx.stream<int, std::string_view, float, float>(
+//         "SELECT id, name, x, y FROM point"))
+//   process(id + 1, "point-" + name, x * 10.0, y * 10.0);
+	return {};
+}		// -----  end of method PF_CollectDataApp::GetSymbolsFromDatabase  -----
 
 void PF_CollectDataApp::Run_Update()
 {
@@ -472,7 +553,12 @@ void PF_CollectDataApp::Run_Update()
 			std::cout << "Unable to update data for symbol: " << symbol << " because: " << e.what() << std::endl;	
         }
     }
-}
+}		// -----  end of method PF_CollectDataApp::Run_Update  -----
+
+void PF_CollectDataApp::Run_UpdateFromDB()
+{
+
+}		// -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
 
 void PF_CollectDataApp::Run_Streaming()
 {
@@ -760,6 +846,11 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
         }
     }
 }		// -----  end of method PF_CollectDataApp::ProcessStreamedData  ----- 
+
+void PF_CollectDataApp::Run_DailyScan()
+{
+
+}		// -----  end of method PF_CollectDataApp::Run_DailyScan  ----- 
 
 void PF_CollectDataApp::Shutdown ()
 {
