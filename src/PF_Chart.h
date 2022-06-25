@@ -131,7 +131,7 @@ public:
 
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
-    static void StoreChartInChartsDB(const DB_Params& db_info, const PF_Chart& the_chart);
+    static void StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart);
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }

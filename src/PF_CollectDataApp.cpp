@@ -234,13 +234,6 @@ bool PF_CollectDataApp::CheckArgs ()
         	}
         }
     }
-    else if (source_ == Source::e_DB)
-    {
-        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source is 'database'.");
-        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source is 'database'.");
-        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source is 'database'.");
-        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source is 'database'.");
-    }
 
     if (destination_ == Destination::e_file)
     {
@@ -257,12 +250,14 @@ bool PF_CollectDataApp::CheckArgs ()
         	output_graphs_directory_ = output_chart_directory_;
     	}
 	}
-    else if (destination_ == Destination::e_DB)
+
+    if (source_ == Source::e_DB || destination_ == Destination::e_DB)
     {
-        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source is 'database'.");
-        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source is 'database'.");
-        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source is 'database'.");
-        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
     }
 
     BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
@@ -344,6 +339,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-port",             po::value<int32_t>(&this->db_params_.port_number_)->default_value(5432), "Port number to use for database access. Default is '5432'.")
         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
+        ("db-mode",             po::value<std::string>(&this->db_params_.db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")

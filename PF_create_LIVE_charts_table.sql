@@ -1,6 +1,6 @@
 -- create table to store PF_Chart data
 
-CREATE SCHEMA IF NOT EXISTS point_and_figure AUTHORIZATION data_updater_pg;
+CREATE SCHEMA IF NOT EXISTS live_point_and_figure AUTHORIZATION data_updater_pg;
 
 DROP TYPE IF EXISTS DIRECTION CASCADE;
 CREATE TYPE direction AS ENUM ('e_unknown', 'e_up', 'e_down');
@@ -11,9 +11,9 @@ CREATE TYPE boxtype AS ENUM ('e_fractional', 'e_integral');
 DROP TYPE IF EXISTS BOXSCALE CASCADE;
 CREATE TYPE boxscale AS ENUM ('e_linear', 'e_percent');
 
-DROP TABLE IF EXISTS point_and_figure.pf_charts CASCADE;
+DROP TABLE IF EXISTS live_point_and_figure.pf_charts CASCADE;
 
-CREATE TABLE point_and_figure.pf_charts
+CREATE TABLE live_point_and_figure.pf_charts
 (
     chart_id BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
     symbol TEXT NOT NULL,
@@ -31,4 +31,4 @@ CREATE TABLE point_and_figure.pf_charts
     PRIMARY KEY(file_name)
 );
 
-ALTER TABLE point_and_figure.pf_charts OWNER TO data_updater_pg;
+ALTER TABLE live_point_and_figure.pf_charts OWNER TO data_updater_pg;

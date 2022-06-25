@@ -151,12 +151,12 @@ PF_Chart::PF_Chart (const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  ----- 
 
-PF_Chart PF_Chart::MakeChartFromDB(const DB_Params& db_info, PF_ChartParams vals)
+PF_Chart PF_Chart::MakeChartFromDB(const DB_Params& db_params, PF_ChartParams vals)
 {
-    pqxx::connection c{fmt::format("dbname={} user={}", db_info.db_name_, db_info.user_name_)};
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
     pqxx::work trxn{c};
 
-	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM point_and_figure.pf_charts WHERE file_name = {}", trxn.quote(PF_Chart::ChartName(vals, "json")));
+	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params.db_mode_, trxn.quote(PF_Chart::ChartName(vals, "json")));
 	auto row = trxn.exec1(retrieve_chart_data_cmd);
 	trxn.commit();
     auto the_data =  row[0].as<std::string>();
@@ -546,12 +546,12 @@ void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
     stream << std::endl;  // add lf and flush
 }		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  ----- 
 
-void PF_Chart::StoreChartInChartsDB(const DB_Params& db_info, const PF_Chart& the_chart)
+void PF_Chart::StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart)
 {
-    pqxx::connection c{fmt::format("dbname={} user={}", db_info.db_name_, db_info.user_name_)};
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
     pqxx::work trxn{c};
 
-    auto delete_existing_data_cmd = fmt::format("DELETE FROM point_and_figure.pf_charts WHERE file_name = {}", trxn.quote(the_chart.ChartName("json")));
+    auto delete_existing_data_cmd = fmt::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params.db_mode_, trxn.quote(the_chart.ChartName("json")));
     trxn.exec(delete_existing_data_cmd);
 
 	auto json = the_chart.ToJSON();
@@ -561,10 +561,10 @@ void PF_Chart::StoreChartInChartsDB(const DB_Params& db_info, const PF_Chart& th
 
 	auto chart_params = the_chart.GetChartParams();
 
-    auto add_new_data_cmd = fmt::format("INSERT INTO point_and_figure.pf_charts "
+    auto add_new_data_cmd = fmt::format("INSERT INTO {}_point_and_figure.pf_charts "
     		" ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) "
     		" VALUES({}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}')",
-    		"symbol", "fname_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data",
+    		db_params.db_mode_, "symbol", "fname_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data",
 			trxn.quote(std::get<e_symbol>(chart_params)),
 			trxn.quote(std::get<e_box_size>(chart_params).ToStr()),
 			std::get<e_reversal>(chart_params),
