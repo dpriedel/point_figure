@@ -200,7 +200,7 @@ bool PF_CollectDataApp::CheckArgs ()
 	
 	if (symbol_list_i_ == "*")
 	{
-		symbol_list_i_.clear();
+		symbol_list_.clear();
 	}
 
     // now we want upper case symbols.
@@ -263,6 +263,12 @@ bool PF_CollectDataApp::CheckArgs ()
     	}
 	}
 
+    BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
+    if (! fs::exists(output_graphs_directory_))
+    {
+        fs::create_directories(output_graphs_directory_);
+    }
+
     if (source_ == Source::e_DB || destination_ == Destination::e_DB)
     {
         BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source or destination is 'database'.");
@@ -276,16 +282,15 @@ bool PF_CollectDataApp::CheckArgs ()
 		}
     }
 
-    BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
-    if (! fs::exists(output_graphs_directory_))
-    {
-        fs::create_directories(output_graphs_directory_);
-    }
-
-    if (source_ == Source::e_streaming || use_ATR_)
+    if (source_ != Source::e_DB && use_ATR_)
     {
         BOOST_ASSERT_MSG(! tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
         BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
+    }
+    
+    if (source_ == Source::e_DB)
+    {
+        BOOST_ASSERT_MSG(! begin_date_.empty(), "Must specify 'begin-date' when data source is 'database'.");
     }
     
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
@@ -337,7 +342,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data, 'update' existing data or 'daily-scan'. Default is 'load'")
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'")
-		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price_fld_name: which data field to use for price value. Default is 'Close'.")
+		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
+		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
 		("boxsize,b",			po::value<std::vector<DprDecimal::DDecQuad>>(&this->box_size_list_)->required(),   	"box step size. 'n', 'm.n'")
@@ -356,7 +362,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
-        ("db-data-sourcee",     po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data.current_data"), "table containing symbol data. Default is 'stock_data.current_data'.")
+        ("db-data-sourcee",     po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data"), "table containing symbol data. Default is 'stock_data'")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
@@ -471,26 +477,48 @@ void PF_CollectDataApp::Run_LoadFromDB()
 		symbol_list_ = GetSymbolsFromDatabase();
 	}
 
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-    for (const auto& val : params)
-    {
-        const auto& symbol = std::get<PF_Chart::e_symbol>(val);
-   //      try
-   //      {
-   //          fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-   //          BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
-   //          // TODO(dpriedel): add json code
-   //          BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
-   //          auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
-   //          PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
-   //          AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
-   //          charts_.emplace_back(std::make_pair(symbol, new_chart));
-   //      }
-   //      catch (const std::exception& e)
-   //      {
-			// std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;	
-   //      }
+	for (const auto& symbol : symbol_list_)
+	{
+		try
+		{
+			// start by retrieving our data from DB.  Do this once per symbol.
+
+			pqxx::work trxn{c};
+			std::string get_symbol_prices_cmd = fmt::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= {} ORDER BY date ASC",
+					price_fld_name_,
+					db_params_.db_data_source_,
+					trxn.quote(symbol),
+					trxn.quote(begin_date_)
+					);
+
+			auto results = trxn.exec(get_symbol_prices_cmd);
+			trxn.commit();
+
+			// There could be thousands of symbols in the database so we don't want to generate combinations for
+			// all of them at once.
+    		// so, make a single element list for the call below and then generate the other combinations.
+
+			std::vector<std::string> the_symbol = {symbol};
+    		auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+
+            const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+    		for (const auto& val : params)
+    		{
+   	   	        auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
+   	   	        PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+   	   	        for (const auto& row: results)
+   	   	        {
+            		new_chart.AddValue(DprDecimal::DDecQuad{row[price_fld_name_].as<std::string_view>()}, StringToTimePoint(dt_format, row["date"].as<std::string_view>()));
+            	}
+   	   	        charts_.emplace_back(std::make_pair(symbol, new_chart));
+   	        }
+   	    }
+   	    catch (const std::exception& e)
+   	    {
+			std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;
+   	    }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
 
@@ -678,6 +706,29 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
     return atr;
 }		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
 
+DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::string& symbol) const
+{
+    // Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_};
+    //
+    // // we need to start from yesterday since we won't get history data for today 
+    // // since we are doing this while the market is open
+    //
+    // date::year_month_day today{--floor<date::days>(std::chrono::system_clock::now())};
+    //
+    // // use our new holidays capability 
+    // // we look backwards here. so add an extra year in case we are near New Years.
+    // 
+    // auto holidays = MakeHolidayList(today.year());
+    // ranges::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
+    //
+    // const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, &holidays);
+    //
+    // auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_Yes);
+    //
+    // return atr;
+    return {0};
+}		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
+
 void PF_CollectDataApp::PrimeChartsForStreaming ()
 {
     // for streaming, we want to retrieve the previous day's close and, if the markets 
@@ -858,14 +909,21 @@ void PF_CollectDataApp::Shutdown ()
     {
         for (const auto& [symbol, chart] : charts_)
         {
-            fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
-            std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
-            BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
-            chart.ConvertChartToJsonAndWriteToStream(output);
-            output.close();
+            try
+            {
+            	fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
+            	std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
+            	BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
+            	chart.ConvertChartToJsonAndWriteToStream(output);
+            	output.close();
 
-            fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
-            chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
+            	fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
+            	chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
+            }
+			catch(const std::exception& e)
+			{
+        		spdlog::error(fmt::format("Problem in shutdown: {}\nTrying to complete shutdown.", e.what()));
+    		}
         }
     }
     spdlog::info(fmt::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));

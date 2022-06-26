@@ -136,6 +136,7 @@ protected:
     void    ProcessStreamedData(Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
     [[nodiscard]] DprDecimal::DDecQuad ComputeATRForChart(const std::string& symbol) const;
+    [[nodiscard]] DprDecimal::DDecQuad ComputeATRForChartFromDB(const std::string& symbol) const;
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -200,6 +201,7 @@ private:
 
     std::string price_fld_name_;
 	std::string trend_lines_;
+	std::string begin_date_;
 
     int32_t max_columns_for_graph_ = -1;
     int32_t number_of_days_history_for_ATR_ = 0;
