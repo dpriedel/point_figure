@@ -63,6 +63,7 @@
 #include <spdlog/async.h>
 
 #include <pqxx/pqxx>
+#include <pqxx/stream_from.hxx>
 #include <pqxx/transaction.hxx>
 
 #include <pybind11/embed.h>
@@ -478,14 +479,18 @@ void PF_CollectDataApp::Run_LoadFromDB()
 	}
 
 	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::nontransaction trxn{c};		// we are read-only for this work
+
+    const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
 
 	for (const auto& symbol : symbol_list_)
 	{
 		try
 		{
-			// start by retrieving our data from DB.  Do this once per symbol.
+			// first, get ready to retrieve our data from DB.  Do this once per symbol.
 
-			pqxx::work trxn{c};
+			std::vector<std::pair<DprDecimal::DDecQuad, std::chrono::system_clock::time_point>> db_data;
+
 			std::string get_symbol_prices_cmd = fmt::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= {} ORDER BY date ASC",
 					price_fld_name_,
 					db_params_.db_data_source_,
@@ -493,24 +498,34 @@ void PF_CollectDataApp::Run_LoadFromDB()
 					trxn.quote(begin_date_)
 					);
 
-			auto results = trxn.exec(get_symbol_prices_cmd);
-			trxn.commit();
+			auto stream = pqxx::stream_from::query(trxn, get_symbol_prices_cmd);
+			std::tuple<std::string_view, std::string_view> row;
+   	   	    while (stream >> row)
+   	   	    {
+				std::cout << fmt::format("row: {}", row) << '\n';
+            	db_data.emplace_back(DprDecimal::DDecQuad{std::get<1>(row)}, StringToTimePoint(dt_format, std::get<0>(row)));
+            }
+   	   	    stream.complete();
+
+			std::cout << "done retrieving data for symbol: " << symbol << '\n';
 
 			// There could be thousands of symbols in the database so we don't want to generate combinations for
 			// all of them at once.
     		// so, make a single element list for the call below and then generate the other combinations.
 
-			std::vector<std::string> the_symbol = {symbol};
+			std::vector<std::string> the_symbol{symbol};
     		auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+			ranges::for_each(params, [](const auto& x) {fmt::print("{}\n", x); });
 
-            const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
     		for (const auto& val : params)
     		{
-   	   	        auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
-   	   	        PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
-   	   	        for (const auto& row: results)
+				fmt::print("{}", val);
+   	   	        // auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
+   	   	        PF_Chart new_chart(val, 0.0, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+   	   	        for (const auto& [new_price, date] : db_data)
    	   	        {
-            		new_chart.AddValue(DprDecimal::DDecQuad{row[price_fld_name_].as<std::string_view>()}, StringToTimePoint(dt_format, row["date"].as<std::string_view>()));
+					std::cout << fmt::format("new value: {} {}", new_price, date) << std::endl;
+            		// new_chart.AddValue(new_price, date);
             	}
    	   	        charts_.emplace_back(std::make_pair(symbol, new_chart));
    	        }
