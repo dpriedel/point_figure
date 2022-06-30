@@ -42,9 +42,12 @@
 #include <iterator>
 #include <mutex>
 #include <queue>
+#include <sstream>
+
 #include <map>
 #include <string_view>
 #include <thread>
+#include <type_traits>
 
 #include <fmt/ranges.h>
 
@@ -61,6 +64,10 @@
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
+
+#include <date/date.h>
+#include <date/chrono_io.h>
+#include <date/tz.h>
 
 #include <pqxx/pqxx>
 #include <pqxx/stream_from.hxx>
@@ -450,6 +457,8 @@ void PF_CollectDataApp::Run_Load()
 {
     auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
 
+	// TODO(dpriedel): move file read out of loop and into a buffer
+	
     for (const auto& val : params)
     {
         const auto& symbol = std::get<PF_Chart::e_symbol>(val);
@@ -489,8 +498,6 @@ void PF_CollectDataApp::Run_LoadFromDB()
 		{
 			// first, get ready to retrieve our data from DB.  Do this once per symbol.
 
-			std::vector<std::pair<DprDecimal::DDecQuad, std::chrono::system_clock::time_point>> db_data;
-
 			std::string get_symbol_prices_cmd = fmt::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= {} ORDER BY date ASC",
 					price_fld_name_,
 					db_params_.db_data_source_,
@@ -500,10 +507,22 @@ void PF_CollectDataApp::Run_LoadFromDB()
 
 			auto stream = pqxx::stream_from::query(trxn, get_symbol_prices_cmd);
 			std::tuple<std::string_view, std::string_view> row;
+
+			// we know our database contains 'date's, but we need timepoints 
+
+			std::vector<std::pair<DprDecimal::DDecQuad, date::utc_time<date::utc_clock::duration>>> db_data;
+
+			std::istringstream time_stream;
+			date::utc_time<date::utc_clock::duration> tp;
+
    	   	    while (stream >> row)
    	   	    {
-				std::cout << fmt::format("row: {}", row) << '\n';
-            	db_data.emplace_back(DprDecimal::DDecQuad{std::get<1>(row)}, StringToTimePoint(dt_format, std::get<0>(row)));
+				// std::cout << fmt::format("row: {}", row) << '\n';
+				time_stream.str(std::string{std::get<0>(row)});
+
+    			date::from_stream(time_stream, "%F", tp);
+    			// auto utc_tp = date::clock_cast<date::utc_clock>(tp);
+            	db_data.emplace_back(std::pair(DprDecimal::DDecQuad{std::get<1>(row)}, tp));
             }
    	   	    stream.complete();
 
@@ -519,13 +538,13 @@ void PF_CollectDataApp::Run_LoadFromDB()
 
     		for (const auto& val : params)
     		{
-				fmt::print("{}", val);
+				// fmt::print("{}", val);
    	   	        // auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
    	   	        PF_Chart new_chart(val, 0.0, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
    	   	        for (const auto& [new_price, date] : db_data)
    	   	        {
-					std::cout << fmt::format("new value: {} {}", new_price, date) << std::endl;
-            		// new_chart.AddValue(new_price, date);
+					// std::cout << "new value: " << new_price << "\t" << date << std::endl;
+            		new_chart.AddValue(new_price, date::clock_cast<date::utc_clock>(date));
             	}
    	   	        charts_.emplace_back(std::make_pair(symbol, new_chart));
    	        }
@@ -765,7 +784,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
         for (auto& [symbol, chart] : charts_)
         {
             auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, &holidays);
-            chart.AddValue(DprDecimal::DDecQuad{history[0][price_fld_name_].asString()}, current_local_time.get_sys_time());
+            chart.AddValue(DprDecimal::DDecQuad{history[0][price_fld_name_].asString()}, date::clock_cast<date::utc_clock>(current_local_time.get_sys_time()));
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
@@ -776,8 +795,8 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
             const std::string ticker = e["ticker"].asString();
             const std::string tstmp = e["timestamp"].asString();
             const auto quote_time_stamp = StringToTimePoint("%FT%T%z", tstmp);
-            const auto close_time_stamp = GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60};
-            const auto open_time_stamp = GetUS_MarketOpenTime(today).get_sys_time();
+            const auto close_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
+            const auto open_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
             ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
                 [&] (auto& symbol_and_chart)
@@ -875,7 +894,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
                 ranges::for_each(charts_ | ranges::views::filter([&new_value] (const auto& symbol_and_chart) { return symbol_and_chart.first == new_value.ticker_; }),
                     [&] (auto& symbol_and_chart)
                     {
-                        auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::tpt{std::chrono::nanoseconds{new_value.time_stamp_seconds_}});
+                        auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
                         if (chart_changed != PF_Column::Status::e_ignored)
                         {
                             need_to_update_graph.push_back(&symbol_and_chart.second);
@@ -892,7 +911,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
             {
                 py::gil_scoped_acquire gil{};
                 fs::path graph_file_path = output_graphs_directory_ / (chart->ChartName("svg"));
-                chart->ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, PF_Chart::Y_AxisFormat::e_show_time);
+                chart->ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
                 fs::path chart_file_path = output_chart_directory_ / (chart->ChartName("json"));
                 std::ofstream updated_file{chart_file_path, std::ios::out | std::ios::binary};
@@ -933,7 +952,7 @@ void PF_CollectDataApp::Shutdown ()
             	output.close();
 
             	fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
-            	chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::Y_AxisFormat::e_show_time : PF_Chart::Y_AxisFormat::e_show_date);
+            	chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
             }
 			catch(const std::exception& e)
 			{
