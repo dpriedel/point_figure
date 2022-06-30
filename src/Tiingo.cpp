@@ -225,7 +225,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
             PF_Data new_value;
             new_value.subscription_id_ = subscription_id_;
             new_value.time_stamp_ = data[1].asString();
-            new_value.time_stamp_seconds_ = data[2].asInt64();
+            new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
             new_value.ticker_ = data[3].asString();
             ranges::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
             new_value.last_price_ = DprDecimal::DDecQuad{m[1].str()};

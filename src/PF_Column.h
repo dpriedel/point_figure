@@ -40,6 +40,8 @@
 //#include <memory>
 #include <optional>
 
+#include <date/date.h>
+
 #include <fmt/format.h>
 #include <fmt/chrono.h>
 
@@ -64,8 +66,8 @@ public:
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
 
-    using tpt = std::chrono::time_point<std::chrono::system_clock>;
-    using TimeSpan = std::pair<tpt, tpt>;
+    using TmPt = std::chrono::time_point<date::utc_clock>;
+    using TimeSpan = std::pair<TmPt, TmPt>;
 
     using AddResult = std::pair<Status, std::optional<PF_Column>>;
 
@@ -97,7 +99,7 @@ public:
 
     // ====================  MUTATORS      =======================================
 
-    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecQuad& new_value, tpt the_time);
+    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecQuad& new_value, TmPt the_time);
 
     // ====================  OPERATORS     =======================================
 
@@ -113,7 +115,7 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    PF_Column MakeReversalColumn(Direction direction, const DprDecimal::DDecQuad& value, tpt the_time);
+    PF_Column MakeReversalColumn(Direction direction, const DprDecimal::DDecQuad& value, TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -121,10 +123,10 @@ private:
 
     void FromJSON(const Json::Value& new_data);
 
-    [[nodiscard]] AddResult StartColumn(const DprDecimal::DDecQuad& new_value, tpt the_time);
-    [[nodiscard]] AddResult TryToFindDirection(const DprDecimal::DDecQuad& new_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& new_value, tpt the_time);
-    [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& new_value, tpt the_time);
+    [[nodiscard]] AddResult StartColumn(const DprDecimal::DDecQuad& new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToFindDirection(const DprDecimal::DDecQuad& new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& new_value, TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 

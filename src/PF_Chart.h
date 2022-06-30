@@ -65,7 +65,7 @@ public:
     using Y_Limits = std::pair<DprDecimal::DDecQuad, DprDecimal::DDecQuad>;
     using PF_ChartParams = std::tuple<std::string, DprDecimal::DDecQuad, int32_t, Boxes::BoxType, Boxes::BoxScale>;
 
-    enum  class Y_AxisFormat {e_show_date, e_show_time};
+    enum  class X_AxisFormat {e_show_date, e_show_time};
 	enum {
 		e_symbol = 0,
 		e_box_size,
@@ -123,11 +123,11 @@ public:
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
-    [[nodiscard]] PF_Column::tpt GetFirstTime() const { return first_date_; }
-    [[nodiscard]] PF_Column::tpt GetLastChangeTime() const { return last_change_date_; }
-    [[nodiscard]] PF_Column::tpt GetLastCheckedTime() const { return last_checked_date_; }
+    [[nodiscard]] PF_Column::TmPt GetFirstTime() const { return first_date_; }
+    [[nodiscard]] PF_Column::TmPt GetLastChangeTime() const { return last_change_date_; }
+    [[nodiscard]] PF_Column::TmPt GetLastCheckedTime() const { return last_checked_date_; }
 
-    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, const std::string& show_trend_lines, Y_AxisFormat date_or_time=Y_AxisFormat::e_show_date) const;
+    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, const std::string& show_trend_lines, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
@@ -145,7 +145,7 @@ public:
 
     // ====================  MUTATORS      =======================================
     
-    PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time);
+    PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, char delim);
 
     void SetMaxGraphicColumns(size_t max_cols) { max_columns_for_graph_ = max_cols; }
@@ -179,9 +179,9 @@ private:
 	DprDecimal::DDecQuad fname_box_size_ = 0;	// box size to use when constructing file name 
 	DprDecimal::DDecQuad atr_ = 0;
 
-    PF_Column::tpt first_date_ = {};			    //	earliest entry for symbol
-    PF_Column::tpt last_change_date_ = {};		//	date of last change to data
-    PF_Column::tpt last_checked_date_ = {};	    //	last time checked to see if update needed
+    PF_Column::TmPt first_date_ = {};			    //	earliest entry for symbol
+    PF_Column::TmPt last_change_date_ = {};		//	date of last change to data
+    PF_Column::TmPt last_checked_date_ = {};	    //	last time checked to see if update needed
 
     DprDecimal::DDecQuad y_min_ = 100000;         // just a number
     DprDecimal::DDecQuad y_max_ = -1;

@@ -284,8 +284,9 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     return true;
 }		// -----  end of method PF_Chart::operator==  ----- 
 
-PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::tpt the_time)
+PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
 {
+	// std::cout << "new value: " << new_value << "\t" << the_time << std::endl;
     // when extending the chart, don't add 'old' data.
 
     if (! IsEmpty())
@@ -345,7 +346,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
         auto fields = split_string<std::string_view>(buffer, delim);
 
-        PF_Column::tpt the_time = StringToTimePoint(date_format, fields[0]);
+        PF_Column::TmPt the_time = StringToTimePoint(date_format, fields[0]);
 
         AddValue(DprDecimal::DDecQuad{std::string{fields[1]}}, the_time);
     }
@@ -377,7 +378,7 @@ std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view su
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
-void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, const std::string& show_trend_lines, Y_AxisFormat date_or_time) const
+void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, const std::string& show_trend_lines, X_AxisFormat date_or_time) const
 {
 	BOOST_ASSERT_MSG(! IsEmpty(), fmt::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
 
@@ -415,7 +416,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             closeData.push_back(col.GetBottom().ToDouble());
             direction_is_up.push_back(false);
         }
-		if (date_or_time == Y_AxisFormat::e_show_date)
+		if (date_or_time == X_AxisFormat::e_show_date)
         {
             x_axis_labels.push_back(fmt::format("{:%F}", col.GetTimeSpan().first));
 //            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
@@ -443,7 +444,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         closeData.push_back(current_column_.GetBottom().ToDouble());
         direction_is_up.push_back(false);
     }
-    if (date_or_time == Y_AxisFormat::e_show_date)
+    if (date_or_time == X_AxisFormat::e_show_date)
     {
         x_axis_labels.push_back(fmt::format("{:%F}", current_column_.GetTimeSpan().first));
 //        x_axis_labels.push_back(current_column_.GetTimeSpan().first.time_since_epoch().count());
@@ -521,7 +522,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         "StepBack"_a = had_step_back,
         "ChartTitle"_a = chart_title,
         "ChartFileName"_a = output_filename.string(),
-        "DateTimeFormat"_a = date_or_time == Y_AxisFormat::e_show_date ? "%Y-%m-%d" : "%H:%M:%S",
+        "DateTimeFormat"_a = date_or_time == X_AxisFormat::e_show_date ? "%F" : "%H:%M:%S",
         "Y_min"_a = GetYLimits().first.ToDouble(),
         "Y_max"_a = GetYLimits().second.ToDouble(),
         "UseLogScale"_a = IsPercent(),
@@ -635,9 +636,9 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     symbol_ = new_data["symbol"].asString();
     boxes_ = new_data["boxes"];
 
-    first_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
-    last_change_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
-    last_checked_date_ = PF_Column::tpt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
+    first_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
+    last_change_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
+    last_checked_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
 
     fname_box_size_ = DprDecimal::DDecQuad{new_data["fname_box_size"].asString()};
     atr_ = DprDecimal::DDecQuad{new_data["atr"].asString()};

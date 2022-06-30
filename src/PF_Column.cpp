@@ -75,7 +75,7 @@ PF_Column::PF_Column (Boxes* boxes, const Json::Value& new_data)
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
 
 PF_Column PF_Column::MakeReversalColumn (Direction direction, const DprDecimal::DDecQuad& value,
-        tpt the_time)
+        TmPt the_time)
 {
     auto new_column = PF_Column{boxes_, reversal_boxes_, direction, value, value};
     new_column.time_span_ = {the_time, the_time};
@@ -88,7 +88,7 @@ bool PF_Column::operator== (const PF_Column& rhs) const
         && rhs.top_ == top_ && rhs.bottom_ == bottom_ && rhs.had_reversal_ == had_reversal_;
 }		// -----  end of method PF_Column::operator==  ----- 
 
-PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value, tpt the_time)
+PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value, TmPt the_time)
 {
     if (IsEmpty())
     {
@@ -116,7 +116,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     return TryToExtendDown(new_value, the_time);
 }		// -----  end of method PF_Column::AddValue  ----- 
 
-PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_value, tpt the_time)
+PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_value, TmPt the_time)
 {
     // As this is the first entry in the column, just set fields 
     // to the input value rounded down to the nearest box value.
@@ -129,7 +129,7 @@ PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_val
 }		// -----  end of method PF_Column::StartColumn  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& new_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& new_value, TmPt the_time)
 {
     // NOTE: Since a new value may gap up or down, we could 
     // have multiple boxes to fill in. 
@@ -157,7 +157,7 @@ PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& 
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
-PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_value, TmPt the_time)
 {
     // if we are going to extend the column up, then we need to move up by at least 1 box.
 
@@ -208,7 +208,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
     return {Status::e_ignored, std::nullopt};
 }		// -----  end of method PF_Chart::TryToExtendUp  ----- 
 
-PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, tpt the_time)
+PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, TmPt the_time)
 {
     // if we are going to extend the column down, then we need to move down by at least 1 box.
 
@@ -263,7 +263,7 @@ Json::Value PF_Column::ToJSON () const
 {
     Json::Value result;
 
-    result["start_at"] = time_span_.first.time_since_epoch().count();
+    result["first_entry"] = time_span_.first.time_since_epoch().count();
     result["last_entry"] = time_span_.second.time_since_epoch().count();
 
     result["reversal_boxes"] = reversal_boxes_;
@@ -292,8 +292,8 @@ Json::Value PF_Column::ToJSON () const
 
 void PF_Column::FromJSON (const Json::Value& new_data)
 {
-    time_span_.first = tpt{std::chrono::nanoseconds{new_data["start_at"].asInt64()}};
-    time_span_.second = tpt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
+    time_span_.first = TmPt{std::chrono::nanoseconds{new_data["first_entry"].asInt64()}};
+    time_span_.second = TmPt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
 
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
     top_ = DprDecimal::DDecQuad{new_data["top"].asString()};

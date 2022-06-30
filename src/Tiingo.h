@@ -60,7 +60,7 @@ public:
         std::string subscription_id_;
         std::string ticker_;                        // Ticker
         std::string time_stamp_;                    // Date
-        int64_t time_stamp_seconds_;                // Nanoseconds
+        int64_t time_stamp_nanoseconds_utc_;        // time_stamp
         DprDecimal::DDecQuad last_price_;           // Last Price
         int32_t last_size_;                         // Last Size
     };
