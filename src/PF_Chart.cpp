@@ -34,8 +34,11 @@
 //#include <iterator>
 #include <chrono>
 #include <cstdint>
+#include <date/date.h>
 #include <iostream>
 #include <fstream>
+
+#include<date/tz.h>
 
 //#include <chartdir.h>
 #include <fmt/format.h>
@@ -342,13 +345,9 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
         {
             continue;
         }
-        // need to split out fields
-
         auto fields = split_string<std::string_view>(buffer, delim);
 
-        PF_Column::TmPt the_time = StringToTimePoint(date_format, fields[0]);
-
-        AddValue(DprDecimal::DDecQuad{std::string{fields[1]}}, the_time);
+        AddValue(DprDecimal::DDecQuad{std::string{fields[1]}}, StringToUTCTimePoint(date_format, fields[0]));
     }
 
     // make sure we keep the last column we were working on 
@@ -418,13 +417,11 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         }
 		if (date_or_time == X_AxisFormat::e_show_date)
         {
-            x_axis_labels.push_back(fmt::format("{:%F}", col.GetTimeSpan().first));
-//            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
+	        x_axis_labels.push_back(fmt::format("{:%F}", col.GetTimeSpan().first));
         }
 		else
         {
             x_axis_labels.push_back(TimePointToLocalHMSString(col.GetTimeSpan().first));
-//            x_axis_labels.push_back(col.GetTimeSpan().first.time_since_epoch().count());
         }
         had_step_back.push_back(col.GetHadReversal());
     }
@@ -447,12 +444,10 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     if (date_or_time == X_AxisFormat::e_show_date)
     {
         x_axis_labels.push_back(fmt::format("{:%F}", current_column_.GetTimeSpan().first));
-//        x_axis_labels.push_back(current_column_.GetTimeSpan().first.time_since_epoch().count());
     }
     else
     {
         x_axis_labels.push_back(TimePointToLocalHMSString(current_column_.GetTimeSpan().first));
-//        x_axis_labels.push_back(current_column_.GetTimeSpan().first.time_since_epoch().count());
     }
 
     had_step_back.push_back(current_column_.GetHadReversal());
@@ -677,11 +672,11 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
 
     // ===  FUNCTION  ======================================================================
-    //         Name:  ComputeATR
+    //         Name:  ComputeATRUsingJSON
     //  Description:  Expects the input data is in descending order by date
     // =====================================================================================
 
-DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days, UseAdjusted use_adjusted)
+DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days, UseAdjusted use_adjusted)
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
@@ -720,5 +715,5 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const Json::Value& the_
 
 //    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
-}		// -----  end of function ComputeATR  -----
+}		// -----  end of function ComputeATRUsingJSON  -----
 

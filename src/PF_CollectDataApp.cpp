@@ -670,7 +670,7 @@ void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, c
         {
             const auto fields = split_string<std::string_view> (record, ',');
             const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
-            new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToTimePoint(dt_format, fields[date_col]));
+            new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToUTCTimePoint(dt_format, fields[date_col]));
         });
 
 }		// -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV  ----- 
@@ -735,7 +735,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
 
     const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, &holidays);
 
-    auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_Yes);
+    auto atr = ComputeATRUsingJSON(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_Yes);
 
     return atr;
 }		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
@@ -794,7 +794,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
         {
             const std::string ticker = e["ticker"].asString();
             const std::string tstmp = e["timestamp"].asString();
-            const auto quote_time_stamp = StringToTimePoint("%FT%T%z", tstmp);
+            const auto quote_time_stamp = StringToUTCTimePoint("%FT%T%z", tstmp);
             const auto close_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
             const auto open_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
