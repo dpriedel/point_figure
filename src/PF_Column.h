@@ -36,6 +36,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <date/tz.h>
 #include <utility>
 //#include <memory>
 #include <optional>
@@ -66,7 +67,7 @@ public:
     enum class Direction {e_unknown, e_up, e_down};
     enum class Status { e_accepted, e_ignored, e_reversal };
 
-    using TmPt = std::chrono::time_point<date::utc_clock>;
+    using TmPt = date::utc_time<date::utc_clock::duration>;
     using TimeSpan = std::pair<TmPt, TmPt>;
 
     using AddResult = std::pair<Status, std::optional<PF_Column>>;

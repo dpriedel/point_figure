@@ -292,8 +292,8 @@ Json::Value PF_Column::ToJSON () const
 
 void PF_Column::FromJSON (const Json::Value& new_data)
 {
-    time_span_.first = TmPt{std::chrono::nanoseconds{new_data["first_entry"].asInt64()}};
-    time_span_.second = TmPt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
+    time_span_.first = TmPt{date::utc_clock::duration{new_data["first_entry"].asInt64()}};
+    time_span_.second = TmPt{date::utc_clock::duration{new_data["last_entry"].asInt64()}};
 
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
     top_ = DprDecimal::DDecQuad{new_data["top"].asString()};
