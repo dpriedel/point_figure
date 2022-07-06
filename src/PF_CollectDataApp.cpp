@@ -370,7 +370,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
-        ("db-data-sourcee",     po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data"), "table containing symbol data. Default is 'stock_data'")
+        ("db-data-source",      po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data"), "table containing symbol data. Default is 'stock_data'")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
