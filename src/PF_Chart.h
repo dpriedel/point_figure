@@ -50,6 +50,9 @@
 
 #include <date/date.h>
 
+#include <pqxx/pqxx>
+#include <pqxx/transaction.hxx>
+
 //namespace fs = std::filesystem;
 
 //using namespace std::chrono_literals;
@@ -226,6 +229,10 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 // Tiingo and compute the ATR using the formula from Investopedia.
 
 DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days, UseAdjusted use_adjusted=UseAdjusted::e_No);
+
+// we need to be able to use data stored in our stock prices DB too
+
+DprDecimal::DDecQuad ComputeATRUsingDB(std::string_view symbol, const pqxx::result& results, int32_t how_many_days);
 
 #endif   // ----- #ifndef PF_CHART_INC  ----- 
 

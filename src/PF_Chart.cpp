@@ -47,9 +47,6 @@
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/drop.hpp>
 
-#include <pqxx/pqxx>
-#include <pqxx/transaction.hxx>
-
 
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/gil.h>
@@ -421,7 +418,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         }
 		else
         {
-            x_axis_labels.push_back(TimePointToLocalHMSString(col.GetTimeSpan().first));
+            x_axis_labels.push_back(UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first));
         }
         had_step_back.push_back(col.GetHadReversal());
     }
@@ -447,7 +444,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     }
     else
     {
-        x_axis_labels.push_back(TimePointToLocalHMSString(current_column_.GetTimeSpan().first));
+        x_axis_labels.push_back(UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first));
     }
 
     had_step_back.push_back(current_column_.GetHadReversal());
@@ -490,7 +487,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     }
     auto chart_title = fmt::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
-                (IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, last_change_date_, explanation_text);
+                (IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, date::clock_cast<std::chrono::system_clock>(last_change_date_), explanation_text);
 
 //    std::vector<const char*> x_labels;
 //
@@ -716,4 +713,33 @@ DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Va
 //    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
 }		// -----  end of function ComputeATRUsingJSON  -----
+
+    // ===  FUNCTION  ======================================================================
+    //         Name:  ComputeATRUsingDB
+    //  Description:  Expects the input data is in descending order by date
+    // =====================================================================================
+
+DprDecimal::DDecQuad ComputeATRUsingDB(std::string_view symbol, const pqxx::result& results, int32_t how_many_days)
+{
+    DprDecimal::DDecQuad total{};
+
+    BOOST_ASSERT_MSG(results.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, results.size()).c_str());
+
+    DprDecimal::DDecQuad high_minus_low;
+    DprDecimal::DDecQuad high_minus_prev_close;
+    DprDecimal::DDecQuad low_minus_prev_close;
+
+    for (int i = 0; i < how_many_days; ++i)
+    {
+        high_minus_low = DprDecimal::DDecQuad{results[i]["high"].as<std::string_view>()} - DprDecimal::DDecQuad{results[i]["low"].as<std::string_view>()};
+        high_minus_prev_close = (DprDecimal::DDecQuad{results[i]["high"].as<std::string_view>()} - DprDecimal::DDecQuad{results[i + 1]["close_p"].as<std::string_view>()}).abs();
+        low_minus_prev_close = (DprDecimal::DDecQuad{results[i]["low"].as<std::string_view>()} - DprDecimal::DDecQuad{results[i + 1]["close_p"].as<std::string_view>()}).abs();
+
+        DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
+       
+        total += max;
+    }
+
+    return total /= how_many_days;
+}		// -----  end of function ComputeATRUsingDB  -----
 
