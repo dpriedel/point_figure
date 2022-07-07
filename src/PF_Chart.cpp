@@ -677,7 +677,7 @@ DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Va
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
-    DprDecimal::DDecQuad total;
+    DprDecimal::DDecQuad total{0};
 
     DprDecimal::DDecQuad high_minus_low;
     DprDecimal::DDecQuad high_minus_prev_close;
@@ -698,7 +698,7 @@ DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Va
     }
     else
     {
-        for (int i = 0; i < how_many_days; ++i)
+        for (int32_t i = 0; i < how_many_days; ++i)
         {
             high_minus_low = DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i]["low"].asString()};
             high_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["close"].asString()}).abs();
@@ -706,6 +706,7 @@ DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Va
 
             DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
             
+			// fmt::print("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i, high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
             total += max;
         }
     }
@@ -737,6 +738,7 @@ DprDecimal::DDecQuad ComputeATRUsingDB(std::string_view symbol, const pqxx::resu
 
         DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
        
+		// fmt::print("hml: {} hmpc: {} lmpc: {} max: {}\n", high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
         total += max;
     }
 

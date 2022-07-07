@@ -506,7 +506,7 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
     const std::string dest{R"***("$1":"$2")***"};
     auto result1 = std::regex_replace(result, source, dest);
 
-//    std::cout << "modified data: " << result1 << '\n';
+   // std::cout << "modified data: " << result1 << '\n';
 
     // now, just convert to JSON 
 
