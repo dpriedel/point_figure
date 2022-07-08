@@ -952,11 +952,14 @@ void PF_CollectDataApp::Shutdown ()
         {
             try
             {
-            	fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
-            	std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
-            	BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
-            	chart.ConvertChartToJsonAndWriteToStream(output);
-            	output.close();
+            	if (destination_ == Destination::e_file)
+            	{
+					fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
+					std::ofstream output(output_file_name, std::ios::out | std::ios::binary);
+					BOOST_ASSERT_MSG(output.is_open(), fmt::format("Unable to open output file: {}.", output_file_name).c_str());
+					chart.ConvertChartToJsonAndWriteToStream(output);
+					output.close();
+            	}
 
             	fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
             	chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
