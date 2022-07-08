@@ -417,6 +417,12 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
     number_of_days_history_for_ATR_ = 20;
 
+    if (source_ == Source::e_streaming)
+    {
+        Run_Streaming();
+        return {};
+    }
+
 	if (mode_ == Mode::e_daily_scan)
 	{
 		Run_DailyScan();
@@ -444,10 +450,6 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         	{
             	Run_UpdateFromDB();
         	}
-    	}
-    	else
-    	{
-        	Run_Streaming();
     	}
 	}
 	return {} ;
@@ -510,23 +512,23 @@ void PF_CollectDataApp::Run_LoadFromDB()
 
 			// we know our database contains 'date's, but we need timepoints 
 
-			std::vector<std::pair<DprDecimal::DDecQuad, date::utc_time<date::utc_clock::duration>>> db_data;
+			std::vector<std::pair<date::utc_time<date::utc_clock::duration>, DprDecimal::DDecQuad>> db_data;
 
 			std::istringstream time_stream;
 			date::utc_time<date::utc_clock::duration> tp;
 
    	   	    while (stream >> row)
    	   	    {
-				// std::cout << fmt::format("row: {}", row) << '\n';
 				time_stream.str(std::string{std::get<0>(row)});
-
     			date::from_stream(time_stream, "%F", tp);
-    			// auto utc_tp = date::clock_cast<date::utc_clock>(tp);
-            	db_data.emplace_back(std::pair(DprDecimal::DDecQuad{std::get<1>(row)}, tp));
+            	db_data.emplace_back(std::pair(tp, DprDecimal::DDecQuad{std::get<1>(row)}));
             }
    	   	    stream.complete();
 
 			std::cout << "done retrieving data for symbol: " << symbol << '\n';
+
+   	   	    // only need to compute this once per symbol also 
+   	   	    auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
 
 			// There could be thousands of symbols in the database so we don't want to generate combinations for
 			// all of them at once.
@@ -538,13 +540,12 @@ void PF_CollectDataApp::Run_LoadFromDB()
 
     		for (const auto& val : params)
     		{
-				// fmt::print("{}", val);
-   	   	        // auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
-   	   	        PF_Chart new_chart(val, 0.0, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
-   	   	        for (const auto& [new_price, date] : db_data)
+				// fmt::print("atr: {} {}\n", atr, val);
+   	   	        PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+   	   	        for (const auto& [new_date, new_price] : db_data)
    	   	        {
-					// std::cout << "new value: " << new_price << "\t" << date << std::endl;
-            		new_chart.AddValue(new_price, date::clock_cast<date::utc_clock>(date));
+					// std::cout << "new value: " << new_price << "\t" << new_date << std::endl;
+            		new_chart.AddValue(new_price, date::clock_cast<date::utc_clock>(new_date));
             	}
    	   	        charts_.emplace_back(std::make_pair(symbol, new_chart));
    	        }
@@ -742,26 +743,32 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
 
 DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::string& symbol) const
 {
-    // Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_};
-    //
-    // // we need to start from yesterday since we won't get history data for today 
-    // // since we are doing this while the market is open
-    //
-    // date::year_month_day today{--floor<date::days>(std::chrono::system_clock::now())};
-    //
-    // // use our new holidays capability 
-    // // we look backwards here. so add an extra year in case we are near New Years.
-    // 
-    // auto holidays = MakeHolidayList(today.year());
-    // ranges::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
-    //
-    // const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, &holidays);
-    //
-    // auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_Yes);
-    //
-    // return atr;
-    return {0};
-}		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::nontransaction trxn{c};		// we are read-only for this work
+
+    date::year_month_day today{--floor<date::days>(std::chrono::system_clock::now())};
+
+	std::string get_ATR_info_cmd = fmt::format("SELECT date, high, low, close_p FROM {} WHERE symbol = '{}' AND date <= '{}' ORDER BY date DESC LIMIT {}",
+			db_params_.db_data_source_,
+			symbol,
+            today,
+			number_of_days_history_for_ATR_ + 1		// need an extra row for the algorithm 
+			);
+
+    DprDecimal::DDecQuad atr{};
+
+	try
+	{
+		auto results = trxn.exec(get_ATR_info_cmd);
+		trxn.commit();
+        atr = ComputeATRUsingDB(symbol, results, number_of_days_history_for_ATR_);
+    }
+   	catch (const std::exception& e)
+   	{
+		std::cout << "Unable to load data for: " << symbol << " because: " << e.what() << std::endl;
+   	}
+    return atr;
+}		// -----  end of method PF_CollectDataApp::ComputeATRUsingDB  ----- 
 
 void PF_CollectDataApp::PrimeChartsForStreaming ()
 {
