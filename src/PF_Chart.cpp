@@ -110,7 +110,7 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 
 PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
         Boxes::BoxType box_type, Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
-    : symbol_{symbol}, fname_box_size_{box_size}, atr_{atr}, max_columns_for_graph_{max_columns_for_graph}
+    : symbol_{symbol}, fname_box_size_{std::move(box_size)}, atr_{std::move(atr)}, max_columns_for_graph_{max_columns_for_graph}
 
 {
 	// stock prices are listed to 2 decimals.  If we are doing integral scale, then
