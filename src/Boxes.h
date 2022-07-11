@@ -51,12 +51,13 @@ class Boxes
 {
 public:
 
+    static const std::size_t MAX_BOXES = 500;			// too many boxes and everything becomes too slow
+    										//
     enum class BoxType { e_integral, e_fractional };
     enum class BoxScale { e_linear, e_percent };
 
     using Box = DprDecimal::DDecQuad;
     using BoxList = std::deque<Box>;
-//    using BoxList = std::deque<Box>;
 
     // ====================  LIFECYCLE     ======================================= 
     Boxes () = default;                             // constructor 
@@ -116,6 +117,11 @@ private:
     Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value);
     Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value);
     [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
+
+	// these functions implement our max number of boxes limit 
+	
+	void PushFront(Box new_box);
+	void PushBack(Box new_box);
 
     // ====================  DATA MEMBERS  ======================================= 
 

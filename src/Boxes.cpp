@@ -132,7 +132,7 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
 
             prev_back = boxes_.back();
             Box new_box = prev_back + box_size_;
-            boxes_.push_back(std::move(new_box));
+            PushBack(std::move(new_box));
         }
         return (new_value < boxes_.back() ? prev_back : boxes_.back());
     }
@@ -142,7 +142,7 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
     do 
     {
         Box new_box = boxes_.front() - box_size_;
-        boxes_.insert(boxes_.begin(), new_box);
+        PushFront(new_box);
     } while (new_value < boxes_.front());
 
     return boxes_.front();
@@ -174,7 +174,7 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
 
             prev_back = boxes_.back();
             Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
-            boxes_.push_back(std::move(new_box));
+            PushBack(std::move(new_box));
         }
         return (new_value < boxes_.back() ? prev_back : boxes_.back());
     }
@@ -184,7 +184,7 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
     do 
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-        boxes_.insert(boxes_.begin(), new_box);
+        PushFront(new_box);
     } while (new_value < boxes_.front());
 
     return boxes_.front();
@@ -211,7 +211,7 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
         if (current_value == boxes_.back())
         {
             Box new_box = boxes_.back() + box_size_;
-            boxes_.push_back(new_box);
+            PushBack(new_box);
             return new_box;
         }
     }
@@ -234,7 +234,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
         if (current_value == boxes_.back())
         {
             Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
-            boxes_.push_back(new_box);
+            PushBack(new_box);
             return new_box;
         }
     }
@@ -255,7 +255,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
     if (boxes_.size() == 1)
     {
         Box new_box = boxes_.front() - box_size_;
-        boxes_.insert(boxes_.begin(), new_box);
+        PushFront(new_box);
         return new_box;
     }
 
@@ -276,7 +276,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
     if (box_index == 0)
     {
         Box new_box = boxes_.front() - box_size_;
-        boxes_.insert(boxes_.begin(), new_box);
+        PushFront(new_box);
         return boxes_.front();
     }
     return boxes_.at(box_index - 1);
@@ -287,7 +287,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     if (boxes_.size() == 1)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-        boxes_.insert(boxes_.begin(), new_box);
+        PushFront(new_box);
         return new_box;
     }
 
@@ -308,7 +308,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     if (box_index == 0)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
-        boxes_.insert(boxes_.begin(), new_box);
+        PushFront(new_box);
         return boxes_.front();
     }
     return boxes_.at(box_index - 1);
@@ -361,7 +361,7 @@ Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 
 //    auto new_box = RoundDownToNearestBox(start_at);
     Box new_box{price_as_int};
-    boxes_.push_back(new_box);
+    PushBack(new_box);
     return new_box;
 
 }		// -----  end of method Boxes::NewBox  ----- 
@@ -373,7 +373,7 @@ Boxes::Box Boxes::FirstBoxPerCent (const DprDecimal::DDecQuad& start_at)
     boxes_.clear();
 //    auto new_box = RoundDownToNearestBox(start_at);
     Box new_box{start_at};
-    boxes_.push_back(new_box);
+    PushBack(new_box);
     return new_box;
 
 }		// -----  end of method Boxes::NewBox  ----- 
@@ -482,4 +482,17 @@ void Boxes::FromJSON (const Json::Value& new_data)
     auto x = ranges::adjacent_find(boxes_, ranges::greater());
     BOOST_ASSERT_MSG(x == boxes_.end(), "boxes must be in ascending order and it isn't.");
 }		// -----  end of method Boxes::FromJSON  ----- 
+
+void Boxes::PushFront(Box new_box)
+{
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, "Maximum number of boxes reached. Use larger box size.");
+    boxes_.insert(boxes_.begin(), std::move(new_box));
+
+}		// -----  end of method Boxes::PushFront  ----- 
+
+void Boxes::PushBack(Box new_box)
+{
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, "Maximum number of boxes reached. Use larger box size.");
+	boxes_.push_back(std::move(new_box));
+}		// -----  end of method Boxes::PushBack  ----- 
 
