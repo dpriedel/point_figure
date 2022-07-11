@@ -217,8 +217,11 @@ bool PF_CollectDataApp::CheckArgs ()
 
     // now make sure we can find our data for input and output.
 
-    BOOST_ASSERT_MSG(source_i == "file" || source_i == "streaming" || source_i == "database", fmt::format("Data source must be: 'file', 'streaming' or 'database': {}", source_i).c_str());
-    source_ = source_i == "file" ? Source::e_file : source_i == "database" ? Source::e_DB : Source::e_streaming;
+    BOOST_ASSERT_MSG(new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database", fmt::format("New data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
+    new_data_source_ = new_data_source_i == "file" ? Source::e_file : new_data_source_i == "database" ? Source::e_DB : Source::e_streaming;
+    
+    BOOST_ASSERT_MSG(chart_data_source_i == "file" || chart_data_source_i == "database", fmt::format("Existing chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
+    chart_data_source_ = chart_data_source_i == "file" ? Source::e_file : Source::e_DB;
     
     BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database", fmt::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
@@ -228,7 +231,7 @@ bool PF_CollectDataApp::CheckArgs ()
 
     // possibly empty if this is our first time or we are starting over
 
-    if (source_ == Source::e_file)
+    if (new_data_source_ == Source::e_file)
     {
         // for file input, we always need to have our raw data inputs 
 
@@ -240,7 +243,7 @@ bool PF_CollectDataApp::CheckArgs ()
 
         // if we are adding to existing data then we need to know where to find that data  
 
-        if (mode_ == Mode::e_update)
+        if (mode_ == Mode::e_update && chart_data_source_ == Source::e_file)
         {
         	BOOST_ASSERT_MSG(! input_chart_directory_.empty(), "Must specify 'chart-data-dir' when data source is 'file' and mode is 'update'.");
         	BOOST_ASSERT_MSG(fs::exists(input_chart_directory_), fmt::format("Can't find new existing chart data directory: {}", input_chart_directory_).c_str());
@@ -277,26 +280,26 @@ bool PF_CollectDataApp::CheckArgs ()
         fs::create_directories(output_graphs_directory_);
     }
 
-    if (source_ == Source::e_DB || destination_ == Destination::e_DB)
+    if (new_data_source_ == Source::e_DB || destination_ == Destination::e_DB)
     {
         BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
-        if (source_ == Source::e_DB)
+        if (new_data_source_ == Source::e_DB)
         {
 			BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified when load source is 'database'.");
 		}
     }
 
-    if (source_ != Source::e_DB && use_ATR_)
+    if (new_data_source_ != Source::e_DB && use_ATR_)
     {
         BOOST_ASSERT_MSG(! tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
         BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
     }
     
-    if (source_ == Source::e_DB)
+    if (new_data_source_ == Source::e_DB)
     {
         BOOST_ASSERT_MSG(! begin_date_.empty(), "Must specify 'begin-date' when data source is 'database'.");
     }
@@ -345,7 +348,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
 		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_),	"name of directory containing existing files with data for symbols we are using.")
 		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'database'. Default is 'file'.")
-		("source",				po::value<std::string>(&this->source_i)->default_value("file"),	"source: either 'file', 'streaming' or 'database'. Default is 'file'")
+		("new-data-source",		po::value<std::string>(&this->new_data_source_i)->default_value("file"),	"source for new data: either 'file', 'streaming' or 'database'. Default is 'file'")
+		("chart-data-source",	po::value<std::string>(&this->chart_data_source_i)->default_value("file"),	"source for existing chart data: either 'file' or 'database'. Default is 'file'")
 		("source-format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'")
 		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data, 'update' existing data or 'daily-scan'. Default is 'load'")
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
@@ -417,7 +421,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
     number_of_days_history_for_ATR_ = 20;
 
-    if (source_ == Source::e_streaming)
+    if (new_data_source_ == Source::e_streaming)
     {
         Run_Streaming();
         return {};
@@ -426,32 +430,31 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 	if (mode_ == Mode::e_daily_scan)
 	{
 		Run_DailyScan();
+		return {};
 	}
-	else
-	{
-    	if(source_ == Source::e_file)
-    	{
-        	if (mode_ == Mode::e_load)
-        	{
-				Run_Load();
-        	}
-        	else if (mode_ == Mode::e_update)
-        	{
-            	Run_Update();
-        	}
-    	}
-    	else if(source_ == Source::e_DB)
-    	{
-        	if (mode_ == Mode::e_load)
-        	{
-				Run_LoadFromDB();
-        	}
-        	else if (mode_ == Mode::e_update)
-        	{
-            	Run_UpdateFromDB();
-        	}
-    	}
-	}
+
+    if(new_data_source_ == Source::e_file)
+    {
+        if (mode_ == Mode::e_load)
+        {
+			Run_Load();
+        }
+        else if (mode_ == Mode::e_update)
+        {
+            Run_Update();
+        }
+    }
+    else if(new_data_source_ == Source::e_DB)
+    {
+        if (mode_ == Mode::e_load)
+        {
+			Run_LoadFromDB();
+        }
+        else if (mode_ == Mode::e_update)
+        {
+            Run_UpdateFromDB();
+        }
+    }
 	return {} ;
 }		// -----  end of method PF_CollectDataApp::Do_Run  -----
 

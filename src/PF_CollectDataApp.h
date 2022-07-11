@@ -182,12 +182,14 @@ private:
     std::string interval_i;
     std::string mode_i;
     std::string source_format_i;
-    std::string source_i;
+    std::string new_data_source_i;
+    std::string chart_data_source_i;
     std::string use_adjusted_i;
     std::string symbol_list_i_;
     std::vector<std::string> scale_i_list_;
 
-    Source source_ = Source::e_unknown;
+    Source new_data_source_ = Source::e_unknown;
+    Source chart_data_source_ = Source::e_unknown;
     SourceFormat source_format_ = SourceFormat::e_csv;
     Destination destination_ = Destination::e_unknown;
     Mode mode_ = Mode::e_unknown;
