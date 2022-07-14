@@ -66,14 +66,13 @@ class PF_Chart
 public:
 
     using Y_Limits = std::pair<DprDecimal::DDecQuad, DprDecimal::DDecQuad>;
-    using PF_ChartParams = std::tuple<std::string, DprDecimal::DDecQuad, int32_t, Boxes::BoxType, Boxes::BoxScale>;
+    using PF_ChartParams = std::tuple<std::string, DprDecimal::DDecQuad, int32_t, Boxes::BoxScale>;
 
     enum  class X_AxisFormat {e_show_date, e_show_time};
 	enum {
 		e_symbol = 0,
 		e_box_size,
 		e_reversal,
-		e_box_type,
 		e_box_scale
 	};
     // make it look like a range
@@ -87,13 +86,12 @@ public:
     PF_Chart (const PF_Chart& rhs);
     PF_Chart (PF_Chart&& rhs) noexcept ;
 
-    PF_Chart(const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-            Boxes::BoxType box_type=Boxes::BoxType::e_integral,
+    PF_Chart(std::string symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
             Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear,
             DprDecimal::DDecQuad atr=0, int64_t max_columns_for_graph=0);
 
     PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
-        : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals), std::get<e_box_type>(vals),
+        : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals),
         		std::get<e_box_scale>(vals), atr, max_columns_for_graph)
     {
     }
@@ -102,7 +100,7 @@ public:
 
     ~PF_Chart() = default;
 
-    static PF_Chart MakeChartFromDB(const DB_Params& db_info, PF_ChartParams vals);
+    static PF_Chart MakeChartFromDB(const DB_Params& db_params, PF_ChartParams vals);
 
     // ====================  ACCESSORS     =======================================
 
@@ -144,14 +142,14 @@ public:
     [[nodiscard]] const std::vector<PF_Column>& GetColumns() const { return columns_; }
     [[nodiscard]] const PF_Column& GetCurrentColumn() const { return current_column_; }
 
-    [[nodiscard]] PF_ChartParams GetChartParams() const { return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxType(), boxes_.GetBoxScale()}; }
+    [[nodiscard]] PF_ChartParams GetChartParams() const { return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxScale()}; }
 
     // ====================  MUTATORS      =======================================
     
     PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, char delim);
 
-    void SetMaxGraphicColumns(size_t max_cols) { max_columns_for_graph_ = max_cols; }
+    void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
 
     // ====================  OPERATORS     =======================================
 

@@ -46,6 +46,7 @@
 
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/drop.hpp>
+#include <utility>
 
 
 #include <pybind11/embed.h> // everything needed for embedding
@@ -108,9 +109,9 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        Boxes::BoxType box_type, Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
-    : symbol_{symbol}, fname_box_size_{std::move(box_size)}, atr_{std::move(atr)}, max_columns_for_graph_{max_columns_for_graph}
+PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
+        Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
+    : symbol_{std::move(symbol)}, fname_box_size_{std::move(box_size)}, atr_{std::move(atr)}, max_columns_for_graph_{max_columns_for_graph}
 
 {
 	// stock prices are listed to 2 decimals.  If we are doing integral scale, then
@@ -137,7 +138,7 @@ PF_Chart::PF_Chart (const std::string& symbol, DprDecimal::DDecQuad box_size, in
     		}
     	}
     }
-	boxes_ = Boxes{runtime_box_size, box_type, box_scale};
+	boxes_ = Boxes{runtime_box_size, box_scale};
 	current_column_ = PF_Column{&boxes_, reversal_boxes}; 
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
@@ -362,15 +363,15 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
 std::string PF_Chart::ChartName (std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}_{}.{}", symbol_, fname_box_size_, (IsPercent() ? "%" : ""),
-            GetReversalboxes(), (IsPercent() ? "percent" : "linear"), (IsFractional() ? "fractions" : "integers"), suffix);
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, fname_box_size_, (IsPercent() ? "%" : ""),
+            GetReversalboxes(), (IsPercent() ? "percent" : "linear"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
 std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view suffix)
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}_{}.{}", std::get<e_symbol>(vals), std::get<e_box_size>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
-            std::get<e_reversal>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), (std::get<e_box_type>(vals) == Boxes::BoxType::e_fractional ? "fractions" : "integers"), suffix);
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", std::get<e_symbol>(vals), std::get<e_box_size>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
+            std::get<e_reversal>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
