@@ -34,6 +34,7 @@
 #include <range/v3/algorithm/adjacent_find.hpp>
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/for_each.hpp>
+#include <utility>
 
 #include <fmt/format.h>
 
@@ -45,17 +46,14 @@
 //      Method:  Boxes
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-Boxes::Boxes (const DprDecimal::DDecQuad& box_size, BoxType box_type, BoxScale box_scale)
-    : box_size_{box_size}, box_type_{box_type}, box_scale_{box_scale}
+Boxes::Boxes (DprDecimal::DDecQuad box_size, BoxScale box_scale)
+    : box_size_{std::move(box_size)}, box_type_{BoxType::e_fractional}, box_scale_{box_scale}
 {
-    // sometimes we fractional boxes regardless of what was asked for.
-
-    if (box_type_ == BoxType::e_integral)
+    // we rarely need integral box types.
+    
+    if (box_size_.GetExponent() >= 0)
     {
-        if (box_scale_ == BoxScale::e_percent || box_size_.GetExponent() < 0)
-        {
-            box_type_ = BoxType::e_fractional;
-        }
+        box_type_ = BoxType::e_integral;
     }
 
     if (box_scale_ == BoxScale::e_percent)

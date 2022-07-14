@@ -64,7 +64,7 @@ public:
     Boxes (const Boxes& rhs) = default;
     Boxes (Boxes&& rhs) = default;
 
-    explicit Boxes (const DprDecimal::DDecQuad& box_size, BoxType box_type=BoxType::e_integral, BoxScale box_scale=BoxScale::e_linear);
+    explicit Boxes (DprDecimal::DDecQuad box_size, BoxScale box_scale=BoxScale::e_linear);
 
     explicit Boxes(const Json::Value& new_data);
 
