@@ -51,7 +51,7 @@ class Boxes
 {
 public:
 
-    static const std::size_t MAX_BOXES = 500;			// too many boxes and everything becomes too slow
+    static constexpr std::size_t MAX_BOXES = 500;			// too many boxes and everything becomes too slow
     										//
     enum class BoxType { e_integral, e_fractional };
     enum class BoxScale { e_linear, e_percent };

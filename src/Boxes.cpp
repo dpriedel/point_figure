@@ -41,6 +41,8 @@
 #include "Boxes.h"
 #include "utilities.h"
 
+// constexpr std::size_t Boxes::MAX_BOXES = 500;			// too many boxes and everything becomes too slow
+
 //--------------------------------------------------------------------------------------
 //       Class:  Boxes
 //      Method:  Boxes
@@ -483,14 +485,14 @@ void Boxes::FromJSON (const Json::Value& new_data)
 
 void Boxes::PushFront(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, "Maximum number of boxes reached. Use larger box size.");
+    BOOST_ASSERT_MSG(boxes_.size() < Boxes::MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}.", Boxes::MAX_BOXES, box_size_ ).c_str());
     boxes_.insert(boxes_.begin(), std::move(new_box));
 
 }		// -----  end of method Boxes::PushFront  ----- 
 
 void Boxes::PushBack(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, "Maximum number of boxes reached. Use larger box size.");
+    BOOST_ASSERT_MSG(boxes_.size() < Boxes::MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}.", Boxes::MAX_BOXES, box_size_ ).c_str());
 	boxes_.push_back(std::move(new_box));
 }		// -----  end of method Boxes::PushBack  ----- 
 
