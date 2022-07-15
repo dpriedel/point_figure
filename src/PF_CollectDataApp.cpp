@@ -303,6 +303,11 @@ bool PF_CollectDataApp::CheckArgs ()
     {
         BOOST_ASSERT_MSG(! begin_date_.empty(), "Must specify 'begin-date' when data source is 'database'.");
     }
+
+    if (! exchange_.empty())
+    {
+    	BOOST_ASSERT_MSG(exchange_ == "AMEX" || exchange_ == "NYSE" || exchange_ == "NASDAQ", fmt::format("exchange: {} must be 'AMEX' or 'NYSE' or 'NASDAQ'.", exchange_).c_str());
+    }
     
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
 
@@ -326,12 +331,9 @@ bool PF_CollectDataApp::CheckArgs ()
 
     // we can compute whether boxes are fractions or intergers from input. This may be changed by the Boxes code later. 
 
-    ranges::for_each(scale_list_, [this] (const auto& scale) { this->fractional_boxes_list_.emplace_back(scale == Boxes::BoxScale::e_percent ? Boxes::BoxType::e_fractional : Boxes::BoxType::e_integral); });
-    fractional_boxes_list_ |= ranges::actions::sort | ranges::actions::unique;
-
     // generate PF_Chart type combinations from input params.
 
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
     ranges::for_each(params, [](const auto& x) {fmt::print("{}\n", x); });
 
 	return true ;
@@ -355,6 +357,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'")
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
+		("exchange",			po::value<std::string>(&this->exchange_),	"exchange: use symbols from specified exchange. Possible values: 'AMEX', 'NYSE', 'NASDAQ' or none (use values from all exchanges). Default is: not specified.")
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
@@ -460,7 +463,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 void PF_CollectDataApp::Run_Load()
 {
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_,  scale_list_);
 
 	// TODO(dpriedel): move file read out of loop and into a buffer
 	
@@ -487,11 +490,6 @@ void PF_CollectDataApp::Run_Load()
 
 void PF_CollectDataApp::Run_LoadFromDB()
 {
-	if (symbol_list_i_ == "*")
-	{
-		symbol_list_ = GetSymbolsFromDatabase();
-	}
-
 	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
@@ -538,7 +536,7 @@ void PF_CollectDataApp::Run_LoadFromDB()
     		// so, make a single element list for the call below and then generate the other combinations.
 
 			std::vector<std::string> the_symbol{symbol};
-    		auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+    		auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
 			ranges::for_each(params, [](const auto& x) {fmt::print("{}\n", x); });
 
     		for (const auto& val : params)
@@ -580,7 +578,7 @@ std::vector<std::string> PF_CollectDataApp::GetSymbolsFromDatabase()
 
 void PF_CollectDataApp::Run_Update()
 {
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
     // look for existing data and load the saved JSON data if we have it.
     // then add the new data to the chart.
@@ -612,7 +610,7 @@ void PF_CollectDataApp::Run_Update()
             // TODO(dpriedel): add json code
             BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
             AddPriceDataToExistingChartCSV(new_chart, update_file_name);
-            charts_.emplace_back(std::make_pair(symbol, new_chart));
+            charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
         }
         catch (const std::exception& e)
         {
@@ -623,12 +621,116 @@ void PF_CollectDataApp::Run_Update()
 
 void PF_CollectDataApp::Run_UpdateFromDB()
 {
+	// if we are down this path then the expectation is that we are processing a 'short' list of symbols and a 'recent'
+	// date so we will be collecting a 'small' amount of data from the DB.  In this case, we can do it all up front
 
+	// we need to convert our list of symbols into a format that can be used in a SQL query.
+	
+	std::string query_list = "( '";
+	auto syms = symbol_list_.begin();
+	query_list += *syms;
+	for (++syms; syms != symbol_list_.end(); ++syms)
+	{
+		query_list += "', '";
+		query_list += *syms;
+	}
+	query_list += "' )";
+	std::cout << query_list << std::endl;
+	
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::nontransaction trxn{c};		// we are read-only for this work
+
+	// we need a place to keep the data we retrieve from the database.
+	
+	struct DB_data
+	{
+		std::string symbol;
+		date::utc_time<date::utc_clock::duration> tp;
+		DprDecimal::DDecQuad price;
+	};
+	std::vector<DB_data> db_data;
+
+	try
+	{
+		// first, get ready to retrieve our data from DB.  Do this for all our symbols here.
+
+		std::string get_symbol_prices_cmd = fmt::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
+				price_fld_name_,
+				db_params_.db_data_source_,
+				query_list,
+				trxn.quote(begin_date_)
+				);
+
+		auto stream = pqxx::stream_from::query(trxn, get_symbol_prices_cmd);
+		std::tuple<std::string_view, std::string_view, std::string_view> row;
+
+		// we know our database contains 'date's, but we need timepoints
+
+		std::istringstream time_stream;
+		date::utc_time<date::utc_clock::duration> tp;
+
+   	   	while (stream >> row)
+   	   	{
+			time_stream.str(std::string{std::get<1>(row)});
+    		date::from_stream(time_stream, "%F", tp);
+            db_data.emplace_back(DB_data{std::string{std::get<0>(row)}, tp, DprDecimal::DDecQuad{std::get<2>(row)}});
+        }
+   	   	stream.complete();
+
+		std::cout << "done retrieving data for symbols: " << query_list << " got: " << db_data.size() << " rows.\n";
+   	}
+   	catch (const std::exception& e)
+   	{
+		std::cout << "Unable to load data for symbols: " << query_list << " because: " << e.what() << std::endl;
+   	}
+
+    // look for existing data and load the saved JSON data if we have it.
+    // then add the new data to the chart.
+
+    for (const auto& symbol : symbol_list_)
+    {
+		std::vector<std::string> the_symbol{symbol};
+    	auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
+
+        auto data_for_symbol = ranges::views::filter(db_data, [symbol](const auto& row) { return row.symbol == symbol; });
+
+    	for (const auto& val : params)
+    	{
+        	try
+        	{
+            	fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
+				fmt::print("{}\n", existing_data_file_name);
+            	PF_Chart new_chart;
+            	if (fs::exists(existing_data_file_name))
+            	{
+                	new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
+                	if (max_columns_for_graph_ != 0)
+                	{
+                		new_chart.SetMaxGraphicColumns(max_columns_for_graph_);
+                	}
+            	}
+            	else
+            	{
+                	// no existing data to update, so make a new chart
+
+                	auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
+					new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+            	}
+				ranges::for_each(data_for_symbol, [&new_chart](const auto& row) { new_chart.AddValue(row.price, row.tp); });
+            	// AddPriceDataToExistingChartCSV(new_chart, update_file_name);
+            	charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
+        	}
+        	catch (const std::exception& e)
+        	{
+				std::cout << "Unable to update data for symbol: " << symbol << " because: " << e.what() << std::endl;
+        	}
+    	}
+    }
 }		// -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
 
 void PF_CollectDataApp::Run_Streaming()
 {
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, fractional_boxes_list_, scale_list_);
+    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
     auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
     auto market_status = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time());

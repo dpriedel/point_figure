@@ -197,11 +197,11 @@ private:
 
     std::vector<std::string> symbol_list_;
     std::vector<Boxes::BoxScale> scale_list_;
-    std::vector<Boxes::BoxType> fractional_boxes_list_;
     std::vector<DprDecimal::DDecQuad> box_size_list_;
     std::vector<int32_t> reversal_boxes_list_;
 
     std::string price_fld_name_;
+    std::string exchange_;
 	std::string trend_lines_;
 	std::string begin_date_;
 
