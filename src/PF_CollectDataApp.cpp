@@ -377,7 +377,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
-        ("db-data-source",      po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data"), "table containing symbol data. Default is 'stock_data'")
+        ("db-data-source",      po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data.current_data"), "table containing symbol data. Default is 'stock_data.current_data'")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
@@ -520,6 +520,7 @@ void PF_CollectDataApp::Run_LoadFromDB()
 
    	   	    while (stream >> row)
    	   	    {
+				time_stream.clear();
 				time_stream.str(std::string{std::get<0>(row)});
     			date::from_stream(time_stream, "%F", tp);
             	db_data.emplace_back(std::pair(tp, DprDecimal::DDecQuad{std::get<1>(row)}));
@@ -624,82 +625,25 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 	// if we are down this path then the expectation is that we are processing a 'short' list of symbols and a 'recent'
 	// date so we will be collecting a 'small' amount of data from the DB.  In this case, we can do it all up front
 
-	// we need to convert our list of symbols into a format that can be used in a SQL query.
-	
-	std::string query_list = "( '";
-	auto syms = symbol_list_.begin();
-	query_list += *syms;
-	for (++syms; syms != symbol_list_.end(); ++syms)
-	{
-		query_list += "', '";
-		query_list += *syms;
-	}
-	query_list += "' )";
-	std::cout << query_list << std::endl;
-	
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::nontransaction trxn{c};		// we are read-only for this work
-
-	// we need a place to keep the data we retrieve from the database.
-	
-	struct DB_data
-	{
-		std::string symbol;
-		date::utc_time<date::utc_clock::duration> tp;
-		DprDecimal::DDecQuad price;
-	};
-	std::vector<DB_data> db_data;
-
-	try
-	{
-		// first, get ready to retrieve our data from DB.  Do this for all our symbols here.
-
-		std::string get_symbol_prices_cmd = fmt::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
-				price_fld_name_,
-				db_params_.db_data_source_,
-				query_list,
-				trxn.quote(begin_date_)
-				);
-
-		auto stream = pqxx::stream_from::query(trxn, get_symbol_prices_cmd);
-		std::tuple<std::string_view, std::string_view, std::string_view> row;
-
-		// we know our database contains 'date's, but we need timepoints
-
-		std::istringstream time_stream;
-		date::utc_time<date::utc_clock::duration> tp;
-
-   	   	while (stream >> row)
-   	   	{
-			time_stream.str(std::string{std::get<1>(row)});
-    		date::from_stream(time_stream, "%F", tp);
-            db_data.emplace_back(DB_data{std::string{std::get<0>(row)}, tp, DprDecimal::DDecQuad{std::get<2>(row)}});
-        }
-   	   	stream.complete();
-
-		std::cout << "done retrieving data for symbols: " << query_list << " got: " << db_data.size() << " rows.\n";
-   	}
-   	catch (const std::exception& e)
-   	{
-		std::cout << "Unable to load data for symbols: " << query_list << " because: " << e.what() << std::endl;
-   	}
+	auto db_data = GetPriceDataForSymbolList();
+	// ranges::for_each(db_data, [](const auto& xx) {fmt::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
 
     // look for existing data and load the saved JSON data if we have it.
     // then add the new data to the chart.
 
     for (const auto& symbol : symbol_list_)
     {
+		// fmt::print("symbol: {}\n", symbol);
 		std::vector<std::string> the_symbol{symbol};
     	auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
 
-        auto data_for_symbol = ranges::views::filter(db_data, [symbol](const auto& row) { return row.symbol == symbol; });
+        auto data_for_symbol = ranges::views::filter(db_data, [&symbol](const auto& row) { return row.symbol == symbol; });
 
     	for (const auto& val : params)
     	{
         	try
         	{
             	fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
-				fmt::print("{}\n", existing_data_file_name);
             	PF_Chart new_chart;
             	if (fs::exists(existing_data_file_name))
             	{
@@ -727,6 +671,66 @@ void PF_CollectDataApp::Run_UpdateFromDB()
     	}
     }
 }		// -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
+
+PF_CollectDataApp::MS_DB_Data PF_CollectDataApp::GetPriceDataForSymbolList () const
+{
+	// we need to convert our list of symbols into a format that can be used in a SQL query.
+	
+	std::string query_list = "( '";
+	auto syms = symbol_list_.begin();
+	query_list += *syms;
+	for (++syms; syms != symbol_list_.end(); ++syms)
+	{
+		query_list += "', '";
+		query_list += *syms;
+	}
+	query_list += "' )";
+	std::cout << query_list << std::endl;
+	
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::nontransaction trxn{c};		// we are read-only for this work
+
+	// we need a place to keep the data we retrieve from the database.
+	
+	MS_DB_Data db_data;
+
+	try
+	{
+		// first, get ready to retrieve our data from DB.  Do this for all our symbols here.
+
+		std::string get_symbol_prices_cmd = fmt::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
+				price_fld_name_,
+				db_params_.db_data_source_,
+				query_list,
+				trxn.quote(begin_date_)
+				);
+
+		auto stream = pqxx::stream_from::query(trxn, get_symbol_prices_cmd);
+		std::tuple<std::string_view, std::string_view, std::string_view> row;
+
+		// we know our database contains 'date's, but we need timepoints
+
+		std::istringstream time_stream;
+		date::utc_time<date::utc_clock::duration> tp;
+
+   	   	while (stream >> row)
+   	   	{
+			time_stream.clear();
+			time_stream.str(std::string{std::get<1>(row)});
+    		date::from_stream(time_stream, "%F", tp);
+            db_data.emplace_back(MultiSymbolDB_Data{std::string{std::get<0>(row)}, tp, DprDecimal::DDecQuad{std::get<2>(row)}});
+        }
+   	   	stream.complete();
+
+		std::cout << "done retrieving data for symbols: " << query_list << " got: " << db_data.size() << " rows." << std::endl;
+   	}
+   	catch (const std::exception& e)
+   	{
+		std::cout << "Unable to load data for symbols: " << query_list << " because: " << e.what() << std::endl;
+   	}
+
+	return db_data;
+}		// -----  end of method PF_CollectDataApp::GetDataForSymbolList  ----- 
 
 void PF_CollectDataApp::Run_Streaming()
 {
@@ -851,12 +855,12 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
 	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
-    date::year_month_day today{--floor<date::days>(std::chrono::system_clock::now())};
+    date::year_month_day yesterday{--floor<date::days>(std::chrono::system_clock::now())};
 
 	std::string get_ATR_info_cmd = fmt::format("SELECT date, high, low, close_p FROM {} WHERE symbol = '{}' AND date <= '{}' ORDER BY date DESC LIMIT {}",
 			db_params_.db_data_source_,
 			symbol,
-            today,
+            yesterday,
 			number_of_days_history_for_ATR_ + 1		// need an extra row for the algorithm 
 			);
 

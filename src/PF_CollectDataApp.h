@@ -107,6 +107,14 @@ public:
 
 protected:
 
+	struct MultiSymbolDB_Data
+	{
+		std::string symbol;
+		date::utc_time<date::utc_clock::duration> tp;
+		DprDecimal::DDecQuad price;
+	};
+	using MS_DB_Data = std::vector<MultiSymbolDB_Data>;
+
 	//	Setup for parsing program options.
 
 	void	SetupProgramOptions();
@@ -124,6 +132,8 @@ protected:
 	void	Run_DailyScan();
 
 	void	Do_Quit ();
+
+    [[nodiscard]] MS_DB_Data GetPriceDataForSymbolList() const;
 
     [[nodiscard]] static PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name);
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
