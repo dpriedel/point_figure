@@ -130,7 +130,11 @@ public:
 
     void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, const std::string& show_trend_lines, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
+    void ConvertChartToJsonAndWriteToFile(const fs::path& output_filename) const;
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
+
+    void ConvertChartToTableAndWriteToFile(const fs::path& output_filename, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
+    void ConvertChartToTableAndWriteToStream(std::ostream& stream, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
     static void StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart);
 

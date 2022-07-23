@@ -287,7 +287,6 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
 
 PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
 {
-	// std::cout << "new value: " << new_value << "\t" << the_time << std::endl;
     // when extending the chart, don't add 'old' data.
 
     if (! IsEmpty())
@@ -530,6 +529,13 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         )", py::globals(), locals);
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
 
+void PF_Chart::ConvertChartToJsonAndWriteToFile (const fs::path& output_filename) const
+{
+	std::ofstream out{output_filename, std::ios::out | std::ios::binary};
+	BOOST_ASSERT_MSG(out.is_open(), fmt::format("Unable to open file: {} for chart output.", output_filename).c_str());
+	ConvertChartToJsonAndWriteToStream(out);
+	out.close();
+}		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToFile  ----- 
 
 void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
 {
