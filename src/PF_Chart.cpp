@@ -540,6 +540,72 @@ void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
     stream << std::endl;  // add lf and flush
 }		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  ----- 
 
+void PF_Chart::ConvertChartToTableAndWriteToFile (const fs::path& output_filename, X_AxisFormat date_or_time) const
+{
+	std::ofstream out{output_filename, std::ios::out | std::ios::binary};
+	BOOST_ASSERT_MSG(out.is_open(), fmt::format("Unable to open file: {} for graphics data output.", output_filename).c_str());
+	ConvertChartToTableAndWriteToStream(out);
+	out.close();
+}		// -----  end of method PF_Chart::ConvertChartToTableAndWriteToFile  ----- 
+
+void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_AxisFormat date_or_time) const
+{
+	// generate a delimited 'csv' file for use by external programs
+	// format is: date, open, low, high, close, color, color index
+	// where 'color' means column direction:
+	//  up ==> green
+	//  down ==> red
+	//  reverse up ==> blue
+	//  reverse down ==> orange
+	//  color index can be used with custom palettes such as in gnucash
+	//
+	
+	size_t skipped_columns = max_columns_for_graph_ < 1 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
+
+	constexpr auto row_template = "{}\t{}\t{}\t{}\t{}\t{}\n";
+
+	auto compute_color = [](const PF_Column& c)
+	{
+		if (c.GetDirection() == PF_Column::Direction::e_up)
+		{
+			return (c.GetHadReversal() ? "blue\t3" : "green\t1");
+		}
+		if (c.GetDirection() == PF_Column::Direction::e_down)
+		{
+			return (c.GetHadReversal() ? "orange\t2" : "red\t0");
+		}
+		return "black\t4";
+	};
+
+	// we'll provide a header record 
+	
+	std::string header_record{"date\topen\tlow\thigh\tclose\tcolor\tindex\n"};
+	stream.write(header_record.data(), header_record.size());
+
+    for (const auto& col : columns_ | ranges::views::drop(skipped_columns))
+    {
+        auto next_row = fmt::format(row_template,
+				date_or_time == X_AxisFormat::e_show_date ? fmt::format("{:%F}", col.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
+				col.GetDirection() == PF_Column::Direction::e_up ? col.GetBottom().ToStr() : col.GetTop().ToStr(),
+				col.GetBottom().ToStr(),
+				col.GetTop().ToStr(),
+				col.GetDirection() == PF_Column::Direction::e_up ? col.GetTop().ToStr() : col.GetBottom().ToStr(),
+				compute_color(col)
+        		);
+		stream.write(next_row.data(), next_row.size());
+    }
+
+    auto last_row = fmt::format(row_template,
+			date_or_time == X_AxisFormat::e_show_date ? fmt::format("{:%F}", current_column_.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
+			current_column_.GetDirection() == PF_Column::Direction::e_up ? current_column_.GetBottom().ToStr() : current_column_.GetTop().ToStr(),
+			current_column_.GetBottom().ToStr(),
+			current_column_.GetTop().ToStr(),
+			current_column_.GetDirection() == PF_Column::Direction::e_up ? current_column_.GetTop().ToStr() : current_column_.GetBottom().ToStr(),
+			compute_color(current_column_)
+        	);
+	stream.write(last_row.data(), last_row.size());
+}		// -----  end of method PF_Chart::ConvertChartToTableAndWriteToStream  ----- 
+
 void PF_Chart::StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart)
 {
     pqxx::connection c{fmt::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
