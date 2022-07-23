@@ -186,6 +186,7 @@ private:
     enum class Mode { e_unknown, e_load, e_update, e_daily_scan };
     enum class Source { e_unknown, e_file, e_streaming, e_DB };
     enum class SourceFormat { e_unknown, e_csv, e_json };
+    enum class GraphicsFormat { e_unknown, e_svg, e_csv };
 
     std::string api_key_;
     std::string destination_i;
@@ -196,12 +197,14 @@ private:
     std::string chart_data_source_i;
     std::string use_adjusted_i;
     std::string symbol_list_i_;
+    std::string graphics_format_i_;
     std::vector<std::string> scale_i_list_;
 
     Source new_data_source_ = Source::e_unknown;
     Source chart_data_source_ = Source::e_unknown;
     SourceFormat source_format_ = SourceFormat::e_csv;
     Destination destination_ = Destination::e_unknown;
+    GraphicsFormat graphics_format_ = GraphicsFormat::e_unknown;
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
 
