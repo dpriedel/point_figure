@@ -174,6 +174,11 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
 
             prev_back = boxes_.back();
             Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
+            // stocks trade in pennies, so minimum difference is $0.01
+            if (new_box - boxes_.back() < .01)
+            {
+            	new_box = boxes_.back() + .01;
+            }
             PushBack(std::move(new_box));
         }
         return (new_value < boxes_.back() ? prev_back : boxes_.back());
@@ -184,6 +189,11 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
     do 
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        // stocks trade in pennies, so minimum difference is $0.01
+        if (boxes_.front() - new_box < .01)
+        {
+            new_box = boxes_.front() - .01;
+        }
         PushFront(new_box);
     } while (new_value < boxes_.front());
 
@@ -234,6 +244,11 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
         if (current_value == boxes_.back())
         {
             Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
+            // stocks trade in pennies, so minimum difference is $0.01
+            if (new_box - boxes_.back() < .01)
+            {
+            	new_box = boxes_.back() + .01;
+            }
             PushBack(new_box);
             return new_box;
         }
@@ -287,6 +302,11 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     if (boxes_.size() == 1)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        // stocks trade in pennies, so minimum difference is $0.01
+        if (boxes_.front() - new_box < .01)
+        {
+            new_box = boxes_.front() - .01;
+        }
         PushFront(new_box);
         return new_box;
     }
@@ -308,6 +328,11 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     if (box_index == 0)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        // stocks trade in pennies, so minimum difference is $0.01
+        if (boxes_.front() - new_box < .01)
+        {
+            new_box = boxes_.front() - .01;
+        }
         PushFront(new_box);
         return boxes_.front();
     }
