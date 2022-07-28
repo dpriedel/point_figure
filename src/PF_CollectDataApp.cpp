@@ -941,13 +941,19 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
             const auto close_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
             const auto open_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
-            ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
-                [&] (auto& symbol_and_chart)
-                {
-                    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
-                    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
-                    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
-                });
+            try{
+				ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+						[&] (auto& symbol_and_chart)
+						{
+						symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
+						symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
+						symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
+						});
+            }
+            catch (const std::exception& e)
+            {
+				std::cout << "Problem initializing streaming data for symbol: " << ticker << " because: " << e.what() << std::endl;
+            }
         }
     }
 }		// -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  ----- 
@@ -1084,11 +1090,8 @@ void PF_CollectDataApp::Shutdown ()
         {
             try
             {
-            	if (destination_ == Destination::e_file)
-            	{
-					fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
-					chart.ConvertChartToJsonAndWriteToFile(output_file_name);
-            	}
+				fs::path output_file_name = output_chart_directory_ / chart.ChartName("json"); 
+				chart.ConvertChartToJsonAndWriteToFile(output_file_name);
 
             	if (graphics_format_ == GraphicsFormat::e_svg)
             	{
@@ -1103,10 +1106,30 @@ void PF_CollectDataApp::Shutdown ()
             }
 			catch(const std::exception& e)
 			{
-        		spdlog::error(fmt::format("Problem in shutdown: {}\nTrying to complete shutdown.", e.what()));
+        		spdlog::error(fmt::format("Problem in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.ChartName("")));
     		}
         }
     }
+    else
+    {
+        for (const auto& [symbol, chart] : charts_)
+        {
+			try
+			{
+				if (graphics_format_ == GraphicsFormat::e_svg)
+				{
+					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
+					chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+				}
+				chart.StoreChartInChartsDB(db_params_, chart, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, true);
+			}
+			catch(const std::exception& e)
+			{
+        		spdlog::error(fmt::format("Problem storing data in DB in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.ChartName("")));
+			}
+        }
+    }
+
     spdlog::info(fmt::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
 }       // -----  end of method PF_CollectDataApp::Shutdown  -----
 
