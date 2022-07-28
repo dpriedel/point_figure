@@ -136,7 +136,7 @@ public:
     void ConvertChartToTableAndWriteToFile(const fs::path& output_filename, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
     void ConvertChartToTableAndWriteToStream(std::ostream& stream, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
-    static void StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart);
+    static void StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false);
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }

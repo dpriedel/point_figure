@@ -612,7 +612,7 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 	stream.write(last_row.data(), last_row.size());
 }		// -----  end of method PF_Chart::ConvertChartToTableAndWriteToStream  ----- 
 
-void PF_Chart::StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart)
+void PF_Chart::StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart, X_AxisFormat date_or_time, bool store_cvs_graphics)
 {
     pqxx::connection c{fmt::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
     pqxx::work trxn{c};
@@ -625,12 +625,18 @@ void PF_Chart::StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& 
 	wbuilder["indentation"] = "";
 	std::string for_db = Json::writeString(wbuilder, json);
 
+	std::string cvs_graphcis;
+	if (store_cvs_graphics)
+	{
+		std::ostringstream oss{};
+		the_chart.ConvertChartToTableAndWriteToStream(oss, date_or_time);
+		cvs_graphcis = oss.str();
+	}
 	auto chart_params = the_chart.GetChartParams();
 
-    auto add_new_data_cmd = fmt::format("INSERT INTO {}_point_and_figure.pf_charts "
-    		" ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) "
-    		" VALUES({}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}')",
-    		db_params.db_mode_, "symbol", "fname_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data",
+	const auto add_new_data_cmd = fmt::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
+			" VALUES({}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}', '{}')",
+    		db_params.db_mode_, "symbol", "fname_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
 			trxn.quote(std::get<e_symbol>(chart_params)),
 			trxn.quote(std::get<e_box_size>(chart_params).ToStr()),
 			std::get<e_reversal>(chart_params),
@@ -641,7 +647,8 @@ void PF_Chart::StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& 
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastChangeTime())),
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),
 			json["current_direction"].asString(),
-			for_db
+			for_db,
+			store_cvs_graphics ? cvs_graphcis : ""
     	);
 
 	// std::cout << add_new_data_cmd << std::endl;
