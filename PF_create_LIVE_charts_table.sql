@@ -27,6 +27,7 @@ CREATE TABLE live_point_and_figure.pf_charts
     last_checked_date TIMESTAMP NOT NULL,
     current_direction DIRECTION NOT NULL,
     chart_data JSONB NOT NULL,
+    cvs_graphics_data TEXT DEFAULT NULL,
     UNIQUE(file_name),
     PRIMARY KEY(file_name)
 );
