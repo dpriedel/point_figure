@@ -155,12 +155,19 @@ PF_Chart::PF_Chart (const Json::Value& new_data)
 PF_Chart PF_Chart::MakeChartFromDB(const DB_Params& db_params, PF_ChartParams vals)
 {
     pqxx::connection c{fmt::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
-    pqxx::work trxn{c};
+    pqxx::nontransaction trxn{c};
 
 	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params.db_mode_, trxn.quote(PF_Chart::ChartName(vals, "json")));
-	auto row = trxn.exec1(retrieve_chart_data_cmd);
+
+	// it's possible we get no records so use this more general command
+	auto results = trxn.exec(retrieve_chart_data_cmd);
 	trxn.commit();
-    auto the_data =  row[0].as<std::string>();
+
+	if (results.empty())
+	{
+		return {};
+	}
+    auto the_data =  results[0][0].as<std::string>();
 
 	// TODO(dpriedel): ?? write a converter for pqxx library 
 
