@@ -136,8 +136,8 @@ private:
     Boxes* boxes_ = nullptr;
 
     int32_t reversal_boxes_ = -1;
-    DprDecimal::DDecQuad top_;
-    DprDecimal::DDecQuad bottom_;
+    DprDecimal::DDecQuad top_ = -1;
+    DprDecimal::DDecQuad bottom_ = -1;
     Direction direction_ = Direction::e_unknown;
 
     // for 1-box, can have both up and down in same column
