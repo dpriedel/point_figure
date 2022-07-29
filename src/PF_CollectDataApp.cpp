@@ -210,10 +210,12 @@ bool PF_CollectDataApp::CheckArgs ()
 	{
 		symbol_list_.clear();
 	}
+	else
+	{
+    	// now we want upper case symbols.
 
-    // now we want upper case symbols.
-
-    ranges::for_each(symbol_list_, [](auto& symbol) { ranges::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
+    	ranges::for_each(symbol_list_, [](auto& symbol) { ranges::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
+	}
 
     // now make sure we can find our data for input and output.
 
@@ -277,10 +279,13 @@ bool PF_CollectDataApp::CheckArgs ()
     	}
 	}
 
-    BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
-    if (! fs::exists(output_graphs_directory_))
+    if (destination_ == Destination::e_file || graphics_format_ == GraphicsFormat::e_svg)
     {
-        fs::create_directories(output_graphs_directory_);
+    	BOOST_ASSERT_MSG(! output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
+    	if (! fs::exists(output_graphs_directory_))
+    	{
+        	fs::create_directories(output_graphs_directory_);
+    	}
     }
 
     if (new_data_source_ == Source::e_DB || destination_ == Destination::e_DB)
@@ -670,17 +675,24 @@ void PF_CollectDataApp::Run_UpdateFromDB()
     	{
         	try
         	{
-            	fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
             	PF_Chart new_chart;
-            	if (fs::exists(existing_data_file_name))
+            	if (chart_data_source_ == Source::e_file)
             	{
-                	new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
-                	if (max_columns_for_graph_ != 0)
-                	{
-                		new_chart.SetMaxGraphicColumns(max_columns_for_graph_);
-                	}
+            		fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, "json");
+            		if (fs::exists(existing_data_file_name))
+            		{
+                		new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
+                		if (max_columns_for_graph_ != 0)
+                		{
+                			new_chart.SetMaxGraphicColumns(max_columns_for_graph_);
+                		}
+            		}
             	}
-            	else
+            	else		// should only be database here 
+            	{
+					new_chart = PF_Chart::MakeChartFromDB(db_params_, val);
+            	}
+            	if (new_chart.IsEmpty())
             	{
                 	// no existing data to update, so make a new chart
 
