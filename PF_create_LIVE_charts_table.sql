@@ -1,15 +1,16 @@
 -- create table to store PF_Chart data
 
-CREATE SCHEMA IF NOT EXISTS live_point_and_figure AUTHORIZATION data_updater_pg;
+CREATE SCHEMA IF NOT EXISTS live_point_and_figure;
+ALTER SCHEMA live_point_and_figure OWNER TO data_updater_pg;
 
-DROP TYPE IF EXISTS DIRECTION CASCADE;
-CREATE TYPE direction AS ENUM ('e_unknown', 'e_up', 'e_down');
+DROP TYPE IF EXISTS live_point_and_figure.DIRECTION CASCADE;
+CREATE TYPE live_point_and_figure.direction AS ENUM ('e_unknown', 'e_up', 'e_down');
 
-DROP TYPE IF EXISTS BOXTYPE CASCADE;
-CREATE TYPE boxtype AS ENUM ('e_fractional', 'e_integral');
+DROP TYPE IF EXISTS live_point_and_figure.BOXTYPE CASCADE;
+CREATE TYPE live_point_and_figure.boxtype AS ENUM ('e_fractional', 'e_integral');
 
-DROP TYPE IF EXISTS BOXSCALE CASCADE;
-CREATE TYPE boxscale AS ENUM ('e_linear', 'e_percent');
+DROP TYPE IF EXISTS live_point_and_figure.BOXSCALE CASCADE;
+CREATE TYPE live_point_and_figure.boxscale AS ENUM ('e_linear', 'e_percent');
 
 DROP TABLE IF EXISTS live_point_and_figure.pf_charts CASCADE;
 
@@ -18,6 +19,7 @@ CREATE TABLE live_point_and_figure.pf_charts
     chart_id BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
     symbol TEXT NOT NULL,
     fname_box_size NUMERIC(8, 4),
+    chart_box_size NUMERIC(8, 4),
     reversal_boxes INTEGER,
     box_type BOXTYPE,
     box_scale BOXSCALE,

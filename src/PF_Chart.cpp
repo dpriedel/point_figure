@@ -496,19 +496,6 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
                 (IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, date::clock_cast<std::chrono::system_clock>(last_change_date_), explanation_text);
 
-//    std::vector<const char*> x_labels;
-//
-//    ranges::for_each(x_axis_labels, [&x_labels](const auto& date) { x_labels.push_back(date()); });
-
-//    // output data so can manually create chart in python to work out the required python code 
-//
-//    std::ofstream out{"/tmp/data_for_python.csv"};
-//    for (int i = 0; i < openData.size(); ++i)
-//    {
-//        auto output = fmt::format("{},{},{},{},{},{},{}\n", x_axis_labels[i], openData[i], highData[i], lowData[i], closeData[i], direction_is_up[i], had_step_back[i]);
-//        out.write(output.data(), output.size());
-//    }
-//    out.close();
     py::dict locals = py::dict{
         "the_data"_a = py::dict{
             "Date"_a = x_axis_labels,
@@ -641,11 +628,12 @@ void PF_Chart::StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& 
 	}
 	auto chart_params = the_chart.GetChartParams();
 
-	const auto add_new_data_cmd = fmt::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
-			" VALUES({}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}', '{}')",
-    		db_params.db_mode_, "symbol", "fname_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
+	const auto add_new_data_cmd = fmt::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
+			" VALUES({}, {}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}', '{}')",
+    		db_params.db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
 			trxn.quote(std::get<e_symbol>(chart_params)),
 			trxn.quote(std::get<e_box_size>(chart_params).ToStr()),
+			trxn.quote(the_chart.GetBoxSize().ToStr()),
 			std::get<e_reversal>(chart_params),
 			json["boxes"]["box_type"].asString(),
 			json["boxes"]["box_scale"].asString(),
