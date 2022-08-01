@@ -307,10 +307,10 @@ inline std::istream& operator>>(std::istream& is, DDecQuad& item)
 template <> struct fmt::formatter<DprDecimal::DDecQuad>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    template <typename FormatContext>
-    auto format(const DprDecimal::DDecQuad& number, FormatContext& ctx)
+    auto format(const DprDecimal::DDecQuad& number, fmt::format_context& ctx)
     {
-        std::string s = number.ToStr();
+        std::string s;
+		fmt::format_to(std::back_inserter(s), "{}", number.ToStr());
         return formatter<std::string>::format(s, ctx);
     }
 };

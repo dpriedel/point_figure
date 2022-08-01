@@ -142,10 +142,10 @@ private:
 template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    template <typename FormatContext>
-    auto format(const Boxes::BoxType& box_type, FormatContext& ctx)
+    auto format(const Boxes::BoxType& box_type, fmt::format_context& ctx)
     {
-        std::string s = box_type == Boxes::BoxType::e_integral ? " integral " : " fractional ";
+        std::string s;
+		fmt::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_integral ? " integral " : " fractional "));
         return formatter<std::string>::format(s, ctx);
     }
 };
@@ -155,44 +155,53 @@ template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
 template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    template <typename FormatContext>
-    auto format(const Boxes::BoxScale& box_scale, FormatContext& ctx)
+    auto format(const Boxes::BoxScale& box_scale, fmt::format_context& ctx)
     {
-        std::string s = box_scale == Boxes::BoxScale::e_linear ? " linear " : " percent ";
+        std::string s;
+		fmt::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_linear ? " linear " : " percent "));
         return formatter<std::string>::format(s, ctx);
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxType box_type)
+// inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxType box_type)
+// {
+//     fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_type);
+//
+// 	return os;
+// }
+//
+// inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxScale box_scale)
+// {
+//     fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_scale);
+//
+// 	return os;
+// }
+//
+template <> struct fmt::formatter<Boxes>: formatter<std::string>
 {
-    fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_type);
-
-	return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxScale box_scale)
-{
-    fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_scale);
-
-	return os;
-}
+    // parse is inherited from formatter<string>.
+    auto format(const Boxes& boxes, fmt::format_context& ctx)
+    {
+        std::string s;
+    	fmt::format_to(std::back_inserter(s),
+        	"Boxes: box size: {} factor up: {} factor down: {} exponent: {} box type: {} box scale: {}\n",
+        	boxes.GetBoxSize(), boxes.GetScaleUpFactor(), boxes.GetScaleDownFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
+    	fmt::format_to(std::back_inserter(s), "{}", "[");
+    	for(auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
+    	{
+			fmt::format_to(std::back_inserter(s), "{}{}", box, (--i > 0 ? ", " : ""));
+    	}
+    	fmt::format_to(std::back_inserter(s), "{}", "]");
+        return formatter<std::string>::format(s, ctx);
+    }
+};
 
 inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
 {
-    fmt::format_to(std::ostream_iterator<char>{os},
-        "box size: {} factor up: {} factor down: {} exponent: {} box type: {} box scale: {}\n",
-        boxes.GetBoxSize(), boxes.GetScaleUpFactor(), boxes.GetScaleDownFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
-
-    // format ranges doesn't seem to work for custom types. so do it the long way.
-
-    os << "Boxes [";
-    for(auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
-    {
-        os << box << (--i > 0 ? ", " : "");
-    }
-    os << ']';
+    fmt::format_to(std::ostream_iterator<char>{os}, "{}", boxes);
 
     return os;
 }
 
 #endif   // ----- #ifndef BOXES_INC  ----- 
+         //

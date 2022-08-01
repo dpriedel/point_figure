@@ -154,23 +154,22 @@ private:
 template <> struct fmt::formatter<PF_Column::Direction>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    template <typename FormatContext>
-    auto format(const PF_Column::Direction& direction, FormatContext& ctx)
+    auto format(const PF_Column::Direction& direction, fmt::format_context& ctx)
     {
         std::string s;
         switch(direction)
         {
             using enum PF_Column::Direction;
             case e_unknown:
-                s = "unknown";
+				fmt::format_to(std::back_inserter(s), "{}", "unknown");
                 break;
 
             case e_down:
-                s = "down";
+				fmt::format_to(std::back_inserter(s), "{}", "down");
                 break;
 
             case e_up:
-                s = "up";
+				fmt::format_to(std::back_inserter(s), "{}", "up");
                 break;
         };
         return formatter<std::string>::format(s, ctx);
@@ -182,50 +181,49 @@ template <> struct fmt::formatter<PF_Column::Direction>: formatter<std::string>
 template <> struct fmt::formatter<PF_Column::Status>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    template <typename FormatContext>
-    auto format(const PF_Column::Status& status, FormatContext& ctx)
+    auto format(const PF_Column::Status& status, fmt::format_context& ctx)
     {
         std::string s;
         switch(status)
         {
             using enum PF_Column::Status;
             case e_accepted:
-                s = "accepted";
+				fmt::format_to(std::back_inserter(s), "{}", "accepted");
                 break;
 
             case e_ignored:
-                s = "ignored";
+				fmt::format_to(std::back_inserter(s), "{}", "ignored");
                 break;
 
             case e_reversal:
-                s = "reversed";
+				fmt::format_to(std::back_inserter(s), "{}", "reversed");
                 break;
         };
         return formatter<std::string>::format(s, ctx);
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const PF_Column::Status status)
-{
-    fmt::format_to(std::ostream_iterator<char>{os}, "{}", status);
-
-	return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction direction)
-{
-    fmt::format_to(std::ostream_iterator<char>{os}, "{}", direction);
-
-	return os;
-}
-
+// inline std::ostream& operator<<(std::ostream& os, const PF_Column::Status status)
+// {
+//     fmt::format_to(std::ostream_iterator<char>{os}, "{}", status);
+//
+// 	return os;
+// }
+//
+// inline std::ostream& operator<<(std::ostream& os, const PF_Column::Direction direction)
+// {
+//     fmt::format_to(std::ostream_iterator<char>{os}, "{}", direction);
+//
+// 	return os;
+// }
+//
 template <> struct fmt::formatter<PF_Column>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    template <typename FormatContext>
-    auto format(const PF_Column& column, FormatContext& ctx)
+    auto format(const PF_Column& column, fmt::format_context& ctx)
     {
-        std::string s = fmt::format("bottom: {} top: {} direction: {} begin date: {:%F} {}",
+        std::string s;
+        fmt::format_to(std::back_inserter(s), "bottom: {} top: {} direction: {} begin date: {:%F} {}",
             column.GetBottom(), column.GetTop(), column.GetDirection(), column.GetTimeSpan().first,
             (column.GetHadReversal() ? " one-step-back reversal" : ""));
 

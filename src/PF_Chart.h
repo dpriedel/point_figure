@@ -199,11 +199,20 @@ private:
 template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    template <typename FormatContext>
-    auto format(const PF_Chart& chart, FormatContext& ctx)
+    auto format(const PF_Chart& chart, fmt::format_context& ctx)
     {
-        std::string s = fmt::format("chart for ticker: {} box size: {} reversal boxes: {} scale: {}",
+        std::string s;
+        fmt::format_to(std::back_inserter(s), "chart for ticker: {} box size: {} reversal boxes: {} scale: {}\n",
             chart.GetSymbol(), chart.GetBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
+    	for (const auto& col : chart.GetColumns())
+    	{
+        	fmt::format_to(std::back_inserter(s), "\t{}\n", col);
+    	}
+    	fmt::format_to(std::back_inserter(s), "\tcurrent column: {}\n", chart.GetCurrentColumn());
+    	fmt::format_to(std::back_inserter(s), "number of columns: {} min value: {} max value: {}\n",
+        	chart.GetNumberOfColumns(), chart.GetYLimits().first, chart.GetYLimits().second);
+
+        fmt::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());
         return formatter<std::string>::format(s, ctx);
     }
 };
@@ -211,16 +220,6 @@ template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
     fmt::format_to(std::ostream_iterator<char>{os}, "{}\n", chart);
-
-    for (const auto& col : chart.GetColumns())
-    {
-        fmt::format_to(std::ostream_iterator<char>{os}, "\t{}\n", col);
-    }
-    fmt::format_to(std::ostream_iterator<char>{os}, "\tcurrent column: {}\n", chart.GetCurrentColumn());
-    fmt::format_to(std::ostream_iterator<char>{os}, "number of columns: {} min value: {} max value: {}\n",
-        chart.GetNumberOfColumns(), chart.GetYLimits().first, chart.GetYLimits().second);
-
-    os << chart.GetBoxes();
 
     return os;
 }
