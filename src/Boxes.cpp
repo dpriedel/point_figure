@@ -64,6 +64,7 @@ Boxes::Boxes (DprDecimal::DDecQuad box_size, BoxScale box_scale)
         percent_box_factor_down_ = (1.0 - box_size_);
         percent_exponent_ = box_size_.GetExponent() - 1;
     }
+
 }  // -----  end of method Boxes::Boxes  (constructor)  ----- 
 
 //--------------------------------------------------------------------------------------
@@ -112,15 +113,18 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
 
     // this code will not match against the last value in the list 
 
-    if (auto found_it = ranges::adjacent_find(boxes_, box_finder); found_it != boxes_.end())
+    if (boxes_.size() > 1)
     {
-        return *found_it;
-    }
+    	if (auto found_it = ranges::adjacent_find(boxes_, box_finder); found_it != boxes_.end())
+    	{
+        	return *found_it;
+    	}
 
-    if (new_value == boxes_.back())
-    {
-        return boxes_.back();
-    }
+    	if (new_value == boxes_.back())
+    	{
+        	return boxes_.back();
+    	}
+	}
     // may have to extend box list by multiple boxes 
 
     Box prev_back = boxes_.back();
@@ -154,14 +158,17 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
 
     // this code will not match against the last value in the list 
 
-    if (auto found_it = ranges::adjacent_find(boxes_, box_finder); found_it != boxes_.end())
+    if (boxes_.size() > 1)
     {
-        return *found_it;
-    }
+		if (auto found_it = ranges::adjacent_find(boxes_, box_finder); found_it != boxes_.end())
+		{
+			return *found_it;
+		}
 
-    if (new_value == boxes_.back())
-    {
-        return boxes_.back();
+		if (new_value == boxes_.back())
+		{
+			return boxes_.back();
+		}
     }
     // may have to extend box list by multiple boxes 
 
@@ -374,18 +381,18 @@ Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 //    }
     boxes_.clear();
 
-    DprDecimal::DDecQuad price_as_int;
+    DprDecimal::DDecQuad price_as_int_or_not;
     if (box_type_ == BoxType::e_integral)
     {
-        price_as_int = start_at.ToIntTruncated();
+        price_as_int_or_not = start_at.ToIntTruncated();
     }
     else
     {
-        price_as_int = start_at;
+        price_as_int_or_not = start_at;
     }
 
 //    auto new_box = RoundDownToNearestBox(start_at);
-    Box new_box{price_as_int};
+    Box new_box{price_as_int_or_not};
     PushBack(new_box);
     return new_box;
 
