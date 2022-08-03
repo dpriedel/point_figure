@@ -423,10 +423,13 @@ void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tok
 
 std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
-    api_key_ = LoadDataFileForUse(tiingo_api_key_);
-    if (api_key_.ends_with('\n'))
+    if (new_data_source_ != Source::e_DB)
     {
-        api_key_.resize(api_key_.size() - 1);
+        api_key_ = LoadDataFileForUse(tiingo_api_key_);
+        if (api_key_.ends_with('\n'))
+        {
+            api_key_.resize(api_key_.size() - 1);
+        }
     }
 
     // TODO(dpriedel): this should be a program param... 
