@@ -39,6 +39,10 @@
 #include <string_view>
 #include <vector>
 
+#include <json/json.h>
+
+class PF_Chart;
+
 // =====================================================================================
 //        Class:  PF_DB
 //  Description:  Code needed to work with stock and PF_Chart data stored in DB
@@ -66,6 +70,9 @@ public:
 
     std::vector<std::string> ListExchanges() const;
     std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange) const;
+
+    Json::Value GetPFChartData(const std::string file_name) const;
+    void StorePFChartDataIntoDB(const PF_Chart& the_chart, const std::string& cvs_graphics_data) const;
 
 	// ====================  MUTATORS      ======================================= 
 

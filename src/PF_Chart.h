@@ -59,6 +59,7 @@
 
 #include "Boxes.h"
 #include "PF_Column.h"
+#include "PointAndFigureDB.h"
 #include "utilities.h"
 
 class PF_Chart
@@ -100,12 +101,13 @@ public:
 
     ~PF_Chart() = default;
 
-    static PF_Chart MakeChartFromDB(const DB_Params& db_params, PF_ChartParams vals);
+    static PF_Chart MakeChartFromDB(const PF_DB& chart_db, PF_ChartParams vals);
 
     // ====================  ACCESSORS     =======================================
 
 	[[nodiscard]] bool IsEmpty() const { return columns_.empty() && current_column_.IsEmpty(); }
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxSize() const { return boxes_.GetBoxSize(); }
+    [[nodiscard]] DprDecimal::DDecQuad GetChartBoxSize() const { return boxes_.GetBoxSize(); }
+    [[nodiscard]] DprDecimal::DDecQuad GetFNameBoxSize() const { return fname_box_size_; }
     [[nodiscard]] int32_t GetReversalboxes() const { return current_column_.GetReversalboxes(); }
     [[nodiscard]] Boxes::BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
     [[nodiscard]] Boxes::BoxType GetBoxType() const { return boxes_.GetBoxType(); }
@@ -136,7 +138,7 @@ public:
     void ConvertChartToTableAndWriteToFile(const fs::path& output_filename, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
     void ConvertChartToTableAndWriteToStream(std::ostream& stream, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
-    static void StoreChartInChartsDB(const DB_Params& db_params, const PF_Chart& the_chart, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false);
+    void StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false);
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
@@ -203,7 +205,7 @@ template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
     {
         std::string s;
         fmt::format_to(std::back_inserter(s), "chart for ticker: {} box size: {} reversal boxes: {} scale: {}\n",
-            chart.GetSymbol(), chart.GetBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
+            chart.GetSymbol(), chart.GetChartBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
     	for (const auto& col : chart.GetColumns())
     	{
         	fmt::format_to(std::back_inserter(s), "\t{}\n", col);

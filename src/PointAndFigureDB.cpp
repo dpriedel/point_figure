@@ -43,6 +43,7 @@
 #include <spdlog/spdlog.h>
 
 #include "PointAndFigureDB.h"
+#include "PF_Chart.h"
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_DB
@@ -115,4 +116,73 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange (std::string_view exchange
    	}
 	return symbols;
 }		// -----  end of method PF_DB::ListSymbolsOnExchange  ----- 
+
+Json::Value PF_DB::GetPFChartData (const std::string file_name) const
+{
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::nontransaction trxn{c};
+
+	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(file_name));
+
+	// it's possible we get no records so use this more general command
+	auto results = trxn.exec(retrieve_chart_data_cmd);
+	trxn.commit();
+
+	if (results.empty())
+	{
+		return {};
+	}
+    auto the_data =  results[0][0].as<std::string_view>();
+
+	// TODO(dpriedel): ?? write a converter for pqxx library 
+
+    JSONCPP_STRING err;
+    Json::Value chart_data;
+
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    if (! reader->parse(the_data.data(), the_data.data() + the_data.size(), &chart_data, &err))
+    {
+        throw std::runtime_error(fmt::format("Problem parsing data from DB for file: {}.\n{}", file_name, err));
+    }
+	return chart_data;
+}		// -----  end of method PF_DB::GetPFChartData  ----- 
+
+void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, const std::string& cvs_graphics_data) const
+{
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::work trxn{c};
+
+    auto delete_existing_data_cmd = fmt::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.ChartName("json")));
+    trxn.exec(delete_existing_data_cmd);
+
+	auto json = the_chart.ToJSON();
+	Json::StreamWriterBuilder wbuilder;
+	wbuilder["indentation"] = "";
+	std::string for_db = Json::writeString(wbuilder, json);
+
+	const auto add_new_data_cmd = fmt::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
+			" VALUES({}, {}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}', '{}')",
+    		db_params_.db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", 
+    		    "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
+			trxn.quote(the_chart.GetSymbol()),
+			trxn.quote(the_chart.GetFNameBoxSize().ToStr()),
+			trxn.quote(the_chart.GetChartBoxSize().ToStr()),
+			the_chart.GetReversalboxes(),
+			json["boxes"]["box_type"].asString(),
+			json["boxes"]["box_scale"].asString(),
+			trxn.quote(the_chart.ChartName("json")),
+			trxn.quote(fmt::format("{:%F %T}", the_chart.GetFirstTime())),
+			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastChangeTime())),
+			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),
+			json["current_direction"].asString(),
+			for_db,
+			cvs_graphics_data
+    	);
+
+	// std::cout << add_new_data_cmd << std::endl;
+    trxn.exec(add_new_data_cmd);
+
+	trxn.commit();
+}		// -----  end of method PF_DB::StorePFChartDataIntoDB  ----- 
 
