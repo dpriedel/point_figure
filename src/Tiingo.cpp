@@ -440,7 +440,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
     return response;
 }		// -----  end of method Tiingo::GetTopOfBookAndLastClose  ----- 
 
-Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays)
+std::vector<PriceDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
 
@@ -450,7 +450,9 @@ Json::Value Tiingo::GetMostRecentTickerData(std::string_view symbol, date::year_
     // we reverse the dates because we worked backwards from our given starting point and 
     // Tiingo needs the dates in ascending order. 
 
-    return GetTickerData(symbol, business_days.second, business_days.first, UpOrDown::e_Down);
+    const auto ticker_data = GetTickerData(symbol, business_days.second, business_days.first, UpOrDown::e_Down);
+
+    return ConvertJSONPriceHistory(symbol, ticker_data, how_many_previous, UseAdjusted::e_Yes);
 
 }		// -----  end of method Tiingo::GetMostRecentTickerData  ----- 
 
@@ -521,4 +523,5 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day 
     }
     return response;
 }		// -----  end of method Tiingo::GetTickerData  ----- 
+
 

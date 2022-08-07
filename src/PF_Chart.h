@@ -50,6 +50,8 @@
 
 #include <date/date.h>
 
+#include <json/json.h>
+
 #include <pqxx/pqxx>
 #include <pqxx/transaction.hxx>
 
@@ -229,9 +231,10 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 // In order to set our box size, we use the Average True Range method. For
 // each symbol, we will look up the 'n' most recent historical values 
 // starting with the given date and moving backward from 
-// Tiingo and compute the ATR using the formula from Investopedia.
+// We expect the process which collects the data will used adjusted values or not and populate
+// 'the_data' as required. This simplifies our logic here.
 
-DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days, UseAdjusted use_adjusted=UseAdjusted::e_No);
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<PriceDataRecord>& the_data, int32_t how_many_days);
 
 // we need to be able to use data stored in our stock prices DB too
 

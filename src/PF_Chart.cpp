@@ -689,11 +689,11 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
 
     // ===  FUNCTION  ======================================================================
-    //         Name:  ComputeATRUsingJSON
+    //         Name:  ComputeATR
     //  Description:  Expects the input data is in descending order by date
     // =====================================================================================
 
-DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Value& the_data, int32_t how_many_days, UseAdjusted use_adjusted)
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<PriceDataRecord>& the_data, int32_t how_many_days)
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
@@ -703,32 +703,16 @@ DprDecimal::DDecQuad ComputeATRUsingJSON(std::string_view symbol, const Json::Va
     DprDecimal::DDecQuad high_minus_prev_close;
     DprDecimal::DDecQuad low_minus_prev_close;
 
-    if (use_adjusted == UseAdjusted::e_Yes)
+    for (int32_t i = 0; i < how_many_days; ++i)
     {
-        for (int i = 0; i < how_many_days; ++i)
-        {
-            high_minus_low = DprDecimal::DDecQuad{the_data[i]["adjHigh"].asString()} - DprDecimal::DDecQuad{the_data[i]["adjLow"].asString()};
-            high_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["adjHigh"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["adjClose"].asString()}).abs();
-            low_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["adjLow"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["adjClose"].asString()}).abs();
+        high_minus_low = the_data[i].high_ - the_data[i].low_;
+        high_minus_prev_close = (the_data[i].high_ - the_data[i + 1].close_).abs();
+        low_minus_prev_close = (the_data[i].low_ - the_data[i + 1].close_).abs();
 
-            DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
-
-            total += max;
-        }
-    }
-    else
-    {
-        for (int32_t i = 0; i < how_many_days; ++i)
-        {
-            high_minus_low = DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i]["low"].asString()};
-            high_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["high"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["close"].asString()}).abs();
-            low_minus_prev_close = (DprDecimal::DDecQuad{the_data[i]["low"].asString()} - DprDecimal::DDecQuad{the_data[i + 1]["close"].asString()}).abs();
-
-            DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
-            
-			// fmt::print("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i, high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
-            total += max;
-        }
+        DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
+        
+		// fmt::print("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i, high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
+        total += max;
     }
 
 //    std::cout << "total: " << total << '\n';
