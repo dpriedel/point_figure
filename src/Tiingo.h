@@ -81,7 +81,7 @@ public:
 
     Json::Value GetTopOfBookAndLastClose();
     Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc);
-    std::vector<PriceDataRecord> GetMostRecentTickerData(const std::string& symbol, date::year_month_day start_from, int how_many_previous, const US_MarketHolidays* holidays=nullptr);
+    std::vector<PriceDataRecord> GetMostRecentTickerData(const std::string& symbol, date::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays=nullptr);
 
     StreamedData ExtractData(const std::string& buffer);
 
