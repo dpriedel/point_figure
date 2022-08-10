@@ -880,7 +880,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
     // 'business_days.second' will be the prior business day for DB search.
     // BUT, I expect the DB will only have data for trading days, so it will automatically 
     // skip weekends for me.
-	std::string get_ATR_info_cmd = fmt::format("SELECT * FROM {} WHERE symbol = '{}' AND date <= '{}' ORDER BY date DESC LIMIT {}",
+	std::string get_ATR_info_cmd = fmt::format("SELECT date, exchange, symbol, open_p, high, low, close_p FROM {} WHERE symbol = '{}' AND date <= '{}' ORDER BY date DESC LIMIT {}",
 			db_params_.db_data_source_,
 			symbol,
             today,
