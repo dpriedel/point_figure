@@ -52,9 +52,6 @@
 
 #include <json/json.h>
 
-#include <pqxx/pqxx>
-#include <pqxx/transaction.hxx>
-
 //namespace fs = std::filesystem;
 
 //using namespace std::chrono_literals;
@@ -140,7 +137,7 @@ public:
     void ConvertChartToTableAndWriteToFile(const fs::path& output_filename, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
     void ConvertChartToTableAndWriteToStream(std::ostream& stream, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
-    void StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false);
+    void StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
@@ -234,11 +231,8 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 // We expect the process which collects the data will used adjusted values or not and populate
 // 'the_data' as required. This simplifies our logic here.
 
-DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<PriceDataRecord>& the_data, int32_t how_many_days);
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days);
 
-// we need to be able to use data stored in our stock prices DB too
-
-DprDecimal::DDecQuad ComputeATRUsingDB(std::string_view symbol, const pqxx::result& results, int32_t how_many_days);
 
 #endif   // ----- #ifndef PF_CHART_INC  ----- 
 

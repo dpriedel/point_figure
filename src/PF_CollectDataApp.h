@@ -57,6 +57,7 @@ namespace po = boost::program_options;
 #include "Boxes.h"
 #include "DDecQuad.h"
 #include "PF_Chart.h"
+#include "PointAndFigureDB.h"
 #include "Tiingo.h"
 
 
@@ -139,8 +140,6 @@ protected:
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
     [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
 
-	std::vector<std::string> GetSymbolsFromDatabase();
-
     void    PrimeChartsForStreaming();
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
@@ -177,7 +176,7 @@ private:
     std::string quote_host_name_;
     std::string quote_host_port_;
 
-	DB_Params db_params_ = {.port_number_=-1};
+	PF_DB::DB_Params db_params_ = {.port_number_=-1};
 
     std::shared_ptr<spdlog::logger> logger_;
 

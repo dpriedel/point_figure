@@ -505,9 +505,11 @@ void PF_CollectDataApp::Run_LoadFromDB()
 	// we can handle mass symbol loads because we do a symbol-at-a-time DB query so we don't get an impossible amount
 	// of data back from the DB
 	
+	PF_DB pf_db{db_params_};
+	
 	if (symbol_list_i_ == "*")
 	{
-		symbol_list_ = GetSymbolsFromDatabase();
+		symbol_list_ = pf_db.ListSymbolsOnExchange(exchange_);
 	}
 	// fmt::print("symbol list: {}\n", symbol_list_);
 
@@ -585,32 +587,6 @@ void PF_CollectDataApp::Run_LoadFromDB()
    	    }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
-
-std::vector<std::string> PF_CollectDataApp::GetSymbolsFromDatabase()
-{
-	std::vector<std::string> symbols;
-
-	try
-	{
-    	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-		pqxx::nontransaction trxn{c};		// we are read-only for this work
-
-		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM {} WHERE exchange = {} ORDER BY symbol ASC",
-				db_params_.db_data_source_,
-				trxn.quote(exchange_)
-				);
-		for (auto [symbol] : trxn.stream<std::string_view>(get_symbols_cmd))
-		{
-			symbols.emplace_back(std::string{symbol}); 
-		}
-		trxn.commit();
-    }
-   	catch (const std::exception& e)
-   	{
-		std::cout << "Unable to load list of symbols for exchange: " << exchange_ << " because: " << e.what() << std::endl;
-   	}
-	return symbols;
-}		// -----  end of method PF_CollectDataApp::GetSymbolsFromDatabase  -----
 
 void PF_CollectDataApp::Run_Update()
 {
@@ -885,39 +861,45 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
     auto holidays = MakeHolidayList(today.year());
     ranges::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
 
-    const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, &holidays);
+    const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, UseAdjusted::e_Yes, &holidays);
 
-    auto atr = ComputeATRUsingJSON(symbol, history, number_of_days_history_for_ATR_, UseAdjusted::e_Yes);
+    auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_);
 
     return atr;
 }		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
 
 DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::string& symbol) const
 {
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::nontransaction trxn{c};		// we are read-only for this work
+    auto today = date::year_month_day{floor<date::days>(std::chrono::system_clock::now())};
+//    date::year which_year = today.year();
+//    auto holidays = MakeHolidayList(which_year);
+//    ranges::copy(MakeHolidayList(--which_year), std::back_inserter(holidays));
+//    
+//    auto business_days = ConstructeBusinessDayRange(today, 2, UpOrDown::e_Down, &holidays);
 
-    date::year_month_day yesterday{--floor<date::days>(std::chrono::system_clock::now())};
-
-	std::string get_ATR_info_cmd = fmt::format("SELECT date, high, low, close_p FROM {} WHERE symbol = '{}' AND date <= '{}' ORDER BY date DESC LIMIT {}",
+    // 'business_days.second' will be the prior business day for DB search.
+    // BUT, I expect the DB will only have data for trading days, so it will automatically 
+    // skip weekends for me.
+	std::string get_ATR_info_cmd = fmt::format("SELECT * FROM {} WHERE symbol = '{}' AND date <= '{}' ORDER BY date DESC LIMIT {}",
 			db_params_.db_data_source_,
 			symbol,
-            yesterday,
+            today,
 			number_of_days_history_for_ATR_ + 1		// need an extra row for the algorithm 
 			);
 
-    DprDecimal::DDecQuad atr{};
+    PF_DB the_db{db_params_};
 
+    DprDecimal::DDecQuad atr{};
 	try
 	{
-		auto results = trxn.exec(get_ATR_info_cmd);
-		trxn.commit();
-        atr = ComputeATRUsingDB(symbol, results, number_of_days_history_for_ATR_);
+		auto price_data = the_db.RetrieveStockDataRecordsFromDB(get_ATR_info_cmd);
+        atr = ComputeATR(symbol, price_data, number_of_days_history_for_ATR_);
     }
    	catch (const std::exception& e)
    	{
-		std::cout << "Unable to load data for: " << symbol << " because: " << e.what() << std::endl;
+        fmt::print("Unable to comput ATR from DB for: '{}' because: {}.\n", symbol, e.what());
    	}
+
     return atr;
 }		// -----  end of method PF_CollectDataApp::ComputeATRUsingDB  ----- 
 
@@ -941,8 +923,8 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
     {
         for (auto& [symbol, chart] : charts_)
         {
-            auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, &holidays);
-            chart.AddValue(DprDecimal::DDecQuad{history[0][price_fld_name_].asString()}, date::clock_cast<date::utc_clock>(current_local_time.get_sys_time()));
+            auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No, &holidays);
+            chart.AddValue(history[0].close_, date::clock_cast<date::utc_clock>(current_local_time.get_sys_time()));
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
@@ -1127,6 +1109,7 @@ void PF_CollectDataApp::Shutdown ()
     }
     else
     {
+		PF_DB pf_db{db_params_};
         for (const auto& [symbol, chart] : charts_)
         {
 			try
@@ -1136,7 +1119,7 @@ void PF_CollectDataApp::Shutdown ()
 					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName("svg"));
 					chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
 				}
-				chart.StoreChartInChartsDB(db_params_, chart, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, true);
+				chart.StoreChartInChartsDB(pf_db, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, true);
 			}
 			catch(const std::exception& e)
 			{

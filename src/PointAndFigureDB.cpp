@@ -44,6 +44,7 @@
 
 #include "PointAndFigureDB.h"
 #include "PF_Chart.h"
+#include "utilities.h"
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_DB
@@ -185,4 +186,36 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, const std::string
 
 	trxn.commit();
 }		// -----  end of method PF_DB::StorePFChartDataIntoDB  ----- 
+
+    // ===  FUNCTION  ======================================================================
+    //         Name:  RunDBQuery
+    //  Description:  just run the supplied query and convert the results set in our format.
+    //  We expect to get back the following fields:
+    //      date, exchange, symbol, open, high, low, close
+    // =====================================================================================
+
+std::vector<StockDataRecord> PF_DB::RetrieveStockDataRecordsFromDB (const std::string& query_cmd) const
+{
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::nontransaction trxn{c};		// we are read-only for this work
+
+	auto results = trxn.exec(query_cmd);
+	trxn.commit();
+
+    std::vector<StockDataRecord> data;
+    for (const auto& row: results)
+    {
+        StockDataRecord new_data{
+            .date_=std::string{row["date"].as<std::string_view>()},
+            .exchange_=std::string{row["exchange"].as<std::string_view>()},
+            .symbol_=std::string{row["symbol"].as<std::string_view>()},
+            .open_=row["open_p"].as<std::string_view>(),
+            .high_=row["high"].as<std::string_view>(),
+            .low_=row["low"].as<std::string_view>(),
+            .close_=row["close_p"].as<std::string_view>()
+        };
+        data.push_back(std::move(new_data));
+    }
+	return data;
+}		// -----  end of function PF_DB::RunDBQuery  -----
 

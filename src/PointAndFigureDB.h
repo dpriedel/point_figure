@@ -43,6 +43,8 @@
 
 class PF_Chart;
 
+#include "utilities.h"
+
 // =====================================================================================
 //        Class:  PF_DB
 //  Description:  Code needed to work with stock and PF_Chart data stored in DB
@@ -73,6 +75,8 @@ public:
 
     Json::Value GetPFChartData(const std::string file_name) const;
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, const std::string& cvs_graphics_data) const;
+
+    std::vector<StockDataRecord> RetrieveStockDataRecordsFromDB(const std::string& query_cmd) const;
 
 	// ====================  MUTATORS      ======================================= 
 

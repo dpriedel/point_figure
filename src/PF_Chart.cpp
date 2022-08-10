@@ -586,7 +586,7 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 	stream.write(last_row.data(), last_row.size());
 }		// -----  end of method PF_Chart::ConvertChartToTableAndWriteToStream  ----- 
 
-void PF_Chart::StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_time, bool store_cvs_graphics)
+void PF_Chart::StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_time, bool store_cvs_graphics) const
 {
 	std::string cvs_graphics;
 	if (store_cvs_graphics)
@@ -693,7 +693,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     //  Description:  Expects the input data is in descending order by date
     // =====================================================================================
 
-DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<PriceDataRecord>& the_data, int32_t how_many_days)
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days)
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
@@ -718,34 +718,4 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Price
 //    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
 }		// -----  end of function ComputeATRUsingJSON  -----
-
-    // ===  FUNCTION  ======================================================================
-    //         Name:  ComputeATRUsingDB
-    //  Description:  Expects the input data is in descending order by date
-    // =====================================================================================
-
-DprDecimal::DDecQuad ComputeATRUsingDB(std::string_view symbol, const pqxx::result& results, int32_t how_many_days)
-{
-    DprDecimal::DDecQuad total{};
-
-    BOOST_ASSERT_MSG(results.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, results.size()).c_str());
-
-    DprDecimal::DDecQuad high_minus_low;
-    DprDecimal::DDecQuad high_minus_prev_close;
-    DprDecimal::DDecQuad low_minus_prev_close;
-
-    for (int i = 0; i < how_many_days; ++i)
-    {
-        high_minus_low = DprDecimal::DDecQuad{results[i]["high"].as<std::string_view>()} - DprDecimal::DDecQuad{results[i]["low"].as<std::string_view>()};
-        high_minus_prev_close = (DprDecimal::DDecQuad{results[i]["high"].as<std::string_view>()} - DprDecimal::DDecQuad{results[i + 1]["close_p"].as<std::string_view>()}).abs();
-        low_minus_prev_close = (DprDecimal::DDecQuad{results[i]["low"].as<std::string_view>()} - DprDecimal::DDecQuad{results[i + 1]["close_p"].as<std::string_view>()}).abs();
-
-        DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
-       
-		// fmt::print("hml: {} hmpc: {} lmpc: {} max: {}\n", high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
-        total += max;
-    }
-
-    return total /= how_many_days;
-}		// -----  end of function ComputeATRUsingDB  -----
 
