@@ -440,7 +440,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
     return response;
 }		// -----  end of method Tiingo::GetTopOfBookAndLastClose  ----- 
 
-std::vector<PriceDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol, date::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays)
+std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol, date::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
 
