@@ -40,6 +40,7 @@
 #include <vector>
 
 #include <json/json.h>
+#include <pqxx/pqxx>
 
 class PF_Chart;
 
@@ -75,8 +76,11 @@ public:
 
     Json::Value GetPFChartData(const std::string file_name) const;
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, const std::string& cvs_graphics_data) const;
+    
+    std::vector<StockDataRecord> RetrieveStockDataRecordsFromDB (const std::string& query_cmd) const;
 
-    std::vector<StockDataRecord> RetrieveStockDataRecordsFromDB(const std::string& query_cmd) const;
+    template<typename T>
+    std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
 
 	// ====================  MUTATORS      ======================================= 
 
@@ -95,5 +99,23 @@ private:
     DB_Params db_params_;
 
 }; // -----  end of class PF_DB  ----- 
+
+template<typename T>
+std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const
+{
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::nontransaction trxn{c};		// we are read-only for this work
+
+	auto results = trxn.exec(query_cmd);
+	trxn.commit();
+
+    std::vector<T> data;
+    for (const auto& row: results)
+    {
+        T new_data = converter(row);
+        data.push_back(std::move(new_data));
+    }
+	return data;
+}
 
 #endif   // ----- #ifndef _POINTANDFIGUREDB_INC_  ----- 

@@ -44,6 +44,7 @@
 
 #include "PointAndFigureDB.h"
 #include "PF_Chart.h"
+#include "boost/concept_check.hpp"
 #include "utilities.h"
 
 //--------------------------------------------------------------------------------------
@@ -67,21 +68,17 @@ std::vector<std::string> PF_DB::ListExchanges () const
 {
 	std::vector<std::string> exchanges;
 
+    auto Row2Exchange = [](const auto& r) { return r[0].template as<std::string>(); };
+
+    std::string get_exchanges_cmd = fmt::format("SELECT DISTINCT(exchange) FROM {} ORDER BY exchange ASC",
+            db_params_.db_data_source_
+            );
+
 	try
 	{
 	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
-    	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-		pqxx::nontransaction trxn{c};		// we are read-only for this work
-
-		std::string get_exchanges_cmd = fmt::format("SELECT DISTINCT(exchange) FROM {} ORDER BY exchange ASC",
-				db_params_.db_data_source_
-				);
-		for (auto [exchange] : trxn.stream<std::string_view>(get_exchanges_cmd))
-		{
-			exchanges.emplace_back(std::string{exchange}); 
-		}
-		trxn.commit();
+        exchanges = RunSQLQueryUsingRows<std::string>(get_exchanges_cmd, Row2Exchange);
     }
    	catch (const std::exception& e)
    	{
@@ -196,26 +193,27 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, const std::string
 
 std::vector<StockDataRecord> PF_DB::RetrieveStockDataRecordsFromDB (const std::string& query_cmd) const
 {
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::nontransaction trxn{c};		// we are read-only for this work
-
-	auto results = trxn.exec(query_cmd);
-	trxn.commit();
-
-    std::vector<StockDataRecord> data;
-    for (const auto& row: results)
-    {
-        StockDataRecord new_data{
-            .date_=std::string{row["date"].as<std::string_view>()},
-            .exchange_=std::string{row["exchange"].as<std::string_view>()},
-            .symbol_=std::string{row["symbol"].as<std::string_view>()},
-            .open_=row["open_p"].as<std::string_view>(),
-            .high_=row["high"].as<std::string_view>(),
-            .low_=row["low"].as<std::string_view>(),
-            .close_=row["close_p"].as<std::string_view>()
+    auto Row2StockDataRecord = [](const auto& r) { return 
+        StockDataRecord{.date_=std::string{r[0].template as<std::string_view>()},
+                        .exchange_=std::string{r[1].template as<std::string_view>()},
+                        .symbol_=std::string{r[2].template as<std::string_view>()},
+                        .open_=r[3].template as<std::string_view>(),
+                        .high_=r[4].template as<std::string_view>(),
+                        .low_=r[5].template as<std::string_view>(),
+                        .close_=r[6].template as<std::string_view>() };
         };
-        data.push_back(std::move(new_data));
+
+    std::vector<StockDataRecord> records;
+	try
+	{
+	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
+
+        records = RunSQLQueryUsingRows<StockDataRecord>(query_cmd, Row2StockDataRecord);
     }
-	return data;
+   	catch (const std::exception& e)
+   	{
+        spdlog::error(fmt::format("Unable to run query: {}\n\tbecause: {}\n", query_cmd, e.what()));
+   	}
+    return records;
 }		// -----  end of function PF_DB::RunDBQuery  -----
 
