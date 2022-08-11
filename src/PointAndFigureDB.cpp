@@ -44,7 +44,6 @@
 
 #include "PointAndFigureDB.h"
 #include "PF_Chart.h"
-#include "boost/concept_check.hpp"
 #include "utilities.h"
 
 //--------------------------------------------------------------------------------------
@@ -70,6 +69,8 @@ std::vector<std::string> PF_DB::ListExchanges () const
 
     auto Row2Exchange = [](const auto& r) { return r[0].template as<std::string>(); };
 
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+
     std::string get_exchanges_cmd = fmt::format("SELECT DISTINCT(exchange) FROM {} ORDER BY exchange ASC",
             db_params_.db_data_source_
             );
@@ -78,7 +79,7 @@ std::vector<std::string> PF_DB::ListExchanges () const
 	{
 	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
-        exchanges = RunSQLQueryUsingRows<std::string>(get_exchanges_cmd, Row2Exchange);
+        exchanges = RunSQLQueryUsingRows<std::string>(c, get_exchanges_cmd, Row2Exchange);
     }
    	catch (const std::exception& e)
    	{
@@ -92,15 +93,18 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange (std::string_view exchange
 	std::vector<std::string> symbols;
 
     auto Row2Symbol = [](const auto& r) { return std::string{std::get<0>(r)}; };
+
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+
 	try
 	{
 	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
-		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM {} WHERE exchange = '{}' ORDER BY symbol ASC",
+		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM {} WHERE exchange = {} ORDER BY symbol ASC",
 				db_params_.db_data_source_,
-				exchange
+				c.quote(exchange)
 				);
-        symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
+        symbols = RunSQLQueryUsingStream<std::string, std::string_view>(c, get_symbols_cmd, Row2Symbol);
     }
    	catch (const std::exception& e)
    	{
@@ -185,7 +189,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, const std::string
     //      date, exchange, symbol, open, high, low, close
     // =====================================================================================
 
-std::vector<StockDataRecord> PF_DB::RetrieveStockDataRecordsFromDB (const std::string& query_cmd) const
+std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const
 {
     auto Row2StockDataRecord = [](const auto& r) { return 
         StockDataRecord{.date_=std::string{r[0].template as<std::string_view>()},
@@ -197,16 +201,24 @@ std::vector<StockDataRecord> PF_DB::RetrieveStockDataRecordsFromDB (const std::s
                         .close_=r[6].template as<std::string_view>() };
         };
 
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+
+	std::string get_records_cmd = fmt::format("SELECT date, exchange, symbol, open_p, high, low, close_p FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
+			db_params_.db_data_source_,
+			c.quote(symbol),
+            date,
+			how_many		// need an extra row for the algorithm 
+			);
     std::vector<StockDataRecord> records;
 	try
 	{
 	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
-        records = RunSQLQueryUsingRows<StockDataRecord>(query_cmd, Row2StockDataRecord);
+        records = RunSQLQueryUsingRows<StockDataRecord>(c, get_records_cmd, Row2StockDataRecord);
     }
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to run query: {}\n\tbecause: {}\n", query_cmd, e.what()));
+        spdlog::error(fmt::format("Unable to run query: {}\n\tbecause: {}\n", get_records_cmd, e.what()));
    	}
     return records;
 }		// -----  end of function PF_DB::RunDBQuery  -----

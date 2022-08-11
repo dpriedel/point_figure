@@ -39,6 +39,7 @@
 #include <string_view>
 #include <vector>
 
+#include <date/date.h>
 #include <json/json.h>
 
 #include <pqxx/pqxx>
@@ -79,13 +80,13 @@ public:
     Json::Value GetPFChartData(const std::string file_name) const;
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, const std::string& cvs_graphics_data) const;
     
-    std::vector<StockDataRecord> RetrieveStockDataRecordsFromDB (const std::string& query_cmd) const;
+    std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const;
 
     template<typename T>
-    std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
+    std::vector<T> RunSQLQueryUsingRows(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const;
 
     template<typename T, typename ...Vals>
-    std::vector<T> RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const;
+    std::vector<T> RunSQLQueryUsingStream(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const;
 
 	// ====================  MUTATORS      ======================================= 
 
@@ -105,10 +106,13 @@ private:
 
 }; // -----  end of class PF_DB  ----- 
 
+// NOTE: I really want to have the below routines instantiate the connection object but I need
+// that to happen where the query_cmd is created so THAT code can use the connection's escape or quote methods
+// to properly handle possible user data in the query.
+
 template<typename T>
-std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const
+std::vector<T> PF_DB::RunSQLQueryUsingRows(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const
 {
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
 	auto results = trxn.exec(query_cmd);
@@ -124,9 +128,8 @@ std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const a
 }
 
 template<typename T, typename ...Vals>
-std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const
+std::vector<T> PF_DB::RunSQLQueryUsingStream(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const
 {
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
     std::vector<T> data;
