@@ -40,7 +40,9 @@
 #include <vector>
 
 #include <json/json.h>
+
 #include <pqxx/pqxx>
+#include <pqxx/stream_from>
 
 class PF_Chart;
 
@@ -82,6 +84,9 @@ public:
     template<typename T>
     std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
 
+    template<typename T, typename ...Vals>
+    std::vector<T> RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const;
+
 	// ====================  MUTATORS      ======================================= 
 
 	// ====================  OPERATORS     ======================================= 
@@ -118,4 +123,24 @@ std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const a
 	return data;
 }
 
+template<typename T, typename ...Vals>
+std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const
+{
+	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::nontransaction trxn{c};		// we are read-only for this work
+
+    std::vector<T> data;
+
+    auto stream = pqxx::stream_from::query(trxn, query_cmd);
+    std::tuple<Vals...> row;
+    while (stream >> row)
+    {
+        T new_data = converter(row);
+        data.push_back(std::move(new_data));
+    }
+    stream.complete();
+	trxn.commit();
+
+    return data;
+}
 #endif   // ----- #ifndef _POINTANDFIGUREDB_INC_  ----- 

@@ -91,22 +91,16 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange (std::string_view exchange
 {
 	std::vector<std::string> symbols;
 
+    auto Row2Symbol = [](const auto& r) { return std::string{std::get<0>(r)}; };
 	try
 	{
 	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
-    	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-		pqxx::nontransaction trxn{c};		// we are read-only for this work
-
-		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM {} WHERE exchange = {} ORDER BY symbol ASC",
+		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM {} WHERE exchange = '{}' ORDER BY symbol ASC",
 				db_params_.db_data_source_,
-				trxn.quote(exchange)
+				exchange
 				);
-		for (auto [symbol] : trxn.stream<std::string_view>(get_symbols_cmd))
-		{
-			symbols.emplace_back(std::string{symbol}); 
-		}
-		trxn.commit();
+        symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
     }
    	catch (const std::exception& e)
    	{
