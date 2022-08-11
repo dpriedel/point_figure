@@ -69,9 +69,9 @@
 #include <date/chrono_io.h>
 #include <date/tz.h>
 
-#include <pqxx/pqxx>
-#include <pqxx/stream_from.hxx>
-#include <pqxx/transaction.hxx>
+//#include <pqxx/pqxx>
+//#include <pqxx/stream_from.hxx>
+//#include <pqxx/transaction.hxx>
 
 #include <pybind11/embed.h>
 #include <pybind11/gil.h>
@@ -83,6 +83,7 @@ using namespace py::literals;
 #include "PF_Chart.h"
 #include "PF_CollectDataApp.h"
 #include "PF_Column.h"
+#include "PointAndFigureDB.h"
 #include "Tiingo.h"
 #include "utilities.h"
 
@@ -514,9 +515,23 @@ void PF_CollectDataApp::Run_LoadFromDB()
 	// fmt::print("symbol list: {}\n", symbol_list_);
 
 	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
     const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+
+    std::vector<DateCloseRecord> closing_prices;
+
+    std::istringstream time_stream;
+    date::utc_time<date::utc_clock::duration> tp;
+
+    // we know our database contains 'date's, but we need timepoints 
+
+    auto Row2Closing = [&time_stream, &tp](const auto& r) {
+        time_stream.clear();
+        time_stream.str(std::string{std::get<0>(r)});
+        date::from_stream(time_stream, "%F", tp);
+        DateCloseRecord new_data{.date_=tp, .close_=std::get<1>(r)};
+        return new_data;
+    };
 
 	for (const auto& symbol : symbol_list_)
 	{
@@ -527,28 +542,11 @@ void PF_CollectDataApp::Run_LoadFromDB()
 			std::string get_symbol_prices_cmd = fmt::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= {} ORDER BY date ASC",
 					price_fld_name_,
 					db_params_.db_data_source_,
-					trxn.quote(symbol),
-					trxn.quote(begin_date_)
+					c.quote(symbol),
+					c.quote(begin_date_)
 					);
 
-			auto stream = pqxx::stream_from::query(trxn, get_symbol_prices_cmd);
-			std::tuple<std::string_view, std::string_view> row;
-
-			// we know our database contains 'date's, but we need timepoints 
-
-			std::vector<std::pair<date::utc_time<date::utc_clock::duration>, DprDecimal::DDecQuad>> db_data;
-
-			std::istringstream time_stream;
-			date::utc_time<date::utc_clock::duration> tp;
-
-   	   	    while (stream >> row)
-   	   	    {
-				time_stream.clear();
-				time_stream.str(std::string{std::get<0>(row)});
-    			date::from_stream(time_stream, "%F", tp);
-            	db_data.emplace_back(std::pair(tp, DprDecimal::DDecQuad{std::get<1>(row)}));
-            }
-   	   	    stream.complete();
+            closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(c, get_symbol_prices_cmd, Row2Closing);
 
 			// fmt::print("done retrieving data for symbol: {}. Got {} rows.\n", symbol, db_data.size());
 
@@ -568,7 +566,7 @@ void PF_CollectDataApp::Run_LoadFromDB()
 				PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
 				try
 				{
-					for (const auto& [new_date, new_price] : db_data)
+					for (const auto& [new_date, new_price] : closing_prices)
 					{
 						// std::cout << "new value: " << new_price << "\t" << new_date << std::endl;
 						new_chart.AddValue(new_price, date::clock_cast<date::utc_clock>(new_date));
@@ -892,7 +890,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
     DprDecimal::DDecQuad atr{};
 	try
 	{
-		auto price_data = the_db.RetrieveStockDataRecordsFromDB(get_ATR_info_cmd);
+		auto price_data = the_db.RetrieveMostRecentStockDataRecordsFromDB(symbol, today, number_of_days_history_for_ATR_ + 1);
         atr = ComputeATR(symbol, price_data, number_of_days_history_for_ATR_);
     }
    	catch (const std::exception& e)
