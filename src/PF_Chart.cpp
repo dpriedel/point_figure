@@ -324,6 +324,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
     std::string buffer;
     while ( ! input_data->eof())
     {
+        buffer.clear();
         std::getline(*input_data, buffer);
         if (input_data->fail())
         {
