@@ -59,8 +59,10 @@
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/cartesian_product.hpp>
+#include <range/v3/view/chunk_by.hpp>
 #include <range/v3/view/drop.hpp>
 #include <range/v3/view/filter.hpp>
+#include <range/v3/view/for_each.hpp>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
@@ -68,10 +70,6 @@
 #include <date/date.h>
 #include <date/chrono_io.h>
 #include <date/tz.h>
-
-//#include <pqxx/pqxx>
-//#include <pqxx/stream_from.hxx>
-//#include <pqxx/transaction.hxx>
 
 #include <pybind11/embed.h>
 #include <pybind11/gil.h>
@@ -523,12 +521,13 @@ void PF_CollectDataApp::Run_LoadFromDB()
     std::istringstream time_stream;
     date::utc_time<date::utc_clock::duration> tp;
 
-    // we know our database contains 'date's, but we need timepoints 
+    // we know our database contains 'date's, but we need timepoints.
+    // we'll handle that in the conversion routine below.
 
-    auto Row2Closing = [&time_stream, &tp](const auto& r) {
+    auto Row2Closing = [dt_format, &time_stream, &tp](const auto& r) {
         time_stream.clear();
         time_stream.str(std::string{std::get<0>(r)});
-        date::from_stream(time_stream, "%F", tp);
+        date::from_stream(time_stream, dt_format, tp);
         DateCloseRecord new_data{.date_=tp, .close_=std::get<1>(r)};
         return new_data;
     };
@@ -646,7 +645,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 		std::vector<std::string> the_symbol{symbol};
     	auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
 
-        auto data_for_symbol = ranges::views::filter(db_data, [&symbol](const auto& row) { return row.symbol == symbol; });
+        auto data_for_symbol = ranges::views::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
 
     	for (const auto& val : params)
     	{
@@ -676,7 +675,14 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                 	auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
 					new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             	}
-				ranges::for_each(data_for_symbol, [&new_chart](const auto& row) { new_chart.AddValue(row.price, row.tp); });
+
+                // our data from the DB is grouped by symbol and we've split it into sub-ranges by symbol above.
+                // now, grab the sub-range for each symbol.
+
+                for (const auto& symbol_data : db_data | data_for_symbol | ranges::views::filter([&symbol](const auto& rec_rng){ return rec_rng[0].symbol_ == symbol; }))
+                {
+                    ranges::for_each(symbol_data, [&new_chart](const auto& row) { new_chart.AddValue(row.close_, row.date_); });
+                }
             	// AddPriceDataToExistingChartCSV(new_chart, update_file_name);
             	charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
         	}
@@ -688,7 +694,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
     }
 }		// -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
 
-PF_CollectDataApp::MS_DB_Data PF_CollectDataApp::GetPriceDataForSymbolList () const
+std::vector<MultiSymbolDateCloseRecord> PF_CollectDataApp::GetPriceDataForSymbolList () const
 {
 	// we need to convert our list of symbols into a format that can be used in a SQL query.
 	
@@ -702,13 +708,30 @@ PF_CollectDataApp::MS_DB_Data PF_CollectDataApp::GetPriceDataForSymbolList () co
 	}
 	query_list += "' )";
 	std::cout << query_list << std::endl;
+
+    PF_DB pf_db{db_params_};
 	
 	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
 	// we need a place to keep the data we retrieve from the database.
 	
-	MS_DB_Data db_data;
+    std::vector<MultiSymbolDateCloseRecord> db_data;
+
+    std::istringstream time_stream;
+    date::utc_time<date::utc_clock::duration> tp;
+
+    const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+
+    // we know our database contains 'date's, but we need timepoints.
+    // we'll handle that in the conversion routine below.
+
+    auto Row2Closing = [dt_format, &time_stream, &tp](const auto& r) {
+        time_stream.clear();
+        time_stream.str(std::string{std::get<1>(r)});
+        date::from_stream(time_stream, dt_format, tp);
+        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp, .close_=std::get<2>(r)};
+        return new_data;
+    };
 
 	try
 	{
@@ -718,26 +741,10 @@ PF_CollectDataApp::MS_DB_Data PF_CollectDataApp::GetPriceDataForSymbolList () co
 				price_fld_name_,
 				db_params_.db_data_source_,
 				query_list,
-				trxn.quote(begin_date_)
+				c.quote(begin_date_)
 				);
 
-		auto stream = pqxx::stream_from::query(trxn, get_symbol_prices_cmd);
-		std::tuple<std::string_view, std::string_view, std::string_view> row;
-
-		// we know our database contains 'date's, but we need timepoints
-
-		std::istringstream time_stream;
-		date::utc_time<date::utc_clock::duration> tp;
-
-   	   	while (stream >> row)
-   	   	{
-			time_stream.clear();
-			time_stream.str(std::string{std::get<1>(row)});
-    		date::from_stream(time_stream, "%F", tp);
-            db_data.emplace_back(MultiSymbolDB_Data{std::string{std::get<0>(row)}, tp, DprDecimal::DDecQuad{std::get<2>(row)}});
-        }
-   	   	stream.complete();
-
+        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(c, get_symbol_prices_cmd, Row2Closing);
 		std::cout << "done retrieving data for symbols: " << query_list << " got: " << db_data.size() << " rows." << std::endl;
    	}
    	catch (const std::exception& e)
