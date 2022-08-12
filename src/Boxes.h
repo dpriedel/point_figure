@@ -51,7 +51,7 @@ class Boxes
 {
 public:
 
-    static constexpr std::size_t MAX_BOXES = 500;			// too many boxes and everything becomes too slow
+    static constexpr std::size_t MAX_BOXES = 1000;			// too many boxes and everything becomes too slow
     										//
     enum class BoxType { e_integral, e_fractional };
     enum class BoxScale { e_linear, e_percent };
@@ -78,6 +78,7 @@ public:
     [[nodiscard]] DprDecimal::DDecQuad GetScaleUpFactor() const { return percent_box_factor_up_; }
     [[nodiscard]] DprDecimal::DDecQuad GetScaleDownFactor() const { return percent_box_factor_down_; }
     [[nodiscard]] int32_t GetExponent() const { return percent_exponent_; }
+    [[nodiscard]] size_t GetHowMany() const { return boxes_.size(); }
 
     [[nodiscard]] const BoxList& GetBoxList() const { return boxes_; }
 
@@ -145,7 +146,7 @@ template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
     auto format(const Boxes::BoxType& box_type, fmt::format_context& ctx)
     {
         std::string s;
-		fmt::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_integral ? " integral " : " fractional "));
+		fmt::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_integral ? "integral" : "fractional"));
         return formatter<std::string>::format(s, ctx);
     }
 };
@@ -158,7 +159,7 @@ template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
     auto format(const Boxes::BoxScale& box_scale, fmt::format_context& ctx)
     {
         std::string s;
-		fmt::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_linear ? " linear " : " percent "));
+		fmt::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_linear ? "linear" : "percent"));
         return formatter<std::string>::format(s, ctx);
     }
 };
@@ -184,8 +185,8 @@ template <> struct fmt::formatter<Boxes>: formatter<std::string>
     {
         std::string s;
     	fmt::format_to(std::back_inserter(s),
-        	"Boxes: box size: {} factor up: {} factor down: {} exponent: {} box type: {} box scale: {}\n",
-        	boxes.GetBoxSize(), boxes.GetScaleUpFactor(), boxes.GetScaleDownFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
+        	"Boxes: how many: {}. box size: {}. factor up: {}. factor down: {}. exponent: {}. box type: {}. box scale: {}.\n",
+        	boxes.GetHowMany(), boxes.GetBoxSize(), boxes.GetScaleUpFactor(), boxes.GetScaleDownFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
     	fmt::format_to(std::back_inserter(s), "{}", "[");
     	for(auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
     	{

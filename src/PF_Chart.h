@@ -203,14 +203,14 @@ template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
     auto format(const PF_Chart& chart, fmt::format_context& ctx)
     {
         std::string s;
-        fmt::format_to(std::back_inserter(s), "chart for ticker: {} box size: {} reversal boxes: {} scale: {}\n",
+        fmt::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",
             chart.GetSymbol(), chart.GetChartBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
     	for (const auto& col : chart.GetColumns())
     	{
         	fmt::format_to(std::back_inserter(s), "\t{}\n", col);
     	}
     	fmt::format_to(std::back_inserter(s), "\tcurrent column: {}\n", chart.GetCurrentColumn());
-    	fmt::format_to(std::back_inserter(s), "number of columns: {} min value: {} max value: {}\n",
+    	fmt::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n",
         	chart.GetNumberOfColumns(), chart.GetYLimits().first, chart.GetYLimits().second);
 
         fmt::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());

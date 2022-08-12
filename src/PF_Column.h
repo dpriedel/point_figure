@@ -223,9 +223,9 @@ template <> struct fmt::formatter<PF_Column>: formatter<std::string>
     auto format(const PF_Column& column, fmt::format_context& ctx)
     {
         std::string s;
-        fmt::format_to(std::back_inserter(s), "bottom: {} top: {} direction: {} begin date: {:%F} {}",
+        fmt::format_to(std::back_inserter(s), "bottom: {}. top: {}. direction: {}. begin date: {:%F}. {}",
             column.GetBottom(), column.GetTop(), column.GetDirection(), column.GetTimeSpan().first,
-            (column.GetHadReversal() ? " one-step-back reversal" : ""));
+            (column.GetHadReversal() ? " one-step-back reversal." : ""));
 
         return formatter<std::string>::format(s, ctx);
     }
