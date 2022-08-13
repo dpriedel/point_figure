@@ -173,7 +173,7 @@ bool PF_CollectDataApp::Startup ()
         spdlog::error(fmt::format("Problem in startup: {}\n", e.what()));
 		//	we're outta here!
 
-		this->Shutdown();
+//		this->Shutdown();
         result = false;
     }
 	catch(...)
@@ -182,7 +182,7 @@ bool PF_CollectDataApp::Startup ()
 
 		//	we're outta here!
 
-		this->Shutdown();
+//		this->Shutdown();
         result = false;
 	}
     return result;
@@ -416,7 +416,7 @@ void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tok
             throw std::runtime_error("\nExiting after 'help'.");
         }
     }
-	po::notify(variablemap_);    
+    po::notify(variablemap_);    
 }		/* -----  end of method ExtractorApp::ParsePrograoptions_  ----- */
 
 

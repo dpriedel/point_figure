@@ -168,7 +168,7 @@ private:
     std::string quote_host_name_;
     std::string quote_host_port_;
 
-	PF_DB::DB_Params db_params_ = {.port_number_=-1};
+	PF_DB::DB_Params db_params_{.port_number_=-1};
 
     std::shared_ptr<spdlog::logger> logger_;
 
