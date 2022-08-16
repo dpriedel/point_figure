@@ -37,6 +37,7 @@
 #include <date/date.h>
 #include <iostream>
 #include <fstream>
+#include <utility>
 
 #include<date/tz.h>
 
@@ -46,12 +47,13 @@
 
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/drop.hpp>
-#include <utility>
 
 
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/gil.h>
 #include <pybind11/stl.h>
+
+#include <spdlog/spdlog.h>
 
 namespace py = pybind11;
 using namespace py::literals;
@@ -149,7 +151,14 @@ PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad box_size, int32_t r
 //--------------------------------------------------------------------------------------
 PF_Chart::PF_Chart (const Json::Value& new_data)
 {
-    this->FromJSON(new_data);
+    if (! new_data.empty())
+    {
+        this->FromJSON(new_data);
+    }
+    else
+    {
+        spdlog::debug("Trying to construct PF_Chart from empty JSON value.");
+    }
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  ----- 
 
 //--------------------------------------------------------------------------------------
@@ -157,9 +166,9 @@ PF_Chart::PF_Chart (const Json::Value& new_data)
 //      Method:  PF_Chart
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Chart PF_Chart::MakeChartFromDB(const PF_DB& chart_db, PF_ChartParams vals)
+PF_Chart PF_Chart::MakeChartFromDB(const PF_DB& chart_db, PF_ChartParams vals, std::string_view interval)
 {
-    Json::Value chart_data = chart_db.GetPFChartData(PF_Chart::ChartName(vals, "json"));
+    Json::Value chart_data = chart_db.GetPFChartData(PF_Chart::ChartName(vals, interval, "json"));
     PF_Chart chart_from_db{chart_data};
 	return chart_from_db;
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  ----- 
@@ -348,17 +357,29 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
     current_direction_ = current_column_.GetDirection();
 }
 
-std::string PF_Chart::ChartName (std::string_view suffix) const
+std::string PF_Chart::ChartName (std::string_view interval, std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", symbol_, fname_box_size_, (IsPercent() ? "%" : ""),
-            GetReversalboxes(), (IsPercent() ? "percent" : "linear"), suffix);
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}{}.{}",
+            symbol_,
+            fname_box_size_,
+            (IsPercent() ? "%" : ""),
+            GetReversalboxes(),
+            (IsPercent() ? "percent" : "linear"),
+            (! interval.empty() ? "_"s += interval : ""),
+            suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
-std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view suffix)
+std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view interval, std::string_view suffix)
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}.{}", std::get<e_symbol>(vals), std::get<e_box_size>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
-            std::get<e_reversal>(vals), (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"), suffix);
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}{}.{}",
+            std::get<e_symbol>(vals),
+            std::get<e_box_size>(vals),
+            (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
+            std::get<e_reversal>(vals),
+            (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"),
+            (! interval.empty() ? "_"s += interval : ""),
+            suffix);
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
@@ -587,7 +608,7 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 	stream.write(last_row.data(), last_row.size());
 }		// -----  end of method PF_Chart::ConvertChartToTableAndWriteToStream  ----- 
 
-void PF_Chart::StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_time, bool store_cvs_graphics) const
+void PF_Chart::StoreChartInChartsDB(const PF_DB& chart_db, std::string_view interval, X_AxisFormat date_or_time, bool store_cvs_graphics) const
 {
 	std::string cvs_graphics;
 	if (store_cvs_graphics)
@@ -596,7 +617,7 @@ void PF_Chart::StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_
 		ConvertChartToTableAndWriteToStream(oss, date_or_time);
 		cvs_graphics = oss.str();
 	}
-    chart_db.StorePFChartDataIntoDB(*this, cvs_graphics);
+    chart_db.StorePFChartDataIntoDB(*this, interval, cvs_graphics);
 }		// -----  end of method PF_Chart::StoreChartInChartsDB  ----- 
 
 

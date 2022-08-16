@@ -100,7 +100,7 @@ public:
 
     ~PF_Chart() = default;
 
-    static PF_Chart MakeChartFromDB(const PF_DB& chart_db, PF_ChartParams vals);
+    static PF_Chart MakeChartFromDB(const PF_DB& chart_db, PF_ChartParams vals, std::string_view interval);
 
     // ====================  ACCESSORS     =======================================
 
@@ -114,11 +114,11 @@ public:
 
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
-    [[nodiscard]] std::string ChartName(std::string_view suffix) const;
+    [[nodiscard]] std::string ChartName(std::string_view interval, std::string_view suffix) const;
 
     // for those times you need a name but don't have the chart object yet.
 
-    static std::string ChartName(const PF_ChartParams& vals, std::string_view suffix);
+    static std::string ChartName(const PF_ChartParams& vals, std::string_view interval, std::string_view suffix);
 
     // includes 'current_column'
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size() + 1; }
@@ -137,7 +137,7 @@ public:
     void ConvertChartToTableAndWriteToFile(const fs::path& output_filename, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
     void ConvertChartToTableAndWriteToStream(std::ostream& stream, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
-    void StoreChartInChartsDB(const PF_DB& chart_db, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false) const;
+    void StoreChartInChartsDB(const PF_DB& chart_db, std::string_view interval, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
     [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }

@@ -144,12 +144,12 @@ Json::Value PF_DB::GetPFChartData (const std::string file_name) const
 	return chart_data;
 }		// -----  end of method PF_DB::GetPFChartData  ----- 
 
-void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, const std::string& cvs_graphics_data) const
+void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const
 {
     pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
 
-    auto delete_existing_data_cmd = fmt::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.ChartName("json")));
+    auto delete_existing_data_cmd = fmt::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.ChartName(interval, "json")));
     trxn.exec(delete_existing_data_cmd);
 
 	auto json = the_chart.ToJSON();
@@ -167,7 +167,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, const std::string
 			the_chart.GetReversalboxes(),
 			json["boxes"]["box_type"].asString(),
 			json["boxes"]["box_scale"].asString(),
-			trxn.quote(the_chart.ChartName("json")),
+			trxn.quote(the_chart.ChartName(interval, "json")),
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetFirstTime())),
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastChangeTime())),
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),

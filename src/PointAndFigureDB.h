@@ -78,7 +78,7 @@ public:
     std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange) const;
 
     Json::Value GetPFChartData(const std::string file_name) const;
-    void StorePFChartDataIntoDB(const PF_Chart& the_chart, const std::string& cvs_graphics_data) const;
+    void StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;
     
     std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const;
 
