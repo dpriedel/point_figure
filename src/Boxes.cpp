@@ -517,14 +517,15 @@ void Boxes::FromJSON (const Json::Value& new_data)
 
 void Boxes::PushFront(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < Boxes::MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", Boxes::MAX_BOXES, box_size_, boxes_[0], boxes_[1], boxes_[2], boxes_[3], boxes_[4]).c_str());
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, box_size_, boxes_[0], boxes_[1], boxes_[2], boxes_[3], boxes_[4]).c_str());
     boxes_.insert(boxes_.begin(), std::move(new_box));
 
 }		// -----  end of method Boxes::PushFront  ----- 
 
 void Boxes::PushBack(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < Boxes::MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", Boxes::MAX_BOXES, box_size_, boxes_[495], boxes_[496], boxes_[497], boxes_[498], boxes_[499]).c_str());
-	boxes_.push_back(std::move(new_box));
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, box_size_, boxes_[MAX_BOXES - 5], boxes_[MAX_BOXES - 4],
+                boxes_[MAX_BOXES - 3], boxes_[MAX_BOXES - 2], boxes_[MAX_BOXES - 1]).c_str());
+    boxes_.push_back(std::move(new_box));
 }		// -----  end of method Boxes::PushBack  ----- 
 
