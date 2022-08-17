@@ -183,7 +183,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 }		// -----  end of method PF_DB::StorePFChartDataIntoDB  ----- 
 
     // ===  FUNCTION  ======================================================================
-    //         Name:  RunDBQuery
+    //         Name:  RetrieveMostRecentStockDataRecordsFromDB 
     //  Description:  just run the supplied query and convert the results set in our format.
     //  We expect to get back the following fields:
     //      date, exchange, symbol, open, high, low, close
@@ -221,5 +221,5 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
         spdlog::error(fmt::format("Unable to run query: {}\n\tbecause: {}\n", get_records_cmd, e.what()));
    	}
     return records;
-}		// -----  end of function PF_DB::RunDBQuery  -----
+}		// -----  end of function PF_DB::RetrieveMostRecentStockDataRecordsFromDB   -----
 
