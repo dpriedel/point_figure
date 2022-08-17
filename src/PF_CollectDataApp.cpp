@@ -494,7 +494,7 @@ void PF_CollectDataApp::Run_Load()
         }
         catch (const std::exception& e)
         {
-			std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;	
+            spdlog::error(fmt::format("Unable to load data for symbol: {} from file because: {}.", symbol, e.what()));
         }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
@@ -515,8 +515,6 @@ void PF_CollectDataApp::Run_LoadFromDB()
 	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
     const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
-
-    std::vector<DateCloseRecord> closing_prices;
 
     std::istringstream time_stream;
     date::utc_time<date::utc_clock::duration> tp;
@@ -545,7 +543,7 @@ void PF_CollectDataApp::Run_LoadFromDB()
 					c.quote(begin_date_)
 					);
 
-            closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(c, get_symbol_prices_cmd, Row2Closing);
+            const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(c, get_symbol_prices_cmd, Row2Closing);
 
 			// fmt::print("done retrieving data for symbol: {}. Got {} rows.\n", symbol, db_data.size());
 
@@ -574,13 +572,13 @@ void PF_CollectDataApp::Run_LoadFromDB()
 				}
    	    		catch (const std::exception& e)
    	    		{
-					std::cout << "Unable to load data for symbol chart: " << new_chart.ChartName(interval_i, "") << " because: " << e.what() << std::endl;
+                    spdlog::error(fmt::format("Unable to load data for symbol chart: {} from DB because: {}.", new_chart.ChartName(interval_i, ""), e.what()));
    	    		}
    	        }
    	    }
    	    catch (const std::exception& e)
    	    {
-			std::cout << "Unable to load data for symbol: " << symbol << " because: " << e.what() << std::endl;
+            spdlog::error(fmt::format("Unable to retrieve data for symbol: {} from DB because: {}.", symbol, e.what()));
    	    }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
@@ -595,10 +593,10 @@ void PF_CollectDataApp::Run_Update()
     for (const auto& val : params)
     {
         const auto& symbol = std::get<PF_Chart::e_symbol>(val);
+        PF_Chart new_chart;
         try
         {
             fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, interval_i, "json");
-            PF_Chart new_chart;
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -623,7 +621,7 @@ void PF_CollectDataApp::Run_Update()
         }
         catch (const std::exception& e)
         {
-			std::cout << "Unable to update data for symbol: " << symbol << " because: " << e.what() << std::endl;	
+            spdlog::error(fmt::format("Unable to update data for chart: {} from file because: {}.", new_chart.ChartName(interval_i, ""), e.what()));
         }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Update  -----
@@ -633,25 +631,32 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 	// if we are down this path then the expectation is that we are processing a 'short' list of symbols and a 'recent'
 	// date so we will be collecting a 'small' amount of data from the DB.  In this case, we can do it all up front
 
-	auto db_data = GetPriceDataForSymbolList();
-	// ranges::for_each(db_data, [](const auto& xx) {fmt::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
-
     // look for existing data and load the saved JSON data if we have it.
     // then add the new data to the chart.
 
-    for (const auto& symbol : symbol_list_)
+	auto db_data = GetPriceDataForSymbolList();
+	// ranges::for_each(db_data, [](const auto& xx) {fmt::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
+
+    // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
+
+    auto data_for_symbol = ranges::views::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
+
+    // then we process each sub-range and apply the data for each symbol to all PF_Chart variants that were
+    // asked for.
+
+    for (const auto& symbol_rng : db_data | data_for_symbol)
     {
+        const auto& symbol = symbol_rng[0].symbol_;
 		// fmt::print("symbol: {}\n", symbol);
 		std::vector<std::string> the_symbol{symbol};
-    	auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
 
-        auto data_for_symbol = ranges::views::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
+    	auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
 
     	for (const auto& val : params)
     	{
+           	PF_Chart new_chart;
         	try
         	{
-            	PF_Chart new_chart;
             	if (chart_data_source_ == Source::e_file)
             	{
             		fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, interval_i, "json");
@@ -676,19 +681,15 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 					new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             	}
 
-                // our data from the DB is grouped by symbol and we've split it into sub-ranges by symbol above.
-                // now, grab the sub-range for each symbol.
+                // apply new data to chart (which may be empty)
 
-                for (const auto& symbol_data : db_data | data_for_symbol | ranges::views::filter([&symbol](const auto& rec_rng){ return rec_rng[0].symbol_ == symbol; }))
-                {
-                    ranges::for_each(symbol_data, [&new_chart](const auto& row) { new_chart.AddValue(row.close_, row.date_); });
-                }
-            	// AddPriceDataToExistingChartCSV(new_chart, update_file_name);
+                ranges::for_each(symbol_rng, [&new_chart](const auto& row) { new_chart.AddValue(row.close_, row.date_); });
+
             	charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
         	}
         	catch (const std::exception& e)
         	{
-				std::cout << "Unable to update data for symbol: " << symbol << " because: " << e.what() << std::endl;
+        		spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", new_chart.ChartName(interval_i, ""), e.what()));
         	}
     	}
     }
@@ -745,11 +746,11 @@ std::vector<MultiSymbolDateCloseRecord> PF_CollectDataApp::GetPriceDataForSymbol
 				);
 
         db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(c, get_symbol_prices_cmd, Row2Closing);
-		std::cout << "done retrieving data for symbols: " << query_list << " got: " << db_data.size() << " rows." << std::endl;
+        spdlog::debug(fmt::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
    	}
    	catch (const std::exception& e)
    	{
-		std::cout << "Unable to load data for symbols: " << query_list << " because: " << e.what() << std::endl;
+        spdlog::error(fmt::format("Unable to retrieve DB data from symbols in: {} because: {}.", query_list, e.what()));
    	}
 
 	return db_data;
@@ -902,7 +903,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
     }
    	catch (const std::exception& e)
    	{
-        fmt::print("Unable to comput ATR from DB for: '{}' because: {}.\n", symbol, e.what());
+        spdlog::error(fmt::format("Unable to comput ATR from DB for: '{}' because: {}.\n", symbol, e.what()));
    	}
 
     return atr;
@@ -1124,7 +1125,7 @@ void PF_CollectDataApp::Shutdown ()
 					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName(interval_i, "svg"));
 					chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
 				}
-				chart.StoreChartInChartsDB(pf_db, interval_i, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, true);
+				chart.StoreChartInChartsDB(pf_db, interval_i, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, graphics_format_ == GraphicsFormat::e_csv);
 			}
 			catch(const std::exception& e)
 			{
