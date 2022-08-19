@@ -79,7 +79,7 @@ std::vector<std::string> PF_DB::ListExchanges () const
 	{
 	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
-        exchanges = RunSQLQueryUsingRows<std::string>(c, get_exchanges_cmd, Row2Exchange);
+        exchanges = RunSQLQueryUsingRows<std::string>(get_exchanges_cmd, Row2Exchange);
     }
    	catch (const std::exception& e)
    	{
@@ -104,7 +104,7 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange (std::string_view exchange
 				db_params_.db_data_source_,
 				c.quote(exchange)
 				);
-        symbols = RunSQLQueryUsingStream<std::string, std::string_view>(c, get_symbols_cmd, Row2Symbol);
+        symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
     }
    	catch (const std::exception& e)
    	{
@@ -214,7 +214,7 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
 	{
 	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
-        records = RunSQLQueryUsingRows<StockDataRecord>(c, get_records_cmd, Row2StockDataRecord);
+        records = RunSQLQueryUsingRows<StockDataRecord>(get_records_cmd, Row2StockDataRecord);
     }
    	catch (const std::exception& e)
    	{

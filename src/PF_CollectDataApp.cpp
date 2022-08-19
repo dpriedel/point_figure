@@ -543,7 +543,7 @@ void PF_CollectDataApp::Run_LoadFromDB()
 					c.quote(begin_date_)
 					);
 
-            const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(c, get_symbol_prices_cmd, Row2Closing);
+            const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
 
 			// fmt::print("done retrieving data for symbol: {}. Got {} rows.\n", symbol, db_data.size());
 
@@ -745,7 +745,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_CollectDataApp::GetPriceDataForSymbol
 				c.quote(begin_date_)
 				);
 
-        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(c, get_symbol_prices_cmd, Row2Closing);
+        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
         spdlog::debug(fmt::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
    	}
    	catch (const std::exception& e)

@@ -83,10 +83,10 @@ public:
     std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const;
 
     template<typename T>
-    std::vector<T> RunSQLQueryUsingRows(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const;
+    std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
 
     template<typename T, typename ...Vals>
-    std::vector<T> RunSQLQueryUsingStream(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const;
+    std::vector<T> RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const;
 
 	// ====================  MUTATORS      ======================================= 
 
@@ -111,8 +111,9 @@ private:
 // to properly handle possible user data in the query.
 
 template<typename T>
-std::vector<T> PF_DB::RunSQLQueryUsingRows(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const
+std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const
 {
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
 	auto results = trxn.exec(query_cmd);
@@ -128,8 +129,9 @@ std::vector<T> PF_DB::RunSQLQueryUsingRows(pqxx::connection& c, const std::strin
 }
 
 template<typename T, typename ...Vals>
-std::vector<T> PF_DB::RunSQLQueryUsingStream(pqxx::connection& c, const std::string& query_cmd, const auto& converter) const
+std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const
 {
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
     std::vector<T> data;
