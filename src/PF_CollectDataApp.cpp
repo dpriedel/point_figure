@@ -193,6 +193,40 @@ bool PF_CollectDataApp::CheckArgs ()
 {
 	//	let's get our input and output set up
 	
+    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan", fmt::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
+    mode_ = mode_i == "load" ? Mode::e_load : mode_i == "update" ? Mode::e_update : Mode::e_daily_scan;
+
+    // do daily-scan edits upfront because we only need a couple
+
+    if (mode_ == Mode::e_daily_scan)
+    {
+        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
+        BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified when load source is 'database'.");
+    }
+
+    if (mode_ == Mode::e_daily_scan)
+    {
+        BOOST_ASSERT_MSG(! begin_date_.empty(), "Must specify 'begin-date' when mode is 'daily-scan'.");
+    }
+
+    if (mode_ == Mode::e_daily_scan)
+    {
+        // this is what we want 
+
+        graphics_format_ = GraphicsFormat::e_csv;
+        return true;
+    }
+
+    // do these tests ourselves instead of specifying 'required' on Setup.
+    // this is to avoid having to provide unnecessary arguments for daily scan processing.
+
+    BOOST_ASSERT_MSG(! box_size_list_.empty(), "Must provide at least 1 'boxsize' parameter.");
+    BOOST_ASSERT_MSG(! reversal_boxes_list_.empty(), "Must provide at least 1 'reversal' parameter.");
+
 	// we now have two possible sources for symbols. We need to be sure we have 1 of them.
 	
 	BOOST_ASSERT_MSG(! symbol_list_.empty() || ! symbol_list_i_.empty(), "Must provide either 1 or more '-s' values or 'symbol-list' list.");
@@ -226,9 +260,6 @@ bool PF_CollectDataApp::CheckArgs ()
     
     BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database", fmt::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
-
-    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan", fmt::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
-    mode_ = mode_i == "load" ? Mode::e_load : mode_i == "update" ? Mode::e_update : Mode::e_daily_scan;
 
     // possibly empty if this is our first time or we are starting over
 
@@ -369,8 +400,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
-		("boxsize,b",			po::value<std::vector<DprDecimal::DDecQuad>>(&this->box_size_list_)->required(),   	"box step size. 'n', 'm.n'")
-		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_)->required(),		"reversal size in number of boxes. Default is 2")
+		("boxsize,b",			po::value<std::vector<DprDecimal::DDecQuad>>(&this->box_size_list_),   	"box step size. 'n', 'm.n'")
+		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_),		"reversal size in number of boxes.")
 		("max-graphic-cols",	po::value<int32_t>(&this->max_columns_for_graph_)->default_value(-1),
 									"maximum number of columns to show in graphic. Use -1 for ALL, 0 to keep existing value, if any, otherwise -1. >0 to specify how many columns.")
 		("show-trend-lines",	po::value<std::string>(&this->trend_lines_)->default_value("no"),	"Show trend lines on graphic. Can be 'data' or 'angle'. Default is 'no'.")
@@ -634,7 +665,10 @@ void PF_CollectDataApp::Run_UpdateFromDB()
     // look for existing data and load the saved JSON data if we have it.
     // then add the new data to the chart.
 
-	auto db_data = GetPriceDataForSymbolList();
+    PF_DB pf_db{db_params_};
+
+    const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+	auto db_data = pf_db.GetPriceDataForSymbolsInList(symbol_list_, begin_date_, price_fld_name_, dt_format);
 	// ranges::for_each(db_data, [](const auto& xx) {fmt::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
@@ -694,67 +728,6 @@ void PF_CollectDataApp::Run_UpdateFromDB()
     	}
     }
 }		// -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
-
-std::vector<MultiSymbolDateCloseRecord> PF_CollectDataApp::GetPriceDataForSymbolList () const
-{
-	// we need to convert our list of symbols into a format that can be used in a SQL query.
-	
-	std::string query_list = "( '";
-	auto syms = symbol_list_.begin();
-	query_list += *syms;
-	for (++syms; syms != symbol_list_.end(); ++syms)
-	{
-		query_list += "', '";
-		query_list += *syms;
-	}
-	query_list += "' )";
-	std::cout << query_list << std::endl;
-
-    PF_DB pf_db{db_params_};
-	
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-
-	// we need a place to keep the data we retrieve from the database.
-	
-    std::vector<MultiSymbolDateCloseRecord> db_data;
-
-    std::istringstream time_stream;
-    date::utc_time<date::utc_clock::duration> tp;
-
-    const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
-
-    // we know our database contains 'date's, but we need timepoints.
-    // we'll handle that in the conversion routine below.
-
-    auto Row2Closing = [dt_format, &time_stream, &tp](const auto& r) {
-        time_stream.clear();
-        time_stream.str(std::string{std::get<1>(r)});
-        date::from_stream(time_stream, dt_format, tp);
-        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp, .close_=std::get<2>(r)};
-        return new_data;
-    };
-
-	try
-	{
-		// first, get ready to retrieve our data from DB.  Do this for all our symbols here.
-
-		std::string get_symbol_prices_cmd = fmt::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
-				price_fld_name_,
-				db_params_.db_data_source_,
-				query_list,
-				c.quote(begin_date_)
-				);
-
-        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
-        spdlog::debug(fmt::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
-   	}
-   	catch (const std::exception& e)
-   	{
-        spdlog::error(fmt::format("Unable to retrieve DB data from symbols in: {} because: {}.", query_list, e.what()));
-   	}
-
-	return db_data;
-}		// -----  end of method PF_CollectDataApp::GetDataForSymbolList  ----- 
 
 void PF_CollectDataApp::Run_Streaming()
 {
@@ -1082,6 +1055,72 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
 
 void PF_CollectDataApp::Run_DailyScan()
 {
+    // I expect this will be run fairly often so that the amount of data retrieved
+    // from the stock price DB will be manageable so I will just do that qeury
+    // up front and then process that data as the main loop.
+    // NOTE: I will, however, segment the data by exchange;
+
+    int32_t total_symbols_processed = 0;
+    int32_t total_charts_processed = 0;
+    int32_t total_charts_updated = 0;
+
+    std::vector<std::string> exchanges = {"AMEX", "NYSE", "NASDAQ"};
+
+    PF_DB pf_db{db_params_};
+    const auto *dt_format = "%F";
+
+    // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
+
+    auto data_for_symbol = ranges::views::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
+
+    for (const auto& exchange : exchanges)
+    {
+
+        auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(exchange, begin_date_, price_fld_name_, dt_format);
+        // ranges::for_each(db_data, [](const auto& xx) {fmt::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
+
+        // then we process each sub-range and apply the data for each symbol to all PF_Chart variants that
+        // we find in the DB for that symbol.
+
+        for (const auto& symbol_rng : db_data | data_for_symbol)
+        {
+            const auto& symbol = symbol_rng[0].symbol_;
+            total_symbols_processed += 1;
+
+            // fmt::print("symbol: {}\n", symbol);
+
+            auto charts_for_symbol = pf_db.RetrieveAllEODChartsForSymbol(symbol);
+
+            for (auto& chart : charts_for_symbol)
+            {
+                // apply new data to chart (which may be empty)
+
+                total_charts_processed += 1;
+                bool chart_needs_update = false;
+                try
+                {
+                    ranges::for_each(symbol_rng, [&chart, &chart_needs_update](const auto& row) 
+                        {
+                            auto status = chart.AddValue(row.close_, row.date_);
+//                            fmt::print("status: {}. close: {}. date: {}.\n", status, row.close_, row.date_);
+                            chart_needs_update |= status == PF_Column::Status::e_accepted ? 1 : 0; 
+                        });
+                    if (chart_needs_update)
+                    {
+                        // we are only doing EOD charts in this routine. 
+				        chart.UpdateChartInChartsDB(pf_db, interval_i, PF_Chart::X_AxisFormat::e_show_date, graphics_format_ == GraphicsFormat::e_csv);
+                        total_charts_updated += 1;
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", chart.ChartName(interval_i, ""), e.what()));
+                }
+            }
+        }
+    }
+
+    spdlog::info(fmt::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: {}.", total_symbols_processed, total_charts_processed, total_charts_updated));
 
 }		// -----  end of method PF_CollectDataApp::Run_DailyScan  ----- 
 

@@ -620,6 +620,18 @@ void PF_Chart::StoreChartInChartsDB(const PF_DB& chart_db, std::string_view inte
     chart_db.StorePFChartDataIntoDB(*this, interval, cvs_graphics);
 }		// -----  end of method PF_Chart::StoreChartInChartsDB  ----- 
 
+void PF_Chart::UpdateChartInChartsDB(const PF_DB& chart_db, std::string_view interval, X_AxisFormat date_or_time, bool store_cvs_graphics) const
+{
+	std::string cvs_graphics;
+	if (store_cvs_graphics)
+	{
+		std::ostringstream oss{};
+		ConvertChartToTableAndWriteToStream(oss, date_or_time);
+		cvs_graphics = oss.str();
+	}
+    chart_db.UpdatePFChartDataInDB(*this, interval, cvs_graphics);
+}		// -----  end of method PF_Chart::StoreChartInChartsDB  ----- 
+
 
 Json::Value PF_Chart::ToJSON () const
 {

@@ -74,19 +74,25 @@ public:
     PF_DB(const DB_Params& db_params);
 	// ====================  ACCESSORS     ======================================= 
 
-    std::vector<std::string> ListExchanges() const;
-    std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange) const;
+    [[nodiscard]] std::vector<std::string> ListExchanges() const;
+    [[nodiscard]] std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange) const;
 
-    Json::Value GetPFChartData(const std::string file_name) const;
+    [[nodiscard]] Json::Value GetPFChartData(const std::string file_name) const;
+    [[nodiscard]] std::vector<PF_Chart> RetrieveAllEODChartsForSymbol(const std::string& symbol) const;
+
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;
+    void UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;
     
-    std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const;
+    [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const;
+
+    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsInList (const std::vector<std::string>& symbol_list, const std::string& begin_date, const std::string& price_fld_name, const char* date_format) const;
+    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange (const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name, const char* date_format) const;
 
     template<typename T>
-    std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
+    [[nodiscard]] std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
 
     template<typename T, typename ...Vals>
-    std::vector<T> RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const;
+    [[nodiscard]] std::vector<T> RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const;
 
 	// ====================  MUTATORS      ======================================= 
 
@@ -120,11 +126,14 @@ std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const a
 	trxn.commit();
 
     std::vector<T> data;
+    data.reserve(1000);
+
     for (const auto& row: results)
     {
         T new_data = converter(row);
         data.push_back(std::move(new_data));
     }
+    data.shrink_to_fit();
 	return data;
 }
 
@@ -135,6 +144,7 @@ std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const
 	pqxx::nontransaction trxn{c};		// we are read-only for this work
 
     std::vector<T> data;
+    data.reserve(10'000);
 
     auto stream = pqxx::stream_from::query(trxn, query_cmd);
     std::tuple<Vals...> row;
@@ -146,6 +156,7 @@ std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const
     stream.complete();
 	trxn.commit();
 
+    data.shrink_to_fit();
     return data;
 }
 #endif   // ----- #ifndef _POINTANDFIGUREDB_INC_  ----- 
