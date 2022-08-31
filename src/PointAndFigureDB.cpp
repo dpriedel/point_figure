@@ -71,14 +71,12 @@ std::vector<std::string> PF_DB::ListExchanges () const
 
 	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-    std::string get_exchanges_cmd = fmt::format("SELECT DISTINCT(exchange) FROM {} ORDER BY exchange ASC",
+    std::string get_exchanges_cmd = fmt::format("SELECT DISTINCT(exchange) FROM new_stock_data.names_and_symbols ORDER BY exchange ASC",
             db_params_.db_data_source_
             );
 
 	try
 	{
-	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
-
         exchanges = RunSQLQueryUsingRows<std::string>(get_exchanges_cmd, Row2Exchange);
     }
    	catch (const std::exception& e)
@@ -98,10 +96,7 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange (std::string_view exchange
 
 	try
 	{
-	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
-
-		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM {} WHERE exchange = {} ORDER BY symbol ASC",
-				db_params_.db_data_source_,
+		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM new_stock_data.names_and_symbols WHERE exchange = {} ORDER BY symbol ASC",
 				c.quote(exchange)
 				);
         symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
@@ -265,17 +260,16 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
 {
     auto Row2StockDataRecord = [](const auto& r) { return 
         StockDataRecord{.date_=std::string{r[0].template as<std::string_view>()},
-                        .exchange_=std::string{r[1].template as<std::string_view>()},
-                        .symbol_=std::string{r[2].template as<std::string_view>()},
-                        .open_=r[3].template as<std::string_view>(),
-                        .high_=r[4].template as<std::string_view>(),
-                        .low_=r[5].template as<std::string_view>(),
-                        .close_=r[6].template as<std::string_view>() };
+                        .symbol_=std::string{r[1].template as<std::string_view>()},
+                        .open_=r[2].template as<std::string_view>(),
+                        .high_=r[3].template as<std::string_view>(),
+                        .low_=r[4].template as<std::string_view>(),
+                        .close_=r[5].template as<std::string_view>() };
         };
 
     pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-	std::string get_records_cmd = fmt::format("SELECT date, exchange, symbol, open_p, high, low, close_p FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
+	std::string get_records_cmd = fmt::format("SELECT date, symbol, adjopen, adjhigh, adjlow, adjclose FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
 			db_params_.db_data_source_,
 			c.quote(symbol),
             date,
@@ -382,7 +376,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
 	{
 		// first, get ready to retrieve our data from DB.  Do this for all our symbols here.
 
-		std::string get_symbol_prices_cmd = fmt::format("SELECT symbol, date, {} FROM {} WHERE exchange = {} AND date >= {} ORDER BY symbol ASC, date ASC",
+		std::string get_symbol_prices_cmd = fmt::format("SELECT t1.symbol, t1.date, t1.{} FROM {} AS t1 INNER JOIN new_stock_data.names_and_symbols as t2 on t1.symbol = t2.symbol WHERE t2.exchange = {} AND t1.date >= {} ORDER BY t1.symbol ASC, t1.date ASC",
 				price_fld_name,
 				db_params_.db_data_source_,
 				c.quote(exchange),
