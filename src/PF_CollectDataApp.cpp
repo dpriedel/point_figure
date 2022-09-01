@@ -200,21 +200,15 @@ bool PF_CollectDataApp::CheckArgs ()
 
     if (mode_ == Mode::e_daily_scan)
     {
-        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when data source or destination is 'database'.");
-        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source or destination is 'database'.");
-        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source or destination is 'database'.");
-        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source or destination is 'database'.");
+        BOOST_ASSERT_MSG(! db_params_.host_name_.empty(), "Must provide 'db-host' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when mode is 'daily-scan'.");
         BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
-        BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified when load source is 'database'.");
-    }
+        BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified when mode is 'daily-scan'.");
 
-    if (mode_ == Mode::e_daily_scan)
-    {
         BOOST_ASSERT_MSG(! begin_date_.empty(), "Must specify 'begin-date' when mode is 'daily-scan'.");
-    }
 
-    if (mode_ == Mode::e_daily_scan)
-    {
         // this is what we want 
 
         graphics_format_ = GraphicsFormat::e_csv;
@@ -416,7 +410,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
-        ("db-data-source",      po::value<std::string>(&this->db_params_.db_data_source_)->default_value("stock_data.current_data"), "table containing symbol data. Default is 'stock_data.current_data'.")
+        ("db-data-source",      po::value<std::string>(&this->db_params_.db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
@@ -474,8 +468,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 	if (mode_ == Mode::e_daily_scan)
 	{
-		Run_DailyScan();
-		return {};
+		auto results = Run_DailyScan();
+		return results;
 	}
 
     if(new_data_source_ == Source::e_file)
@@ -1053,7 +1047,7 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
     }
 }		// -----  end of method PF_CollectDataApp::ProcessStreamedData  ----- 
 
-void PF_CollectDataApp::Run_DailyScan()
+std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 {
     // I expect this will be run fairly often so that the amount of data retrieved
     // from the stock price DB will be manageable so I will just do that qeury
@@ -1064,10 +1058,10 @@ void PF_CollectDataApp::Run_DailyScan()
     int32_t total_charts_processed = 0;
     int32_t total_charts_updated = 0;
 
-    std::vector<std::string> exchanges = {"AMEX", "NYSE", "NASDAQ"};
-
     PF_DB pf_db{db_params_};
     const auto *dt_format = "%F";
+
+	auto exchanges = pf_db.ListExchanges();
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
 
@@ -1121,6 +1115,8 @@ void PF_CollectDataApp::Run_DailyScan()
     }
 
     spdlog::info(fmt::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: {}.", total_symbols_processed, total_charts_processed, total_charts_updated));
+
+    return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
 }		// -----  end of method PF_CollectDataApp::Run_DailyScan  ----- 
 

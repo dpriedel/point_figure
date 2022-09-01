@@ -122,7 +122,7 @@ protected:
 	void	Run_Update();
 	void	Run_UpdateFromDB();
 	void	Run_Streaming();
-	void	Run_DailyScan();
+	std::tuple<int, int, int>	Run_DailyScan();
 
 	void	Do_Quit ();
 
