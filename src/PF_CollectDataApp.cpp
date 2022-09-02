@@ -1063,11 +1063,15 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
 	auto exchanges = pf_db.ListExchanges();
 
+    // do no process symbols from the INDEX list 
+
+    const auto no_index = ranges::views::filter( [] (const auto& xchng) { return xchng != "INDEX"; });
+
     // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
 
     auto data_for_symbol = ranges::views::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
 
-    for (const auto& exchange : exchanges)
+    for (const auto& exchange : exchanges | no_index)
     {
 
         auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(exchange, begin_date_, price_fld_name_, dt_format);
