@@ -559,7 +559,7 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 	//  down ==> red
 	//  reverse up ==> blue
 	//  reverse down ==> orange
-	//  color index can be used with custom palettes such as in gnucash
+	//  color index can be used with custom palettes such as in gnuplot
 	//
 	
 	size_t skipped_columns = max_columns_for_graph_ < 1 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
