@@ -183,10 +183,13 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
 
 Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
 {
-    const std::regex numeric_trade_price{R"***(("T",(?:.*?,){8}) ([0-9]*\.[0-9]*),)***"}; 
-    const std::regex quoted_trade_price{R"***("T",(?:.*?,){8} "([0-9]*\.[0-9]*)",)***"}; 
-    const std::string string_trade_price{R"***($1 "$2",)***"};
+//    std::cout << "\nraw buffer: " << buffer << '\n';
+
+    const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"}; 
+    const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"}; 
+    const std::string string_trade_price{R"***($1"$2",)***"};
     auto zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
+//    std::cout << "\nzapped buffer: " << zapped_buffer << '\n';
 
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
