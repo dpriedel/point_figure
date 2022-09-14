@@ -138,9 +138,9 @@ def ProcessChartFile(args):
 
         # need to do proper time selection here 
         if (args.y_axis_format_ == "date"):
-            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["start_at"]) / 1e9).date())
+            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["first_entry"]) / 1e9).date())
         else:
-            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["start_at"]) / 1e9))
+            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["first_entry"]) / 1e9))
         had_step_back.append(col["had_reversal"])
         
     lowData.append(float(chart_data["current_column"]["bottom"]))
@@ -157,9 +157,9 @@ def ProcessChartFile(args):
 
     # need to do proper time selection here 
     if (args.y_axis_format_ == "date"):
-        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["start_at"]) / 1e9).date())
+        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["first_entry"]) / 1e9).date())
     else:
-        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["start_at"]) / 1e9))
+        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["first_entry"]) / 1e9))
 
     had_step_back.append(chart_data["current_column"]["had_reversal"])
 

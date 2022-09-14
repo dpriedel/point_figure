@@ -81,6 +81,12 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
 
     chart_data["row_number"] = np.arange(chart_data.shape[0])
 
+    # draw a line at openning price so we can see change over time
+    # especially when we are showing only most recent 'n' columns
+
+    openning_price = chart_data["Open"][0]
+    print("open price: {}", openning_price)
+
     # print(chart_data.dtypes)
     # print(chart_data)
 
@@ -107,6 +113,7 @@ def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeForma
             title=ChartTitle,
             figsize=(14, 10),
             datetime_format=DateTimeFormat,
+            hlines=dict(hlines=[openning_price],colors=['r'],linestyle='dotted',linewidths=(2)),
             returnfig=True)
 
     elif ShowTrendLines == "angle":
