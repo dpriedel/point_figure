@@ -123,6 +123,14 @@ def ProcessChartFile(args):
     direction_is_up = []
     x_axis_labels = []
 
+    first_col = None
+    if len(chart_data["columns"]) > 0:
+        first_col = chart_data["columns"][0]
+    else:
+        first_col = chart_data["current_column"]
+
+    openning_price = first_col["bottom"] if first_col["direction"] == "up" else first_col["top"]
+
     for col in chart_data["columns"]:
         lowData.append(float(col["bottom"]))
         highData.append(float(col["top"]))
@@ -189,7 +197,7 @@ def ProcessChartFile(args):
     graphic_file_name = os.path.join(args.output_directory_name_, chart_name)
 
     PF_DrawChart.DrawChart(the_data, direction_is_up, had_step_back, chart_title, graphic_file_name, date_time_format,
-            args.trend_lines_, False, float(chart_data["y_min"]), float(chart_data["y_max"]))
+            args.trend_lines_, False, float(chart_data["y_min"]), float(chart_data["y_max"]), float(openning_price))
 
 def MakeChartName (chart_data):
     chart_name = "{}_{}{}X{}_{}.{}".format(chart_data["symbol"], chart_data["fname_box_size"], ("%" if chart_data["boxes"]["box_scale"] == "percent" else ""),
