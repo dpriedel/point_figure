@@ -73,22 +73,13 @@ def SetStepbackColor (is_up, stepped_back) :
             return "orange"
     return None
 
-def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, ShowTrendLines, UseLogScale, Y_min, Y_max):
+def DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, ShowTrendLines, UseLogScale, Y_min, Y_max, openning_price):
 
     chart_data = pd.DataFrame(the_data)
     chart_data["Date"] = pd.to_datetime(chart_data["Date"])
     chart_data.set_index("Date", drop=False, inplace=True)
 
     chart_data["row_number"] = np.arange(chart_data.shape[0])
-
-    # draw a line at openning price so we can see change over time
-    # especially when we are showing only most recent 'n' columns
-
-    openning_price = chart_data["Open"][0]
-    print("open price: {}", openning_price)
-
-    # print(chart_data.dtypes)
-    # print(chart_data)
 
     mco = []
     for i in range(len(IsUp)):

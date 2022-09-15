@@ -404,6 +404,11 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 	
 	size_t skipped_columns = max_columns_for_graph_ < 1 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
 
+    // we want to mark the openning value on the chart so change can be seen when drawing only most recent columns. 
+    
+    const auto& first_col = this->operator[](0);
+    double openning_price = first_col.GetDirection() == PF_Column::Direction::e_up ? first_col.GetBottom().ToDouble() : first_col.GetTop().ToDouble();
+
     for (const auto& col : columns_ | ranges::views::drop(skipped_columns))
     {
         lowData.push_back(col.GetBottom().ToDouble());
@@ -513,6 +518,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         "DateTimeFormat"_a = date_or_time == X_AxisFormat::e_show_date ? "%F" : "%H:%M:%S",
         "Y_min"_a = GetYLimits().first.ToDouble(),
         "Y_max"_a = GetYLimits().second.ToDouble(),
+        "openning_price"_a = openning_price,
         "UseLogScale"_a = IsPercent(),
         "ShowTrendLines"_a = show_trend_lines
     };
