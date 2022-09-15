@@ -118,11 +118,11 @@ protected:
 	bool	CheckArgs ();
 	
 	void	Run_Load();
-	void	Run_LoadFromDB();
+	std::tuple<int, int, int> Run_LoadFromDB();
 	void	Run_Update();
-	void	Run_UpdateFromDB();
+	void    Run_UpdateFromDB();
 	void	Run_Streaming();
-	std::tuple<int, int, int>	Run_DailyScan();
+	std::tuple<int, int, int> Run_DailyScan();
 
 	void	Do_Quit ();
 

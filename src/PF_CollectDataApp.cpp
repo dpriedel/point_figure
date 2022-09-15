@@ -223,9 +223,10 @@ bool PF_CollectDataApp::CheckArgs ()
 
 	// we now have two possible sources for symbols. We need to be sure we have 1 of them.
 	
+    BOOST_ASSERT_MSG(symbol_list_i_ != "*", "'*' is no longer valid for symbol-list.");
 	BOOST_ASSERT_MSG(! symbol_list_.empty() || ! symbol_list_i_.empty(), "Must provide either 1 or more '-s' values or 'symbol-list' list.");
 
-	if (! symbol_list_i_.empty() && symbol_list_i_ != "*")
+	if (! symbol_list_i_.empty() && symbol_list_i_ != "ALL")
 	{
 		ranges::actions::push_back(symbol_list_, split_string<std::string>(symbol_list_i_, ','));
 		symbol_list_ |= ranges::actions::sort | ranges::actions::unique;
@@ -233,7 +234,7 @@ bool PF_CollectDataApp::CheckArgs ()
 
 	// if symbol-list is '*' then we will generate a list of symbols from our source database.
 	
-	if (symbol_list_i_ == "*")
+	if (symbol_list_i_ == "ALL")
 	{
 		symbol_list_.clear();
 	}
@@ -378,7 +379,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 	newoptions_->add_options()
 		("help,h",											"produce help message")
 		("symbol,s",			po::value<std::vector<std::string>>(&this->symbol_list_),	"name of symbol we are processing data for. Repeat for multiple symbols.")
-		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process OR '*' to use all symbols from the database.")
+		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process OR 'ALL' to use all symbols from the specified exchange.")
 		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
 		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_),	"name of directory containing existing files with data for symbols we are using.")
 		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'database'. Default is 'file'.")
@@ -442,6 +443,13 @@ void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tok
         }
     }
     po::notify(variablemap_);    
+
+	// fmt::print("\nRuntime parameters:\n");
+ //    for (const auto& [param, value] : variablemap_)
+ //    {
+	// 	// std::cout << "param: " << param << " value: " << value.as<std::string>() << '\n';
+	// 	fmt::print("param: {}. value: .\n", param);
+ //    }
 }		/* -----  end of method ExtractorApp::ParsePrograoptions_  ----- */
 
 
@@ -524,14 +532,18 @@ void PF_CollectDataApp::Run_Load()
     }
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
 
-void PF_CollectDataApp::Run_LoadFromDB()
+std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 {
+    int32_t total_symbols_processed = 0;
+    int32_t total_charts_processed = 0;
+    int32_t total_charts_updated = 0;
+
 	// we can handle mass symbol loads because we do a symbol-at-a-time DB query so we don't get an impossible amount
 	// of data back from the DB
 	
 	PF_DB pf_db{db_params_};
 	
-	if (symbol_list_i_ == "*")
+	if (symbol_list_i_ == "ALL")
 	{
 		symbol_list_ = pf_db.ListSymbolsOnExchange(exchange_);
 	}
@@ -557,6 +569,8 @@ void PF_CollectDataApp::Run_LoadFromDB()
 
 	for (const auto& symbol : symbol_list_)
 	{
+        ++total_symbols_processed;
+
 		try
 		{
 			// first, get ready to retrieve our data from DB.  Do this once per symbol.
@@ -569,8 +583,6 @@ void PF_CollectDataApp::Run_LoadFromDB()
 					);
 
             const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
-
-			// fmt::print("done retrieving data for symbol: {}. Got {} rows.\n", symbol, db_data.size());
 
    	   	    // only need to compute this once per symbol also 
    	   	    auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
@@ -594,6 +606,7 @@ void PF_CollectDataApp::Run_LoadFromDB()
 						new_chart.AddValue(new_price, date::clock_cast<date::utc_clock>(new_date));
 					}
 					charts_.emplace_back(std::make_pair(symbol, new_chart));
+                    ++total_charts_processed;
 				}
    	    		catch (const std::exception& e)
    	    		{
@@ -606,6 +619,9 @@ void PF_CollectDataApp::Run_LoadFromDB()
             spdlog::error(fmt::format("Unable to retrieve data for symbol: {} from DB because: {}.", symbol, e.what()));
    	    }
     }
+    spdlog::info(fmt::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: {}.", total_symbols_processed, total_charts_processed, total_charts_updated));
+
+    return {total_symbols_processed, total_charts_processed, total_charts_updated};
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
 
 void PF_CollectDataApp::Run_Update()
@@ -1065,7 +1081,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     // do no process symbols from the INDEX list 
 
-    const auto no_index = ranges::views::filter( [] (const auto& xchng) { return xchng != "INDEX"; });
+    const auto no_index = ranges::views::filter( [] (const auto& xchng) { return xchng != "INDX"; });
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
 
