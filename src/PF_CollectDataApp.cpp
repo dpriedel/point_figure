@@ -209,6 +209,10 @@ bool PF_CollectDataApp::CheckArgs ()
 
         BOOST_ASSERT_MSG(! begin_date_.empty(), "Must specify 'begin-date' when mode is 'daily-scan'.");
 
+        // we need this 
+
+        new_data_source_ = Source::e_DB;
+
         // this is what we want 
 
         graphics_format_ = GraphicsFormat::e_csv;
