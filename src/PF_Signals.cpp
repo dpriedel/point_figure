@@ -15,5 +15,23 @@
 //
 // =====================================================================================
 
+#include "PF_Chart.h"
 #include "PF_Signals.h"
+
+Json::Value PF_SignalToJSON(const PF_Signal& signal)
+{
+    return {};
+}
+
+PF_Signal PF_SignalFromJSON(const Json::Value& json)
+{
+    return {};
+}
+
+ 
+bool PF_DoubleTopBuy::operator() (const PF_Chart& chart)
+{
+	return false;
+}		// -----  end of method PF_DoubleTopBuy::operator()  ----- 
+
 
