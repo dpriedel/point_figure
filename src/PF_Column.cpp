@@ -206,7 +206,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
         return {Status::e_reversal, MakeReversalColumn(Direction::e_down, boxes_->FindPrevBox(top_), the_time)};
     }
     return {Status::e_ignored, std::nullopt};
-}		// -----  end of method PF_Chart::TryToExtendUp  ----- 
+}		// -----  end of method PF_Column::TryToExtendUp  ----- 
 
 PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, TmPt the_time)
 {
