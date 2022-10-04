@@ -43,6 +43,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -58,6 +59,7 @@
 
 #include "Boxes.h"
 #include "PF_Column.h"
+#include "PF_Signals.h"
 #include "PointAndFigureDB.h"
 #include "utilities.h"
 
@@ -145,6 +147,7 @@ public:
     [[nodiscard]] bool IsFractional() const { return boxes_.GetBoxType() == Boxes::BoxType::e_fractional; }
 
     [[nodiscard]] const Boxes& GetBoxes() const { return boxes_; }
+    [[nodiscard]] const PF_SignalList& GetSignals() const { return signals_; }
     [[nodiscard]] const std::vector<PF_Column>& GetColumns() const { return columns_; }
     [[nodiscard]] const PF_Column& GetCurrentColumn() const { return current_column_; }
 
@@ -175,10 +178,12 @@ protected:
 private:
 
     void FromJSON(const Json::Value& new_data);
+    static std::optional<PF_Signal> LookForSignals(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
     Boxes boxes_;
+    PF_SignalList signals_;
     std::vector<PF_Column> columns_;
     PF_Column current_column_;
 

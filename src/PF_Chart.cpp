@@ -311,6 +311,11 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         }
 
         last_change_date_ = the_time;
+        if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
+        {
+        	signals_.push_back(had_signal.value());
+        	return PF_Column::Status::e_accepted_with_signal;
+        }
     }
     else if (status == PF_Column::Status::e_reversal)
     {
@@ -758,4 +763,17 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 //    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
 }		// -----  end of function ComputeATRUsingJSON  -----
+
+
+std::optional<PF_Signal> PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
+{
+	PF_DoubleTopBuy x;
+	if (x(the_chart))
+	{
+		return {PF_Signal{.signal_type_=PF_SignalType::e_PF_Buy, .tpt_=the_time, .column_number_=the_chart.GetNumberOfColumns(), .signal_price_=new_value, .box_=1}};
+	}
+	return {};
+
+	// more signals here.
+}		// -----  end of method PF_Chart::LookForSignals  ----- 
 
