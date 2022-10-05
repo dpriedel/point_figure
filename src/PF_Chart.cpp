@@ -309,12 +309,12 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         {
             y_min_ = current_column_.GetBottom();
         }
-
         last_change_date_ = the_time;
+
         if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
         {
         	signals_.push_back(had_signal.value());
-        	return PF_Column::Status::e_accepted_with_signal;
+        	status = PF_Column::Status::e_accepted_with_signal;
         }
     }
     else if (status == PF_Column::Status::e_reversal)
@@ -325,8 +325,13 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         // now continue on processing the value.
         
         status = current_column_.AddValue(new_value, the_time).first;
-
         last_change_date_ = the_time;
+
+        if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
+        {
+        	signals_.push_back(had_signal.value());
+        	status = PF_Column::Status::e_accepted_with_signal;
+        }
     }
     current_direction_ = current_column_.GetDirection();
     last_checked_date_ = the_time;
@@ -767,10 +772,10 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 
 std::optional<PF_Signal> PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
 {
-	PF_DoubleTopBuy x;
-	if (x(the_chart))
+	PF_DoubleTopBuy dt_buy;
+	if (auto dt_buy_sig = dt_buy(the_chart, new_value, the_time); dt_buy_sig)
 	{
-		return {PF_Signal{.signal_type_=PF_SignalType::e_PF_Buy, .tpt_=the_time, .column_number_=the_chart.GetNumberOfColumns(), .signal_price_=new_value, .box_=1}};
+		return {dt_buy_sig.value()};
 	}
 	return {};
 
