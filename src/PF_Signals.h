@@ -19,6 +19,7 @@
 #ifndef  PF_SIGNALS_INC
 #define  PF_SIGNALS_INC
 
+#include <optional>
 #include <vector>
 
 #include <date/date.h>
@@ -53,7 +54,7 @@ using PF_SignalList = std::vector<PF_Signal>;
 
 struct PF_DoubleTopBuy
 {
-    bool operator()(const PF_Chart& chart);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 // custom formatter 
