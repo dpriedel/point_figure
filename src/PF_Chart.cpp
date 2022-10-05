@@ -313,6 +313,8 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
 
         if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
         {
+
+			spdlog::debug("Found signal: {}", had_signal.value());
         	signals_.push_back(had_signal.value());
         	status = PF_Column::Status::e_accepted_with_signal;
         }
@@ -329,6 +331,7 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
 
         if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
         {
+			spdlog::debug("Found signal: {}", had_signal.value());
         	signals_.push_back(had_signal.value());
         	status = PF_Column::Status::e_accepted_with_signal;
         }
