@@ -237,6 +237,28 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBox  ----- 
 
+Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value) const
+{
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), fmt::format("Current value: {} is not contained in boxes.", current_value).c_str());
+
+    if (box_scale_ == BoxScale::e_percent)
+    {
+        return FindNextBoxPercent(current_value);
+    }
+
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    // this code will not match against the last value in the list 
+    // which is OK since that means there will be no next box and the
+    // index operator below will throw.
+
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), fmt::format("Lookup-only box search failed for: ", current_value).c_str());
+
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
+    return boxes_.at(box_index + 1);
+}		// -----  end of method Boxes::FindNextBox  ----- 
+
 Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
 {
     auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
@@ -260,6 +282,21 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
             return new_box;
         }
     }
+
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
+    return boxes_.at(box_index + 1);
+}		// -----  end of method Boxes::FindNextBoxPercent  ----- 
+
+Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value) const
+{
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    // this code will not match against the last value in the list 
+    // which is OK since that means there will be no next box and the
+    // index operator below will throw.
+
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), fmt::format("Lookup-only box search failed for: ", current_value).c_str());
 
     size_t box_index = ranges::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);

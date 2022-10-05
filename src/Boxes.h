@@ -92,6 +92,10 @@ public:
     Box FindNextBox(const DprDecimal::DDecQuad& current_value);
     Box FindPrevBox(const DprDecimal::DDecQuad& current_value);
 
+    // we have some lookup-only uses
+
+    Box FindNextBox(const DprDecimal::DDecQuad& current_value) const;
+
     // ====================  OPERATORS     ======================================= 
 
     bool operator == (const Boxes& rhs) const;
@@ -116,6 +120,7 @@ private:
     Box FirstBoxPerCent(const DprDecimal::DDecQuad& start_at);
     Box FindBoxPercent(const DprDecimal::DDecQuad& new_value);
     Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value);
+    Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value) const;
     Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value);
     [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
