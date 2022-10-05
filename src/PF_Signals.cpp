@@ -44,21 +44,25 @@ std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart,
 
 	    return {};
 	}
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [number_cols] (const PF_Signal& sig)
-	            { return sig.column_number_ == number_cols && sig.signal_type_ == PF_SignalType::e_PF_Buy; }); found_it != the_chart.GetSignals().end())
-	{
-        // see if we already have this signal for this column
 
+    // see if we already have this signal for this column
+
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [number_cols] (const PF_Signal& sig)
+	    { return sig.column_number_ == number_cols - 1 && sig.signal_type_ == PF_SignalType::e_PF_Buy; });
+	    found_it != the_chart.GetSignals().end())
+	{
         return {};
 	}
 
     // we finally get to apply our rule
+    // remember: column numbers count from zero.
 
-    auto previous_top = the_chart[number_cols -2].GetTop();
-    if (the_chart[number_cols].GetTop() > previous_top)
+    auto previous_top = the_chart[number_cols - 3].GetTop();
+    if (the_chart.GetCurrentColumn().GetTop() > previous_top)
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
-        return {PF_Signal{.signal_type_=PF_SignalType::e_PF_Buy, .tpt_=the_time, .column_number_=number_cols, .signal_price_=new_value, .box_=the_chart.GetBoxes().FindNextBox(previous_top)}};
+
+        return {PF_Signal{.signal_type_=PF_SignalType::e_PF_Buy, .tpt_=the_time, .column_number_=number_cols - 1, .signal_price_=new_value, .box_=the_chart.GetBoxes().FindNextBox(previous_top)}};
     }
 	return {};
 }		// -----  end of method PF_DoubleTopBuy::operator()  ----- 
