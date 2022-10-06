@@ -32,6 +32,7 @@
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
 //#include <iterator>
+#include "PF_Signals.h"
 #include <chrono>
 #include <cstdint>
 #include <date/date.h>
@@ -178,6 +179,7 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
     if (this != &rhs)
     {
         boxes_ = rhs.boxes_;
+        signals_ = rhs.signals_;
         columns_ = rhs.columns_;
         current_column_ = rhs.current_column_;
         symbol_ = rhs.symbol_;
@@ -204,6 +206,7 @@ PF_Chart& PF_Chart::operator= (PF_Chart&& rhs) noexcept
     if (this != &rhs)
     {
         boxes_ = std::move(rhs.boxes_);
+        signals_ = std::move(rhs.signals_);
         columns_ = std::move(rhs.columns_);
         current_column_ = std::move(rhs.current_column_);
         symbol_ = rhs.symbol_;
@@ -314,8 +317,6 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
         {
 
-			spdlog::debug("Found signal: {}", had_signal.value());
-        	signals_.push_back(had_signal.value());
         	status = PF_Column::Status::e_accepted_with_signal;
         }
     }
@@ -331,8 +332,6 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
 
         if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
         {
-			spdlog::debug("Found signal: {}", had_signal.value());
-        	signals_.push_back(had_signal.value());
         	status = PF_Column::Status::e_accepted_with_signal;
         }
     }
@@ -657,6 +656,12 @@ Json::Value PF_Chart::ToJSON () const
     Json::Value result;
     result["symbol"] = symbol_;
     result["boxes"] = boxes_.ToJSON();
+    Json::Value signals{Json::arrayValue};
+    for (const auto& sig : signals_)
+    {
+        signals.append(PF_SignalToJSON(sig));
+    }
+    result["signals"] = signals;
     result["first_date"] = first_date_.time_since_epoch().count();
     result["last_change_date"] = last_change_date_.time_since_epoch().count();
     result["last_check_date"] = last_checked_date_.time_since_epoch().count();
@@ -700,6 +705,10 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 {
     symbol_ = new_data["symbol"].asString();
     boxes_ = new_data["boxes"];
+
+    const auto& signals = new_data["signals"];
+    signals_.clear();
+    ranges::for_each(signals, [this](const auto& next_val) { this->signals_.push_back(PF_SignalFromJSON(next_val)); });
 
     first_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
     last_change_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
@@ -773,15 +782,26 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 }		// -----  end of function ComputeATRUsingJSON  -----
 
 
-std::optional<PF_Signal> PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
+bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
 {
+	bool found_signal{false};
+
 	PF_DoubleTopBuy dt_buy;
 	if (auto dt_buy_sig = dt_buy(the_chart, new_value, the_time); dt_buy_sig)
 	{
-		return {dt_buy_sig.value()};
+		found_signal = true;
+		spdlog::debug("Found signal: {}", dt_buy_sig .value());
+        the_chart.signals_.push_back(dt_buy_sig.value());
 	}
-	return {};
 
-	// more signals here.
+	PF_TripleTopBuy tt_buy;
+	if (auto tt_buy_sig = tt_buy(the_chart, new_value, the_time); tt_buy_sig)
+	{
+		found_signal = true;
+		spdlog::debug("Found signal: {}", tt_buy_sig .value());
+        the_chart.signals_.push_back(tt_buy_sig.value());
+	}
+
+	return found_signal;
 }		// -----  end of method PF_Chart::LookForSignals  ----- 
 

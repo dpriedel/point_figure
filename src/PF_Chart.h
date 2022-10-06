@@ -178,7 +178,7 @@ protected:
 private:
 
     void FromJSON(const Json::Value& new_data);
-    static std::optional<PF_Signal> LookForSignals(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
+    static bool LookForSignals(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
