@@ -95,6 +95,7 @@ public:
     // we have some lookup-only uses
 
     Box FindNextBox(const DprDecimal::DDecQuad& current_value) const;
+    Box FindPrevBox(const DprDecimal::DDecQuad& current_value) const;
 
     // ====================  OPERATORS     ======================================= 
 
@@ -122,6 +123,7 @@ private:
     Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value);
     Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value) const;
     Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value);
+    Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value) const;
     [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
 	// these functions implement our max number of boxes limit 

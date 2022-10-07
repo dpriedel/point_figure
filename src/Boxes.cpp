@@ -341,6 +341,33 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindPrevBox  ----- 
 
+Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value) const
+{
+    BOOST_ASSERT_MSG(current_value > boxes_.front() && current_value <= boxes_.back(), fmt::format("Lookup-only search for previous box for value: {} failed.", current_value).c_str());
+
+    if (box_scale_ == BoxScale::e_percent)
+    {
+        return FindPrevBoxPercent(current_value);
+    }
+
+    // this code will not match against the last value in the list 
+
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    if (found_it == boxes_.end())
+    {
+        if (current_value == boxes_.back())
+        {
+            return boxes_.back();
+        }
+    }
+
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
+    BOOST_ASSERT_MSG(box_index > 0, fmt::format("Lookup-only box search failed for: ", current_value).c_str());
+    return boxes_.at(box_index - 1);
+}		// -----  end of method Boxes::FindPrevBox  ----- 
+
 Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
 {
     if (boxes_.size() == 1)
@@ -380,6 +407,26 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
         PushFront(new_box);
         return boxes_.front();
     }
+    return boxes_.at(box_index - 1);
+}		// -----  end of method Boxes::FindNextBoxPercent  ----- 
+
+Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value) const
+{
+    // this code will not match against the last value in the list 
+
+    auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
+
+    auto found_it = ranges::adjacent_find(boxes_, box_finder);
+    if (found_it == boxes_.end())
+    {
+        if (current_value == boxes_.back())
+        {
+            return boxes_.at(boxes_.size() - 2);
+        }
+    }
+
+    size_t box_index = ranges::distance(boxes_.begin(), found_it);
+    BOOST_ASSERT_MSG(box_index > 0, fmt::format("Lookup-only box search failed for: ", current_value).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
