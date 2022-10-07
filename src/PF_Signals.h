@@ -30,6 +30,7 @@
 #include <json/json.h>
 
 #include "DDecQuad.h"
+#include "PF_Column.h"
 #include "utilities.h"
 
 class PF_Chart;
@@ -52,6 +53,10 @@ using PF_SignalList = std::vector<PF_Signal>;
 [[nodiscard]] Json::Value PF_SignalToJSON(const PF_Signal& signal);
 [[nodiscard]] PF_Signal PF_SignalFromJSON(const Json::Value& new_data);
 
+// common code to determine whether can test for a signal
+
+bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Column::Direction direction, int32_t minimum_cols);
+
 // here are some signals we can look for.
 
 struct PF_DoubleTopBuy
@@ -60,6 +65,16 @@ struct PF_DoubleTopBuy
 };
 
 struct PF_TripleTopBuy
+{
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+};
+
+struct PF_DoubleBottomSell
+{
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+};
+
+struct PF_TripleBottomSell
 {
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
