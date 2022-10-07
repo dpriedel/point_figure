@@ -802,6 +802,22 @@ bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& 
         the_chart.signals_.push_back(tt_buy_sig.value());
 	}
 
+	PF_DoubleBottomSell db_sell;
+	if (auto db_sell_sig = db_sell(the_chart, new_value, the_time); db_sell_sig)
+	{
+		found_signal = true;
+		spdlog::debug("Found signal: {}", db_sell_sig .value());
+        the_chart.signals_.push_back(db_sell_sig.value());
+	}
+
+	PF_TripleBottomSell tb_sell;
+	if (auto tb_sell_sig = tb_sell(the_chart, new_value, the_time); tb_sell_sig)
+	{
+		found_signal = true;
+		spdlog::debug("Found signal: {}", tb_sell_sig .value());
+        the_chart.signals_.push_back(tb_sell_sig.value());
+	}
+
 	return found_signal;
 }		// -----  end of method PF_Chart::LookForSignals  ----- 
 
