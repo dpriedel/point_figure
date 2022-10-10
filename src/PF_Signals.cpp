@@ -198,6 +198,7 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart,
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Buy,
             .signal_type_=PF_SignalType::e_TripleTop_Buy,
+            .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
             .box_=the_chart.GetBoxes().FindNextBox(std::max(previous_top_1, previous_top_0))
@@ -254,6 +255,7 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_ch
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
             .signal_type_=PF_SignalType::e_TripleBottom_Sell,
+            .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
             .box_=the_chart.GetBoxes().FindPrevBox(std::min(previous_bottom_1, previous_bottom_0))
