@@ -48,6 +48,7 @@
 
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/drop.hpp>
+#include <range/v3/view/filter.hpp>
 
 
 #include <pybind11/embed.h> // everything needed for embedding
@@ -475,6 +476,21 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
     had_step_back.push_back(current_column_.GetHadReversal());
 
+	// extract and format the Signals, if any, from the chart. The drawing code can plot
+	// them or not.
+	// NOTE: we need to zap the column number with the skipped columns offset 
+	// so we make a copy of each signal first.
+
+    Json::Value sigs{Json::arrayValue};
+    for (auto sig : signals_ | ranges::views::filter([skipped_columns](const auto& sig){ return sig.column_number_ >= skipped_columns; }))
+    {
+        sig.column_number_ -= skipped_columns;
+        sigs.append(PF_SignalToJSON(sig));
+    }
+	Json::StreamWriterBuilder wbuilder;
+	wbuilder["indentation"] = "";
+	std::string signals = Json::writeString(wbuilder, sigs);
+	
 	// want to show approximate overall change in value (computed from boxes, not actual prices)
 	
 	DprDecimal::DDecQuad first_value = 0;
@@ -523,6 +539,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             "Low"_a = lowData,
             "Close"_a = closeData
         },
+        "ReversalBoxes"_a = GetReversalboxes(),
         "IsUp"_a = direction_is_up,
         "StepBack"_a = had_step_back,
         "ChartTitle"_a = chart_title,
@@ -532,14 +549,16 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         "Y_max"_a = GetYLimits().second.ToDouble(),
         "openning_price"_a = openning_price,
         "UseLogScale"_a = IsPercent(),
-        "ShowTrendLines"_a = show_trend_lines
+        "ShowTrendLines"_a = show_trend_lines,
+        "signals"_a = signals
     };
 
         // Execute Python code, using the variables saved in `locals`
 
 //        py::gil_scoped_acquire gil{};
         py::exec(R"(
-        PF_DrawChart.DrawChart(the_data, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, ShowTrendLines, UseLogScale, Y_min, Y_max, openning_price)
+        PF_DrawChart.DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat,
+        ShowTrendLines, UseLogScale, Y_min, Y_max, openning_price, signals)
         )", py::globals(), locals);
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
 
@@ -656,12 +675,14 @@ Json::Value PF_Chart::ToJSON () const
     Json::Value result;
     result["symbol"] = symbol_;
     result["boxes"] = boxes_.ToJSON();
+
     Json::Value signals{Json::arrayValue};
     for (const auto& sig : signals_)
     {
         signals.append(PF_SignalToJSON(sig));
     }
     result["signals"] = signals;
+
     result["first_date"] = first_date_.time_since_epoch().count();
     result["last_change_date"] = last_change_date_.time_since_epoch().count();
     result["last_check_date"] = last_checked_date_.time_since_epoch().count();
@@ -784,6 +805,14 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 
 bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
 {
+	// so far, all signals expect 3-box reversal but will work correctly for any reversal 
+	// size > 1 box.
+	
+	if (the_chart.GetReversalboxes() == 1)
+	{
+		return false;
+	}
+
 	bool found_signal{false};
 
 	PF_DoubleTopBuy dt_buy;
