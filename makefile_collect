@@ -23,7 +23,7 @@ BOOSTDIR := /extra/boost/boost-1.80_gcc-12
 GCCDIR := /extra/gcc/gcc-12
 GTESTDIR := /usr/local/include
 DECIMALSRCDIR := /extra/gcc/decNumber_old
-UTILITYDIR := $(HOME)/projects/common_utilities
+UTILITYDIR := ${HOME}/projects/PF_Project/common_utilities
 CPP := $(GCCDIR)/bin/g++
 GCC := $(GCCDIR)/bin/gcc
 
@@ -36,7 +36,7 @@ endif
 
 OUTFILE := PF_CollectData
 
-CFG_INC := -I$(HOME)/projects/point_figure/src \
+CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
 	-I$(BOOSTDIR) \
 	-I$(DECIMALSRCDIR) \
@@ -56,6 +56,7 @@ SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/PF_Column.cpp \
 		$(SDIR2)/PF_Chart.cpp \
 		$(SDIR2)/PointAndFigureDB.cpp \
+		$(SDIR2)/PF_Signals.cpp  \
 		$(SDIR2)/Tiingo.cpp #\
 
 SDIR3 := $(DECIMALSRCDIR)
@@ -110,7 +111,7 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug_collect
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++23 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2b -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
@@ -124,7 +125,7 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
 
-COMPILE=$(CPP) -c  -x c++  -O3 -std=c++23 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3 -std=c++2b -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O3  -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
