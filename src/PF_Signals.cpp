@@ -16,6 +16,8 @@
 // =====================================================================================
 
 #include <algorithm>
+#include <utility>
+
 #include <range/v3/algorithm/find_if.hpp>
 
 #include "Boxes.h"
@@ -28,7 +30,7 @@ Json::Value PF_SignalToJSON(const PF_Signal& signal)
     switch(signal.signal_category_)
     {
         using enum PF_SignalCategory;
-        case e_PF_Unknown:
+        case e_Unknown:
             result["category"] = "unknown";
             break;
 
@@ -38,12 +40,13 @@ Json::Value PF_SignalToJSON(const PF_Signal& signal)
 
         case e_PF_Sell:
             result["category"] = "sell";
+            break;
     };
 
     switch(signal.signal_type_)
     {
         using enum PF_SignalType;
-        case e_PF_Unknown:
+        case e_Unknown:
             result["type"] = "unknown";
             break;
 
@@ -61,7 +64,18 @@ Json::Value PF_SignalToJSON(const PF_Signal& signal)
 
         case e_TripleBottom_Sell:
             result["type"] = "tb_sell";
+            break;
+
+        case e_Bullish_TT_Buy:
+            result["type"] = "bullish_tt_buy";
+            break;
+
+        case e_Bearish_TB_Sell:
+            result["type"] = "bearish_tb_sell";
+            break;
     };
+
+    result["priority"] = std::to_underlying(signal.priority_);
 
     result["time"] = signal.tpt_.time_since_epoch().count();
     result["column"] = signal.column_number_;
@@ -85,7 +99,7 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     }
     else if (category == "unknown")
     {
-        new_sig.signal_category_ = PF_SignalCategory::e_PF_Unknown;
+        new_sig.signal_category_ = PF_SignalCategory::e_Unknown;
     }
     else
     {
@@ -108,16 +122,26 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     {
         new_sig.signal_type_ = PF_SignalType::e_TripleBottom_Sell;
     }
+    else if (type == "bullish_tt_buy")
+    {
+        new_sig.signal_type_ = PF_SignalType::e_Bullish_TT_Buy;
+    }
+    else if (type == "bearish_tb_sell")
+    {
+        new_sig.signal_type_ = PF_SignalType::e_Bearish_TB_Sell;
+    }
     else if (type == "unknown")
     {
-        new_sig.signal_type_ = PF_SignalType::e_PF_Unknown;
+        new_sig.signal_type_ = PF_SignalType::e_Unknown;
     }
     else
     {
         throw std::invalid_argument{fmt::format("Invalid signal type provided: {}. Must be 'dt_buy', 'tt_buy' 'db_sell', 'tb_sell', 'unknown'.", type)};
     }
 
+    new_sig.priority_ = static_cast<PF_SignalPriority>(new_data["priority"].asInt());
     new_sig.tpt_ = date::utc_time<date::utc_clock::duration>{date::utc_clock::duration{new_data["time"].asInt64()}};
+    new_sig.column_number_ = new_data["column"].asInt();
     new_sig.signal_price_ = DprDecimal::DDecQuad{new_data["price"].asString()};
     new_sig.box_ = DprDecimal::DDecQuad{new_data["box"].asString()};
 
@@ -192,7 +216,7 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart,
 
     auto previous_top_1 = the_chart[number_cols - 3].GetTop();
     auto previous_top_0 = the_chart[number_cols - 5].GetTop();
-    if (the_chart.GetCurrentColumn().GetTop() > previous_top_1 && the_chart.GetCurrentColumn().GetTop() > previous_top_0)
+    if (the_chart.GetCurrentColumn().GetTop() > std::max(previous_top_1, previous_top_0))
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -205,7 +229,7 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart,
         }};
     }
 	return {};
-}		// -----  end of method PF_DoubleTopBuy::operator()  ----- 
+}		// -----  end of method PF_TripleTopBuy::operator()  ----- 
 
 std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
@@ -249,7 +273,7 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_ch
 
     auto previous_bottom_1 = the_chart[number_cols - 3].GetBottom();
     auto previous_bottom_0 = the_chart[number_cols - 5].GetBottom();
-    if (the_chart.GetCurrentColumn().GetBottom() < previous_bottom_1 && the_chart.GetCurrentColumn().GetBottom() < previous_bottom_0)
+    if (the_chart.GetCurrentColumn().GetBottom() < std::min(previous_bottom_1, previous_bottom_0))
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -262,7 +286,67 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_ch
         }};
     }
 	return {};
-}		// -----  end of method PF_DoubleTopBuy::operator()  ----- 
+}		// -----  end of method PF_TripleBottomSell::operator()  ----- 
+
+std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+{
+	if (! CanApplySignal(the_chart, PF_SignalType::e_Bullish_TT_Buy, PF_Column::Direction::e_up, 5))
+	{
+        return {};
+	}
+
+	int32_t number_cols = the_chart.GetNumberOfColumns();
+
+    // we finally get to apply our rule
+    // remember: column numbers count from zero.
+
+    auto previous_top_1 = the_chart[number_cols - 3].GetTop();
+    auto previous_top_0 = the_chart[number_cols - 5].GetTop();
+    if ((the_chart.GetCurrentColumn().GetTop() > previous_top_1) && (previous_top_1 > previous_top_0)
+            && (the_chart.GetCurrentColumn().GetBottom() > the_chart[number_cols - 3].GetBottom()) && (the_chart[number_cols - 3].GetBottom() > the_chart[number_cols - 5].GetBottom()))
+    {
+        // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
+
+        return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Buy,
+            .signal_type_=PF_SignalType::e_Bullish_TT_Buy,
+            .tpt_=the_time,
+            .column_number_=static_cast<int32_t>(number_cols - 1),
+            .signal_price_=new_value,
+            .box_=the_chart.GetBoxes().FindNextBox(previous_top_1)
+        }};
+    }
+	return {};
+}		// -----  end of method PF_Bullish_TT_Buy::operator()  ----- 
+
+std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+{
+	if (! CanApplySignal(the_chart, PF_SignalType::e_Bearish_TB_Sell, PF_Column::Direction::e_down, 5))
+	{
+        return {};
+	}
+
+	int32_t number_cols = the_chart.GetNumberOfColumns();
+
+    // we finally get to apply our rule
+    // remember: column numbers count from zero.
+
+    auto previous_bottom_1 = the_chart[number_cols - 3].GetBottom();
+    auto previous_bottom_0 = the_chart[number_cols - 5].GetBottom();
+    if ((the_chart.GetCurrentColumn().GetBottom() < previous_bottom_1) && (previous_bottom_1 < previous_bottom_0)
+            && (the_chart.GetCurrentColumn().GetTop() < the_chart[number_cols - 3].GetTop()) && (the_chart[number_cols - 3].GetTop() < the_chart[number_cols - 5].GetTop()))
+    {
+        // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
+
+        return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
+            .signal_type_=PF_SignalType::e_Bearish_TB_Sell,
+            .tpt_=the_time,
+            .column_number_=static_cast<int32_t>(number_cols - 1),
+            .signal_price_=new_value,
+            .box_=the_chart.GetBoxes().FindPrevBox(previous_bottom_1)
+        }};
+    }
+	return {};
+}		// -----  end of method PF_Bearish_TB_Sell::operator()  ----- 
 
 
 
