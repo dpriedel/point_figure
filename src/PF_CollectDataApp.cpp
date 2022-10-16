@@ -935,9 +935,9 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
 				ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
 						[&] (auto& symbol_and_chart)
 						{
-						symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
-						symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
-						symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
+						    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
+						    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
+						    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
 						});
             }
             catch (const std::exception& e)
@@ -1146,6 +1146,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
 void PF_CollectDataApp::Shutdown ()
 {
+    py::gil_scoped_acquire gil{};
+
     if (destination_ == Destination::e_file)
     {
         for (const auto& [symbol, chart] : charts_)
