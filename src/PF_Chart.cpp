@@ -73,7 +73,8 @@ using namespace std::string_literals;
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (const PF_Chart& rhs)
-    : boxes_{rhs.boxes_}, columns_{rhs.columns_}, current_column_{rhs.current_column_}, symbol_{rhs.symbol_},
+    : boxes_{rhs.boxes_}, signals_{rhs.signals_}, columns_{rhs.columns_},
+    current_column_{rhs.current_column_}, symbol_{rhs.symbol_},
     fname_box_size_{rhs.fname_box_size_}, atr_{rhs.atr_},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_}, last_checked_date_{rhs.last_checked_date_},
     y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
@@ -93,7 +94,8 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
-    : boxes_{std::move(rhs.boxes_)}, columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
+    : boxes_{std::move(rhs.boxes_)}, signals_{std::move(rhs.signals_)},
+    columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
     symbol_{std::move(rhs.symbol_)}, fname_box_size_{std::move(rhs.fname_box_size_)}, atr_{std::move(rhs.atr_)},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
     last_checked_date_{rhs.last_checked_date_}, 
@@ -842,9 +844,25 @@ bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& 
 	PF_TripleBottomSell tb_sell;
 	if (auto tb_sell_sig = tb_sell(the_chart, new_value, the_time); tb_sell_sig)
 	{
-		found_signal = true;
-		spdlog::debug("Found signal: {}", tb_sell_sig .value());
+        found_signal = true;
+        spdlog::debug("Found signal: {}", tb_sell_sig .value());
         the_chart.signals_.push_back(tb_sell_sig.value());
+	}
+
+	PF_Bullish_TT_Buy btt_buy;
+	if (auto btt_buy_sig = btt_buy(the_chart, new_value, the_time); btt_buy_sig)
+	{
+        found_signal = true;
+        spdlog::debug("Found signal: {}", btt_buy_sig .value());
+        the_chart.signals_.push_back(btt_buy_sig.value());
+	}
+
+	PF_Bearish_TB_Sell btb_sell;
+	if (auto btb_sell_sig = btb_sell(the_chart, new_value, the_time); btb_sell_sig)
+	{
+        found_signal = true;
+        spdlog::debug("Found signal: {}", btb_sell_sig .value());
+        the_chart.signals_.push_back(btb_sell_sig.value());
 	}
 
 	return found_signal;
