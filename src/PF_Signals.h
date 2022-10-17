@@ -20,6 +20,7 @@
 #define  PF_SIGNALS_INC
 
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <date/date.h>
@@ -146,9 +147,10 @@ template <> struct fmt::formatter<PF_Signal>: formatter<std::string>
                 sig_type = "Bearish TB Sell";
                 break;
         }
-        fmt::format_to(std::back_inserter(s), "category: {}. type: {}. time: {:%F %X}. col: {}. price {} box: {}.\n",
+        fmt::format_to(std::back_inserter(s), "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. price {} box: {}.\n",
            (signal.signal_category_ == PF_SignalCategory::e_PF_Buy ? "Buy" : signal.signal_category_ == PF_SignalCategory::e_PF_Sell ? "Sell" : "Unknown"),
            sig_type,
+           std::to_underlying(signal.priority_),
            signal.tpt_,
            signal.column_number_,
            signal.signal_price_,
