@@ -16,7 +16,6 @@
 // =====================================================================================
 
 #include <algorithm>
-#include <utility>
 
 #include <range/v3/algorithm/find_if.hpp>
 
@@ -193,6 +192,7 @@ std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart,
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Buy,
             .signal_type_=PF_SignalType::e_DoubleTop_Buy,
+            .priority_=PF_SignalPriority::e_DoubleTop_Buy,
             .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
@@ -222,6 +222,7 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart,
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Buy,
             .signal_type_=PF_SignalType::e_TripleTop_Buy,
+            .priority_=PF_SignalPriority::e_TripleTop_Buy,
             .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
@@ -250,6 +251,7 @@ std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_ch
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
             .signal_type_=PF_SignalType::e_DoubleBottom_Sell,
+            .priority_=PF_SignalPriority::e_DoubleBottom_Sell,
             .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
@@ -279,6 +281,7 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_ch
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
             .signal_type_=PF_SignalType::e_TripleBottom_Sell,
+            .priority_=PF_SignalPriority::e_TripleBottom_Sell,
             .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
@@ -309,6 +312,7 @@ std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_char
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Buy,
             .signal_type_=PF_SignalType::e_Bullish_TT_Buy,
+            .priority_=PF_SignalPriority::e_Bullish_TT_Buy,
             .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
@@ -339,6 +343,7 @@ std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_cha
 
         return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
             .signal_type_=PF_SignalType::e_Bearish_TB_Sell,
+            .priority_=PF_SignalPriority::e_Bearish_TB_Sell,
             .tpt_=the_time,
             .column_number_=static_cast<int32_t>(number_cols - 1),
             .signal_price_=new_value,
