@@ -32,12 +32,14 @@
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
 //#include <iterator>
-#include "PF_Signals.h"
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <date/date.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <limits>
 #include <utility>
 
 #include<date/tz.h>
@@ -47,6 +49,8 @@
 #include <fmt/chrono.h>
 
 #include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/algorithm/max_element.hpp>
+#include <range/v3/view/chunk_by.hpp>
 #include <range/v3/view/drop.hpp>
 #include <range/v3/view/filter.hpp>
 
@@ -61,6 +65,7 @@ namespace py = pybind11;
 using namespace py::literals;
 using namespace std::string_literals;
 
+#include "PF_Signals.h"
 #include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "PF_Column.h"
@@ -481,18 +486,73 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 	// extract and format the Signals, if any, from the chart. The drawing code can plot
 	// them or not.
 	// NOTE: we need to zap the column number with the skipped columns offset 
-	// so we make a copy of each signal first.
 
-    Json::Value sigs{Json::arrayValue};
-    for (auto sig : signals_ | ranges::views::filter([skipped_columns](const auto& sig){ return sig.column_number_ >= skipped_columns; }))
+	// let's try to do lower level setup for signals drawing here.
+    // we want 1 signal per column and that should be the signal with highest priority
+    // data is formated as needed by mplfinance library to build lists of marks to overlay
+    // on graphic. this saves a bunch of python code
+
+	const auto& sngls = GetSignals();
+    std::vector<double> dt_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> db_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> tt_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> tb_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> btt_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> btb_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
+
+    int had_dt_buy = 0;
+    int had_tt_buy = 0;
+    int had_db_sell = 0;
+    int had_tb_sell = 0;
+    int had_bullish_tt_buy = 0;
+    int had_bearish_tb_sell = 0;
+
+    for (const auto& sigs : sngls
+            | ranges::views::chunk_by([](const auto& a, const auto& b) { return a.column_number_ == b.column_number_; }))
     {
-        sig.column_number_ -= skipped_columns;
-        sigs.append(PF_SignalToJSON(sig));
+        if (sigs[0].column_number_ < skipped_columns)
+        {
+            continue;
+        }
+        const auto most_important = ranges::max_element(sigs, {}, [](const auto& s) { return std::to_underlying(s.priority_);}) ;
+        switch (most_important->signal_type_)
+        {
+            using enum PF_SignalType;
+            case e_Unknown:
+                break;
+            case e_DoubleTop_Buy:
+                dt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // dt_buys.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_dt_buy += 1;
+                break;
+            case e_DoubleBottom_Sell:
+                db_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // db_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_db_sell += 1;
+                break;
+            case e_TripleTop_Buy:
+                tt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // tt_buys.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_tt_buy += 1;
+                break;
+            case e_TripleBottom_Sell:
+                tb_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // tb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_tb_sell += 1;
+                break;
+            case e_Bullish_TT_Buy:
+                btt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // btt_buys.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_bullish_tt_buy += 1;
+                break;
+            case e_Bearish_TB_Sell:
+                btb_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // btb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_bearish_tb_sell += 1;
+                break;
+        }
     }
-	Json::StreamWriterBuilder wbuilder;
-	wbuilder["indentation"] = "";
-	std::string signals = Json::writeString(wbuilder, sigs);
-	
+
 	// want to show approximate overall change in value (computed from boxes, not actual prices)
 	
 	DprDecimal::DDecQuad first_value = 0;
@@ -552,7 +612,14 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         "openning_price"_a = openning_price,
         "UseLogScale"_a = IsPercent(),
         "ShowTrendLines"_a = show_trend_lines,
-        "signals"_a = signals
+        "the_signals"_a = py::dict{
+            "dt_buys"_a = had_dt_buy ? dt_buys : std::vector<double>{},
+            "db_sells"_a = had_db_sell ? db_sells : std::vector<double>{},
+            "tt_buys"_a = had_tt_buy ? tt_buys : std::vector<double>{},
+            "tb_sells"_a = had_tb_sell ? tb_sells : std::vector<double>{},
+            "bullish_tt_buys"_a = had_bullish_tt_buy ? btt_buys : std::vector<double>{},
+            "bearish_tb_sells"_a = had_bearish_tb_sell ? btb_sells : std::vector<double>{}
+        }
     };
 
         // Execute Python code, using the variables saved in `locals`
@@ -560,7 +627,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 //        py::gil_scoped_acquire gil{};
         py::exec(R"(
         PF_DrawChart.DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat,
-        ShowTrendLines, UseLogScale, Y_min, Y_max, openning_price, signals)
+        ShowTrendLines, UseLogScale, Y_min, Y_max, openning_price, the_signals)
         )", py::globals(), locals);
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
 
