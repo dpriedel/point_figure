@@ -508,12 +508,9 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     int had_bearish_tb_sell = 0;
 
     for (const auto& sigs : sngls
+            | ranges::views::filter([skipped_columns] (const auto& s) { return s.column_number_ >= skipped_columns; })
             | ranges::views::chunk_by([](const auto& a, const auto& b) { return a.column_number_ == b.column_number_; }))
     {
-        if (sigs[0].column_number_ < skipped_columns)
-        {
-            continue;
-        }
         const auto most_important = ranges::max_element(sigs, {}, [](const auto& s) { return std::to_underlying(s.priority_);}) ;
         switch (most_important->signal_type_)
         {
