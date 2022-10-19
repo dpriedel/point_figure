@@ -143,6 +143,7 @@ private:
 
     static void HandleSignal(int signal);
 
+    void ProcessUpdatesForSymbol(const Tiingo::StreamedData& updates, const std::string& ticker);
     // ====================  DATA MEMBERS  =======================================
 
     PF_Data charts_;

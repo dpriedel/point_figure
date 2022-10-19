@@ -91,6 +91,36 @@ using namespace std::literals::chrono_literals;
 
 bool PF_CollectDataApp::had_signal_ = false;
 
+// code from "The C++ Programming Language" 4th Edition. p. 1243.
+
+template<typename T>
+int wait_for_any(std::vector<std::future<T>>& vf, std::chrono::steady_clock::duration d)
+// return index of ready future
+// if no future is ready, wait for d before trying again
+{
+    while(true)
+    {
+        for (int i=0; i!=vf.size(); ++i)
+        {
+            if (!vf[i].valid()) continue;
+            switch (vf[i].wait_for(0s))
+            {
+            case std::future_status::ready:
+                    return i;
+
+            case std::future_status::timeout:
+                break;
+
+            case std::future_status::deferred:
+                throw std::runtime_error("wait_for_all(): deferred future");
+            }
+        }
+    std::this_thread::sleep_for(d);
+    }
+}
+
+
+
 //--------------------------------------------------------------------------------------
 //       Class:  PF_CollectDataApp
 //      Method:  PF_CollectDataApp
@@ -1008,6 +1038,8 @@ void PF_CollectDataApp::CollectStreamingData ()
 void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
 //    py::gil_scoped_acquire gil{};
+    std::exception_ptr ep = nullptr;
+
     while(true)
     {
         if (! streamed_data->empty())
@@ -1019,41 +1051,81 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
                 streamed_data->pop();
             }
             const auto pf_data = quotes->ExtractData(new_data);
+            
+            // our pf_data may contain 1 or more updates for 1 or more symbols.
+            // so we'll process it a symbol at a time.
+            // each symbol will have its own thread.
 
-            // keep track of what needs to be updated 
+            std::vector<std::string> tickers_in_update;
+            ranges::for_each(pf_data, [&tickers_in_update](const auto& u) {tickers_in_update.push_back(u.ticker_); });
+            tickers_in_update |= ranges::actions::sort | ranges::actions::unique;
 
-            std::vector<PF_Chart*> need_to_update_graph;
-
-            // since we can have multiple charts for each symbol, we need to pass the new value
-            // to all appropriate charts so we find all the charts for each symbol and give each a 
-            // chance at the new data.
-
-            for (const auto& new_value: pf_data)
+            if (tickers_in_update.size() > 1)
             {
-                ranges::for_each(charts_ | ranges::views::filter([&new_value] (const auto& symbol_and_chart) { return symbol_and_chart.first == new_value.ticker_; }),
-                    [&] (auto& symbol_and_chart)
+                std::vector<std::future<void>> tasks;
+                for(const auto& ticker : tickers_in_update)
+                {
+                    tasks.emplace_back(std::async(std::launch::async, &PF_CollectDataApp::ProcessUpdatesForSymbol, this, pf_data, ticker));
+                }
+                // now, let's wait till they're all done
+                // and then we'll do the next bunch.
+
+                for (int count = tasks.size(); count; --count)
+                {
+                    int k = wait_for_any(tasks, 100us);
+                    // std::cout << "k: " << k << '\n';
+                    try
                     {
-                        auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
-                        if (chart_changed != PF_Column::Status::e_ignored)
+                        tasks[k].get();
+                    }
+                    catch (std::system_error& e)
+                    {
+                        // any system problems, we eventually abort, but only after finishing work in process.
+
+                        spdlog::error(e.what());
+                        auto ec = e.code();
+                        spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(), ec.message());
+
+                        // OK, let's remember our first time here.
+
+                        if (! ep)
                         {
-                            need_to_update_graph.push_back(&symbol_and_chart.second);
+                            ep = std::current_exception();
                         }
-                    });
+                        continue;
+                    }
+                    catch (std::exception& e)
+                    {
+                        // any problems, we'll document them and continue.
+
+                        spdlog::error(e.what());
+
+                        if (! ep)
+                        {
+                            ep = std::current_exception();
+                        }
+                        continue;
+                    }
+                    catch (...)
+                    {
+                        // any problems, we'll document them and continue.
+
+                        spdlog::error("Unknown problem with an async download process");
+
+                        if (! ep)
+                        {
+                            ep = std::current_exception();
+                        }
+                        continue;
+                    }
+                }
             }
-
-            // we could have multiple chart updates for any given symbol but we only
-            // want to update files and graphic once per symbol.
-
-            need_to_update_graph |= ranges::actions::sort | ranges::actions::unique;
-
-            for (const PF_Chart* chart : need_to_update_graph)
+            else
             {
-                py::gil_scoped_acquire gil{};
-                fs::path graph_file_path = output_graphs_directory_ / (chart->ChartName("", "svg"));
-                chart->ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+                // if there are updates for only 1 symbol
+                // then no need for threading overhead.
 
-                fs::path chart_file_path = output_chart_directory_ / (chart->ChartName("", "json"));
-                chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
+                ProcessUpdatesForSymbol(pf_data, tickers_in_update[0]);
             }
         }
         else
@@ -1065,7 +1137,51 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
             break;
         }
     }
+    if (ep)
+    {
+        // spdlog::error(catenate("Processed: ", file_list.size(), " files. Successes: ", success_counter,
+        //         ". Errors: ", error_counter, "."));
+        std::rethrow_exception(ep);
+    }
+
 }		// -----  end of method PF_CollectDataApp::ProcessStreamedData  ----- 
+
+void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& updates, const std::string& ticker)
+{
+    std::vector<PF_Chart*> need_to_update_graph;
+
+    // since we can have multiple charts for each symbol, we need to pass the new value
+    // to all appropriate charts so we find all the charts for each symbol and give each a 
+    // chance at the new data.
+
+    for (const auto& new_value: updates | ranges::views::filter([&ticker] (const auto& update) { return update.ticker_ == ticker; }))
+    {
+        ranges::for_each(charts_ | ranges::views::filter([&new_value] (const auto& symbol_and_chart) { return symbol_and_chart.first == new_value.ticker_; }),
+            [&] (auto& symbol_and_chart)
+            {
+                auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
+                if (chart_changed != PF_Column::Status::e_ignored)
+                {
+                    need_to_update_graph.push_back(&symbol_and_chart.second);
+                }
+            });
+    }
+
+    // we could have multiple chart updates for any given symbol but we only
+    // want to update files and graphic once per symbol.
+
+    need_to_update_graph |= ranges::actions::sort | ranges::actions::unique;
+
+    for (const PF_Chart* chart : need_to_update_graph)
+    {
+        py::gil_scoped_acquire gil{};
+        fs::path graph_file_path = output_graphs_directory_ / (chart->ChartName("", "svg"));
+        chart->ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+
+        fs::path chart_file_path = output_chart_directory_ / (chart->ChartName("", "json"));
+        chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
+    }
+}		// -----  end of method PF_CollectDataApp::ProcessUpdatesForSymbol  ----- 
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 {
