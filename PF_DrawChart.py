@@ -77,70 +77,10 @@ def SetStepbackColor(is_up, stepped_back):
 
 
 def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, ShowTrendLines,
-              UseLogScale, Y_min, Y_max, openning_price, the_signals):
+              UseLogScale, Y_min, Y_max, openning_price, the_signals, streamed_prices):
 
     apds = []
     if ReversalBoxes > 1:
-        # print(signals)
-        # signal_data = json.loads(signals)
-        #
-        # # extract triple top buys
-        # # need to have correct number of values in list
-        # # must be same as number of rows columns in data
-        # dt_buys = [np.nan] * len(the_data["Open"])
-        # tt_buys = [np.nan] * len(the_data["Open"])
-        # db_sells = [np.nan] * len(the_data["Open"])
-        # tb_sells = [np.nan] * len(the_data["Open"])
-        # bullish_tt_buys = [np.nan] * len(the_data["Open"])
-        # bearish_tb_sells = [np.nan] * len(the_data["Open"])
-
-        # had_dt_buy = 1
-        # had_tt_buy = 1
-        # had_db_sell = 1
-        # had_tb_sell = 1
-        # had_bullish_tt_buy = 1
-        # had_bearish_tb_sell = 1
-        #
-        # for sig in signal_data:
-        #     if sig["type"] == "dt_buy":
-        #         dt_buys[int(sig["column"])] = float(sig["box"])
-        #         had_dt_buy += 1
-        #     elif sig["type"] == "tt_buy":
-        #         tt_buys[int(sig["column"])] = float(sig["box"])
-        #         had_tt_buy += 1
-        #     elif sig["type"] == "db_sell":
-        #         db_sells[int(sig["column"])] = float(sig["box"])
-        #         had_db_sell += 1
-        #     elif sig["type"] == "tb_sell":
-        #         tb_sells[int(sig["column"])] = float(sig["box"])
-        #         had_tb_sell += 1
-        #     elif sig["type"] == "bullish_tt_buy":
-        #         bullish_tt_buys[int(sig["column"])] = float(sig["box"])
-        #         had_bullish_tt_buy += 1
-        #     elif sig["type"] == "bearish_tb_sell":
-        #         bearish_tb_sells[int(sig["column"])] = float(sig["box"])
-        #         had_bearish_tb_sell += 1
-
-        # use the higher priority signal when more than 1 at a location
-        # hard code for now 
-
-        # for indx in range(len(dt_buys)):
-        #     if not np.isnan(dt_buys[indx]) and not np.isnan(tt_buys[indx]):
-        #         dt_buys[indx] = np.nan
-        #         had_dt_buy -= 1
-        # for indx in range(len(tt_buys)):
-        #     if not np.isnan(tt_buys[indx]) and not np.isnan(bullish_tt_buys[indx]):
-        #         tt_buys[indx] = np.nan
-        #         had_tt_buy -= 1
-        # for indx in range(len(db_sells)):
-        #     if not np.isnan(db_sells[indx]) and not np.isnan(tb_sells[indx]):
-        #         db_sells[indx] = np.nan
-        #         had_db_sell -= 1
-        # for indx in range(len(tb_sells)):
-        #     if not np.isnan(tb_sells[indx]) and not np.isnan(bearish_tb_sells[indx]):
-        #         tb_sells[indx] = np.nan
-        #         had_tb_sell -= 1
-
         if len(the_signals["dt_buys"]) > 0:
             sig_buys0 = mpf.make_addplot(the_signals["dt_buys"], type="scatter", marker="^", color="black")
             apds.append(sig_buys0)
