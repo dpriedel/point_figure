@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-    This is a driver module to read and extract the data from a 
+    This is a driver module to read and extract the data from a
     PF_Chart data file and then plot it as an svg.
 """
 
@@ -22,6 +22,7 @@ handler.setFormatter(formatter)
 THE_LOGGER.addHandler(handler)
 
 import PF_DrawChart
+
 
 def Main():
 
@@ -110,11 +111,12 @@ def makes_sense_to_run(args):
 
     return True
 
+
 def ProcessChartFile(args):
     with open(args.input_file_name_) as json_file:
         chart_data = json.load(json_file)
         # print(chart_data)
-    
+
     openData = []
     closeData = []
     highData = []
@@ -144,13 +146,13 @@ def ProcessChartFile(args):
             closeData.append(float(col["bottom"]))
             direction_is_up.append(False)
 
-        # need to do proper time selection here 
+        # need to do proper time selection here
         if (args.y_axis_format_ == "date"):
-            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["first_entry"]) / 1e9).date())
+            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["start_at"]) / 1e9).date())
         else:
-            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["first_entry"]) / 1e9))
+            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["start_at"]) / 1e9))
         had_step_back.append(col["had_reversal"])
-        
+
     lowData.append(float(chart_data["current_column"]["bottom"]))
     highData.append(float(chart_data["current_column"]["top"]))
 
@@ -163,15 +165,15 @@ def ProcessChartFile(args):
         closeData.append(float(chart_data["current_column"]["bottom"]))
         direction_is_up.append(False)
 
-    # need to do proper time selection here 
+    # need to do proper time selection here
     if (args.y_axis_format_ == "date"):
-        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["first_entry"]) / 1e9).date())
+        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["start_at"]) / 1e9).date())
     else:
-        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["first_entry"]) / 1e9))
+        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["start_at"]) / 1e9))
 
     had_step_back.append(chart_data["current_column"]["had_reversal"])
 
-    # see if we need to grab n most recent columns 
+    # see if we need to grab n most recent columns
 
     if args.number_columns_ > 0:
         x_axis_labels = x_axis_labels[:-args.number_columns_]
@@ -191,17 +193,35 @@ def ProcessChartFile(args):
     the_data["Low"] = lowData
     the_data["Close"] = closeData
 
+    the_signals = {}
+    the_signals["dt_buys"] = []
+    the_signals["db_sells"] = []
+    the_signals["tt_buys"] = []
+    the_signals["tb_sells"] = []
+    the_signals["bullish_tt_buys"] = []
+    the_signals["bearish_tb_sells"] = []
+
+    streamed_prices = {}
+    streamed_prices["the_time"] = []
+    streamed_prices["price"] = []
+
     date_time_format = "%Y-%m-%d" if args.y_axis_format_ == "date" else "%H:%M:%S"
 
     chart_name = MakeChartName(chart_data)
     graphic_file_name = os.path.join(args.output_directory_name_, chart_name)
 
-    PF_DrawChart.DrawChart(the_data, direction_is_up, had_step_back, chart_title, graphic_file_name, date_time_format,
-            args.trend_lines_, False, float(chart_data["y_min"]), float(chart_data["y_max"]), float(openning_price))
+    PF_DrawChart.DrawChart(the_data, chart_data["current_column"]["reversal_boxes"], direction_is_up,
+                           had_step_back, chart_title, graphic_file_name, date_time_format,
+                           args.trend_lines_, False, float(chart_data["y_min"]),
+                           float(chart_data["y_max"]), float(openning_price), the_signals, streamed_prices)
 
-def MakeChartName (chart_data):
-    chart_name = "{}_{}{}X{}_{}.{}".format(chart_data["symbol"], chart_data["fname_box_size"], ("%" if chart_data["boxes"]["box_scale"] == "percent" else ""),
-            chart_data["current_column"]["reversal_boxes"], ("linear" if chart_data["boxes"]["box_scale"] == "linear" else "percent"), "svg");
+
+def MakeChartName(chart_data):
+    chart_name = "{}_{}{}X{}_{}.{}".format(chart_data["symbol"], chart_data["fname_box_size"],
+                                           ("%" if chart_data["boxes"]["box_scale"] == "percent" else ""),
+                                           chart_data["current_column"]["reversal_boxes"],
+                                           ("linear" if chart_data["boxes"]["box_scale"] == "linear"
+                                            else "percent"), "svg")
     return chart_name
 
 
