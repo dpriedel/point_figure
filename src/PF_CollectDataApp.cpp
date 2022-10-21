@@ -83,7 +83,6 @@ using namespace py::literals;
 #include "PF_Column.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
-#include "utilities.h"
 
 using namespace std::string_literals;
 using namespace date::literals;
@@ -775,6 +774,10 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 
 void PF_CollectDataApp::Run_Streaming()
 {
+    for (const auto& symbol : symbol_list_)
+    {
+        streamed_prices_[symbol] = {};
+    }
     auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
     auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
@@ -1156,14 +1159,16 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
 
     for (const auto& new_value: updates | ranges::views::filter([&ticker] (const auto& update) { return update.ticker_ == ticker; }))
     {
-        ranges::for_each(charts_ | ranges::views::filter([&new_value] (const auto& symbol_and_chart) { return symbol_and_chart.first == new_value.ticker_; }),
-            [&] (auto& symbol_and_chart)
+        ranges::for_each(charts_ | ranges::views::filter([&ticker] (const auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+            [this, &need_to_update_graph, &new_value, &ticker] (auto& symbol_and_chart)
             {
                 auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
                 if (chart_changed != PF_Column::Status::e_ignored)
                 {
                     need_to_update_graph.push_back(&symbol_and_chart.second);
                 }
+                streamed_prices_[ticker].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
+                streamed_prices_[ticker].price_.push_back(new_value.last_price_.ToDouble());
             });
     }
 
@@ -1176,7 +1181,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
     {
         py::gil_scoped_acquire gil{};
         fs::path graph_file_path = output_graphs_directory_ / (chart->ChartName("", "svg"));
-        chart->ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+        chart->ConstructChartGraphAndWriteToFile(graph_file_path, streamed_prices_[ticker], trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
         fs::path chart_file_path = output_chart_directory_ / (chart->ChartName("", "json"));
         chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
@@ -1276,7 +1281,7 @@ void PF_CollectDataApp::Shutdown ()
             	if (graphics_format_ == GraphicsFormat::e_svg)
             	{
 					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					chart.ConstructChartGraphAndWriteToFile(graph_file_path, {}, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
             	}
             	else
             	{
@@ -1300,7 +1305,7 @@ void PF_CollectDataApp::Shutdown ()
 				if (graphics_format_ == GraphicsFormat::e_svg)
 				{
 					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName(interval_i, "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					chart.ConstructChartGraphAndWriteToFile(graph_file_path, {}, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
 				}
 				chart.StoreChartInChartsDB(pf_db, interval_i, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, graphics_format_ == GraphicsFormat::e_csv);
 			}

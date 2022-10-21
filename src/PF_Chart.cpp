@@ -403,7 +403,7 @@ std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view in
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
-void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, const std::string& show_trend_lines, X_AxisFormat date_or_time) const
+void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, const streamed_prices& streamed_prices, const std::string& show_trend_lines, X_AxisFormat date_or_time) const
 {
 	BOOST_ASSERT_MSG(! IsEmpty(), fmt::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
 
@@ -616,6 +616,10 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             "tb_sells"_a = had_tb_sell ? tb_sells : std::vector<double>{},
             "bullish_tt_buys"_a = had_bullish_tt_buy ? btt_buys : std::vector<double>{},
             "bearish_tb_sells"_a = had_bearish_tb_sell ? btb_sells : std::vector<double>{}
+        },
+        "streamed_prices"_a = py::dict{
+            "the_time"_a = streamed_prices.timestamp_,
+            "price"_a = streamed_prices.price_
         }
     };
 
@@ -624,7 +628,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 //        py::gil_scoped_acquire gil{};
         py::exec(R"(
         PF_DrawChart.DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat,
-        ShowTrendLines, UseLogScale, Y_min, Y_max, openning_price, the_signals)
+        ShowTrendLines, UseLogScale, Y_min, Y_max, openning_price, the_signals, streamed_prices)
         )", py::globals(), locals);
 }		// -----  end of method PF_Chart::ConstructChartAndWriteToFile  ----- 
 

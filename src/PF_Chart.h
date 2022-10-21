@@ -131,7 +131,7 @@ public:
     [[nodiscard]] PF_Column::TmPt GetLastChangeTime() const { return last_change_date_; }
     [[nodiscard]] PF_Column::TmPt GetLastCheckedTime() const { return last_checked_date_; }
 
-    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, const std::string& show_trend_lines, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
+    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, const streamed_prices& streamed_prices, const std::string& show_trend_lines, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
     void ConvertChartToJsonAndWriteToFile(const fs::path& output_filename) const;
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;

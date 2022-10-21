@@ -59,6 +59,7 @@ namespace po = boost::program_options;
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
+#include "utilities.h"
 
 
 // =====================================================================================
@@ -144,7 +145,10 @@ private:
     static void HandleSignal(int signal);
 
     void ProcessUpdatesForSymbol(const Tiingo::StreamedData& updates, const std::string& ticker);
+
     // ====================  DATA MEMBERS  =======================================
+
+    PF_StreamedPrices streamed_prices_;
 
     PF_Data charts_;
 
