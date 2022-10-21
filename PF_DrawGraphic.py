@@ -5,15 +5,17 @@
     PF_Chart data file and then plot it as an svg.
 """
 
+import argparse
+import datetime
+import itertools
+import json
+import logging
+import numpy as np
 import os
 import sys
-import json
-
 import traceback
-import datetime
-import argparse
 
-import logging
+from pandas.io.formats.format import buffer_put_lines
 THE_LOGGER = logging.getLogger()        # use the default 'root' name
 THE_LOGGER.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stderr)
@@ -148,9 +150,9 @@ def ProcessChartFile(args):
 
         # need to do proper time selection here
         if (args.y_axis_format_ == "date"):
-            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["start_at"]) / 1e9).date())
+            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["first_entry"]) / 1e9).date())
         else:
-            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["start_at"]) / 1e9))
+            x_axis_labels.append(datetime.datetime.fromtimestamp(int(col["first_entry"]) / 1e9))
         had_step_back.append(col["had_reversal"])
 
     lowData.append(float(chart_data["current_column"]["bottom"]))
@@ -167,9 +169,9 @@ def ProcessChartFile(args):
 
     # need to do proper time selection here
     if (args.y_axis_format_ == "date"):
-        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["start_at"]) / 1e9).date())
+        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["first_entry"]) / 1e9).date())
     else:
-        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["start_at"]) / 1e9))
+        x_axis_labels.append(datetime.datetime.fromtimestamp(int(chart_data["current_column"]["first_entry"]) / 1e9))
 
     had_step_back.append(chart_data["current_column"]["had_reversal"])
 
@@ -194,16 +196,63 @@ def ProcessChartFile(args):
     the_data["Close"] = closeData
 
     the_signals = {}
-    the_signals["dt_buys"] = []
-    the_signals["db_sells"] = []
-    the_signals["tt_buys"] = []
-    the_signals["tb_sells"] = []
-    the_signals["bullish_tt_buys"] = []
-    the_signals["bearish_tb_sells"] = []
 
     streamed_prices = {}
     streamed_prices["the_time"] = []
     streamed_prices["price"] = []
+
+    # NOTE: this code is 'copied' from my C++ code which ported to Python pretty
+    # directly (ignoring syntax)
+
+    if chart_data["current_column"]["reversal_boxes"] > 1:
+        signal_data = chart_data["signals"]
+        # print(signal_data)
+
+        # need to have correct number of values in list
+        # must be same as number of rows columns in data
+        dt_buys = [np.nan] * len(the_data["Open"])
+        tt_buys = [np.nan] * len(the_data["Open"])
+        db_sells = [np.nan] * len(the_data["Open"])
+        tb_sells = [np.nan] * len(the_data["Open"])
+        bullish_tt_buys = [np.nan] * len(the_data["Open"])
+        bearish_tb_sells = [np.nan] * len(the_data["Open"])
+
+        had_dt_buy = 0
+        had_tt_buy = 0
+        had_db_sell = 0
+        had_tb_sell = 0
+        had_bullish_tt_buy = 0
+        had_bearish_tb_sell = 0
+
+        for col_num, sigs in itertools.groupby(signal_data, lambda s: s["column"]):
+            most_important = max(sigs, key=lambda s: int(s["priority"]))
+
+            match most_important["type"]:
+                case "dt_buy":
+                    dt_buys[int(most_important["column"])] = float(most_important["box"])
+                    had_dt_buy += 1
+                case "db_sell":
+                    db_sells[int(most_important["column"])] = float(most_important["box"])
+                    had_db_sell += 1
+                case "tt_buy":
+                    tt_buys[int(most_important["column"])] = float(most_important["box"])
+                    had_tt_buy += 1
+                case "tb_sell":
+                    tb_sells[int(most_important["column"])] = float(most_important["box"])
+                    had_tb_sell += 1
+                case "bullish_tt_buy":
+                    bullish_tt_buys[int(most_important["column"])] = float(most_important["box"])
+                    had_bullish_tt_buy += 1
+                case "bearish_tb_sell":
+                    bearish_tb_sells[int(most_important["column"])] = float(most_important["box"])
+                    had_bearish_tb_sell += 1
+
+        the_signals["dt_buys"] = dt_buys if had_dt_buy else []
+        the_signals["db_sells"] = db_sells if had_db_sell else []
+        the_signals["tt_buys"] = tt_buys if had_tt_buy else []
+        the_signals["tb_sells"] = tb_sells if had_tb_sell else []
+        the_signals["bullish_tt_buys"] = bullish_tt_buys if had_bullish_tt_buy else []
+        the_signals["bearish_tb_sells"] = bearish_tb_sells if had_bearish_tb_sell else []
 
     date_time_format = "%Y-%m-%d" if args.y_axis_format_ == "date" else "%H:%M:%S"
 
