@@ -1,11 +1,13 @@
 
-import json
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-import mplfinance as mpf
-from matplotlib.ticker import ScalarFormatter
 import numpy as np
+import mplfinance as mpf
+
+import warnings
+import matplotlib.cbook
+warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
 
 """
     Make this code into a module so it can be loaded at program
@@ -62,10 +64,6 @@ def FindMinimum(is_up, chart_data):
     return minimum_column
 
 
-def FindNextMaximum(data, start_at):
-    pass
-
-
 def SetStepbackColor(is_up, stepped_back):
     if is_up:
         if stepped_back:
@@ -79,32 +77,17 @@ def SetStepbackColor(is_up, stepped_back):
 def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName, DateTimeFormat, ShowTrendLines,
               UseLogScale, Y_min, Y_max, openning_price, the_signals, streamed_prices):
 
-    apds = []
-    if ReversalBoxes > 1:
-        if len(the_signals["dt_buys"]) > 0:
-            sig_buys0 = mpf.make_addplot(the_signals["dt_buys"], type="scatter", marker="^", color="black")
-            apds.append(sig_buys0)
-        if len(the_signals["tt_buys"]) > 0:
-            sig_buys = mpf.make_addplot(the_signals["tt_buys"], type="scatter", marker="^", color="yellow")
-            apds.append(sig_buys)
-        if len(the_signals["db_sells"]) > 0:
-            sig_sells = mpf.make_addplot(the_signals["db_sells"], type="scatter", marker="v", color="black")
-            apds.append(sig_sells)
-        if len(the_signals["tb_sells"]) > 0:
-            sig_sells3 = mpf.make_addplot(the_signals["tb_sells"], type="scatter", marker="v", color="yellow")
-            apds.append(sig_sells3)
-        if len(the_signals["bullish_tt_buys"]) > 0:
-            sig_buys2 = mpf.make_addplot(the_signals["bullish_tt_buys"], type="scatter", marker="P", color="blue")
-            apds.append(sig_buys2)
-        if len(the_signals["bearish_tb_sells"]) > 0:
-            sig_sells2 = mpf.make_addplot(the_signals["bearish_tb_sells"], type="scatter", marker="X", color="blue")
-            apds.append(sig_sells2)
-
     chart_data = pd.DataFrame(the_data)
-    chart_data["Date"] = pd.to_datetime(chart_data["Date"])
-    chart_data.set_index("Date", drop=False, inplace=True)
+    chart_data["DateTime"] = pd.to_datetime(chart_data["Date"], format=DateTimeFormat)
+    chart_data.set_index("DateTime", drop=True, inplace=True)
 
     chart_data["row_number"] = np.arange(chart_data.shape[0])
+
+    prices = pd.DataFrame(streamed_prices)
+    if prices.shape[0] > 0:
+        prices["Time"] = pd.to_datetime(prices["the_time"])
+        del prices["the_time"]
+        prices.set_index("Time", drop=True, inplace=True)
 
     mco = []
     for i in range(len(IsUp)):
@@ -113,79 +96,119 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
     mc = mpf.make_marketcolors(up='g', down='r')
     s = mpf.make_mpf_style(marketcolors=mc, gridstyle="dashed")
 
-    # now generate a sequence of date pairs:
-    # dates = chart_data["Date"]
-    # datepairs = [(d1,d2) for d1,d2 in zip(dates,dates[1:])]
-
-    if chart_data.shape[0] < 3:
-        ShowTrendLines = "no"
-
-    if ShowTrendLines == "no":
-        fig, axlist = mpf.plot(chart_data,
-                               type="candle",
-                               style=s,
-                               marketcolor_overrides=mco,
-                               title=ChartTitle,
-                               figsize=(14, 10),
-                               datetime_format=DateTimeFormat,
-                               hlines=dict(hlines=[openning_price], colors=['r'], linestyle='dotted', linewidths=(2)),
-                               addplot=apds,
-                               returnfig=True)
-
-    elif ShowTrendLines == "angle":
-
-        # 45 degree trend line.
-        # need 2 points: first down column bottom and computed value for last column
-
-        x1 = FindMinimum(IsUp, chart_data)
-        y1 = chart_data.iloc[x1]["Low"]
-        x2 = chart_data.shape[0] - 1
-
-        # formula for point slope line equation
-        # y = slope(x - x1) + y1
-
-        y2 = SLOPE * (x2 - x1) + y1
-        a_line_points = [(chart_data.iloc[x1]["Date"], y1), (chart_data.iloc[x2]["Date"], y2)]
-        fig, axlist = mpf.plot(chart_data,
-                               type="candle",
-                               style=s,
-                               marketcolor_overrides=mco,
-                               title=ChartTitle,
-                               figsize=(14, 10),
-                               datetime_format=DateTimeFormat,
-                               alines=a_line_points,
-                               returnfig=True)
-
+    if prices.shape[0] < 1:
+        fig = mpf.figure(figsize=(14, 10))
+        ax1 = fig.add_subplot(1, 1, 1, style=s)
+        ax2 = None
     else:
-        d1 = chart_data.index[0]
-        d2 = chart_data.index[-1]
-        tdates = [(d1, d2)]
-    
-        fig, axlist = mpf.plot(chart_data,
-                               type="candle",
-                               style=s,
-                               marketcolor_overrides=mco,
-                               title=ChartTitle,
-                               figsize=(14, 10),
-                               datetime_format=DateTimeFormat,
-                               tlines=[dict(tlines=tdates, tline_use='High', tline_method="point-to-point", colors='r'),
-                                       dict(tlines=tdates, tline_use='Low', tline_method="point-to-point", colors='b')],
-                               returnfig=True)
+        fig = mpf.figure(figsize=(14, 14))
+        ax1 = fig.add_subplot(2, 1, 1, style=s)
+        ax2 = fig.add_subplot(2, 1, 2, style='yahoo')
 
-    axlist[0].tick_params(which='both', left=True, right=True, labelright=True)
-    axlist[0].secondary_xaxis('top')
+    apds = []
 
-    if UseLogScale:
-        plt.ylim(Y_min, Y_max)
-        axlist[0].set_yscale("log")
-        axlist[0].grid(which='both', axis='both', ls='-')
-        axlist[0].yaxis.set_major_formatter(ScalarFormatter())
-        axlist[0].yaxis.set_minor_formatter(ScalarFormatter())
+    if ReversalBoxes > 1:
+        if len(the_signals["dt_buys"]) > 0:
+            sig_buys0 = mpf.make_addplot(the_signals["dt_buys"], ax=ax1, type="scatter", marker="^", color="black")
+            apds.append(sig_buys0)
+        if len(the_signals["tt_buys"]) > 0:
+            sig_buys = mpf.make_addplot(the_signals["tt_buys"], ax=ax1, type="scatter", marker="^", color="yellow")
+            apds.append(sig_buys)
+        if len(the_signals["db_sells"]) > 0:
+            sig_sells = mpf.make_addplot(the_signals["db_sells"], ax=ax1, type="scatter", marker="v", color="black")
+            apds.append(sig_sells)
+        if len(the_signals["tb_sells"]) > 0:
+            sig_sells3 = mpf.make_addplot(the_signals["tb_sells"], ax=ax1, type="scatter", marker="v", color="yellow")
+            apds.append(sig_sells3)
+        if len(the_signals["bullish_tt_buys"]) > 0:
+            sig_buys2 = mpf.make_addplot(the_signals["bullish_tt_buys"], ax=ax1, type="scatter", marker="P", color="blue")
+            apds.append(sig_buys2)
+        if len(the_signals["bearish_tb_sells"]) > 0:
+            sig_sells2 = mpf.make_addplot(the_signals["bearish_tb_sells"], ax=ax1, type="scatter", marker="X", color="blue")
+            apds.append(sig_sells2)
+
+    mpf.plot(chart_data,
+             ax=ax1,
+             type="candle",
+             style=s,
+             marketcolor_overrides=mco,
+             # title=ChartTitle,
+             datetime_format=DateTimeFormat,
+             hlines=dict(hlines=[openning_price], colors=['r'], linestyle='dotted', linewidths=(2)),
+             addplot=apds)
+
+    plt.tick_params(which='both', left=True, right=True, labelright=True)
+
+    fig.suptitle(ChartTitle)
+    if prices.shape[0] > 0:
+        zzz = prices.plot(ax=ax2)
+        # zzz.xaxis.set_minor_locator(AutoMinorLocator(8*6))
+        zzz.grid(which='minor', axis='x', linestyle='dashed')
+
+    # zzz.xaxis.set_minor_formatter(dates.AutoDateFormatter(dates.SecondLocator(10)))
+    # plt.plot(prices,
+    #          axes=ax2)
+
+    # elif ShowTrendLines == "angle":
+    #
+    #     # 45 degree trend line.
+    #     # need 2 points: first down column bottom and computed value for last column
+    #
+    #     x1 = FindMinimum(IsUp, chart_data)
+    #     y1 = chart_data.iloc[x1]["Low"]
+    #     x2 = chart_data.shape[0] - 1
+    #
+    #     # formula for point slope line equation
+    #     # y = slope(x - x1) + y1
+    #
+    #     y2 = SLOPE * (x2 - x1) + y1
+    #     a_line_points = [(chart_data.iloc[x1]["Date"], y1), (chart_data.iloc[x2]["Date"], y2)]
+    #     fig, axlist = mpf.plot(chart_data,
+    #                            type="candle",
+    #                            style=s,
+    #                            marketcolor_overrides=mco,
+    #                            title=ChartTitle,
+    #                            figsize=(14, 10),
+    #                            datetime_format=DateTimeFormat,
+    #                            alines=a_line_points,
+    #                            returnfig=True)
+    #
+    # else:
+    #     d1 = chart_data.index[0]
+    #     d2 = chart_data.index[-1]
+    #     tdates = [(d1, d2)]
+    #
+    #     fig, axlist = mpf.plot(chart_data,
+    #                            type="candle",
+    #                            style=s,
+    #                            marketcolor_overrides=mco,
+    #                            title=ChartTitle,
+    #                            figsize=(14, 10),
+    #                            datetime_format=DateTimeFormat,
+    #                            tlines=[dict(tlines=tdates, tline_use='High', tline_method="point-to-point", colors='r'),
+    #                                    dict(tlines=tdates, tline_use='Low', tline_method="point-to-point", colors='b')],
+    #                            returnfig=True)
+
+    plt.tick_params(which='both', left=True, right=True, labelright=True)
+    # ax1.secondary_xaxis('top')
+    #
+    # if UseLogScale:
+    #     plt.ylim(Y_min, Y_max)
+    #     axlist[0].set_yscale("log")
+    #     axlist[0].grid(which='both', axis='both', ls='-')
+    #     axlist[0].yaxis.set_major_formatter(ScalarFormatter())
+    #     axlist[0].yaxis.set_minor_formatter(ScalarFormatter())
 
     plt.savefig(ChartFileName)
-    for ax in axlist:
-        ax.clear()
-        del ax
+    # ax1.clear()
+    # ax2.clear()
+    del ax1
+    if prices.shape[0] > 0:
+        del ax2
+
+    # for ax in axlist:
+    #     ax.clear()
+    #     del ax
     plt.close(fig)
-    del axlist
+    # del axlist
     del fig
