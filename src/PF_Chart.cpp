@@ -603,7 +603,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         "StepBack"_a = had_step_back,
         "ChartTitle"_a = chart_title,
         "ChartFileName"_a = output_filename.string(),
-        "DateTimeFormat"_a = date_or_time == X_AxisFormat::e_show_date ? "%F" : "%H:%M:%S",
+        "DateTimeFormat"_a = date_or_time == X_AxisFormat::e_show_date ? "%Y-%m-%d" : "%H:%M:%S",
         "Y_min"_a = GetYLimits().first.ToDouble(),
         "Y_max"_a = GetYLimits().second.ToDouble(),
         "openning_price"_a = openning_price,
