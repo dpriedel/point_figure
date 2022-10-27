@@ -12,6 +12,7 @@ import json
 import logging
 import numpy as np
 import os
+import pandas as pd
 import sys
 import traceback
 
@@ -68,6 +69,8 @@ def GetArgs():
                         help="Draw trend lines on graphic. Default is 'no'. Can be 'data' or 'angle'.")
     parser.add_argument("-n", "--number-cols", type=int, action="store", dest="number_columns_", default=0,
                         help="Maximun number of columns to show in graph. Default is '0' which means 'all'.")
+    parser.add_argument("--prices", action="store", dest="prices_file_",
+                        help="Path name of file containing 'streamed' price data.")
     parser.add_argument("-l", "--logging", action="store", dest="log_level_", default="warning",
                         help="logging level: info, debug, warning, error, critical. Default is 'warning'.")
     parser.add_argument("-u", "--user", action="store", dest="user_name_", default="data_updater_pg", required=False,
@@ -197,10 +200,6 @@ def ProcessChartFile(args):
 
     the_signals = {}
 
-    streamed_prices = {}
-    streamed_prices["the_time"] = []
-    streamed_prices["price"] = []
-
     # NOTE: this code is 'copied' from my C++ code which ported to Python pretty
     # directly (ignoring syntax)
 
@@ -254,6 +253,20 @@ def ProcessChartFile(args):
         the_signals["bullish_tt_buys"] = bullish_tt_buys if had_bullish_tt_buy else []
         the_signals["bearish_tb_sells"] = bearish_tb_sells if had_bearish_tb_sell else []
 
+    streamed_prices = {}
+    streamed_prices["the_time"] = []
+    streamed_prices["price"] = []
+
+    if args.prices_file_:
+        # prices = pd.read_csv(args.prices_file_, usecols=[0,1], parse_dates=[0], infer_datetime_format=True)
+        prices = pd.read_csv(args.prices_file_, usecols=[0,1])
+        # print(prices.dtypes)
+
+        streamed_prices["the_time"] = prices["date"]
+        streamed_prices["price"] = prices["close"]
+
+        # print(streamed_prices["the_time"])
+        # print(streamed_prices["price"])
     date_time_format = "%Y-%m-%d" if args.y_axis_format_ == "date" else "%H:%M:%S"
 
     chart_name = MakeChartName(chart_data)
