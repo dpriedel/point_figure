@@ -87,6 +87,7 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
     if prices.shape[0] > 0:
         prices.index = pd.DatetimeIndex(pd.to_datetime(prices["the_time"], utc=True))
         prices.index = prices.index.tz_convert('America/New_York')
+        prices["the_time"] = prices.index
 
     mco = []
     for i in range(len(IsUp)):
@@ -140,7 +141,7 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
 
     fig.suptitle(ChartTitle)
     if prices.shape[0] > 0:
-        zzz = prices.plot(ax=ax2)
+        zzz = prices.plot("the_time", "price", ax=ax2)
         zzz.grid(which='minor', axis='x', linestyle='dashed')
 
     plt.tick_params(which='both', left=True, right=True, labelright=True)
