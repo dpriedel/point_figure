@@ -85,9 +85,8 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
 
     prices = pd.DataFrame(streamed_prices)
     if prices.shape[0] > 0:
-        prices["Time"] = pd.to_datetime(prices["the_time"])
-        del prices["the_time"]
-        prices.set_index("Time", drop=True, inplace=True)
+        prices.index = pd.DatetimeIndex(pd.to_datetime(prices["the_time"], utc=True))
+        prices.index = prices.index.tz_convert('America/New_York')
 
     mco = []
     for i in range(len(IsUp)):
@@ -137,67 +136,15 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
              hlines=dict(hlines=[openning_price], colors=['r'], linestyle='dotted', linewidths=(2)),
              addplot=apds)
 
-    plt.tick_params(which='both', left=True, right=True, labelright=True)
+    # plt.tick_params(which='both', left=True, right=True, labelright=True)
 
     fig.suptitle(ChartTitle)
     if prices.shape[0] > 0:
         zzz = prices.plot(ax=ax2)
-        # zzz.xaxis.set_minor_locator(AutoMinorLocator(8*6))
         zzz.grid(which='minor', axis='x', linestyle='dashed')
 
-    # zzz.xaxis.set_minor_formatter(dates.AutoDateFormatter(dates.SecondLocator(10)))
-    # plt.plot(prices,
-    #          axes=ax2)
-
-    # elif ShowTrendLines == "angle":
-    #
-    #     # 45 degree trend line.
-    #     # need 2 points: first down column bottom and computed value for last column
-    #
-    #     x1 = FindMinimum(IsUp, chart_data)
-    #     y1 = chart_data.iloc[x1]["Low"]
-    #     x2 = chart_data.shape[0] - 1
-    #
-    #     # formula for point slope line equation
-    #     # y = slope(x - x1) + y1
-    #
-    #     y2 = SLOPE * (x2 - x1) + y1
-    #     a_line_points = [(chart_data.iloc[x1]["Date"], y1), (chart_data.iloc[x2]["Date"], y2)]
-    #     fig, axlist = mpf.plot(chart_data,
-    #                            type="candle",
-    #                            style=s,
-    #                            marketcolor_overrides=mco,
-    #                            title=ChartTitle,
-    #                            figsize=(14, 10),
-    #                            datetime_format=DateTimeFormat,
-    #                            alines=a_line_points,
-    #                            returnfig=True)
-    #
-    # else:
-    #     d1 = chart_data.index[0]
-    #     d2 = chart_data.index[-1]
-    #     tdates = [(d1, d2)]
-    #
-    #     fig, axlist = mpf.plot(chart_data,
-    #                            type="candle",
-    #                            style=s,
-    #                            marketcolor_overrides=mco,
-    #                            title=ChartTitle,
-    #                            figsize=(14, 10),
-    #                            datetime_format=DateTimeFormat,
-    #                            tlines=[dict(tlines=tdates, tline_use='High', tline_method="point-to-point", colors='r'),
-    #                                    dict(tlines=tdates, tline_use='Low', tline_method="point-to-point", colors='b')],
-    #                            returnfig=True)
-
     plt.tick_params(which='both', left=True, right=True, labelright=True)
-    # ax1.secondary_xaxis('top')
-    #
-    # if UseLogScale:
-    #     plt.ylim(Y_min, Y_max)
-    #     axlist[0].set_yscale("log")
-    #     axlist[0].grid(which='both', axis='both', ls='-')
-    #     axlist[0].yaxis.set_major_formatter(ScalarFormatter())
-    #     axlist[0].yaxis.set_minor_formatter(ScalarFormatter())
+    plt.axhline(y=openning_price, color='r', linestyle='dotted')
 
     plt.savefig(ChartFileName)
     # ax1.clear()
