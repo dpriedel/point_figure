@@ -32,6 +32,7 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include "utilities.h"
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -1281,7 +1282,7 @@ void PF_CollectDataApp::Shutdown ()
             	if (graphics_format_ == GraphicsFormat::e_svg)
             	{
 					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, {}, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[symbol] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
             	}
             	else
             	{
@@ -1305,7 +1306,7 @@ void PF_CollectDataApp::Shutdown ()
 				if (graphics_format_ == GraphicsFormat::e_svg)
 				{
 					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName(interval_i, "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, {}, trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[symbol] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
 				}
 				chart.StoreChartInChartsDB(pf_db, interval_i, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, graphics_format_ == GraphicsFormat::e_csv);
 			}
