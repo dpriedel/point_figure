@@ -511,7 +511,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             | ranges::views::filter([skipped_columns] (const auto& s) { return s.column_number_ >= skipped_columns; })
             | ranges::views::chunk_by([](const auto& a, const auto& b) { return a.column_number_ == b.column_number_; }))
     {
-        const auto most_important = ranges::max_element(sigs, {}, [](const auto& s) { return std::to_underlying(s.priority_);}) ;
+        const auto most_important = ranges::max_element(sigs, {}, [](const auto& s) { return std::to_underlying(s.priority_); }) ;
         switch (most_important->signal_type_)
         {
             using enum PF_SignalType;
@@ -619,7 +619,8 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         },
         "streamed_prices"_a = py::dict{
             "the_time"_a = streamed_prices.timestamp_,
-            "price"_a = streamed_prices.price_
+            "price"_a = streamed_prices.price_,
+            "signal_type"_a = streamed_prices.signal_type_
         }
     };
 

@@ -1170,6 +1170,8 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
                 }
                 streamed_prices_[ticker].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
                 streamed_prices_[ticker].price_.push_back(new_value.last_price_.ToDouble());
+                streamed_prices_[ticker].signal_type_.push_back(chart_changed == PF_Column::Status::e_accepted_with_signal ?
+                        std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_) : 0);
             });
     }
 
