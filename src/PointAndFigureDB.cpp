@@ -187,7 +187,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
     pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
 
-    auto delete_existing_data_cmd = fmt::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.ChartName(interval, "json")));
+    auto delete_existing_data_cmd = fmt::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.MakeChartFileName(interval, "json")));
     trxn.exec(delete_existing_data_cmd);
 
 	auto json = the_chart.ToJSON();
@@ -205,7 +205,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 			the_chart.GetReversalboxes(),
 			json["boxes"]["box_type"].asString(),
 			json["boxes"]["box_scale"].asString(),
-			trxn.quote(the_chart.ChartName(interval, "json")),
+			trxn.quote(the_chart.MakeChartFileName(interval, "json")),
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetFirstTime())),
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastChangeTime())),
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),
@@ -240,7 +240,7 @@ void PF_DB::UpdatePFChartDataInDB (const PF_Chart& the_chart, std::string_view i
 			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),
 			json["current_direction"].asString(),
 			trxn.quote(the_chart.GetSymbol()),
-			trxn.quote(the_chart.ChartName(interval, "json"))
+			trxn.quote(the_chart.MakeChartFileName(interval, "json"))
     	);
 
 //    std::cout << update_chart_data_cmd << std::endl;
