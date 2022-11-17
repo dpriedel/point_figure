@@ -79,7 +79,7 @@ using namespace std::string_literals;
 
 PF_Chart::PF_Chart (const PF_Chart& rhs)
     : boxes_{rhs.boxes_}, signals_{rhs.signals_}, columns_{rhs.columns_},
-    current_column_{rhs.current_column_}, symbol_{rhs.symbol_},
+    current_column_{rhs.current_column_}, symbol_{rhs.symbol_}, chart_base_name_{rhs.chart_base_name_},
     fname_box_size_{rhs.fname_box_size_}, atr_{rhs.atr_},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_}, last_checked_date_{rhs.last_checked_date_},
     y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
@@ -101,7 +101,8 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
 PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
     : boxes_{std::move(rhs.boxes_)}, signals_{std::move(rhs.signals_)},
     columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
-    symbol_{std::move(rhs.symbol_)}, fname_box_size_{std::move(rhs.fname_box_size_)}, atr_{std::move(rhs.atr_)},
+    symbol_{std::move(rhs.symbol_)}, chart_base_name_{std::move(rhs.chart_base_name_)},
+    fname_box_size_{std::move(rhs.fname_box_size_)}, atr_{std::move(rhs.atr_)},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
     last_checked_date_{rhs.last_checked_date_}, 
     y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
@@ -151,6 +152,9 @@ PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad box_size, int32_t r
     }
 	boxes_ = Boxes{runtime_box_size, box_scale};
 	current_column_ = PF_Column{&boxes_, reversal_boxes}; 
+
+	chart_base_name_ = MakeChartBaseName();
+
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
@@ -177,7 +181,7 @@ PF_Chart::PF_Chart (const Json::Value& new_data)
 //--------------------------------------------------------------------------------------
 PF_Chart PF_Chart::MakeChartFromDB(const PF_DB& chart_db, PF_ChartParams vals, std::string_view interval)
 {
-    Json::Value chart_data = chart_db.GetPFChartData(PF_Chart::ChartName(vals, interval, "json"));
+    Json::Value chart_data = chart_db.GetPFChartData(MakeChartNameFromParams(vals, interval, "json"));
     PF_Chart chart_from_db{chart_data};
 	return chart_from_db;
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  ----- 
@@ -191,6 +195,7 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
         columns_ = rhs.columns_;
         current_column_ = rhs.current_column_;
         symbol_ = rhs.symbol_;
+        chart_base_name_ = rhs.chart_base_name_;
         fname_box_size_ = rhs.fname_box_size_;
         atr_ = rhs.atr_;
         first_date_ = rhs.first_date_;
@@ -218,6 +223,7 @@ PF_Chart& PF_Chart::operator= (PF_Chart&& rhs) noexcept
         columns_ = std::move(rhs.columns_);
         current_column_ = std::move(rhs.current_column_);
         symbol_ = rhs.symbol_;
+        chart_base_name_ = rhs.chart_base_name_;
         fname_box_size_ = rhs.fname_box_size_;
         atr_ = rhs.atr_;
         first_date_ = rhs.first_date_;
@@ -377,27 +383,21 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
     current_direction_ = current_column_.GetDirection();
 }
 
-std::string PF_Chart::ChartName (std::string_view interval, std::string_view suffix) const
+std::string PF_Chart::MakeChartBaseName() const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}{}.{}",
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}",
             symbol_,
             fname_box_size_,
             (IsPercent() ? "%" : ""),
             GetReversalboxes(),
-            (IsPercent() ? "percent" : "linear"),
-            (! interval.empty() ? "_"s += interval : ""),
-            suffix);
+            (IsPercent() ? "percent" : "linear"));
     return chart_name;
 }		// -----  end of method PF_Chart::ChartName  ----- 
 
-std::string PF_Chart::ChartName (const PF_ChartParams& vals, std::string_view interval, std::string_view suffix)
+std::string PF_Chart::MakeChartFileName (std::string_view interval, std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}{}.{}",
-            std::get<e_symbol>(vals),
-            std::get<e_box_size>(vals),
-            (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
-            std::get<e_reversal>(vals),
-            (std::get<e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"),
+    std::string chart_name = fmt::format("{}{}.{}",
+            chart_base_name_,
             (! interval.empty() ? "_"s += interval : ""),
             suffix);
     return chart_name;
@@ -745,6 +745,7 @@ Json::Value PF_Chart::ToJSON () const
 {
     Json::Value result;
     result["symbol"] = symbol_;
+    result["base_name"] = chart_base_name_;
     result["boxes"] = boxes_.ToJSON();
 
     Json::Value signals{Json::arrayValue};
@@ -796,6 +797,7 @@ Json::Value PF_Chart::ToJSON () const
 void PF_Chart::FromJSON (const Json::Value& new_data)
 {
     symbol_ = new_data["symbol"].asString();
+    chart_base_name_ = new_data["base_name"].asString();
     boxes_ = new_data["boxes"];
 
     const auto& signals = new_data["signals"];
@@ -936,4 +938,17 @@ bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& 
 
 	return found_signal;
 }		// -----  end of method PF_Chart::LookForSignals  ----- 
+
+std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::string_view interval, std::string_view suffix)
+{
+    std::string chart_name = fmt::format("{}_{}{}X{}_{}{}.{}",
+            std::get<PF_Chart::e_symbol>(vals),
+            std::get<PF_Chart::e_box_size>(vals),
+            (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
+            std::get<PF_Chart::e_reversal>(vals),
+            (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"),
+            (! interval.empty() ? "_"s += interval : ""),
+            suffix);
+    return chart_name;
+}		// -----  end of method MakeChartNameFromParams  ----- 
 

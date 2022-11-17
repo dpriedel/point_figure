@@ -113,14 +113,9 @@ public:
     [[nodiscard]] Boxes::BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
     [[nodiscard]] Boxes::BoxType GetBoxType() const { return boxes_.GetBoxType(); }
     [[nodiscard]] std::string GetSymbol() const { return symbol_; }
+    [[nodiscard]] std::string GetChartBaseName() const { return chart_base_name_; }
 
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
-
-    [[nodiscard]] std::string ChartName(std::string_view interval, std::string_view suffix) const;
-
-    // for those times you need a name but don't have the chart object yet.
-
-    static std::string ChartName(const PF_ChartParams& vals, std::string_view interval, std::string_view suffix);
 
     // includes 'current_column'
     [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size() + 1; }
@@ -130,6 +125,8 @@ public:
     [[nodiscard]] PF_Column::TmPt GetFirstTime() const { return first_date_; }
     [[nodiscard]] PF_Column::TmPt GetLastChangeTime() const { return last_change_date_; }
     [[nodiscard]] PF_Column::TmPt GetLastCheckedTime() const { return last_checked_date_; }
+
+    [[nodiscard]] std::string MakeChartFileName(std::string_view interval, std::string_view suffix) const;
 
     void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, const streamed_prices& streamed_prices, const std::string& show_trend_lines, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
 
@@ -177,6 +174,8 @@ protected:
 
 private:
 
+    [[nodiscard]] std::string MakeChartBaseName() const;
+
     void FromJSON(const Json::Value& new_data);
     static bool LookForSignals(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
 
@@ -188,6 +187,8 @@ private:
     PF_Column current_column_;
 
     std::string symbol_;
+    std::string chart_base_name_;
+
 	DprDecimal::DDecQuad fname_box_size_ = 0;	// box size to use when constructing file name 
 	DprDecimal::DDecQuad atr_ = 0;
 
@@ -230,6 +231,10 @@ inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 
     return os;
 }
+
+// for those times you need a name but don't have the chart object yet.
+
+std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams& vals, std::string_view interval, std::string_view suffix);
 
 // In order to set our box size, we use the Average True Range method. For
 // each symbol, we will look up the 'n' most recent historical values 
