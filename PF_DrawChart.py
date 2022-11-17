@@ -152,7 +152,9 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
                     sigs.plot("Time", "price", ax=ax2, style=mark, color=color, label=list(SIG_TYPE.keys())[key - 1])
 
     # plt.figure(fig)
-    plt.legend(loc=2)
+    if prices.shape[0] > 0 and ReversalBoxes > 1:
+        plt.legend(loc=2)
+
     plt.tick_params(which='both', left=True, right=True, labelright=True)
     plt.axhline(y=openning_price, color='r', linestyle='dotted')
 
