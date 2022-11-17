@@ -644,7 +644,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 				}
    	    		catch (const std::exception& e)
    	    		{
-                    spdlog::error(fmt::format("Unable to load data for symbol chart: {} from DB because: {}.", new_chart.ChartName(interval_i, ""), e.what()));
+                    spdlog::error(fmt::format("Unable to load data for symbol chart: {} from DB because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
    	    		}
    	        }
    	    }
@@ -671,7 +671,7 @@ void PF_CollectDataApp::Run_Update()
         PF_Chart new_chart;
         try
         {
-            fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, interval_i, "json");
+            fs::path existing_data_file_name = input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -696,7 +696,7 @@ void PF_CollectDataApp::Run_Update()
         }
         catch (const std::exception& e)
         {
-            spdlog::error(fmt::format("Unable to update data for chart: {} from file because: {}.", new_chart.ChartName(interval_i, ""), e.what()));
+            spdlog::error(fmt::format("Unable to update data for chart: {} from file because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
         }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Update  -----
@@ -737,7 +737,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
         	{
             	if (chart_data_source_ == Source::e_file)
             	{
-            		fs::path existing_data_file_name = input_chart_directory_ / PF_Chart::ChartName(val, interval_i, "json");
+            		fs::path existing_data_file_name = input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
             		if (fs::exists(existing_data_file_name))
             		{
                 		new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -767,7 +767,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
         	}
         	catch (const std::exception& e)
         	{
-        		spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", new_chart.ChartName(interval_i, ""), e.what()));
+        		spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
         	}
     	}
     }
@@ -775,10 +775,6 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 
 void PF_CollectDataApp::Run_Streaming()
 {
-    for (const auto& symbol : symbol_list_)
-    {
-        streamed_prices_[symbol] = {};
-    }
     auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
     auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
@@ -802,6 +798,12 @@ void PF_CollectDataApp::Run_Streaming()
         PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
         charts_.emplace_back(std::make_pair(symbol, new_chart));
     }
+
+    for (const auto& [symbol, chart] : charts_)
+    {
+        streamed_prices_[chart.GetChartBaseName()] = {};
+    }
+
     // let's stream !
     
     PrimeChartsForStreaming();
@@ -1168,9 +1170,10 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
                 {
                     need_to_update_graph.push_back(&symbol_and_chart.second);
                 }
-                streamed_prices_[ticker].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
-                streamed_prices_[ticker].price_.push_back(new_value.last_price_.ToDouble());
-                streamed_prices_[ticker].signal_type_.push_back(chart_changed == PF_Column::Status::e_accepted_with_signal ?
+                const auto chart_name = symbol_and_chart.second.GetChartBaseName();
+                streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
+                streamed_prices_[chart_name].price_.push_back(new_value.last_price_.ToDouble());
+                streamed_prices_[chart_name].signal_type_.push_back(chart_changed == PF_Column::Status::e_accepted_with_signal ?
                         std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_) : 0);
             });
     }
@@ -1183,10 +1186,10 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
     for (const PF_Chart* chart : need_to_update_graph)
     {
         py::gil_scoped_acquire gil{};
-        fs::path graph_file_path = output_graphs_directory_ / (chart->ChartName("", "svg"));
-        chart->ConstructChartGraphAndWriteToFile(graph_file_path, streamed_prices_[ticker], trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+        fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
+        chart->ConstructChartGraphAndWriteToFile(graph_file_path, streamed_prices_[chart->GetChartBaseName()], trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
-        fs::path chart_file_path = output_chart_directory_ / (chart->ChartName("", "json"));
+        fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
         chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
     }
 }		// -----  end of method PF_CollectDataApp::ProcessUpdatesForSymbol  ----- 
@@ -1256,7 +1259,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                 }
                 catch (const std::exception& e)
                 {
-                    spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", chart.ChartName(interval_i, ""), e.what()));
+                    spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", chart.MakeChartFileName(interval_i, ""), e.what()));
                 }
             }
         }
@@ -1278,23 +1281,23 @@ void PF_CollectDataApp::Shutdown ()
         {
             try
             {
-				fs::path output_file_name = output_chart_directory_ / chart.ChartName((new_data_source_ == Source::e_streaming ? "" : interval_i), "json"); 
+				fs::path output_file_name = output_chart_directory_ / chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "json"); 
 				chart.ConvertChartToJsonAndWriteToFile(output_file_name);
 
             	if (graphics_format_ == GraphicsFormat::e_svg)
             	{
-					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[symbol] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
+					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
             	}
             	else
             	{
-					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName((new_data_source_ == Source::e_streaming ? "" : interval_i), "csv"));
+					fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "csv"));
 					chart.ConvertChartToTableAndWriteToFile(graph_file_path, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
             	}
             }
 			catch(const std::exception& e)
 			{
-        		spdlog::error(fmt::format("Problem in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.ChartName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
+        		spdlog::error(fmt::format("Problem in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
     		}
         }
     }
@@ -1307,14 +1310,14 @@ void PF_CollectDataApp::Shutdown ()
 			{
 				if (graphics_format_ == GraphicsFormat::e_svg)
 				{
-					fs::path graph_file_path = output_graphs_directory_ / (chart.ChartName(interval_i, "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[symbol] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
+					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
 				}
 				chart.StoreChartInChartsDB(pf_db, interval_i, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, graphics_format_ == GraphicsFormat::e_csv);
 			}
 			catch(const std::exception& e)
 			{
-        		spdlog::error(fmt::format("Problem storing data in DB in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.ChartName(interval_i, "")));
+        		spdlog::error(fmt::format("Problem storing data in DB in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.MakeChartFileName(interval_i, "")));
 			}
         }
     }
