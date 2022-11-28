@@ -283,6 +283,86 @@ std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, 
         }
     }
 	return {};
+}		// -----  end of method PF_Catapult_Up::operator()  ----- 
+
+std::optional<PF_Signal> PF_Catapult_Down::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+{
+	if (! CanApplySignal(the_chart, PF_SignalType::e_Catapult_Down_Sell, PF_Column::Direction::e_down, 4, PF_CanUse1BoxReversal::e_Yes))
+	{
+        return {};
+	}
+
+    // these patterns can be wide in 1-box reversal charts.  Set a leftmost boundary
+    // by looking for any column that was higher than this one.
+
+    int32_t boundary_column{-1};
+	int32_t number_cols = the_chart.GetNumberOfColumns();
+
+    // remember: column numbers count from zero.
+
+    auto current_bottom = the_chart[number_cols - 1].GetBottom();
+
+    // fmt::print("col num: {} top: {}\n", number_cols - 1, current_top);
+
+    for (int32_t index = number_cols - 2; index > -1; --index)
+    {
+       // fmt::print("index1: {}\n", index);
+        if (the_chart[index].GetBottom() <= current_bottom)
+        {
+            boundary_column = index;
+            break;
+        }
+    }
+
+   // fmt::print("boundary column: {}\n", boundary_column);
+
+    // we finally get to apply our rule
+    // first, we need to find the previous column in our direction with a bottom
+    // above ours.
+
+    int32_t which_prev_col{-1};
+    auto previous_bottom = the_chart.GetBoxes().FindNextBox(current_bottom);
+
+    for (int32_t index = number_cols - 2; index > boundary_column; --index)
+    {
+       // fmt::print("index2: {}\n", index);
+        if (the_chart[index].GetDirection() == PF_Column::Direction::e_down && the_chart[index].GetBottom() == previous_bottom)
+        {
+            which_prev_col = index;
+            break;
+        }
+    }
+
+   // fmt::print("prev col: {} prev top: {}\n", which_prev_col, previous_top);
+
+    if (which_prev_col > -1)
+    {
+        int32_t ctr{0};
+
+        for (int32_t index = which_prev_col - 1; index > boundary_column; --index)
+        {
+//            fmt::print("index2: {}\n", index);
+            if (the_chart[index].GetDirection() == PF_Column::Direction::e_down && the_chart[index].GetBottom() == previous_bottom)
+            {
+                ++ctr;
+            }
+        }
+
+        if (ctr > 0)
+        {
+            // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
+
+            return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
+                .signal_type_=PF_SignalType::e_Catapult_Down_Sell,
+                .priority_=PF_SignalPriority::e_Catapult_Down_Sell,
+                .tpt_=the_time,
+                .column_number_=static_cast<int32_t>(number_cols - 1),
+                .signal_price_=new_value,
+                .box_=the_chart.GetBoxes().FindPrevBox(previous_bottom)
+            }};
+        }
+    }
+	return {};
 }		// -----  end of method PF_DoubleTopBuy::operator()  ----- 
 
 std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
@@ -312,7 +392,7 @@ std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart,
         }};
     }
 	return {};
-}		// -----  end of method PF_DoubleTopBuy::operator()  ----- 
+}		// -----  end of method PF_Catapult_Down::operator()  ----- 
 
 std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {

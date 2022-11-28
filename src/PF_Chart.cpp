@@ -904,6 +904,14 @@ bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& 
         the_chart.signals_.push_back(cat_buy_sig.value());
 	}
 
+	PF_Catapult_Down cat_sell;
+	if (auto cat_sell_sig = cat_sell(the_chart, new_value, the_time); cat_sell_sig)
+	{
+		found_signal = true;
+		spdlog::debug("Found signal: {}", cat_sell_sig .value());
+        the_chart.signals_.push_back(cat_sell_sig.value());
+	}
+
 	PF_DoubleTopBuy dt_buy;
 	if (auto dt_buy_sig = dt_buy(the_chart, new_value, the_time); dt_buy_sig)
 	{
