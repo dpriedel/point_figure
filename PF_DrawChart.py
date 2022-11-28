@@ -1,10 +1,8 @@
 
-import sys
 
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import numpy as np
 import mplfinance as mpf
 
@@ -48,8 +46,8 @@ matplotlib.use("SVG")
 
 SLOPE = 0.707
 
-# some tables for printing signals on price graphs 
-# for each signal type, define the 'marker' and color we use 
+# some tables for printing signals on price graphs
+# for each signal type, define the 'marker' and color we use
 
 SIG_TYPE = {}
 SIG_TYPE["dt_buys"] = 1
@@ -58,20 +56,24 @@ SIG_TYPE["tt_buys"] = 3
 SIG_TYPE["tb_sells"] = 4
 SIG_TYPE["bullish_tt_buys"] = 5
 SIG_TYPE["bearish_tb_sells"] = 6
+SIG_TYPE["catapult_buys"] = 7
+SIG_TYPE["catapult_sells"] = 8
 
 SIG_INFO = {}
 SIG_INFO[1] = ("^", "black")
 SIG_INFO[2] = ("v", "black")
-SIG_INFO[3] = ("^", "yellow")
-SIG_INFO[4] = ("v", "yellow")
+SIG_INFO[3] = ("^", "orange")
+SIG_INFO[4] = ("v", "orange")
 SIG_INFO[5] = ("P", "blue")
 SIG_INFO[6] = ("X", "blue")
+SIG_INFO[7] = ("^", "orange")
+SIG_INFO[8] = ("v", "orange")
 
 
 def SetStepbackColor(is_up, stepped_back):
     if is_up:
         if stepped_back:
-            return "blue"
+            return "green"
     if not is_up:
         if stepped_back:
             return "orange"
@@ -100,7 +102,7 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
     for i in range(len(IsUp)):
         mco.append(SetStepbackColor(IsUp[i], StepBack[i]))
 
-    mc = mpf.make_marketcolors(up='g', down='r')
+    mc = mpf.make_marketcolors(up='b', down='r')
     s = mpf.make_mpf_style(marketcolors=mc, gridstyle="dashed")
 
     if prices.shape[0] < 1:
@@ -114,11 +116,11 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
 
     apds = []
 
-    if ReversalBoxes > 1:
-        for key in SIG_TYPE.keys():
-            if len(the_signals[key]) > 0:
-                mark, color = SIG_INFO[SIG_TYPE[key]]
-                apds.append(mpf.make_addplot(the_signals[key], ax=ax1, type="scatter", marker=mark, color=color))
+    # if ReversalBoxes > 1:
+    for key in SIG_TYPE.keys():
+        if len(the_signals[key]) > 0:
+            mark, color = SIG_INFO[SIG_TYPE[key]]
+            apds.append(mpf.make_addplot(the_signals[key], ax=ax1, type="scatter", marker=mark, color=color))
 
     mpf.plot(chart_data,
              ax=ax1,
@@ -136,23 +138,23 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
     # fig.suptitle(ChartTitle)
 
     if prices.shape[0] > 0:
-        zzz = prices.plot("Time", "price", ax=ax2)
+        zzz = prices.plot("Time", "price", ax=ax2, color='gray')
         zzz.grid(which='minor', axis='x', linestyle='dashed')
         # ax2.xaxis.set_major_formatter(mdates.DateFormatter("%I:%M:%S"))
         # ax2.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%I:%M:%S", tz="America/New_York"))
 
-        if ReversalBoxes > 1:
-            for key in SIG_INFO.keys():
-                mark, color = SIG_INFO[key]
-                sigs = prices[["Time", "price", "signal_type"]].copy()
-                sigs.loc[sigs["signal_type"] != key, "price"] = np.nan
-                values_to_show = sigs["price"].dropna()
-                # sigs = prices[prices["signal_type"] == key]
-                if values_to_show.size > 0:
-                    sigs.plot("Time", "price", ax=ax2, style=mark, color=color, label=list(SIG_TYPE.keys())[key - 1])
+        # if ReversalBoxes > 1:
+        for key in SIG_INFO.keys():
+            mark, color = SIG_INFO[key]
+            sigs = prices[["Time", "price", "signal_type"]].copy()
+            sigs.loc[sigs["signal_type"] != key, "price"] = np.nan
+            values_to_show = sigs["price"].dropna()
+            # sigs = prices[prices["signal_type"] == key]
+            if values_to_show.size > 0:
+                sigs.plot("Time", "price", ax=ax2, style=mark, color=color, markersize=8, label=list(SIG_TYPE.keys())[key - 1])
 
     # plt.figure(fig)
-    if prices.shape[0] > 0 and ReversalBoxes > 1:
+    if prices.shape[0] > 0: # and ReversalBoxes > 1:
         plt.legend(loc=2)
 
     plt.tick_params(which='both', left=True, right=True, labelright=True)
