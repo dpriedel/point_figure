@@ -37,6 +37,7 @@
 class PF_Chart;
 
 enum class PF_SignalCategory {e_Unknown, e_PF_Buy, e_PF_Sell};
+enum class PF_CanUse1BoxReversal {e_Yes, e_No};
 enum class PF_SignalType {
     e_Unknown,
     e_DoubleTop_Buy,
@@ -44,7 +45,9 @@ enum class PF_SignalType {
     e_TripleTop_Buy,
     e_TripleBottom_Sell,
     e_Bullish_TT_Buy,
-    e_Bearish_TB_Sell
+    e_Bearish_TB_Sell,
+    e_Catapult_Up_Buy,
+    e_Catapult_Down_Sell
 };
 
 
@@ -57,7 +60,9 @@ enum class PF_SignalPriority {
     e_TripleTop_Buy = 5,
     e_TripleBottom_Sell = 5,
     e_Bullish_TT_Buy = 10,
-    e_Bearish_TB_Sell = 10
+    e_Bearish_TB_Sell = 10,
+    e_Catapult_Up_Buy = 5,
+    e_Catapult_Down_Sell = 5
 };
 
 struct PF_Signal
@@ -78,9 +83,19 @@ using PF_SignalList = std::vector<PF_Signal>;
 
 // common code to determine whether can test for a signal
 
-bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Column::Direction direction, int32_t minimum_cols);
+bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Column::Direction direction, int32_t minimum_cols, PF_CanUse1BoxReversal use1box);
 
 // here are some signals we can look for.
+
+struct PF_Catapult_Up
+{
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+};
+
+struct PF_Catapult_Down
+{
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+};
 
 struct PF_DoubleTopBuy
 {
@@ -145,6 +160,12 @@ template <> struct fmt::formatter<PF_Signal>: formatter<std::string>
                 break;
             case e_Bearish_TB_Sell:
                 sig_type = "Bearish TB Sell";
+                break;
+            case e_Catapult_Up_Buy:
+                sig_type = "Catapult Buy";
+                break;
+            case e_Catapult_Down_Sell:
+                sig_type = "Catapult Sell";
                 break;
         }
         fmt::format_to(std::back_inserter(s), "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. price {} box: {}.\n",
