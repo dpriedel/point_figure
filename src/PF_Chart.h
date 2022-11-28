@@ -118,7 +118,7 @@ public:
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
     // includes 'current_column'
-    [[nodiscard]] std::size_t GetNumberOfColumns() const { return columns_.size() + 1; }
+    [[nodiscard]] int32_t GetNumberOfColumns() const { return columns_.size() + 1; }
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
@@ -167,7 +167,12 @@ public:
     bool operator== (const PF_Chart& rhs) const;
     bool operator!= (const PF_Chart& rhs) const { return ! operator==(rhs); }
 
-    const PF_Column& operator[](size_t which) const { return (which < columns_.size() ? columns_[which] : current_column_); }
+    const PF_Column& operator[](size_t which) const
+    { 
+        const PF_Column& col = which < columns_.size() ? columns_[which] : current_column_;
+        BOOST_ASSERT_MSG(col.GetColumnNumber() == which, fmt::format("Wrong column number: {}. Was expecting: {}", col.GetColumnNumber(), which).c_str());
+        return col;
+    }
 
 protected:
     // ====================  DATA MEMBERS  =======================================
@@ -221,6 +226,13 @@ template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
         	chart.GetNumberOfColumns(), chart.GetYLimits().first, chart.GetYLimits().second);
 
         fmt::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());
+
+        fmt::format_to(std::back_inserter(s), "Signals:\n");
+    	for (const auto& sig : chart.GetSignals())
+    	{
+        	fmt::format_to(std::back_inserter(s), "\t{}\n", sig);
+    	}
+
         return formatter<std::string>::format(s, ctx);
     }
 };

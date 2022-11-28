@@ -151,7 +151,7 @@ PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad box_size, int32_t r
     	}
     }
 	boxes_ = Boxes{runtime_box_size, box_scale};
-	current_column_ = PF_Column{&boxes_, reversal_boxes}; 
+	current_column_ = PF_Column(&boxes_, columns_.size(), reversal_boxes); 
 
 	chart_base_name_ = MakeChartBaseName();
 
@@ -499,6 +499,8 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     std::vector<double> tb_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
     std::vector<double> btt_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
     std::vector<double> btb_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> cat_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> cat_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
 
     int had_dt_buy = 0;
     int had_tt_buy = 0;
@@ -506,6 +508,8 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     int had_tb_sell = 0;
     int had_bullish_tt_buy = 0;
     int had_bearish_tb_sell = 0;
+    int had_catapult_buy = 0;
+    int had_catapult_sell = 0;
 
     for (const auto& sigs : sngls
             | ranges::views::filter([skipped_columns] (const auto& s) { return s.column_number_ >= skipped_columns; })
@@ -547,6 +551,16 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
                 // btb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_bearish_tb_sell += 1;
                 break;
+            case e_Catapult_Up_Buy:
+                cat_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // btb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_catapult_buy += 1;
+                break;
+            case e_Catapult_Down_Sell:
+                cat_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                // btb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
+                had_catapult_sell += 1;
+                break;
         }
     }
 
@@ -584,7 +598,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     std::string explanation_text;
     if (GetReversalboxes() == 1)
     {
-        explanation_text = "Orange: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
+        explanation_text = "Orange: 1-step Up then reversal Down. Green: 1-step Down then reversal Up.";
     }
     auto chart_title = fmt::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetChartBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
@@ -615,7 +629,9 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             "tt_buys"_a = had_tt_buy ? tt_buys : std::vector<double>{},
             "tb_sells"_a = had_tb_sell ? tb_sells : std::vector<double>{},
             "bullish_tt_buys"_a = had_bullish_tt_buy ? btt_buys : std::vector<double>{},
-            "bearish_tb_sells"_a = had_bearish_tb_sell ? btb_sells : std::vector<double>{}
+            "bearish_tb_sells"_a = had_bearish_tb_sell ? btb_sells : std::vector<double>{},
+            "catapult_buys"_a = had_catapult_buy ? cat_buys : std::vector<double>{},
+            "catapult_sells"_a = had_catapult_sell ? cat_sells : std::vector<double>{}
         },
         "streamed_prices"_a = py::dict{
             "the_time"_a = streamed_prices.timestamp_,
@@ -878,15 +894,15 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 
 bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
 {
-	// so far, all signals expect 3-box reversal but will work correctly for any reversal 
-	// size > 1 box.
-	
-	if (the_chart.GetReversalboxes() == 1)
-	{
-		return false;
-	}
-
 	bool found_signal{false};
+
+	PF_Catapult_Up cat_buy;
+	if (auto cat_buy_sig = cat_buy(the_chart, new_value, the_time); cat_buy_sig)
+	{
+		found_signal = true;
+		spdlog::debug("Found signal: {}", cat_buy_sig .value());
+        the_chart.signals_.push_back(cat_buy_sig.value());
+	}
 
 	PF_DoubleTopBuy dt_buy;
 	if (auto dt_buy_sig = dt_buy(the_chart, new_value, the_time); dt_buy_sig)
