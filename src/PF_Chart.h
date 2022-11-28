@@ -170,7 +170,7 @@ public:
     const PF_Column& operator[](size_t which) const
     { 
         const PF_Column& col = which < columns_.size() ? columns_[which] : current_column_;
-        BOOST_ASSERT_MSG(col.GetColumnNumber() == which, fmt::format("Wrong column number: {}. Was expecting: {}", col.GetColumnNumber(), which).c_str());
+        // BOOST_ASSERT_MSG(col.GetColumnNumber() == which, fmt::format("Wrong column number: {}. Was expecting: {}", col.GetColumnNumber(), which).c_str());
         return col;
     }
 
