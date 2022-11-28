@@ -168,7 +168,7 @@ template <> struct fmt::formatter<PF_Signal>: formatter<std::string>
                 sig_type = "Catapult Sell";
                 break;
         }
-        fmt::format_to(std::back_inserter(s), "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. price {} box: {}.\n",
+        fmt::format_to(std::back_inserter(s), "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. price {} box: {}.",
            (signal.signal_category_ == PF_SignalCategory::e_PF_Buy ? "Buy" : signal.signal_category_ == PF_SignalCategory::e_PF_Sell ? "Sell" : "Unknown"),
            sig_type,
            std::to_underlying(signal.priority_),
