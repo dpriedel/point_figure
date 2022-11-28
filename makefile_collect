@@ -41,8 +41,10 @@ CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(BOOSTDIR) \
 	-I$(DECIMALSRCDIR) \
 	-I$(UTILITYDIR)/include \
-	-I/usr/include/python3.10 \
-	-I/usr/lib/python3.10/site-packages/pybind11/include
+	-I/usr/local/Python_DPR/include/python3.11 \
+	-I/usr/local/Python_DPR/lib/python3.11/site-packages/pybind11/include
+	# -I/usr/include/python3.10 \
+	# -I/usr/lib/python3.10/site-packages/pybind11/include
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
@@ -86,13 +88,14 @@ CFG_LIB := -L/usr/local/lib \
 		-lspdlog \
 		-lcrypt \
 		-lpthread \
-		-lpython3.10 \
-		-ldl -lutil -lm -lm \
 		-lssl -lcrypto \
 		-ljsoncpp \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
-		-lboost_program_options-mt-x64 
+		-lboost_program_options-mt-x64 \
+		-L/usr/local/Python_DPR/lib \
+		-ldl -lutil -lm -lm \
+		-lpython3.11
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))

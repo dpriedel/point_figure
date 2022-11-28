@@ -171,6 +171,11 @@ bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Col
 	// so far, all signals expect 3-box reversal but will work correctly for any reversal 
 	// size > 1 box.
 	
+	if (use1box == PF_CanUse1BoxReversal::e_Yes && the_chart.GetReversalboxes() != 1)
+	{
+		return false;
+	}
+
 	if (use1box == PF_CanUse1BoxReversal::e_No && the_chart.GetReversalboxes() == 1)
 	{
 		return false;
@@ -217,19 +222,19 @@ std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, 
 
     auto current_top = the_chart[number_cols - 1].GetTop();
 
-   fmt::print("col num: {} top: {}\n", number_cols - 1, current_top);
+    // fmt::print("col num: {} top: {}\n", number_cols - 1, current_top);
 
     for (int32_t index = number_cols - 2; index > -1; --index)
     {
-       fmt::print("index1: {}\n", index);
-        if (the_chart[index].GetTop() > current_top)
+       // fmt::print("index1: {}\n", index);
+        if (the_chart[index].GetTop() >= current_top)
         {
             boundary_column = index;
             break;
         }
     }
 
-   fmt::print("boundary column: {}\n", boundary_column);
+   // fmt::print("boundary column: {}\n", boundary_column);
 
     // we finally get to apply our rule
     // first, we need to find the previous column in our direction with a top
@@ -240,7 +245,7 @@ std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, 
 
     for (int32_t index = number_cols - 2; index > boundary_column; --index)
     {
-       fmt::print("index2: {}\n", index);
+       // fmt::print("index2: {}\n", index);
         if (the_chart[index].GetDirection() == PF_Column::Direction::e_up && the_chart[index].GetTop() == previous_top)
         {
             which_prev_col = index;
@@ -248,7 +253,7 @@ std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, 
         }
     }
 
-   fmt::print("prev col: {} prev top: {}\n", which_prev_col, previous_top);
+   // fmt::print("prev col: {} prev top: {}\n", which_prev_col, previous_top);
 
     if (which_prev_col > -1)
     {
