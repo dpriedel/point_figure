@@ -57,9 +57,9 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Column::PF_Column(Boxes* boxes, int reversal_boxes,
+PF_Column::PF_Column(Boxes* boxes, int32_t column_number, int32_t reversal_boxes,
             Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
-    : boxes_{boxes}, reversal_boxes_{reversal_boxes}, top_{top}, bottom_{bottom}, direction_{direction}
+    : boxes_{boxes}, column_number_{column_number}, reversal_boxes_{reversal_boxes}, top_{top}, bottom_{bottom}, direction_{direction}
 {
 }  // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
@@ -71,13 +71,21 @@ PF_Column::PF_Column(Boxes* boxes, int reversal_boxes,
 PF_Column::PF_Column (Boxes* boxes, const Json::Value& new_data)
     : boxes_{boxes}
 {
+    try
+    {
+        bool x = new_data.isMember("direction");
+    }
+    catch (Json::Exception& e)
+    {
+        throw std::domain_error{"Expected actual JSON data. Got something else."};
+    }
     this->FromJSON(new_data);
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
 
 PF_Column PF_Column::MakeReversalColumn (Direction direction, const DprDecimal::DDecQuad& value,
         TmPt the_time)
 {
-    auto new_column = PF_Column{boxes_, reversal_boxes_, direction, value, value};
+    auto new_column = PF_Column{boxes_, column_number_ + 1, reversal_boxes_, direction, value, value};
     new_column.time_span_ = {the_time, the_time};
     return new_column;
 }		// -----  end of method PF_Column::MakeReversalColumn  ----- 
@@ -266,6 +274,7 @@ Json::Value PF_Column::ToJSON () const
     result["first_entry"] = time_span_.first.time_since_epoch().count();
     result["last_entry"] = time_span_.second.time_since_epoch().count();
 
+    result["column_number"] = column_number_;
     result["reversal_boxes"] = reversal_boxes_;
     result["top"] = top_.ToStr();
     result["bottom"] = bottom_.ToStr();
@@ -295,6 +304,7 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     time_span_.first = TmPt{date::utc_clock::duration{new_data["first_entry"].asInt64()}};
     time_span_.second = TmPt{date::utc_clock::duration{new_data["last_entry"].asInt64()}};
 
+    column_number_ = new_data["column_number"].asInt();
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
     top_ = DprDecimal::DDecQuad{new_data["top"].asString()};
     bottom_ = DprDecimal::DDecQuad{new_data["bottom"].asString()};

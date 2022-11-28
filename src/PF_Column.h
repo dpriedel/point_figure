@@ -78,7 +78,7 @@ public:
     PF_Column(const PF_Column& rhs) = default;
     PF_Column(PF_Column&& rhs) = default;
 
-    PF_Column(Boxes* boxes, int reversal_boxes,
+    PF_Column(Boxes* boxes, int32_t column_number, int32_t reversal_boxes,
             Direction direction = Direction::e_unknown,
             DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
@@ -92,6 +92,7 @@ public:
     [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return top_; }
     [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return  bottom_ ; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
+    [[nodiscard]] int32_t GetColumnNumber() const { return column_number_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
     [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
@@ -135,6 +136,7 @@ private:
 
     Boxes* boxes_ = nullptr;
 
+    int32_t column_number_ = -1;
     int32_t reversal_boxes_ = -1;
     DprDecimal::DDecQuad top_ = -1;
     DprDecimal::DDecQuad bottom_ = -1;
@@ -223,8 +225,8 @@ template <> struct fmt::formatter<PF_Column>: formatter<std::string>
     auto format(const PF_Column& column, fmt::format_context& ctx)
     {
         std::string s;
-        fmt::format_to(std::back_inserter(s), "bottom: {}. top: {}. direction: {}. begin date: {:%F}. {}",
-            column.GetBottom(), column.GetTop(), column.GetDirection(), column.GetTimeSpan().first,
+        fmt::format_to(std::back_inserter(s), "col nbr: {}. bottom: {}. top: {}. direction: {}. begin date: {:%F}. {}",
+            column.GetColumnNumber(), column.GetBottom(), column.GetTop(), column.GetDirection(), column.GetTimeSpan().first,
             (column.GetHadReversal() ? " one-step-back reversal." : ""));
 
         return formatter<std::string>::format(s, ctx);
