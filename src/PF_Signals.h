@@ -179,6 +179,11 @@ struct PF_Bearish_TB_Sell
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
+// this code will update the chart with any signals found for the current inputs
+// and report if any were found
+
+bool AddSignalsToChart(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
+
 // custom formatter 
 
 template <> struct fmt::formatter<PF_Signal>: formatter<std::string>

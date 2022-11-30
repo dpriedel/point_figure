@@ -328,7 +328,8 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         }
         last_change_date_ = the_time;
 
-        if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
+        // if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
+        if (auto had_signal = AddSignalsToChart(*this, new_value, the_time); had_signal)
         {
 
         	status = PF_Column::Status::e_accepted_with_signal;
@@ -344,7 +345,8 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         status = current_column_.AddValue(new_value, the_time).first;
         last_change_date_ = the_time;
 
-        if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
+        // if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
+        if (auto had_signal = AddSignalsToChart(*this, new_value, the_time); had_signal)
         {
         	status = PF_Column::Status::e_accepted_with_signal;
         }
@@ -890,78 +892,6 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 //    std::cout << "total: " << total << '\n';
     return total /= how_many_days;
 }		// -----  end of function ComputeATRUsingJSON  -----
-
-
-bool PF_Chart::LookForSignals (PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
-{
-	bool found_signal{false};
-
-	PF_Catapult_Up cat_buy;
-	if (auto cat_buy_sig = cat_buy(the_chart, new_value, the_time); cat_buy_sig)
-	{
-		found_signal = true;
-		spdlog::debug("Found signal: {}", cat_buy_sig .value());
-        the_chart.signals_.push_back(cat_buy_sig.value());
-	}
-
-	PF_Catapult_Down cat_sell;
-	if (auto cat_sell_sig = cat_sell(the_chart, new_value, the_time); cat_sell_sig)
-	{
-		found_signal = true;
-		spdlog::debug("Found signal: {}", cat_sell_sig .value());
-        the_chart.signals_.push_back(cat_sell_sig.value());
-	}
-
-	PF_DoubleTopBuy dt_buy;
-	if (auto dt_buy_sig = dt_buy(the_chart, new_value, the_time); dt_buy_sig)
-	{
-		found_signal = true;
-		spdlog::debug("Found signal: {}", dt_buy_sig .value());
-        the_chart.signals_.push_back(dt_buy_sig.value());
-	}
-
-	PF_TripleTopBuy tt_buy;
-	if (auto tt_buy_sig = tt_buy(the_chart, new_value, the_time); tt_buy_sig)
-	{
-		found_signal = true;
-		spdlog::debug("Found signal: {}", tt_buy_sig .value());
-        the_chart.signals_.push_back(tt_buy_sig.value());
-	}
-
-	PF_DoubleBottomSell db_sell;
-	if (auto db_sell_sig = db_sell(the_chart, new_value, the_time); db_sell_sig)
-	{
-		found_signal = true;
-		spdlog::debug("Found signal: {}", db_sell_sig .value());
-        the_chart.signals_.push_back(db_sell_sig.value());
-	}
-
-	PF_TripleBottomSell tb_sell;
-	if (auto tb_sell_sig = tb_sell(the_chart, new_value, the_time); tb_sell_sig)
-	{
-        found_signal = true;
-        spdlog::debug("Found signal: {}", tb_sell_sig .value());
-        the_chart.signals_.push_back(tb_sell_sig.value());
-	}
-
-	PF_Bullish_TT_Buy btt_buy;
-	if (auto btt_buy_sig = btt_buy(the_chart, new_value, the_time); btt_buy_sig)
-	{
-        found_signal = true;
-        spdlog::debug("Found signal: {}", btt_buy_sig .value());
-        the_chart.signals_.push_back(btt_buy_sig.value());
-	}
-
-	PF_Bearish_TB_Sell btb_sell;
-	if (auto btb_sell_sig = btb_sell(the_chart, new_value, the_time); btb_sell_sig)
-	{
-        found_signal = true;
-        spdlog::debug("Found signal: {}", btb_sell_sig .value());
-        the_chart.signals_.push_back(btb_sell_sig.value());
-	}
-
-	return found_signal;
-}		// -----  end of method PF_Chart::LookForSignals  ----- 
 
 std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::string_view interval, std::string_view suffix)
 {

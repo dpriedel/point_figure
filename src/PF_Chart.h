@@ -157,6 +157,8 @@ public:
 
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
 
+    void AddSignal(const PF_Signal& new_sig) { signals_.push_back(new_sig); }
+
     // ====================  OPERATORS     =======================================
 
     PF_Chart& operator= (const PF_Chart& rhs);
@@ -182,7 +184,6 @@ private:
     [[nodiscard]] std::string MakeChartBaseName() const;
 
     void FromJSON(const Json::Value& new_data);
-    static bool LookForSignals(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 

@@ -16,12 +16,15 @@
 // =====================================================================================
 
 #include <algorithm>
-
+#include <functional>
+#include <optional>
 #include <cstdint>
 
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/reverse.hpp>
+
+#include <spdlog/spdlog.h>
 
 #include "Boxes.h"
 #include "PF_Chart.h"
@@ -30,6 +33,72 @@
 // common code to determine whether can test for a signal
 
 bool CanApplySignal(const PF_Chart& the_chart, const auto& signal);
+
+using signal_function = std::function<std::optional<PF_Signal>(const PF_Chart&, const DprDecimal::DDecQuad&, date::utc_time<date::utc_clock::duration>)>;
+
+std::vector<signal_function>sig_funcs = {
+    PF_Catapult_Up(),
+    PF_Catapult_Down(),
+    PF_DoubleTopBuy(),
+    PF_TripleTopBuy(),
+    PF_DoubleBottomSell(),
+    PF_TripleBottomSell(),
+    PF_Bullish_TT_Buy(),
+    PF_Bearish_TB_Sell()
+};
+
+bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
+{
+	if (signal.use1box_ == PF_CanUse1BoxReversal::e_Yes && the_chart.GetReversalboxes() != 1)
+	{
+		return false;
+	}
+
+	if (signal.use1box_ == PF_CanUse1BoxReversal::e_No && the_chart.GetReversalboxes() == 1)
+	{
+		return false;
+	}
+
+	if (the_chart.GetCurrentColumn().GetDirection() != signal.direction_)
+	{
+	    return false;
+	}
+
+	int32_t number_cols = the_chart.GetNumberOfColumns();
+	if (number_cols < signal.minimum_cols_)
+	{
+	    // too few columns
+
+	    return false;
+	}
+
+    // see if we already have this signal for this column
+
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [number_cols, signal] (const PF_Signal& sig)
+	    { return sig.column_number_ == number_cols - 1 && sig.signal_type_ == signal.signal_type_; });
+	    found_it != the_chart.GetSignals().end())
+	{
+        return false;
+	}
+
+    return true;
+}		// -----  end of method CanApplySignal  ----- 
+
+bool AddSignalsToChart(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
+{
+	bool found_signal{false};
+
+    for (const auto& sig : sig_funcs)
+    {
+	    if (auto new_sig = sig(the_chart, new_value, the_time); new_sig)
+	    {
+		    found_signal = true;
+		    spdlog::debug("Found signal: {}", new_sig .value());
+            the_chart.AddSignal(new_sig.value());
+	    }
+    }
+    return found_signal;
+}
 
 Json::Value PF_SignalToJSON(const PF_Signal& signal)
 {
@@ -170,43 +239,6 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
 
     return new_sig;
 }		// -----  end of method PF_SignalFromJSON  ----- 
-
-bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
-{
-	if (signal.use1box_ == PF_CanUse1BoxReversal::e_Yes && the_chart.GetReversalboxes() != 1)
-	{
-		return false;
-	}
-
-	if (signal.use1box_ == PF_CanUse1BoxReversal::e_No && the_chart.GetReversalboxes() == 1)
-	{
-		return false;
-	}
-
-	if (the_chart.GetCurrentColumn().GetDirection() != signal.direction_)
-	{
-	    return false;
-	}
-
-	int32_t number_cols = the_chart.GetNumberOfColumns();
-	if (number_cols < signal.minimum_cols_)
-	{
-	    // too few columns
-
-	    return false;
-	}
-
-    // see if we already have this signal for this column
-
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [number_cols, signal] (const PF_Signal& sig)
-	    { return sig.column_number_ == number_cols - 1 && sig.signal_type_ == signal.signal_type_; });
-	    found_it != the_chart.GetSignals().end())
-	{
-        return false;
-	}
-
-    return true;
-}		// -----  end of method CanApplySignal  ----- 
 
 std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
