@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include <cstdint>
+
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/reverse.hpp>
@@ -25,6 +26,10 @@
 #include "Boxes.h"
 #include "PF_Chart.h"
 #include "PF_Signals.h"
+
+// common code to determine whether can test for a signal
+
+bool CanApplySignal(const PF_Chart& the_chart, const auto& signal);
 
 Json::Value PF_SignalToJSON(const PF_Signal& signal)
 {
@@ -166,27 +171,25 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     return new_sig;
 }		// -----  end of method PF_SignalFromJSON  ----- 
 
-bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Column::Direction direction, int32_t minimum_cols, PF_CanUse1BoxReversal use1box)
+bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
 {
-	// so far, all signals expect 3-box reversal but will work correctly for any reversal 
-	// size > 1 box.
-	
-	if (use1box == PF_CanUse1BoxReversal::e_Yes && the_chart.GetReversalboxes() != 1)
+	if (signal.use1box_ == PF_CanUse1BoxReversal::e_Yes && the_chart.GetReversalboxes() != 1)
 	{
 		return false;
 	}
 
-	if (use1box == PF_CanUse1BoxReversal::e_No && the_chart.GetReversalboxes() == 1)
+	if (signal.use1box_ == PF_CanUse1BoxReversal::e_No && the_chart.GetReversalboxes() == 1)
 	{
 		return false;
 	}
 
-	if (the_chart.GetCurrentColumn().GetDirection() != direction)
+	if (the_chart.GetCurrentColumn().GetDirection() != signal.direction_)
 	{
 	    return false;
 	}
+
 	int32_t number_cols = the_chart.GetNumberOfColumns();
-	if (number_cols < minimum_cols)
+	if (number_cols < signal.minimum_cols_)
 	{
 	    // too few columns
 
@@ -195,8 +198,8 @@ bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Col
 
     // see if we already have this signal for this column
 
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [number_cols, signal_type] (const PF_Signal& sig)
-	    { return sig.column_number_ == number_cols - 1 && sig.signal_type_ == signal_type; });
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [number_cols, signal] (const PF_Signal& sig)
+	    { return sig.column_number_ == number_cols - 1 && sig.signal_type_ == signal.signal_type_; });
 	    found_it != the_chart.GetSignals().end())
 	{
         return false;
@@ -207,7 +210,7 @@ bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Col
 
 std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_Catapult_Up_Buy, PF_Column::Direction::e_up, 4, PF_CanUse1BoxReversal::e_Yes))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}
@@ -287,7 +290,7 @@ std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, 
 
 std::optional<PF_Signal> PF_Catapult_Down::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_Catapult_Down_Sell, PF_Column::Direction::e_down, 4, PF_CanUse1BoxReversal::e_Yes))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}
@@ -367,7 +370,7 @@ std::optional<PF_Signal> PF_Catapult_Down::operator() (const PF_Chart& the_chart
 
 std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_DoubleTop_Buy, PF_Column::Direction::e_up, 3, PF_CanUse1BoxReversal::e_No))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}
@@ -396,7 +399,7 @@ std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart,
 
 std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_TripleTop_Buy, PF_Column::Direction::e_up, 5, PF_CanUse1BoxReversal::e_No))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}
@@ -426,7 +429,7 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart,
 
 std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_DoubleBottom_Sell, PF_Column::Direction::e_down, 3, PF_CanUse1BoxReversal::e_No))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}
@@ -455,7 +458,7 @@ std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_ch
 
 std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_TripleBottom_Sell, PF_Column::Direction::e_down, 5, PF_CanUse1BoxReversal::e_No))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}
@@ -485,7 +488,7 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_ch
 
 std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_Bullish_TT_Buy, PF_Column::Direction::e_up, 5, PF_CanUse1BoxReversal::e_No))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}
@@ -516,7 +519,7 @@ std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_char
 
 std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
-	if (! CanApplySignal(the_chart, PF_SignalType::e_Bearish_TB_Sell, PF_Column::Direction::e_down, 5, PF_CanUse1BoxReversal::e_No))
+	if (! CanApplySignal(the_chart, *this))
 	{
         return {};
 	}

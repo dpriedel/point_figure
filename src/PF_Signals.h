@@ -81,49 +81,101 @@ using PF_SignalList = std::vector<PF_Signal>;
 [[nodiscard]] Json::Value PF_SignalToJSON(const PF_Signal& signal);
 [[nodiscard]] PF_Signal PF_SignalFromJSON(const Json::Value& new_data);
 
-// common code to determine whether can test for a signal
-
-bool CanApplySignal(const PF_Chart& the_chart, PF_SignalType signal_type, PF_Column::Direction direction, int32_t minimum_cols, PF_CanUse1BoxReversal use1box);
-
 // here are some signals we can look for.
 
 struct PF_Catapult_Up
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Up_Buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Up_Buy;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
+    int32_t minimum_cols_ = 4;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 struct PF_Catapult_Down
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Down_Sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Down_Sell;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
+    int32_t minimum_cols_ = 4;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 struct PF_DoubleTopBuy
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_DoubleTop_Buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_DoubleTop_Buy;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 3;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 struct PF_TripleTopBuy
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_TripleTop_Buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_TripleTop_Buy;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 5;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 struct PF_DoubleBottomSell
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_DoubleBottom_Sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_DoubleBottom_Sell;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 3;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 struct PF_TripleBottomSell
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_TripleBottom_Sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_TripleBottom_Sell;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 5;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 struct PF_Bullish_TT_Buy
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_Bullish_TT_Buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_Bullish_TT_Buy;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 5;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
 struct PF_Bearish_TB_Sell
 {
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_Bearish_TB_Sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_Bearish_TB_Sell;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 5;
+
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
