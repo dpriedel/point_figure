@@ -67,7 +67,7 @@ SIG_INFO[4] = ("v", "orange")
 SIG_INFO[5] = ("P", "yellow")
 SIG_INFO[6] = ("X", "yellow")
 SIG_INFO[7] = ("^", "orange")
-SIG_INFO[8] = ("v", "orange")
+SIG_INFO[8] = ("v", "yellow")
 
 
 def SetStepbackColor(is_up, stepped_back):
