@@ -503,6 +503,8 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     std::vector<double> btb_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
     std::vector<double> cat_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
     std::vector<double> cat_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> tt_cat_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> tb_cat_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
 
     int had_dt_buy = 0;
     int had_tt_buy = 0;
@@ -512,6 +514,8 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     int had_bearish_tb_sell = 0;
     int had_catapult_buy = 0;
     int had_catapult_sell = 0;
+    int had_tt_catapult_buy = 0;
+    int had_tb_catapult_sell = 0;
 
     for (const auto& sigs : sngls
             | ranges::views::filter([skipped_columns] (const auto& s) { return s.column_number_ >= skipped_columns; })
@@ -525,43 +529,43 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
                 break;
             case e_DoubleTop_Buy:
                 dt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // dt_buys.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_dt_buy += 1;
                 break;
             case e_DoubleBottom_Sell:
                 db_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // db_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_db_sell += 1;
                 break;
             case e_TripleTop_Buy:
                 tt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // tt_buys.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_tt_buy += 1;
                 break;
             case e_TripleBottom_Sell:
                 tb_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // tb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_tb_sell += 1;
                 break;
             case e_Bullish_TT_Buy:
                 btt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // btt_buys.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_bullish_tt_buy += 1;
                 break;
             case e_Bearish_TB_Sell:
                 btb_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // btb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_bearish_tb_sell += 1;
                 break;
-            case e_Catapult_Up_Buy:
+            case e_Catapult_Buy:
                 cat_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // btb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_catapult_buy += 1;
                 break;
-            case e_Catapult_Down_Sell:
+            case e_Catapult_Sell:
                 cat_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
-                // btb_sells.at(most_important->column_number_ - skipped_columns) = most_important->box_.ToDouble();
                 had_catapult_sell += 1;
+                break;
+            case e_TTop_Catapult_Buy:
+                tt_cat_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                had_tt_catapult_buy += 1;
+                break;
+            case e_TBottom_Catapult_Sell:
+                tb_cat_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                had_tb_catapult_sell += 1;
                 break;
         }
     }
@@ -633,7 +637,9 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
             "bullish_tt_buys"_a = had_bullish_tt_buy ? btt_buys : std::vector<double>{},
             "bearish_tb_sells"_a = had_bearish_tb_sell ? btb_sells : std::vector<double>{},
             "catapult_buys"_a = had_catapult_buy ? cat_buys : std::vector<double>{},
-            "catapult_sells"_a = had_catapult_sell ? cat_sells : std::vector<double>{}
+            "catapult_sells"_a = had_catapult_sell ? cat_sells : std::vector<double>{},
+            "tt_catapult_buys"_a = had_tt_catapult_buy ? tt_cat_buys : std::vector<double>{},
+            "tb_catapult_sells"_a = had_tb_catapult_sell ? tb_cat_sells : std::vector<double>{}
         },
         "streamed_prices"_a = py::dict{
             "the_time"_a = streamed_prices.timestamp_,

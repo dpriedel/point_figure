@@ -46,8 +46,10 @@ enum class PF_SignalType {
     e_TripleBottom_Sell,
     e_Bullish_TT_Buy,
     e_Bearish_TB_Sell,
-    e_Catapult_Up_Buy,
-    e_Catapult_Down_Sell
+    e_Catapult_Buy,
+    e_Catapult_Sell,
+    e_TTop_Catapult_Buy,
+    e_TBottom_Catapult_Sell
 };
 
 
@@ -61,8 +63,10 @@ enum class PF_SignalPriority {
     e_TripleBottom_Sell = 5,
     e_Bullish_TT_Buy = 10,
     e_Bearish_TB_Sell = 10,
-    e_Catapult_Up_Buy = 5,
-    e_Catapult_Down_Sell = 5
+    e_Catapult_Buy = 5,
+    e_Catapult_Sell = 5,
+    e_TTop_Catapult_Buy = 15,
+    e_TBottom_Catapult_Sell = 15
 };
 
 struct PF_Signal
@@ -83,11 +87,11 @@ using PF_SignalList = std::vector<PF_Signal>;
 
 // here are some signals we can look for.
 
-struct PF_Catapult_Up
+struct PF_Catapult_Buy
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
-    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Up_Buy;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Up_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Buy;
     PF_Column::Direction direction_ = PF_Column::Direction::e_up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
@@ -95,11 +99,11 @@ struct PF_Catapult_Up
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
-struct PF_Catapult_Down
+struct PF_Catapult_Sell
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
-    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Down_Sell;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Down_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Sell;
     PF_Column::Direction direction_ = PF_Column::Direction::e_down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
@@ -179,6 +183,30 @@ struct PF_Bearish_TB_Sell
     std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
 };
 
+struct PF_TTopCatapult_Buy
+{
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_TTop_Catapult_Buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_TTop_Catapult_Buy;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 7;
+
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+};
+
+struct PF_TBottom_Catapult_Sell
+{
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_TBottom_Catapult_Sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_TBottom_Catapult_Sell;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
+    int32_t minimum_cols_ = 7;
+
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+};
+
 // this code will update the chart with any signals found for the current inputs
 // and report if any were found
 
@@ -218,11 +246,17 @@ template <> struct fmt::formatter<PF_Signal>: formatter<std::string>
             case e_Bearish_TB_Sell:
                 sig_type = "Bearish TB Sell";
                 break;
-            case e_Catapult_Up_Buy:
+            case e_Catapult_Buy:
                 sig_type = "Catapult Buy";
                 break;
-            case e_Catapult_Down_Sell:
+            case e_Catapult_Sell:
                 sig_type = "Catapult Sell";
+                break;
+            case e_TTop_Catapult_Buy:
+                sig_type = "TTop Catapult Buy";
+                break;
+            case e_TBottom_Catapult_Sell:
+                sig_type = "TBtm Catapult Sell";
                 break;
         }
         fmt::format_to(std::back_inserter(s), "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. price {} box: {}.",

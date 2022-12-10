@@ -37,16 +37,22 @@ bool CanApplySignal(const PF_Chart& the_chart, const auto& signal);
 using signal_function = std::function<std::optional<PF_Signal>(const PF_Chart&, const DprDecimal::DDecQuad&, date::utc_time<date::utc_clock::duration>)>;
 
 std::vector<signal_function>sig_funcs = {
-    PF_Catapult_Up(),
-    PF_Catapult_Down(),
+    PF_Catapult_Buy(),
+    PF_Catapult_Sell(),
     PF_DoubleTopBuy(),
     PF_TripleTopBuy(),
     PF_DoubleBottomSell(),
     PF_TripleBottomSell(),
     PF_Bullish_TT_Buy(),
-    PF_Bearish_TB_Sell()
+    PF_Bearish_TB_Sell(),
+    PF_TTopCatapult_Buy(),
+    PF_TBottom_Catapult_Sell()
 };
 
+// ===  FUNCTION  ======================================================================
+//         Name:  CanApplySignal
+//  Description:  
+// =====================================================================================
 bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
 {
 	if (signal.use1box_ == PF_CanUse1BoxReversal::e_Yes && the_chart.GetReversalboxes() != 1)
@@ -84,6 +90,10 @@ bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
     return true;
 }		// -----  end of method CanApplySignal  ----- 
 
+// ===  FUNCTION  ======================================================================
+//         Name:  AddSignalsToChart
+//  Description:  
+// =====================================================================================
 bool AddSignalsToChart(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
 {
 	bool found_signal{false};
@@ -98,7 +108,7 @@ bool AddSignalsToChart(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_valu
 	    }
     }
     return found_signal;
-}
+}		// -----  end of function AddSignalsToChart  -----
 
 Json::Value PF_SignalToJSON(const PF_Signal& signal)
 {
@@ -150,12 +160,20 @@ Json::Value PF_SignalToJSON(const PF_Signal& signal)
             result["type"] = "bearish_tb_sell";
             break;
 
-        case e_Catapult_Up_Buy:
+        case e_Catapult_Buy:
             result["type"] = "catapult_buy";
             break;
 
-        case e_Catapult_Down_Sell:
+        case e_Catapult_Sell:
             result["type"] = "catapult_sell";
+            break;
+
+        case e_TTop_Catapult_Buy:
+            result["type"] = "ttop_catapult_buy";
+            break;
+
+        case e_TBottom_Catapult_Sell:
+            result["type"] = "tbot_catapult_sell";
             break;
     };
 
@@ -216,11 +234,19 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     }
     else if (type == "catapult_buy")
     {
-        new_sig.signal_type_ = PF_SignalType::e_Catapult_Up_Buy;
+        new_sig.signal_type_ = PF_SignalType::e_Catapult_Buy;
     }
     else if (type == "catapult_sell")
     {
-        new_sig.signal_type_ = PF_SignalType::e_Catapult_Down_Sell;
+        new_sig.signal_type_ = PF_SignalType::e_Catapult_Sell;
+    }
+    else if (type == "ttop_catapult_buy")
+    {
+        new_sig.signal_type_ = PF_SignalType::e_TTop_Catapult_Buy;
+    }
+    else if (type == "tbot_catapult_sell")
+    {
+        new_sig.signal_type_ = PF_SignalType::e_TBottom_Catapult_Sell;
     }
     else if (type == "unknown")
     {
@@ -240,7 +266,7 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     return new_sig;
 }		// -----  end of method PF_SignalFromJSON  ----- 
 
-std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -308,8 +334,8 @@ std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, 
             // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
             return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Buy,
-                .signal_type_=PF_SignalType::e_Catapult_Up_Buy,
-                .priority_=PF_SignalPriority::e_Catapult_Up_Buy,
+                .signal_type_=PF_SignalType::e_Catapult_Buy,
+                .priority_=PF_SignalPriority::e_Catapult_Buy,
                 .tpt_=the_time,
                 .column_number_=static_cast<int32_t>(number_cols - 1),
                 .signal_price_=new_value,
@@ -320,7 +346,7 @@ std::optional<PF_Signal> PF_Catapult_Up::operator() (const PF_Chart& the_chart, 
 	return {};
 }		// -----  end of method PF_Catapult_Up::operator()  ----- 
 
-std::optional<PF_Signal> PF_Catapult_Down::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -388,8 +414,8 @@ std::optional<PF_Signal> PF_Catapult_Down::operator() (const PF_Chart& the_chart
             // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
             return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
-                .signal_type_=PF_SignalType::e_Catapult_Down_Sell,
-                .priority_=PF_SignalPriority::e_Catapult_Down_Sell,
+                .signal_type_=PF_SignalType::e_Catapult_Sell,
+                .priority_=PF_SignalPriority::e_Catapult_Sell,
                 .tpt_=the_time,
                 .column_number_=static_cast<int32_t>(number_cols - 1),
                 .signal_price_=new_value,
@@ -580,5 +606,116 @@ std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_cha
 	return {};
 }		// -----  end of method PF_Bearish_TB_Sell::operator()  ----- 
 
+std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+{
+	// this signal is basically a double-top buy immediately preceeded by a triple-top buy with no intervening sell signal
+	
+	if (! CanApplySignal(the_chart, *this))
+	{
+        return {};
+	}
 
+    // first, do we have a double-top buy in this column
+
+	int32_t number_cols = the_chart.GetNumberOfColumns();
+
+    PF_Signal dtop_buy;
+
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [this_col = number_cols - 1] (const PF_Signal& sig)
+	    { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_DoubleTop_Buy; });
+	    found_it == the_chart.GetSignals().end())
+	{
+        return {};
+	}
+	else
+	{
+	    dtop_buy = *found_it;
+	}
+
+	// next, make sure there is no sell signal for previous column.
+
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 2] (const PF_Signal& sig)
+	    { return sig.column_number_ == prev_col && sig.signal_category_ == PF_SignalCategory::e_PF_Sell; });
+	    found_it != the_chart.GetSignals().end())
+	{
+        return {};
+	}
+
+	// now, look for preceding triple-top buy 
+	
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 3] (const PF_Signal& sig)
+	    { return sig.column_number_ == prev_col && (sig.signal_type_ == PF_SignalType::e_TripleTop_Buy || sig.signal_type_ == PF_SignalType::e_Bullish_TT_Buy); });
+	    found_it == the_chart.GetSignals().end())
+	{
+        return {};
+	}
+
+    // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
+
+    return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Buy,
+        .signal_type_=PF_SignalType::e_TTop_Catapult_Buy,
+        .priority_=PF_SignalPriority::e_TTop_Catapult_Buy,
+        .tpt_=the_time,
+        .column_number_=static_cast<int32_t>(number_cols - 1),
+        .signal_price_=new_value,
+        .box_=dtop_buy.box_
+    }};
+}		// -----  end of method PF_TTopCatapult_Buy::operator()  ----- 
+
+
+std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+{
+	// this signal is basically a double-bottom sell immediately preceeded by a triple-bottom sell with no intervening buy signal
+	
+	if (! CanApplySignal(the_chart, *this))
+	{
+        return {};
+	}
+
+    // first, do we have a double-top sell in this column
+
+	int32_t number_cols = the_chart.GetNumberOfColumns();
+
+    PF_Signal dbot_sell;
+
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [this_col = number_cols - 1] (const PF_Signal& sig)
+	    { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_DoubleBottom_Sell; });
+	    found_it == the_chart.GetSignals().end())
+	{
+        return {};
+	}
+	else
+	{
+	    dbot_sell = *found_it;
+	}
+
+	// next, make sure there is no buy signal for previous column.
+
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 2] (const PF_Signal& sig)
+	    { return sig.column_number_ == prev_col && sig.signal_category_ == PF_SignalCategory::e_PF_Buy; });
+	    found_it != the_chart.GetSignals().end())
+	{
+        return {};
+	}
+
+	// now, look for preceding triple-bottom sell
+	
+	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 3] (const PF_Signal& sig)
+	    { return sig.column_number_ == prev_col && (sig.signal_type_ == PF_SignalType::e_TripleBottom_Sell || sig.signal_type_ == PF_SignalType::e_Bearish_TB_Sell); });
+	    found_it == the_chart.GetSignals().end())
+	{
+        return {};
+	}
+
+    // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
+
+    return {PF_Signal{.signal_category_=PF_SignalCategory::e_PF_Sell,
+        .signal_type_=PF_SignalType::e_TBottom_Catapult_Sell,
+        .priority_=PF_SignalPriority::e_TBottom_Catapult_Sell,
+        .tpt_=the_time,
+        .column_number_=static_cast<int32_t>(number_cols - 1),
+        .signal_price_=new_value,
+        .box_=dbot_sell.box_
+    }};
+}		// -----  end of method PF_TTopCatapult_Buy::operator()  ----- 
 
