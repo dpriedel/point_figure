@@ -19,6 +19,7 @@
 #include <functional>
 #include <optional>
 #include <cstdint>
+#include <utility>
 
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/view/filter.hpp>
@@ -65,13 +66,13 @@ bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
 		return false;
 	}
 
-	if (the_chart.GetCurrentColumn().GetDirection() != signal.direction_)
+	if (the_chart.back().GetDirection() != signal.direction_)
 	{
 	    return false;
 	}
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
-	if (number_cols < signal.minimum_cols_)
+	auto number_cols = the_chart.size();
+	if (std::cmp_less(number_cols, signal.minimum_cols_))
 	{
 	    // too few columns
 
@@ -84,6 +85,8 @@ bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
 	    { return sig.column_number_ == number_cols - 1 && sig.signal_type_ == signal.signal_type_; });
 	    found_it != the_chart.GetSignals().end())
 	{
+        // already have a signal of this type
+
         return false;
 	}
 
@@ -277,7 +280,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
     // by looking for any column that was higher than this one.
 
     int32_t boundary_column{-1};
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // remember: column numbers count from zero.
 
@@ -357,7 +360,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
     // by looking for any column that was higher than this one.
 
     int32_t boundary_column{-1};
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // remember: column numbers count from zero.
 
@@ -433,13 +436,13 @@ std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart,
         return {};
 	}
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // we finally get to apply our rule
     // remember: column numbers count from zero.
 
     auto previous_top = the_chart[number_cols - 3].GetTop();
-    if (the_chart.GetCurrentColumn().GetTop() > previous_top)
+    if (the_chart.back().GetTop() > previous_top)
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -462,14 +465,14 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart,
         return {};
 	}
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // we finally get to apply our rule
     // remember: column numbers count from zero.
 
     auto previous_top_1 = the_chart[number_cols - 3].GetTop();
     auto previous_top_0 = the_chart[number_cols - 5].GetTop();
-    if (the_chart.GetCurrentColumn().GetTop() > previous_top_1 &&  previous_top_0 == previous_top_1)
+    if (the_chart.back().GetTop() > previous_top_1 &&  previous_top_0 == previous_top_1)
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -492,13 +495,13 @@ std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_ch
         return {};
 	}
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // we finally get to apply our rule
     // remember: column numbers count from zero.
 
     auto previous_bottom = the_chart[number_cols - 3].GetBottom();
-    if (the_chart.GetCurrentColumn().GetBottom() < previous_bottom)
+    if (the_chart.back().GetBottom() < previous_bottom)
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -521,14 +524,14 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_ch
         return {};
 	}
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // we finally get to apply our rule
     // remember: column numbers count from zero.
 
     auto previous_bottom_1 = the_chart[number_cols - 3].GetBottom();
     auto previous_bottom_0 = the_chart[number_cols - 5].GetBottom();
-    if (the_chart.GetCurrentColumn().GetBottom() < previous_bottom_1 && previous_bottom_0 == previous_bottom_1)
+    if (the_chart.back().GetBottom() < previous_bottom_1 && previous_bottom_0 == previous_bottom_1)
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -551,15 +554,15 @@ std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_char
         return {};
 	}
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // we finally get to apply our rule
     // remember: column numbers count from zero.
 
     auto previous_top_1 = the_chart[number_cols - 3].GetTop();
     auto previous_top_0 = the_chart[number_cols - 5].GetTop();
-    if ((the_chart.GetCurrentColumn().GetTop() > previous_top_1) && (previous_top_1 > previous_top_0)
-            && (the_chart.GetCurrentColumn().GetBottom() > the_chart[number_cols - 3].GetBottom()) && (the_chart[number_cols - 3].GetBottom() > the_chart[number_cols - 5].GetBottom()))
+    if ((the_chart.back().GetTop() > previous_top_1) && (previous_top_1 > previous_top_0)
+            && (the_chart.back().GetBottom() > the_chart[number_cols - 3].GetBottom()) && (the_chart[number_cols - 3].GetBottom() > the_chart[number_cols - 5].GetBottom()))
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -582,15 +585,15 @@ std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_cha
         return {};
 	}
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     // we finally get to apply our rule
     // remember: column numbers count from zero.
 
     auto previous_bottom_1 = the_chart[number_cols - 3].GetBottom();
     auto previous_bottom_0 = the_chart[number_cols - 5].GetBottom();
-    if ((the_chart.GetCurrentColumn().GetBottom() < previous_bottom_1) && (previous_bottom_1 < previous_bottom_0)
-            && (the_chart.GetCurrentColumn().GetTop() < the_chart[number_cols - 3].GetTop()) && (the_chart[number_cols - 3].GetTop() < the_chart[number_cols - 5].GetTop()))
+    if ((the_chart.back().GetBottom() < previous_bottom_1) && (previous_bottom_1 < previous_bottom_0)
+            && (the_chart.back().GetTop() < the_chart[number_cols - 3].GetTop()) && (the_chart[number_cols - 3].GetTop() < the_chart[number_cols - 5].GetTop()))
     {
         // price could jump several boxes but we want to set the signal at the next box higher than the last column top.
 
@@ -617,7 +620,7 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_ch
 
     // first, do we have a double-top buy in this column
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     PF_Signal dtop_buy;
 
@@ -674,7 +677,7 @@ std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator() (const PF_Chart& t
 
     // first, do we have a double-top sell in this column
 
-	int32_t number_cols = the_chart.GetNumberOfColumns();
+	auto number_cols = the_chart.size();
 
     PF_Signal dbot_sell;
 

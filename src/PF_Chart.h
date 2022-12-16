@@ -42,6 +42,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -52,6 +53,8 @@
 #include <date/date.h>
 
 #include <json/json.h>
+
+#include <range/v3/algorithm/for_each.hpp>
 
 //namespace fs = std::filesystem;
 
@@ -65,6 +68,12 @@
 
 class PF_Chart
 {
+public:
+
+    class PF_Chart_Iterator;
+    using iterator = PF_Chart_Iterator;
+    using const_iterator = PF_Chart_Iterator;
+
 public:
 
     using Y_Limits = std::pair<DprDecimal::DDecQuad, DprDecimal::DDecQuad>;
@@ -106,7 +115,15 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
-	[[nodiscard]] bool IsEmpty() const { return columns_.empty() && current_column_.IsEmpty(); }
+	[[nodiscard]] iterator begin();
+	[[nodiscard]] const_iterator begin() const;
+	[[nodiscard]] iterator end();
+	[[nodiscard]] const_iterator end() const;
+
+	[[nodiscard]] const PF_Column& first() const { return (*this)[0]; }
+	[[nodiscard]] const PF_Column& back() const { return current_column_; }
+
+	[[nodiscard]] bool empty() const { return columns_.empty() && current_column_.IsEmpty(); }
     [[nodiscard]] DprDecimal::DDecQuad GetChartBoxSize() const { return boxes_.GetBoxSize(); }
     [[nodiscard]] DprDecimal::DDecQuad GetFNameBoxSize() const { return fname_box_size_; }
     [[nodiscard]] int32_t GetReversalboxes() const { return current_column_.GetReversalboxes(); }
@@ -118,7 +135,8 @@ public:
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
     // includes 'current_column'
-    [[nodiscard]] int32_t GetNumberOfColumns() const { return columns_.size() + 1; }
+    // [[nodiscard]] int32_t GetNumberOfColumns() const { return columns_.size() + 1; }
+    [[nodiscard]] size_t size() const { return columns_.size() + 1; }
 
     [[nodiscard]] Y_Limits GetYLimits() const { return {y_min_, y_max_}; }
 
@@ -146,7 +164,7 @@ public:
     [[nodiscard]] const Boxes& GetBoxes() const { return boxes_; }
     [[nodiscard]] const PF_SignalList& GetSignals() const { return signals_; }
     [[nodiscard]] const std::vector<PF_Column>& GetColumns() const { return columns_; }
-    [[nodiscard]] const PF_Column& GetCurrentColumn() const { return current_column_; }
+    // [[nodiscard]] const PF_Column& GetCurrentColumn() const { return current_column_; }
 
     [[nodiscard]] PF_ChartParams GetChartParams() const { return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxScale()}; }
 
@@ -181,6 +199,8 @@ protected:
 
 private:
 
+    friend class PF_Chart_Iterator;
+
     [[nodiscard]] std::string MakeChartBaseName() const;
 
     void FromJSON(const Json::Value& new_data);
@@ -210,6 +230,71 @@ private:
 	int64_t max_columns_for_graph_ = 0;			// how many columns to show in graphic
 }; // -----  end of class PF_Chart  -----
 
+
+
+// =====================================================================================
+//        Class:  PF_Chart_Iterator
+//  Description:  std compatable iterator for chart columns
+//
+// =====================================================================================
+class PF_Chart::PF_Chart_Iterator
+{
+public:
+
+    using iterator_concept = std::random_access_iterator_tag;
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = PF_Column;
+    using difference_type = std::ptrdiff_t;
+    using pointer = const PF_Column*;
+    using reference = const PF_Column&;
+
+public:
+	// ====================  LIFECYCLE     ======================================= 
+
+    PF_Chart_Iterator() = default;
+    explicit PF_Chart_Iterator (const PF_Chart* chart, int32_t index=0)
+        : chart_{chart}, index_{index} {}
+
+	// ====================  ACCESSORS     ======================================= 
+
+	// ====================  MUTATORS      ======================================= 
+
+	// ====================  OPERATORS     ======================================= 
+
+    bool operator==(const PF_Chart_Iterator& rhs) const;
+    bool operator!=(const PF_Chart_Iterator& rhs) const { return !(*this == rhs); }
+
+    reference operator*() const { return (*chart_)[index_]; }
+    pointer operator->() const { return &(*chart_)[index_]; }
+
+    PF_Chart_Iterator& operator++();
+    PF_Chart_Iterator operator++(int) { PF_Chart_Iterator retval = *this; ++(*this); return retval; }
+    PF_Chart_Iterator& operator+=(difference_type n);
+    PF_Chart_Iterator operator+(difference_type n) { PF_Chart_Iterator retval = *this; retval += n; return retval; }
+
+    PF_Chart_Iterator& operator--();
+    PF_Chart_Iterator operator--(int) { PF_Chart_Iterator retval = *this; --(*this); return retval; }
+    PF_Chart_Iterator& operator-=(difference_type n);
+    PF_Chart_Iterator operator-(difference_type n) { PF_Chart_Iterator retval = *this; retval -= n; return retval; }
+
+    reference operator[](difference_type n) const { return (*chart_)[n]; }
+
+protected:
+	// ====================  METHODS       ======================================= 
+
+	// ====================  DATA MEMBERS  ======================================= 
+
+private:
+	// ====================  METHODS       ======================================= 
+
+	// ====================  DATA MEMBERS  ======================================= 
+
+    const PF_Chart* chart_ = nullptr;
+    int32_t index_ = -1;
+
+}; // -----  end of class PF_Chart_Iterator  ----- 
+
+
 template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
@@ -218,13 +303,9 @@ template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
         std::string s;
         fmt::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",
             chart.GetSymbol(), chart.GetChartBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
-    	for (const auto& col : chart.GetColumns())
-    	{
-        	fmt::format_to(std::back_inserter(s), "\t{}\n", col);
-    	}
-    	fmt::format_to(std::back_inserter(s), "\tcurrent column: {}\n", chart.GetCurrentColumn());
+        ranges::for_each(chart, [&s](const auto& col) {fmt::format_to(std::back_inserter(s), "\t{}\n", col); } );
     	fmt::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n",
-        	chart.GetNumberOfColumns(), chart.GetYLimits().first, chart.GetYLimits().second);
+        	chart.size(), chart.GetYLimits().first, chart.GetYLimits().second);
 
         fmt::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());
 

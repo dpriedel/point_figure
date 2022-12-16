@@ -302,7 +302,7 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
 {
     // when extending the chart, don't add 'old' data.
 
-    if (! IsEmpty())
+    if (! empty())
     {
     	if (the_time <= last_checked_date_)
     	{
@@ -407,7 +407,7 @@ std::string PF_Chart::MakeChartFileName (std::string_view interval, std::string_
 
 void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, const streamed_prices& streamed_prices, const std::string& show_trend_lines, X_AxisFormat date_or_time) const
 {
-	BOOST_ASSERT_MSG(! IsEmpty(), fmt::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
+	BOOST_ASSERT_MSG(! empty(), fmt::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
 
     std::vector<double> highData;
     std::vector<double> lowData;
@@ -424,7 +424,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 
 	// limit the number of columns shown on graphic if requested 
 	
-	size_t skipped_columns = max_columns_for_graph_ < 1 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
+	size_t skipped_columns = max_columns_for_graph_ < 1 || size() <= max_columns_for_graph_ ? 0 : size() - max_columns_for_graph_; 
 
     // we want to mark the openning value on the chart so change can be seen when drawing only most recent columns. 
     
@@ -575,7 +575,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 	DprDecimal::DDecQuad first_value = 0;
 	DprDecimal::DDecQuad last_value = 0;
 
-	if (GetNumberOfColumns() > 1)
+	if (size() > 1)
 	{
 		auto first_col = columns_[0];
 		first_value = first_col.GetDirection() == PF_Column::Direction::e_up ? first_col.GetBottom() : first_col.GetTop();
@@ -694,7 +694,7 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 	//  color index can be used with custom palettes such as in gnuplot
 	//
 	
-	size_t skipped_columns = max_columns_for_graph_ < 1 || GetNumberOfColumns() <= max_columns_for_graph_ ? 0 : GetNumberOfColumns() - max_columns_for_graph_; 
+	size_t skipped_columns = max_columns_for_graph_ < 1 || size() <= max_columns_for_graph_ ? 0 : size() - max_columns_for_graph_; 
 
 	constexpr auto row_template = "{}\t{}\t{}\t{}\t{}\t{}\n";
 
@@ -911,4 +911,81 @@ std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::
             suffix);
     return chart_name;
 }		// -----  end of method MakeChartNameFromParams  ----- 
+
+PF_Chart::iterator PF_Chart::begin()
+{
+    return iterator{this};
+}		// -----  end of method PF_Chart::begin  ----- 
+
+PF_Chart::const_iterator PF_Chart::begin() const
+{
+    return const_iterator{this};
+}		// -----  end of method PF_Chart::begin  ----- 
+
+PF_Chart::iterator PF_Chart::end()
+{
+    return iterator(this, this->size());
+}		// -----  end of method PF_Chart::end  ----- 
+
+PF_Chart::const_iterator PF_Chart::end() const
+{
+    return const_iterator(this, this->size());
+}		// -----  end of method PF_Chart::end  ----- 
+
+bool PF_Chart::PF_Chart_Iterator::operator==(const PF_Chart_Iterator& rhs) const
+{
+    return (chart_ == rhs.chart_ && index_ == rhs.index_);
+}		// -----  end of method PF_Chart::PF_Chart_Iterator::operator==  ----- 
+
+PF_Chart::PF_Chart_Iterator& PF_Chart::PF_Chart_Iterator::operator++()
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (std::cmp_greater(++index_, chart_->size()))
+    {
+        index_ = chart_->size();
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_Iterator::operator++  ----- 
+
+PF_Chart::PF_Chart_Iterator& PF_Chart::PF_Chart_Iterator::operator+=(difference_type n)
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (std::cmp_greater(index_+=n, chart_->size()))
+    {
+        index_ = chart_->size();
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_Iterator::operator+=  ----- 
+
+PF_Chart::PF_Chart_Iterator& PF_Chart::PF_Chart_Iterator::operator--()
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (std::cmp_less(--index_, 0))
+    {
+        index_ = 0;
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_Iterator::operator--  ----- 
+
+PF_Chart::PF_Chart_Iterator& PF_Chart::PF_Chart_Iterator::operator-=(difference_type n)
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (std::cmp_less(index_-=n, 0))
+    {
+        index_ = 0;
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_Iterator::operator-+  ----- 
 
