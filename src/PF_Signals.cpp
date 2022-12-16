@@ -23,7 +23,6 @@
 
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/view/filter.hpp>
-#include <range/v3/view/reverse.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -276,18 +275,18 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
         return {};
 	}
 
-    // these patterns can be wide in 1-box reversal charts.  Set a leftmost boundary
-    // by looking for any column that was higher than this one.
-
-    int32_t boundary_column{-1};
 	auto number_cols = the_chart.size();
 
     // remember: column numbers count from zero.
 
-    auto current_top = the_chart[number_cols - 1].GetTop();
+    auto current_top = the_chart.back().GetTop();
 
     // fmt::print("col num: {} top: {}\n", number_cols - 1, current_top);
+    
+    // these patterns can be wide in 1-box reversal charts.  Set a leftmost boundary
+    // by looking for any column that was higher than this one.
 
+    int32_t boundary_column{-1};
     for (int32_t index = number_cols - 2; index > -1; --index)
     {
        // fmt::print("index1: {}\n", index);
@@ -346,6 +345,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
             }};
         }
     }
+
 	return {};
 }		// -----  end of method PF_Catapult_Up::operator()  ----- 
 

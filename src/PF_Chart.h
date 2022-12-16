@@ -120,7 +120,7 @@ public:
 	[[nodiscard]] iterator end();
 	[[nodiscard]] const_iterator end() const;
 
-	[[nodiscard]] const PF_Column& first() const { return (*this)[0]; }
+	[[nodiscard]] const PF_Column& front() const { return (*this)[0]; }
 	[[nodiscard]] const PF_Column& back() const { return current_column_; }
 
 	[[nodiscard]] bool empty() const { return columns_.empty() && current_column_.IsEmpty(); }
