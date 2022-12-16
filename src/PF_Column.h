@@ -193,6 +193,10 @@ template <> struct fmt::formatter<PF_Column::Status>: formatter<std::string>
 				fmt::format_to(std::back_inserter(s), "{}", "accepted");
                 break;
 
+            case e_accepted_with_signal:
+				fmt::format_to(std::back_inserter(s), "{}", "accepted w/signal");
+                break;
+
             case e_ignored:
 				fmt::format_to(std::back_inserter(s), "{}", "ignored");
                 break;
