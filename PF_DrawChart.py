@@ -58,6 +58,8 @@ SIG_TYPE["bullish_tt_buys"] = 5
 SIG_TYPE["bearish_tb_sells"] = 6
 SIG_TYPE["catapult_buys"] = 7
 SIG_TYPE["catapult_sells"] = 8
+SIG_TYPE["tt_catapult_buys"] = 9
+SIG_TYPE["tb_catapult_sells"] = 10
 
 SIG_INFO = {}
 SIG_INFO[1] = ("^", "black")
@@ -68,6 +70,8 @@ SIG_INFO[5] = ("P", "yellow")
 SIG_INFO[6] = ("X", "yellow")
 SIG_INFO[7] = ("^", "orange")
 SIG_INFO[8] = ("v", "yellow")
+SIG_INFO[9] = ("^", "purple")
+SIG_INFO[10] = ("v", "purple")
 
 
 def SetStepbackColor(is_up, stepped_back):
