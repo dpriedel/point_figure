@@ -751,7 +751,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
             	{
 					new_chart = PF_Chart::MakeChartFromDB(db_params_, val, interval_i);
             	}
-            	if (new_chart.IsEmpty())
+            	if (new_chart.empty())
             	{
                 	// no existing data to update, so make a new chart
 
