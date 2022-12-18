@@ -989,3 +989,81 @@ PF_Chart::PF_Chart_Iterator& PF_Chart::PF_Chart_Iterator::operator-=(difference_
     return *this;
 }		// -----  end of method PF_Chart::PF_Chart_Iterator::operator-+  ----- 
 
+PF_Chart::reverse_iterator PF_Chart::rbegin()
+{
+    return reverse_iterator{this, static_cast<int32_t>(this->size() -1)};
+}		// -----  end of method PF_Chart::rbegin  ----- 
+
+PF_Chart::const_reverse_iterator PF_Chart::rbegin() const
+{
+    return const_reverse_iterator{this, static_cast<int32_t>(this->size() -1)};
+}		// -----  end of method PF_Chart::rbegin  ----- 
+
+PF_Chart::reverse_iterator PF_Chart::rend()
+{
+    return reverse_iterator(this, -1);
+}		// -----  end of method PF_Chart::rend  ----- 
+
+PF_Chart::const_reverse_iterator PF_Chart::rend() const
+{
+    return const_reverse_iterator(this, -1);
+}		// -----  end of method PF_Chart::rend  ----- 
+
+bool PF_Chart::PF_Chart_ReverseIterator::operator==(const PF_Chart_ReverseIterator& rhs) const
+{
+    return (chart_ == rhs.chart_ && index_ == rhs.index_);
+}		// -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator==  ----- 
+
+PF_Chart::PF_Chart_ReverseIterator& PF_Chart::PF_Chart_ReverseIterator::operator++()
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (--index_ < 0)
+    {
+        index_ = -1;
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator++  ----- 
+
+PF_Chart::PF_Chart_ReverseIterator& PF_Chart::PF_Chart_ReverseIterator::operator+=(difference_type n)
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (std::cmp_less(index_-=n, 0))
+    {
+        fmt::print("index in between: {}\n", index_);
+        index_ = -1;
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator+=  ----- 
+
+PF_Chart::PF_Chart_ReverseIterator& PF_Chart::PF_Chart_ReverseIterator::operator--()
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (std::cmp_greater(++index_, chart_->size()))
+    {
+        index_ = chart_->size();
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator--  ----- 
+
+PF_Chart::PF_Chart_ReverseIterator& PF_Chart::PF_Chart_ReverseIterator::operator-=(difference_type n)
+{
+    if (chart_ == nullptr)
+    {
+        return *this;
+    }
+    if (std::cmp_greater(index_+=n, chart_->size()))
+    {
+        index_ = chart_->size();
+    }
+    return *this;
+}		// -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator-+  ----- 
+

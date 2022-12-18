@@ -74,6 +74,10 @@ public:
     using iterator = PF_Chart_Iterator;
     using const_iterator = PF_Chart_Iterator;
 
+    class PF_Chart_ReverseIterator;
+    using reverse_iterator = PF_Chart_ReverseIterator;
+    using const_reverse_iterator = PF_Chart_ReverseIterator;
+
 public:
 
     using Y_Limits = std::pair<DprDecimal::DDecQuad, DprDecimal::DDecQuad>;
@@ -119,6 +123,11 @@ public:
 	[[nodiscard]] const_iterator begin() const;
 	[[nodiscard]] iterator end();
 	[[nodiscard]] const_iterator end() const;
+
+	[[nodiscard]] reverse_iterator rbegin();
+	[[nodiscard]] const_reverse_iterator rbegin() const;
+	[[nodiscard]] reverse_iterator rend();
+	[[nodiscard]] const_reverse_iterator rend() const;
 
 	[[nodiscard]] const PF_Column& front() const { return (*this)[0]; }
 	[[nodiscard]] const PF_Column& back() const { return current_column_; }
@@ -200,6 +209,7 @@ protected:
 private:
 
     friend class PF_Chart_Iterator;
+    friend class PF_Chart_ReverseIterator;
 
     [[nodiscard]] std::string MakeChartBaseName() const;
 
@@ -293,6 +303,69 @@ private:
     int32_t index_ = -1;
 
 }; // -----  end of class PF_Chart_Iterator  ----- 
+
+
+// =====================================================================================
+//        Class:  PF_Chart_ReverseIterator
+//  Description:  std compatable iterator for chart columns
+//
+// =====================================================================================
+class PF_Chart::PF_Chart_ReverseIterator
+{
+public:
+
+    using iterator_concept = std::random_access_iterator_tag;
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = PF_Column;
+    using difference_type = std::ptrdiff_t;
+    using pointer = const PF_Column*;
+    using reference = const PF_Column&;
+
+public:
+	// ====================  LIFECYCLE     ======================================= 
+
+    PF_Chart_ReverseIterator() = default;
+    explicit PF_Chart_ReverseIterator (const PF_Chart* chart, int32_t index)
+        : chart_{chart}, index_{index} {}
+
+	// ====================  ACCESSORS     ======================================= 
+
+	// ====================  MUTATORS      ======================================= 
+
+	// ====================  OPERATORS     ======================================= 
+
+    bool operator==(const PF_Chart_ReverseIterator& rhs) const;
+    bool operator!=(const PF_Chart_ReverseIterator& rhs) const { return !(*this == rhs); }
+
+    reference operator*() const { return (*chart_)[index_]; }
+    pointer operator->() const { return &(*chart_)[index_]; }
+
+    PF_Chart_ReverseIterator& operator++();
+    PF_Chart_ReverseIterator operator++(int) { PF_Chart_ReverseIterator retval = *this; ++(*this); return retval; }
+    PF_Chart_ReverseIterator& operator+=(difference_type n);
+    PF_Chart_ReverseIterator operator+(difference_type n) { PF_Chart_ReverseIterator retval = *this; retval += n; return retval; }
+
+    PF_Chart_ReverseIterator& operator--();
+    PF_Chart_ReverseIterator operator--(int) { PF_Chart_ReverseIterator retval = *this; --(*this); return retval; }
+    PF_Chart_ReverseIterator& operator-=(difference_type n);
+    PF_Chart_ReverseIterator operator-(difference_type n) { PF_Chart_ReverseIterator retval = *this; retval -= n; return retval; }
+
+    reference operator[](difference_type n) const { return (*chart_)[chart_->size() - n - 1]; }
+
+protected:
+	// ====================  METHODS       ======================================= 
+
+	// ====================  DATA MEMBERS  ======================================= 
+
+private:
+	// ====================  METHODS       ======================================= 
+
+	// ====================  DATA MEMBERS  ======================================= 
+
+    const PF_Chart* chart_ = nullptr;
+    int32_t index_ = -1;
+
+}; // -----  end of class PF_Chart_ReverseIterator  ----- 
 
 
 template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
