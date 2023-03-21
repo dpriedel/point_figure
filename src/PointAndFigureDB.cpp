@@ -111,7 +111,7 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange (std::string_view exchange
 Json::Value PF_DB::GetPFChartData (const std::string file_name) const
 {
     pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-    pqxx::nontransaction trxn{c};
+    pqxx::transaction trxn{c};
 
 	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}",
             db_params_.db_mode_,
@@ -147,7 +147,7 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol (const std::string& s
     std::vector<PF_Chart> charts;
 
     pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-    pqxx::nontransaction trxn{c};
+    pqxx::transaction trxn{c};
 
 	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE symbol = {} and file_name like '%_eod.json' ",
             db_params_.db_mode_,
