@@ -409,7 +409,9 @@ std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams& vals, std::s
 // We expect the process which collects the data will used adjusted values or not and populate
 // 'the_data' as required. This simplifies our logic here.
 
-DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days);
+// if we provide a scale factor > -99, then scale the value to that value. 
+// Otherwise, scale to -3 (.005) to prevent box sizes being too small.
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days, int32_t scale=-99);
 
 
 #endif   // ----- #ifndef PF_CHART_INC  ----- 

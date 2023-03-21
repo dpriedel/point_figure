@@ -58,6 +58,13 @@ Boxes::Boxes (DprDecimal::DDecQuad box_size, BoxScale box_scale)
         box_type_ = BoxType::e_integral;
     }
 
+    // try to keep box size from being too small
+
+    if (box_size_.GetExponent() < -3)
+    {
+        box_size_.Rescale(-3);
+    }
+
     if (box_scale_ == BoxScale::e_percent)
     {
         percent_box_factor_up_ = (1.0 + box_size_);

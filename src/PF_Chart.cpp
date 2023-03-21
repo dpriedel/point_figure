@@ -873,7 +873,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     //  Description:  Expects the input data is in descending order by date
     // =====================================================================================
 
-DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days)
+DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days, int32_t scale)
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
@@ -896,7 +896,13 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
     }
 
 //    std::cout << "total: " << total << '\n';
-    return total /= how_many_days;
+    
+    total /= how_many_days;
+    if (scale > -99)
+    {
+        return total.Rescale(scale);
+    }
+    return total.Rescale(-3);
 }		// -----  end of function ComputeATRUsingJSON  -----
 
 std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::string_view interval, std::string_view suffix)
