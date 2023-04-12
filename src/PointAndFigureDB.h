@@ -120,7 +120,7 @@ template<typename T>
 std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const
 {
     pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::nontransaction trxn{c};		// we are read-only for this work
+	pqxx::transaction trxn{c};		// we are read-only for this work
 
 	auto results = trxn.exec(query_cmd);
 	trxn.commit();
