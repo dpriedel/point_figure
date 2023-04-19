@@ -217,7 +217,7 @@ bool AddSignalsToChart(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_valu
 template <> struct fmt::formatter<PF_Signal>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Signal& signal, fmt::format_context& ctx)
+    auto format(const PF_Signal& signal, fmt::format_context& ctx) const
     {
         std::string s;
         std::string sig_type;

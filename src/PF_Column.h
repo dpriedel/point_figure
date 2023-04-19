@@ -156,7 +156,7 @@ private:
 template <> struct fmt::formatter<PF_Column::Direction>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Column::Direction& direction, fmt::format_context& ctx)
+    auto format(const PF_Column::Direction& direction, fmt::format_context& ctx) const
     {
         std::string s;
         switch(direction)
@@ -183,7 +183,7 @@ template <> struct fmt::formatter<PF_Column::Direction>: formatter<std::string>
 template <> struct fmt::formatter<PF_Column::Status>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Column::Status& status, fmt::format_context& ctx)
+    auto format(const PF_Column::Status& status, fmt::format_context& ctx) const
     {
         std::string s;
         switch(status)
@@ -226,7 +226,7 @@ template <> struct fmt::formatter<PF_Column::Status>: formatter<std::string>
 template <> struct fmt::formatter<PF_Column>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Column& column, fmt::format_context& ctx)
+    auto format(const PF_Column& column, fmt::format_context& ctx) const
     {
         std::string s;
         fmt::format_to(std::back_inserter(s), "col nbr: {}. bottom: {}. top: {}. direction: {}. begin date: {:%F}. {}",
