@@ -119,8 +119,6 @@ int wait_for_any(std::vector<std::future<T>>& vf, std::chrono::steady_clock::dur
     }
 }
 
-
-
 //--------------------------------------------------------------------------------------
 //       Class:  PF_CollectDataApp
 //      Method:  PF_CollectDataApp
@@ -141,7 +139,6 @@ PF_CollectDataApp::PF_CollectDataApp (const std::vector<std::string>& tokens)
     : tokens_{tokens}
 {
 }  // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)  -----
-
 
 void PF_CollectDataApp::ConfigureLogging ()
 {
@@ -218,9 +215,13 @@ bool PF_CollectDataApp::Startup ()
     return result;
 }		// -----  end of method PF_CollectDataApp::Do_StartUp  -----
 
-
 bool PF_CollectDataApp::CheckArgs ()
 {
+	//	an easy check first
+	
+    BOOST_ASSERT_MSG(! (use_ATR_ && use_min_max_), "Can not use both ATR and MinMax for computing box size.");
+    boxsize_source_ = (use_ATR_ ? BoxsizeSource::e_from_ATR : use_min_max_ ? BoxsizeSource::e_from_MinMax : BoxsizeSource::e_from_args); 
+
 	//	let's get our input and output set up
 	
     BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan", fmt::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
@@ -257,7 +258,7 @@ bool PF_CollectDataApp::CheckArgs ()
 
 	// we now have two possible sources for symbols. We need to be sure we have 1 of them.
 	
-    BOOST_ASSERT_MSG(symbol_list_i_ != "*", "'*' is no longer valid for symbol-list.");
+    BOOST_ASSERT_MSG(symbol_list_i_ != "*", "'*' is no longer valid for symbol-list. Use 'ALL' instead.");
 	BOOST_ASSERT_MSG(! symbol_list_.empty() || ! symbol_list_i_.empty(), "Must provide either 1 or more '-s' values or 'symbol-list' list.");
 
 	if (! symbol_list_i_.empty() && symbol_list_i_ != "ALL")
@@ -266,10 +267,11 @@ bool PF_CollectDataApp::CheckArgs ()
 		symbol_list_ |= ranges::actions::sort | ranges::actions::unique;
 	}
 
-	// if symbol-list is '*' then we will generate a list of symbols from our source database.
+	// if symbol-list is 'ALL' then we will generate a list of symbols from our source database.
 	
 	if (symbol_list_i_ == "ALL")
 	{
+	    BOOST_ASSERT_MSG(! exchange_.empty(), "When 'ALL' is specified for symbol-list, exchange must also be specified.");
 		symbol_list_.clear();
 	}
 	else
@@ -289,6 +291,11 @@ bool PF_CollectDataApp::CheckArgs ()
     
     BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database", fmt::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
+
+    if (use_min_max_)
+    {
+        BOOST_ASSERT_MSG(mode_ == Mode::e_load && new_data_source_ == Source::e_DB, "MinMax is only available for loads using the DB as a source");
+    }
 
     // possibly empty if this is our first time or we are starting over
 
@@ -449,10 +456,10 @@ void PF_CollectDataApp::SetupProgramOptions ()
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
+		("use-MinMax",          po::value<bool>(&use_min_max_)->default_value(false)->implicit_value(true), "compute boxsize using price range from DB then apply specified fraction.")
 		;
 
 }		// -----  end of method PF_CollectDataApp::Do_SetupPrograoptions_  -----
-
 
 void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 {
@@ -485,7 +492,6 @@ void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tok
 	// 	fmt::print("param: {}. value: .\n", param);
  //    }
 }		/* -----  end of method ExtractorApp::ParsePrograoptions_  ----- */
-
 
 std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
@@ -619,7 +625,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
             const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
 
    	   	    // only need to compute this once per symbol also 
-   	   	    auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
+   	   	    auto atr_or_range = use_ATR_ ? ComputeATRForChartFromDB(symbol) : use_min_max_ ? ComputeRangeForChartFromDB(symbol) : 0.0;
 
 			// There could be thousands of symbols in the database so we don't want to generate combinations for
 			// all of them at once.
@@ -631,7 +637,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 
     		for (const auto& val : params)
     		{
-				PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+				PF_Chart new_chart(val, atr_or_range, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
 				try
 				{
 					for (const auto& [new_date, new_price] : closing_prices)
@@ -810,7 +816,7 @@ void PF_CollectDataApp::Run_Streaming()
     CollectStreamingData();
 }
 
-void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const
+void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const
 {
     const std::string file_content = LoadDataFileForUse(update_file_name);
 
@@ -832,7 +838,7 @@ void    PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, c
 
 }		// -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV  ----- 
 
- PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const fs::path& symbol_file_name) 
+PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const fs::path& symbol_file_name) 
 {
     const std::string file_content = LoadDataFileForUse(symbol_file_name);
 
@@ -874,7 +880,6 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
 
 }		// -----  end of method PF_CollectDataApp::FindColumnIndex  ----- 
 
-
 DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& symbol) const
 {
     Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_};
@@ -909,12 +914,6 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
     // 'business_days.second' will be the prior business day for DB search.
     // BUT, I expect the DB will only have data for trading days, so it will automatically 
     // skip weekends for me.
-	std::string get_ATR_info_cmd = fmt::format("SELECT date, exchange, symbol, open_p, high, low, close_p FROM {} WHERE symbol = '{}' AND date <= '{}' ORDER BY date DESC LIMIT {}",
-			db_params_.db_data_source_,
-			symbol,
-            today,
-			number_of_days_history_for_ATR_ + 1		// need an extra row for the algorithm 
-			);
 
     PF_DB the_db{db_params_};
 
@@ -926,11 +925,48 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
     }
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to comput ATR from DB for: '{}' because: {}.\n", symbol, e.what()));
+        spdlog::error(fmt::format("Unable to compute ATR from DB for: '{}' because: {}.\n", symbol, e.what()));
    	}
 
     return atr;
 }		// -----  end of method PF_CollectDataApp::ComputeATRUsingDB  ----- 
+
+DprDecimal::DDecQuad PF_CollectDataApp::ComputeRangeForChartFromDB (const std::string& symbol) const
+{
+    auto today = date::year_month_day{floor<date::days>(std::chrono::system_clock::now())};
+
+    // BUT, I expect the DB will only have data for trading days, so it will automatically 
+    // skip weekends for me.
+
+    // set up a DB connection so query arguments can be properly quoted.
+    PF_DB the_db{db_params_};
+    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+
+	std::string get_price_range_cmd = fmt::format("SELECT (MAX(adjclose) - MIN(adjclose)) AS range FROM {} WHERE date BETWEEN {} AND '{}' AND symbol = {}",
+			db_params_.db_data_source_,
+            c.quote(begin_date_),			                                   
+            today,
+			c.quote(symbol)
+			);
+
+    c.close();
+
+    DprDecimal::DDecQuad price_range;
+
+    auto Row2Range = [](const auto& r) { return DprDecimal::DDecQuad{r[0].template as<std::string_view>()}; };
+
+	try
+	{
+		price_range = the_db.RunSQLQueryUsingRows<DprDecimal::DDecQuad>(get_price_range_cmd, Row2Range)[0];
+        spdlog::debug(fmt::format("Price range query: {}. Result: {}\n", get_price_range_cmd, price_range));
+    }
+   	catch (const std::exception& e)
+   	{
+        spdlog::error(fmt::format("Unable to compute closing price range from DB for: '{}' because: {}.\n", symbol, e.what()));
+   	}
+
+    return price_range;
+}		// -----  end of method PF_CollectDataApp::ComputeRangeForChartFromDB  ----- 
 
 void PF_CollectDataApp::PrimeChartsForStreaming ()
 {
@@ -1350,7 +1386,6 @@ void PF_CollectDataApp::WaitForTimer (const date::zoned_seconds& stop_at)
         }
     }
 }		// -----  end of method PF_CollectDataApp::WaitForTimer  ----- 
-
 
 void PF_CollectDataApp::HandleSignal(int signal)
 

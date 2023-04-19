@@ -137,6 +137,7 @@ protected:
 
     [[nodiscard]] DprDecimal::DDecQuad ComputeATRForChart(const std::string& symbol) const;
     [[nodiscard]] DprDecimal::DDecQuad ComputeATRForChartFromDB(const std::string& symbol) const;
+    [[nodiscard]] DprDecimal::DDecQuad ComputeRangeForChartFromDB(const std::string& symbol) const;
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -181,6 +182,7 @@ private:
     enum class Source { e_unknown, e_file, e_streaming, e_DB };
     enum class SourceFormat { e_unknown, e_csv, e_json };
     enum class GraphicsFormat { e_unknown, e_svg, e_csv };
+    enum class BoxsizeSource { e_unknown, e_from_args, e_from_ATR, e_from_MinMax };
 
     std::string api_key_;
     std::string destination_i;
@@ -199,6 +201,8 @@ private:
     SourceFormat source_format_ = SourceFormat::e_csv;
     Destination destination_ = Destination::e_unknown;
     GraphicsFormat graphics_format_ = GraphicsFormat::e_unknown;
+    BoxsizeSource boxsize_source_ = BoxsizeSource::e_unknown;
+
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
 
@@ -217,6 +221,7 @@ private:
     bool input_is_path_ = false;
     bool output_is_path_ = false;
     bool use_ATR_  = false;
+    bool use_min_max_ = false;
 
     static bool had_signal_;
 }; // -----  end of class PF_CollectDataApp  -----
