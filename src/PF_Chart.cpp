@@ -80,7 +80,8 @@ using namespace std::string_literals;
 PF_Chart::PF_Chart (const PF_Chart& rhs)
     : boxes_{rhs.boxes_}, signals_{rhs.signals_}, columns_{rhs.columns_},
     current_column_{rhs.current_column_}, symbol_{rhs.symbol_}, chart_base_name_{rhs.chart_base_name_},
-    fname_box_size_{rhs.fname_box_size_}, atr_{rhs.atr_},
+    base_box_size_{rhs.base_box_size_},
+    fname_box_size_{rhs.fname_box_size_}, box_size_modifier_{rhs.box_size_modifier_},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_}, last_checked_date_{rhs.last_checked_date_},
     y_min_{rhs.y_min_}, y_max_{rhs.y_max_},
     current_direction_{rhs.current_direction_}, max_columns_for_graph_{rhs.max_columns_for_graph_}
@@ -101,8 +102,8 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
 PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
     : boxes_{std::move(rhs.boxes_)}, signals_{std::move(rhs.signals_)},
     columns_{std::move(rhs.columns_)}, current_column_{std::move(rhs.current_column_)},
-    symbol_{std::move(rhs.symbol_)}, chart_base_name_{std::move(rhs.chart_base_name_)},
-    fname_box_size_{std::move(rhs.fname_box_size_)}, atr_{std::move(rhs.atr_)},
+    symbol_{std::move(rhs.symbol_)}, chart_base_name_{std::move(rhs.chart_base_name_)}, base_box_size_{std::move(rhs.base_box_size_)},
+    fname_box_size_{std::move(rhs.fname_box_size_)}, box_size_modifier_{std::move(rhs.box_size_modifier_)},
     first_date_{rhs.first_date_}, last_change_date_{rhs.last_change_date_},
     last_checked_date_{rhs.last_checked_date_}, 
     y_min_{std::move(rhs.y_min_)}, y_max_{std::move(rhs.y_max_)},
@@ -121,38 +122,23 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
-        Boxes::BoxScale box_scale, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
-    : symbol_{std::move(symbol)}, fname_box_size_{std::move(box_size)}, atr_{std::move(atr)}, max_columns_for_graph_{max_columns_for_graph}
+PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad base_box_size, int32_t reversal_boxes,
+        Boxes::BoxScale box_scale, DprDecimal::DDecQuad box_size_modifier, int64_t max_columns_for_graph)
+    : symbol_{std::move(symbol)}, base_box_size_{std::move(base_box_size)},
+    box_size_modifier_{std::move(box_size_modifier)}, max_columns_for_graph_{max_columns_for_graph}
 
 {
+    // fmt::print("params at chart start: {}, {}\n", base_box_size_, box_size_modifier_);
+    fname_box_size_ = base_box_size_;
+    // fmt::print("params at chart start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, fname_box_size_);
+
 	// stock prices are listed to 2 decimals.  If we are doing integral scale, then
 	// we limit box size to that.
 	
-	DprDecimal::DDecQuad runtime_box_size = fname_box_size_;
-    if (atr_ != 0.0)
-    {
-    	runtime_box_size = (fname_box_size_ * atr_).Rescale(std::min(fname_box_size_.GetExponent(), atr_.GetExponent()) - 1);
-
-    	// it seems that the rescaled box size value can turn out to be zero. If that 
-    	// is the case, then go with the unscaled box size. 
-
-    	if (runtime_box_size == 0.0)
-    	{
-    		runtime_box_size = fname_box_size_ * atr_;
-    	}
-
-    	if (box_scale == Boxes::BoxScale::e_linear)
-    	{
-    		if (runtime_box_size.GetExponent() < -2)
-    		{
-    			runtime_box_size.Rescale(-2);
-    		}
-    	}
-    }
-	boxes_ = Boxes{runtime_box_size, box_scale};
+	boxes_ = Boxes{base_box_size_, box_size_modifier_, box_scale};
 	current_column_ = PF_Column(&boxes_, columns_.size(), reversal_boxes); 
 
+    // fmt::print("Boxes: {}\n", boxes_);
 	chart_base_name_ = MakeChartBaseName();
 
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -196,8 +182,9 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
         current_column_ = rhs.current_column_;
         symbol_ = rhs.symbol_;
         chart_base_name_ = rhs.chart_base_name_;
+        base_box_size_ = rhs.base_box_size_;
         fname_box_size_ = rhs.fname_box_size_;
-        atr_ = rhs.atr_;
+        box_size_modifier_ = rhs.box_size_modifier_;
         first_date_ = rhs.first_date_;
         last_change_date_ = rhs.last_change_date_;
         last_checked_date_ = rhs.last_checked_date_;
@@ -224,8 +211,9 @@ PF_Chart& PF_Chart::operator= (PF_Chart&& rhs) noexcept
         current_column_ = std::move(rhs.current_column_);
         symbol_ = rhs.symbol_;
         chart_base_name_ = rhs.chart_base_name_;
+        base_box_size_ = rhs.base_box_size_;
         fname_box_size_ = rhs.fname_box_size_;
-        atr_ = rhs.atr_;
+        box_size_modifier_ = rhs.box_size_modifier_;
         first_date_ = rhs.first_date_;
         last_change_date_ = rhs.last_change_date_;
         last_checked_date_ = rhs.last_checked_date_;
@@ -783,8 +771,9 @@ Json::Value PF_Chart::ToJSON () const
     result["last_change_date"] = last_change_date_.time_since_epoch().count();
     result["last_check_date"] = last_checked_date_.time_since_epoch().count();
 
+    result["base_box_size"] = base_box_size_.ToStr();
     result["fname_box_size"] = fname_box_size_.ToStr();
-    result["atr"] = atr_.ToStr();
+    result["box_size_modifier"] = box_size_modifier_.ToStr();
     result["y_min"] = y_min_.ToStr();
     result["y_max"] = y_max_.ToStr();
 
@@ -832,8 +821,9 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     last_change_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
     last_checked_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
 
+    base_box_size_ = DprDecimal::DDecQuad{new_data["base_box_size"].asString()};
     fname_box_size_ = DprDecimal::DDecQuad{new_data["fname_box_size"].asString()};
-    atr_ = DprDecimal::DDecQuad{new_data["atr"].asString()};
+    box_size_modifier_ = DprDecimal::DDecQuad{new_data["box_size_modifier"].asString()};
     y_min_ = DprDecimal::DDecQuad{new_data["y_min"].asString()};
     y_max_ = DprDecimal::DDecQuad{new_data["y_max"].asString()};
 

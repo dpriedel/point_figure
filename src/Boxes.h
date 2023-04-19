@@ -52,6 +52,7 @@ class Boxes
 public:
 
     static constexpr std::size_t MAX_BOXES = 1000;			// too many boxes and everything becomes too slow
+    static constexpr int32_t MIN_EXPONENT = -5;
     										//
     enum class BoxType { e_integral, e_fractional };
     enum class BoxScale { e_linear, e_percent };
@@ -64,7 +65,7 @@ public:
     Boxes (const Boxes& rhs) = default;
     Boxes (Boxes&& rhs) = default;
 
-    explicit Boxes (DprDecimal::DDecQuad box_size, BoxScale box_scale=BoxScale::e_linear);
+    explicit Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_modifier=0, BoxScale box_scale=BoxScale::e_linear);
 
     explicit Boxes(const Json::Value& new_data);
 
@@ -72,7 +73,7 @@ public:
 
     // ====================  ACCESSORS     ======================================= 
 
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxSize() const { return box_size_; }
+    [[nodiscard]] DprDecimal::DDecQuad GetBoxSize() const { return runtime_box_size_; }
     [[nodiscard]] BoxType GetBoxType() const { return box_type_; }
     [[nodiscard]] BoxScale GetBoxScale() const { return box_scale_; }
     [[nodiscard]] DprDecimal::DDecQuad GetScaleUpFactor() const { return percent_box_factor_up_; }
@@ -135,7 +136,9 @@ private:
 
     BoxList boxes_;
 
-    DprDecimal::DDecQuad box_size_ = -1;
+    DprDecimal::DDecQuad base_box_size_ = -1;
+    DprDecimal::DDecQuad box_size_modifier_ = 0;
+    DprDecimal::DDecQuad runtime_box_size_ = -1;
     DprDecimal::DDecQuad percent_box_factor_up_ = -1;
     DprDecimal::DDecQuad percent_box_factor_down_ = -1;
 
@@ -150,7 +153,7 @@ private:
 template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes::BoxType& box_type, fmt::format_context& ctx)
+    auto format(const Boxes::BoxType& box_type, fmt::format_context& ctx) const
     {
         std::string s;
 		fmt::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_integral ? "integral" : "fractional"));
@@ -163,7 +166,7 @@ template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
 template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes::BoxScale& box_scale, fmt::format_context& ctx)
+    auto format(const Boxes::BoxScale& box_scale, fmt::format_context& ctx) const
     {
         std::string s;
 		fmt::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_linear ? "linear" : "percent"));
@@ -188,7 +191,7 @@ template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
 template <> struct fmt::formatter<Boxes>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes& boxes, fmt::format_context& ctx)
+    auto format(const Boxes& boxes, fmt::format_context& ctx) const
     {
         std::string s;
     	fmt::format_to(std::back_inserter(s),

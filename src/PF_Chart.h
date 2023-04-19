@@ -101,13 +101,13 @@ public:
     PF_Chart (const PF_Chart& rhs);
     PF_Chart (PF_Chart&& rhs) noexcept ;
 
-    PF_Chart(std::string symbol, DprDecimal::DDecQuad box_size, int32_t reversal_boxes,
+    PF_Chart(std::string symbol, DprDecimal::DDecQuad base_box_size, int32_t reversal_boxes,
             Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear,
-            DprDecimal::DDecQuad atr=0, int64_t max_columns_for_graph=0);
+            DprDecimal::DDecQuad box_size_modifier=0, int64_t max_columns_for_graph=0);
 
-    PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad atr, int64_t max_columns_for_graph)
+    PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad box_size_modifier, int64_t max_columns_for_graph)
         : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals),
-        		std::get<e_box_scale>(vals), atr, max_columns_for_graph)
+        		std::get<e_box_scale>(vals), box_size_modifier, max_columns_for_graph)
     {
     }
 
@@ -225,8 +225,9 @@ private:
     std::string symbol_;
     std::string chart_base_name_;
 
+	DprDecimal::DDecQuad base_box_size_ = 0;	// box size to use when constructing file name 
 	DprDecimal::DDecQuad fname_box_size_ = 0;	// box size to use when constructing file name 
-	DprDecimal::DDecQuad atr_ = 0;
+	DprDecimal::DDecQuad box_size_modifier_ = 0;
 
     PF_Column::TmPt first_date_ = {};			    //	earliest entry for symbol
     PF_Column::TmPt last_change_date_ = {};		//	date of last change to data
@@ -371,7 +372,7 @@ private:
 template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Chart& chart, fmt::format_context& ctx)
+    auto format(const PF_Chart& chart, fmt::format_context& ctx) const
     {
         std::string s;
         fmt::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",

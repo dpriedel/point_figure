@@ -48,28 +48,60 @@
 //      Method:  Boxes
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-Boxes::Boxes (DprDecimal::DDecQuad box_size, BoxScale box_scale)
-    : box_size_{std::move(box_size)}, box_type_{BoxType::e_fractional}, box_scale_{box_scale}
+Boxes::Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_modifier, BoxScale box_scale)
+    : base_box_size_{std::move(base_box_size)}, box_size_modifier_{std::move(box_size_modifier)}, 
+    box_type_{BoxType::e_fractional}, box_scale_{box_scale}
 {
-    // we rarely need integral box types.
-    
-    if (box_size_.GetExponent() >= 0)
+    if (base_box_size_.GetExponent() < MIN_EXPONENT)
     {
-        box_type_ = BoxType::e_integral;
+        base_box_size_.Rescale(MIN_EXPONENT);
+    }
+    // fmt::print("params at Boxes start: {}, {}\n", base_box_size_, box_size_modifier_);
+	runtime_box_size_ = base_box_size_;
+    // fmt::print("params at Boxes start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, runtime_box_size_);
+
+    if (box_size_modifier_ != 0.0)
+    {
+    	runtime_box_size_ = (base_box_size_ * box_size_modifier_).Rescale(std::max(base_box_size_.GetExponent(), box_size_modifier_.GetExponent()) - 1);
+
+    	// it seems that the rescaled box size value can turn out to be zero. If that 
+    	// is the case, then go with the unscaled box size. 
+
+    	if (runtime_box_size_ == 0.0)
+    	{
+    		runtime_box_size_ = (base_box_size_ * box_size_modifier_).Rescale(MIN_EXPONENT);
+    	}
+
+    	else        // percent box size
+    	{
+            percent_box_factor_up_ = (1.0 + box_size_modifier_).Rescale(std::max(base_box_size_.GetExponent(), box_size_modifier_.GetExponent()) - 1);
+            percent_box_factor_down_ = (1.0 - box_size_modifier_).Rescale(std::max(base_box_size_.GetExponent(), box_size_modifier_.GetExponent()) - 1);
+            percent_exponent_ = percent_box_factor_up_ .GetExponent();
+    	}
+
+    }
+    else
+    {
+        if (box_scale_ == BoxScale::e_percent)
+        {
+            percent_box_factor_up_ = (1.0 + base_box_size_);
+            percent_box_factor_down_ = (1.0 - base_box_size_);
+            percent_exponent_ = base_box_size_.GetExponent() - 1;
+        }
     }
 
     // try to keep box size from being too small
 
-    if (box_size_.GetExponent() < -3)
+    if (runtime_box_size_.GetExponent() < -3)
     {
-        box_size_.Rescale(-3);
+        runtime_box_size_.Rescale(-3);
     }
 
-    if (box_scale_ == BoxScale::e_percent)
+    // we rarely need integral box types.
+    
+    if (runtime_box_size_.GetExponent() >= 0)
     {
-        percent_box_factor_up_ = (1.0 + box_size_);
-        percent_box_factor_down_ = (1.0 - box_size_);
-        percent_exponent_ = box_size_.GetExponent() - 1;
+        box_type_ = BoxType::e_integral;
     }
 
 }  // -----  end of method Boxes::Boxes  (constructor)  ----- 
@@ -142,7 +174,7 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
             // extend up 
 
             prev_back = boxes_.back();
-            Box new_box = prev_back + box_size_;
+            Box new_box = prev_back + runtime_box_size_;
             PushBack(std::move(new_box));
         }
         return (new_value < boxes_.back() ? prev_back : boxes_.back());
@@ -152,7 +184,7 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
    
     do 
     {
-        Box new_box = boxes_.front() - box_size_;
+        Box new_box = boxes_.front() - runtime_box_size_;
         PushFront(new_box);
     } while (new_value < boxes_.front());
 
@@ -234,7 +266,7 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
     {
         if (current_value == boxes_.back())
         {
-            Box new_box = boxes_.back() + box_size_;
+            Box new_box = boxes_.back() + runtime_box_size_;
             PushBack(new_box);
             return new_box;
         }
@@ -320,7 +352,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
 
     if (boxes_.size() == 1)
     {
-        Box new_box = boxes_.front() - box_size_;
+        Box new_box = boxes_.front() - runtime_box_size_;
         PushFront(new_box);
         return new_box;
     }
@@ -341,7 +373,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
     size_t box_index = ranges::distance(boxes_.begin(), found_it);
     if (box_index == 0)
     {
-        Box new_box = boxes_.front() - box_size_;
+        Box new_box = boxes_.front() - runtime_box_size_;
         PushFront(new_box);
         return boxes_.front();
     }
@@ -446,7 +478,7 @@ Boxes& Boxes::operator= (const Json::Value& new_data)
 
 bool Boxes::operator== (const Boxes& rhs) const
 {
-    if (rhs.box_size_ != box_size_)
+    if (rhs.base_box_size_ != base_box_size_)
     {
         return false;
     }
@@ -464,7 +496,7 @@ bool Boxes::operator== (const Boxes& rhs) const
 
 Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 {
-    BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes_.");
+    BOOST_ASSERT_MSG(base_box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
 //    if (box_scale_ == BoxScale::e_percent)
 //    {
@@ -491,7 +523,7 @@ Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 
 Boxes::Box Boxes::FirstBoxPerCent (const DprDecimal::DDecQuad& start_at)
 {
-    BOOST_ASSERT_MSG(box_size_ != -1, "'box_size' must be specified before adding boxes_.");
+    BOOST_ASSERT_MSG(base_box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
     boxes_.clear();
 //    auto new_box = RoundDownToNearestBox(start_at);
@@ -513,7 +545,7 @@ Boxes::Box Boxes::RoundDownToNearestBox (const DprDecimal::DDecQuad& a_value) co
         price_as_int = a_value;
     }
 
-    Box result = DprDecimal::Mod(price_as_int, box_size_) * box_size_;
+    Box result = DprDecimal::Mod(price_as_int, base_box_size_) * base_box_size_;
     return result;
 
 }		// -----  end of method PF_Column::RoundDowntoNearestBox  ----- 
@@ -522,7 +554,9 @@ Json::Value Boxes::ToJSON () const
 {
     Json::Value result;
 
-    result["box_size"] = box_size_.ToStr();
+    result["box_size"] = base_box_size_.ToStr();
+    result["box_size_modifier"] = box_size_modifier_.ToStr();
+    result["runtime_box_size"] = runtime_box_size_.ToStr();
     result["factor_up"] = percent_box_factor_up_.ToStr();
     result["factor_down"] = percent_box_factor_down_.ToStr();
     result["exponent"] = percent_exponent_;
@@ -561,7 +595,9 @@ Json::Value Boxes::ToJSON () const
 
 void Boxes::FromJSON (const Json::Value& new_data)
 {
-    box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
+    base_box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
+    box_size_modifier_ = DprDecimal::DDecQuad{new_data["box_size_modifier"].asString()};
+    runtime_box_size_ = DprDecimal::DDecQuad{new_data["runtime_box_size"].asString()};
     percent_box_factor_up_ = DprDecimal::DDecQuad{new_data["factor_up"].asString()};
     percent_box_factor_down_ = DprDecimal::DDecQuad{new_data["factor_down"].asString()};
     percent_exponent_ = new_data["exponent"].asInt();
@@ -608,14 +644,14 @@ void Boxes::FromJSON (const Json::Value& new_data)
 
 void Boxes::PushFront(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, box_size_, boxes_[0], boxes_[1], boxes_[2], boxes_[3], boxes_[4]).c_str());
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, base_box_size_, boxes_[0], boxes_[1], boxes_[2], boxes_[3], boxes_[4]).c_str());
     boxes_.insert(boxes_.begin(), std::move(new_box));
 
 }		// -----  end of method Boxes::PushFront  ----- 
 
 void Boxes::PushBack(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, box_size_, boxes_[MAX_BOXES - 5], boxes_[MAX_BOXES - 4],
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, base_box_size_, boxes_[MAX_BOXES - 5], boxes_[MAX_BOXES - 4],
                 boxes_[MAX_BOXES - 3], boxes_[MAX_BOXES - 2], boxes_[MAX_BOXES - 1]).c_str());
     boxes_.push_back(std::move(new_box));
 }		// -----  end of method Boxes::PushBack  ----- 
