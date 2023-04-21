@@ -94,8 +94,7 @@ CFG_LIB := -L/usr/local/lib \
 		-lpython3.11 \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
-		-lboost_program_options-mt-x64 \
-		-L/usr/local/Python_DPR/lib 
+		-lboost_program_options-mt-x64 
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))

@@ -1,6 +1,8 @@
 PF_CollectData
 ================
 
+
+
 This is a program which either collects data from a live feed (currently only from Tiingo because that is what I have access to) or by reading EOD data from CSV or JSON files.
 
 This data is then processed into a Point and Figure 'charts' using logic described in "The Definitive Guide to Point and Figure" by Jeremy du Plessis, published by Harriman House Ltd.
