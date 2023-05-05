@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.80_gcc-12
-GCCDIR := /extra/gcc/gcc-12
+BOOSTDIR := /extra/boost/boost-1.82_gcc-13
+GCCDIR := /extra/gcc/gcc-13
 GTESTDIR := /usr/local/include
 DECIMALSRCDIR := /extra/gcc/decNumber_old
 UTILITYDIR := ${HOME}/projects/PF_Project/common_utilities
@@ -43,8 +43,6 @@ CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(UTILITYDIR)/include \
 	-I/usr/include/python3.11 \
 	-I/usr/lib/python3.11/site-packages/pybind11/include
-	# -I/usr/include/python3.10 \
-	# -I/usr/lib/python3.10/site-packages/pybind11/include
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
