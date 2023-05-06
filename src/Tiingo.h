@@ -17,7 +17,8 @@
 #ifndef  _TIINGO_INC_
 #define  _TIINGO_INC_
 
-#include <date/date.h>
+// #include <date/date.h>
+#include <chrono>
 #include <deque>
 #include <mutex>
 #include <queue>
@@ -25,8 +26,11 @@
 #include <vector>
 #include <sys/types.h>
 
-#include <date/julian.h>
+// #include <date/julian.h>
 #include <json/json.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
@@ -35,6 +39,8 @@
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
+
+#pragma GCC diagnostic pop
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -80,7 +86,7 @@ public:
     // ====================  ACCESSORS     ======================================= 
 
     Json::Value GetTopOfBookAndLastClose();
-    std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol, date::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays=nullptr);
+    std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol, std::chrono::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays=nullptr);
 
     StreamedData ExtractData(const std::string& buffer);
 
@@ -99,7 +105,7 @@ public:
 protected:
     // ====================  METHODS       ======================================= 
 
-    Json::Value GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc);
+    Json::Value GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date, std::chrono::year_month_day end_date, UpOrDown sort_asc);
 
     // ====================  DATA MEMBERS  ======================================= 
 
