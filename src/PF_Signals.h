@@ -19,12 +19,13 @@
 #ifndef  PF_SIGNALS_INC
 #define  PF_SIGNALS_INC
 
+#include <chrono>
 #include <optional>
 #include <utility>
 #include <vector>
 
-#include <date/date.h>
-#include <date/tz.h>
+// #include <date/date.h>
+// #include <date/tz.h>
 
 #include <fmt/format.h>
 #include <fmt/chrono.h>
@@ -74,7 +75,7 @@ struct PF_Signal
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_Unknown;
     PF_SignalType signal_type_ = PF_SignalType::e_Unknown;
     PF_SignalPriority priority_ = PF_SignalPriority::e_Unknown;
-    date::utc_time<date::utc_clock::duration> tpt_ = {};
+    std::chrono::utc_time<std::chrono::utc_clock::duration> tpt_ = {};
     int32_t column_number_ = -1;
     DprDecimal::DDecQuad signal_price_ = -1;
     DprDecimal::DDecQuad box_ = -1;
@@ -96,7 +97,7 @@ struct PF_Catapult_Buy
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_Catapult_Sell
@@ -108,7 +109,7 @@ struct PF_Catapult_Sell
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_DoubleTopBuy
@@ -120,7 +121,7 @@ struct PF_DoubleTopBuy
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 3;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_TripleTopBuy
@@ -132,7 +133,7 @@ struct PF_TripleTopBuy
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_DoubleBottomSell
@@ -144,7 +145,7 @@ struct PF_DoubleBottomSell
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 3;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_TripleBottomSell
@@ -156,7 +157,7 @@ struct PF_TripleBottomSell
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_Bullish_TT_Buy
@@ -168,7 +169,7 @@ struct PF_Bullish_TT_Buy
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_Bearish_TB_Sell
@@ -180,7 +181,7 @@ struct PF_Bearish_TB_Sell
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_TTopCatapult_Buy
@@ -192,7 +193,7 @@ struct PF_TTopCatapult_Buy
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 7;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 struct PF_TBottom_Catapult_Sell
@@ -204,7 +205,7 @@ struct PF_TBottom_Catapult_Sell
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 7;
 
-    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time);
+    std::optional<PF_Signal> operator()(const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time);
 };
 
 // this code will update the chart with any signals found for the current inputs

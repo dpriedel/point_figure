@@ -35,10 +35,15 @@
 #include <boost/assert.hpp>
 
 #include <fmt/format.h>
+#include <fmt/chrono.h>
 
 #include <pqxx/pqxx>
 #include <pqxx/stream_from.hxx>
 #include <pqxx/transaction.hxx>
+
+#include <date/date.h>      // for from_stream
+#include <date/chrono_io.h>
+#include <date/tz.h>
 
 #include <spdlog/spdlog.h>
 
@@ -256,7 +261,7 @@ void PF_DB::UpdatePFChartDataInDB (const PF_Chart& the_chart, std::string_view i
     //      date, exchange, symbol, open, high, low, close
     // =====================================================================================
 
-std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const
+std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, std::chrono::year_month_day date, int how_many) const
 {
     auto Row2StockDataRecord = [](const auto& r) { return 
         StockDataRecord{.date_=std::string{r[0].template as<std::string_view>()},
@@ -313,7 +318,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
     std::vector<MultiSymbolDateCloseRecord> db_data;
 
     std::istringstream time_stream;
-    date::utc_time<date::utc_clock::duration> tp;
+    date::utc_time<std::chrono::utc_clock::duration> tp;
 
     // we know our database contains 'date's, but we need timepoints.
     // we'll handle that in the conversion routine below.
@@ -322,7 +327,8 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
         time_stream.clear();
         time_stream.str(std::string{std::get<1>(r)});
         date::from_stream(time_stream, date_format, tp);
-        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp, .close_=std::get<2>(r)};
+        std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
+        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp1, .close_=std::get<2>(r)};
         return new_data;
     };
 
@@ -359,7 +365,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
     std::vector<MultiSymbolDateCloseRecord> db_data;
 
     std::istringstream time_stream;
-    date::utc_time<date::utc_clock::duration> tp;
+    date::utc_time<std::chrono::utc_clock::duration> tp;
 
     // we know our database contains 'date's, but we need timepoints.
     // we'll handle that in the conversion routine below.
@@ -368,7 +374,8 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
         time_stream.clear();
         time_stream.str(std::string{std::get<1>(r)});
         date::from_stream(time_stream, date_format, tp);
-        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp, .close_=std::get<2>(r)};
+        std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
+        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp1, .close_=std::get<2>(r)};
         return new_data;
     };
 

@@ -34,7 +34,7 @@
 
 bool CanApplySignal(const PF_Chart& the_chart, const auto& signal);
 
-using signal_function = std::function<std::optional<PF_Signal>(const PF_Chart&, const DprDecimal::DDecQuad&, date::utc_time<date::utc_clock::duration>)>;
+using signal_function = std::function<std::optional<PF_Signal>(const PF_Chart&, const DprDecimal::DDecQuad&, std::chrono::utc_time<std::chrono::utc_clock::duration>)>;
 
 std::vector<signal_function>sig_funcs = {
     PF_Catapult_Buy(),
@@ -260,7 +260,7 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     }
 
     new_sig.priority_ = static_cast<PF_SignalPriority>(new_data["priority"].asInt());
-    new_sig.tpt_ = date::utc_time<date::utc_clock::duration>{date::utc_clock::duration{new_data["time"].asInt64()}};
+    new_sig.tpt_ = std::chrono::utc_time<std::chrono::utc_clock::duration>{std::chrono::utc_clock::duration{new_data["time"].asInt64()}};
     new_sig.column_number_ = new_data["column"].asInt();
     new_sig.signal_price_ = DprDecimal::DDecQuad{new_data["price"].asString()};
     new_sig.box_ = DprDecimal::DDecQuad{new_data["box"].asString()};
@@ -268,7 +268,7 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     return new_sig;
 }		// -----  end of method PF_SignalFromJSON  ----- 
 
-std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -349,7 +349,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
 	return {};
 }		// -----  end of method PF_Catapult_Up::operator()  ----- 
 
-std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -429,7 +429,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
 	return {};
 }		// -----  end of method PF_DoubleTopBuy::operator()  ----- 
 
-std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -458,7 +458,7 @@ std::optional<PF_Signal> PF_DoubleTopBuy::operator() (const PF_Chart& the_chart,
 	return {};
 }		// -----  end of method PF_Catapult_Down::operator()  ----- 
 
-std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -488,7 +488,7 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator() (const PF_Chart& the_chart,
 	return {};
 }		// -----  end of method PF_TripleTopBuy::operator()  ----- 
 
-std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -517,7 +517,7 @@ std::optional<PF_Signal> PF_DoubleBottomSell::operator() (const PF_Chart& the_ch
 	return {};
 }		// -----  end of method PF_DoubleBottomSell::operator()  ----- 
 
-std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -547,7 +547,7 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator() (const PF_Chart& the_ch
 	return {};
 }		// -----  end of method PF_TripleBottomSell::operator()  ----- 
 
-std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -578,7 +578,7 @@ std::optional<PF_Signal> PF_Bullish_TT_Buy::operator() (const PF_Chart& the_char
 	return {};
 }		// -----  end of method PF_Bullish_TT_Buy::operator()  ----- 
 
-std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	if (! CanApplySignal(the_chart, *this))
 	{
@@ -609,7 +609,7 @@ std::optional<PF_Signal> PF_Bearish_TB_Sell::operator() (const PF_Chart& the_cha
 	return {};
 }		// -----  end of method PF_Bearish_TB_Sell::operator()  ----- 
 
-std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	// this signal is basically a double-top buy immediately preceeded by a triple-top buy with no intervening sell signal
 	
@@ -666,7 +666,7 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_ch
 }		// -----  end of method PF_TTopCatapult_Buy::operator()  ----- 
 
 
-std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, date::utc_time<date::utc_clock::duration> the_time)
+std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator() (const PF_Chart& the_chart, const DprDecimal::DDecQuad& new_value, std::chrono::utc_time<std::chrono::utc_clock::duration> the_time)
 {
 	// this signal is basically a double-bottom sell immediately preceeded by a triple-bottom sell with no intervening buy signal
 	

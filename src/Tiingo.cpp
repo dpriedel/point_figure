@@ -20,7 +20,7 @@
 #include <regex>
 #include <string_view>
 
-#include <date/date.h>
+// #include <date/date.h>
 
 #include <fmt/format.h>
 #include <fmt/chrono.h>
@@ -443,7 +443,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
     return response;
 }		// -----  end of method Tiingo::GetTopOfBookAndLastClose  ----- 
 
-std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol, date::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays)
+std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol, std::chrono::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
 
@@ -459,7 +459,7 @@ std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& 
 
 }		// -----  end of method Tiingo::GetMostRecentTickerData  ----- 
 
-Json::Value Tiingo::GetTickerData(std::string_view symbol, date::year_month_day start_date, date::year_month_day end_date, UpOrDown sort_asc)
+Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date, std::chrono::year_month_day end_date, UpOrDown sort_asc)
 {
     // if any problems occur here, we'll just let beast throw an exception.
 

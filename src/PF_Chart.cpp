@@ -596,7 +596,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     }
     auto chart_title = fmt::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetChartBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
-                (IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, date::clock_cast<std::chrono::system_clock>(last_change_date_), explanation_text);
+                (IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, std::chrono::clock_cast<std::chrono::system_clock>(last_change_date_), explanation_text);
 
     py::dict locals = py::dict{
         "the_data"_a = py::dict{

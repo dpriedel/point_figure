@@ -35,11 +35,12 @@
 #ifndef  _POINTANDFIGUREDB_INC_
 #define  _POINTANDFIGUREDB_INC_
 
+#include <chrono>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include <date/date.h>
+// #include <date/date.h>
 #include <json/json.h>
 
 #include <pqxx/pqxx>
@@ -83,7 +84,7 @@ public:
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;
     void UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;
     
-    [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, date::year_month_day date, int how_many) const;
+    [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, std::chrono::year_month_day date, int how_many) const;
 
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsInList (const std::vector<std::string>& symbol_list, const std::string& begin_date, const std::string& price_fld_name, const char* date_format) const;
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange (const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name, const char* date_format) const;
