@@ -105,7 +105,7 @@ bool AddSignalsToChart(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_valu
 	    if (auto new_sig = sig(the_chart, new_value, the_time); new_sig)
 	    {
 		    found_signal = true;
-		    spdlog::debug("Found signal: {}", new_sig .value());
+		    spdlog::debug(std::format("Found signal: {}", new_sig .value()));
             the_chart.AddSignal(new_sig.value());
 	    }
     }
@@ -207,7 +207,7 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid category provided: {}. Must be 'buy', 'sell', 'unknown'.", category)};
+        throw std::invalid_argument{std::format("Invalid category provided: {}. Must be 'buy', 'sell', 'unknown'.", category)};
     }
 
     if (const auto type = new_data["type"].asString(); type == "dt_buy")
@@ -256,7 +256,7 @@ PF_Signal PF_SignalFromJSON(const Json::Value& new_data)
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid signal type provided: {}. Must be 'dt_buy', 'tt_buy' 'db_sell', 'tb_sell', 'unknown'.", type)};
+        throw std::invalid_argument{std::format("Invalid signal type provided: {}. Must be 'dt_buy', 'tt_buy' 'db_sell', 'tb_sell', 'unknown'.", type)};
     }
 
     new_sig.priority_ = static_cast<PF_SignalPriority>(new_data["priority"].asInt());
@@ -281,7 +281,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
 
     auto current_top = the_chart.back().GetTop();
 
-    // fmt::print("col num: {} top: {}\n", number_cols - 1, current_top);
+    // std::print("col num: {} top: {}\n", number_cols - 1, current_top);
     
     // these patterns can be wide in 1-box reversal charts.  Set a leftmost boundary
     // by looking for any column that was higher than this one.
@@ -289,7 +289,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
     int32_t boundary_column{-1};
     for (int32_t index = number_cols - 2; index > -1; --index)
     {
-       // fmt::print("index1: {}\n", index);
+       // std::print("index1: {}\n", index);
         if (the_chart[index].GetTop() >= current_top)
         {
             boundary_column = index;
@@ -297,7 +297,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
         }
     }
 
-   // fmt::print("boundary column: {}\n", boundary_column);
+   // std::print("boundary column: {}\n", boundary_column);
 
     // we finally get to apply our rule
     // first, we need to find the previous column in our direction with a top
@@ -308,7 +308,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
 
     for (int32_t index = number_cols - 2; index > boundary_column; --index)
     {
-       // fmt::print("index2: {}\n", index);
+       // std::print("index2: {}\n", index);
         if (the_chart[index].GetDirection() == PF_Column::Direction::e_up && the_chart[index].GetTop() == previous_top)
         {
             which_prev_col = index;
@@ -316,7 +316,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
         }
     }
 
-   // fmt::print("prev col: {} prev top: {}\n", which_prev_col, previous_top);
+   // std::print("prev col: {} prev top: {}\n", which_prev_col, previous_top);
 
     if (which_prev_col > -1)
     {
@@ -324,7 +324,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
 
         for (int32_t index = which_prev_col - 1; index > boundary_column; --index)
         {
-//            fmt::print("index2: {}\n", index);
+//            std::print("index2: {}\n", index);
             if (the_chart[index].GetDirection() == PF_Column::Direction::e_up && the_chart[index].GetTop() == previous_top)
             {
                 ++ctr;
@@ -366,11 +366,11 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
 
     auto current_bottom = the_chart[number_cols - 1].GetBottom();
 
-    // fmt::print("col num: {} top: {}\n", number_cols - 1, current_top);
+    // std::print("col num: {} top: {}\n", number_cols - 1, current_top);
 
     for (int32_t index = number_cols - 2; index > -1; --index)
     {
-       // fmt::print("index1: {}\n", index);
+       // std::print("index1: {}\n", index);
         if (the_chart[index].GetBottom() <= current_bottom)
         {
             boundary_column = index;
@@ -378,7 +378,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
         }
     }
 
-   // fmt::print("boundary column: {}\n", boundary_column);
+   // std::print("boundary column: {}\n", boundary_column);
 
     // we finally get to apply our rule
     // first, we need to find the previous column in our direction with a bottom
@@ -389,7 +389,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
 
     for (int32_t index = number_cols - 2; index > boundary_column; --index)
     {
-       // fmt::print("index2: {}\n", index);
+       // std::print("index2: {}\n", index);
         if (the_chart[index].GetDirection() == PF_Column::Direction::e_down && the_chart[index].GetBottom() == previous_bottom)
         {
             which_prev_col = index;
@@ -397,7 +397,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
         }
     }
 
-   // fmt::print("prev col: {} prev top: {}\n", which_prev_col, previous_top);
+   // std::print("prev col: {} prev top: {}\n", which_prev_col, previous_top);
 
     if (which_prev_col > -1)
     {
@@ -405,7 +405,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
 
         for (int32_t index = which_prev_col - 1; index > boundary_column; --index)
         {
-//            fmt::print("index2: {}\n", index);
+//            std::print("index2: {}\n", index);
             if (the_chart[index].GetDirection() == PF_Column::Direction::e_down && the_chart[index].GetBottom() == previous_bottom)
             {
                 ++ctr;

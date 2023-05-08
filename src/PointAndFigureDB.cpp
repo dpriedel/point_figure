@@ -31,11 +31,12 @@
 //
 // =====================================================================================
 
+#include <format>
 
 #include <boost/assert.hpp>
 
-#include <fmt/format.h>
-#include <fmt/chrono.h>
+// #include <fmt/format.h>
+// #include <fmt/chrono.h>
 
 #include <pqxx/pqxx>
 #include <pqxx/stream_from.hxx>
@@ -74,9 +75,9 @@ std::vector<std::string> PF_DB::ListExchanges () const
 
     auto Row2Exchange = [](const auto& r) { return r[0].template as<std::string>(); };
 
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-    std::string get_exchanges_cmd = fmt::format("SELECT DISTINCT(exchange) FROM new_stock_data.names_and_symbols ORDER BY exchange ASC",
+    std::string get_exchanges_cmd = std::format("SELECT DISTINCT(exchange) FROM new_stock_data.names_and_symbols ORDER BY exchange ASC",
             db_params_.db_data_source_
             );
 
@@ -86,7 +87,7 @@ std::vector<std::string> PF_DB::ListExchanges () const
     }
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to load list of exchanges from database because: {}\n", e.what()));
+        spdlog::error(std::format("Unable to load list of exchanges from database because: {}\n", e.what()));
    	}
 	return exchanges;
 }		// -----  end of method PF_DB::ListExchanges  ----- 
@@ -97,28 +98,28 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange (std::string_view exchange
 
     auto Row2Symbol = [](const auto& r) { return std::string{std::get<0>(r)}; };
 
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
 	try
 	{
-		std::string get_symbols_cmd = fmt::format("SELECT DISTINCT(symbol) FROM new_stock_data.names_and_symbols WHERE exchange = {} ORDER BY symbol ASC",
+		std::string get_symbols_cmd = std::format("SELECT DISTINCT(symbol) FROM new_stock_data.names_and_symbols WHERE exchange = {} ORDER BY symbol ASC",
 				c.quote(exchange)
 				);
         symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
     }
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to load list of symbols for exchange: {} because: {}\n", exchange, e.what()));
+        spdlog::error(std::format("Unable to load list of symbols for exchange: {} because: {}\n", exchange, e.what()));
    	}
 	return symbols;
 }		// -----  end of method PF_DB::ListSymbolsOnExchange  ----- 
 
 Json::Value PF_DB::GetPFChartData (const std::string file_name) const
 {
-    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};
 
-	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}",
+	auto retrieve_chart_data_cmd = std::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}",
             db_params_.db_mode_,
             trxn.quote(file_name)
             );
@@ -142,7 +143,7 @@ Json::Value PF_DB::GetPFChartData (const std::string file_name) const
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
     if (! reader->parse(the_data.data(), the_data.data() + the_data.size(), &chart_data, &err))
     {
-        throw std::runtime_error(fmt::format("Problem parsing data from DB for file: {}.\n{}", file_name, err));
+        throw std::runtime_error(std::format("Problem parsing data from DB for file: {}.\n{}", file_name, err));
     }
 	return chart_data;
 }		// -----  end of method PF_DB::GetPFChartData  ----- 
@@ -151,10 +152,10 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol (const std::string& s
 {
     std::vector<PF_Chart> charts;
 
-    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};
 
-	auto retrieve_chart_data_cmd = fmt::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE symbol = {} and file_name like '%_eod.json' ",
+	auto retrieve_chart_data_cmd = std::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE symbol = {} and file_name like '%_eod.json' ",
             db_params_.db_mode_,
             trxn.quote(symbol)
             );
@@ -179,7 +180,7 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol (const std::string& s
         const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
         if (! reader->parse(the_data.data(), the_data.data() + the_data.size(), &chart_data, &err))
         {
-            throw std::runtime_error(fmt::format("Problem parsing data from DB for symbol: {}.\n{}", symbol, err));
+            throw std::runtime_error(std::format("Problem parsing data from DB for symbol: {}.\n{}", symbol, err));
         }
         PF_Chart retrieved_chart{chart_data};
         charts.push_back(std::move(retrieved_chart));
@@ -189,10 +190,10 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol (const std::string& s
 
 void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const
 {
-    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
 
-    auto delete_existing_data_cmd = fmt::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.MakeChartFileName(interval, "json")));
+    auto delete_existing_data_cmd = std::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.MakeChartFileName(interval, "json")));
     trxn.exec(delete_existing_data_cmd);
 
 	auto json = the_chart.ToJSON();
@@ -200,7 +201,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 	wbuilder["indentation"] = "";
 	std::string for_db = Json::writeString(wbuilder, json);
 
-	const auto add_new_data_cmd = fmt::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
+	const auto add_new_data_cmd = std::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
 			" VALUES({}, {}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}', '{}')",
     		db_params_.db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", 
     		    "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
@@ -211,9 +212,9 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 			json["boxes"]["box_type"].asString(),
 			json["boxes"]["box_scale"].asString(),
 			trxn.quote(the_chart.MakeChartFileName(interval, "json")),
-			trxn.quote(fmt::format("{:%F %T}", the_chart.GetFirstTime())),
-			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastChangeTime())),
-			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),
+			trxn.quote(std::format("{:%F %T}", the_chart.GetFirstTime())),
+			trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
+			trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())),
 			json["current_direction"].asString(),
 			for_db,
 			cvs_graphics_data
@@ -227,7 +228,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 
 void PF_DB::UpdatePFChartDataInDB (const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const
 {
-    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
 
 	auto json = the_chart.ToJSON();
@@ -235,14 +236,14 @@ void PF_DB::UpdatePFChartDataInDB (const PF_Chart& the_chart, std::string_view i
 	wbuilder["indentation"] = "";
 	std::string for_db = Json::writeString(wbuilder, json);
 
-    const auto update_chart_data_cmd = fmt::format("UPDATE {}_point_and_figure.pf_charts "
+    const auto update_chart_data_cmd = std::format("UPDATE {}_point_and_figure.pf_charts "
             "SET chart_data = '{}', cvs_graphics_data = '{}', last_change_date = {}, last_checked_date = {}, current_direction = 'e_{}' "
             "WHERE symbol = {} and file_name = {}",
     		db_params_.db_mode_,
 			for_db,
 			cvs_graphics_data,
-			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastChangeTime())),
-			trxn.quote(fmt::format("{:%F %T}", the_chart.GetLastCheckedTime())),
+			trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
+			trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())),
 			json["current_direction"].asString(),
 			trxn.quote(the_chart.GetSymbol()),
 			trxn.quote(the_chart.MakeChartFileName(interval, "json"))
@@ -272,9 +273,9 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
                         .close_=r[5].template as<std::string_view>() };
         };
 
-    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-	std::string get_records_cmd = fmt::format("SELECT date, symbol, adjopen, adjhigh, adjlow, adjclose FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
+	std::string get_records_cmd = std::format("SELECT date, symbol, adjopen, adjhigh, adjlow, adjclose FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
 			db_params_.db_data_source_,
 			c.quote(symbol),
             date,
@@ -289,7 +290,7 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
     }
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to run query: {}\n\tbecause: {}\n", get_records_cmd, e.what()));
+        spdlog::error(std::format("Unable to run query: {}\n\tbecause: {}\n", get_records_cmd, e.what()));
    	}
     return records;
 }		// -----  end of function PF_DB::RetrieveMostRecentStockDataRecordsFromDB   -----
@@ -307,11 +308,11 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
 		query_list += *syms;
 	}
 	query_list += "' )";
-    spdlog::debug(fmt::format("Retrieving closing prices for symbols in list: {}", query_list));
+    spdlog::debug(std::format("Retrieving closing prices for symbols in list: {}", query_list));
 
     PF_DB pf_db{db_params_};
 	
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
 	// we need a place to keep the data we retrieve from the database.
 	
@@ -336,7 +337,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
 	{
 		// first, get ready to retrieve our data from DB.  Do this for all our symbols here.
 
-		std::string get_symbol_prices_cmd = fmt::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
+		std::string get_symbol_prices_cmd = std::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
 				price_fld_name,
 				db_params_.db_data_source_,
 				query_list,
@@ -344,11 +345,11 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
 				);
 
         db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
-        spdlog::debug(fmt::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
+        spdlog::debug(std::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
    	}
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to retrieve DB data from symbols in: {} because: {}.", query_list, e.what()));
+        spdlog::error(std::format("Unable to retrieve DB data from symbols in: {} because: {}.", query_list, e.what()));
    	}
 
 	return db_data;
@@ -358,7 +359,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
 {
     PF_DB pf_db{db_params_};
 	
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
 	// we need a place to keep the data we retrieve from the database.
 	
@@ -383,7 +384,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
 	{
 		// first, get ready to retrieve our data from DB.  Do this for all our symbols here.
 
-		std::string get_symbol_prices_cmd = fmt::format("SELECT t1.symbol, t1.date, t1.{} FROM {} AS t1 INNER JOIN new_stock_data.names_and_symbols as t2 on t1.symbol = t2.symbol WHERE t2.exchange = {} AND t1.date >= {} ORDER BY t1.symbol ASC, t1.date ASC",
+		std::string get_symbol_prices_cmd = std::format("SELECT t1.symbol, t1.date, t1.{} FROM {} AS t1 INNER JOIN new_stock_data.names_and_symbols as t2 on t1.symbol = t2.symbol WHERE t2.exchange = {} AND t1.date >= {} ORDER BY t1.symbol ASC, t1.date ASC",
 				price_fld_name,
 				db_params_.db_data_source_,
 				c.quote(exchange),
@@ -391,11 +392,11 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
 				);
 
         db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
-        spdlog::debug(fmt::format("Done retrieving data for symbols on exchange: {}. Got: {} rows.", exchange, db_data.size()));
+        spdlog::debug(std::format("Done retrieving data for symbols on exchange: {}. Got: {} rows.", exchange, db_data.size()));
    	}
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to retrieve DB data from symbols on exchange: {} because: {}.", exchange, e.what()));
+        spdlog::error(std::format("Unable to retrieve DB data from symbols on exchange: {} because: {}.", exchange, e.what()));
    	}
 
 	return db_data;

@@ -20,6 +20,7 @@
 #define  PF_SIGNALS_INC
 
 #include <chrono>
+#include <format>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -27,8 +28,8 @@
 // #include <date/date.h>
 // #include <date/tz.h>
 
-#include <fmt/format.h>
-#include <fmt/chrono.h>
+// #include <fmt/format.h>
+// #include <fmt/chrono.h>
 #include <json/json.h>
 
 #include "DDecQuad.h"
@@ -215,10 +216,10 @@ bool AddSignalsToChart(PF_Chart& the_chart, const DprDecimal::DDecQuad& new_valu
 
 // custom formatter 
 
-template <> struct fmt::formatter<PF_Signal>: formatter<std::string>
+template <> struct std::formatter<PF_Signal>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Signal& signal, fmt::format_context& ctx) const
+    auto format(const PF_Signal& signal, std::format_context& ctx) const
     {
         std::string s;
         std::string sig_type;
@@ -260,7 +261,8 @@ template <> struct fmt::formatter<PF_Signal>: formatter<std::string>
                 sig_type = "TBtm Catapult Sell";
                 break;
         }
-        fmt::format_to(std::back_inserter(s), "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. price {} box: {}.",
+
+        std::format_to(std::back_inserter(s), "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. price {} box: {}.",
            (signal.signal_category_ == PF_SignalCategory::e_PF_Buy ? "Buy" : signal.signal_category_ == PF_SignalCategory::e_PF_Sell ? "Sell" : "Unknown"),
            sig_type,
            std::to_underlying(signal.priority_),

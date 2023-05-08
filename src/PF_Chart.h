@@ -42,6 +42,7 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <iterator>
 #include <memory>
 #include <optional>
@@ -199,7 +200,7 @@ public:
     const PF_Column& operator[](size_t which) const
     { 
         const PF_Column& col = which < columns_.size() ? columns_[which] : current_column_;
-        // BOOST_ASSERT_MSG(col.GetColumnNumber() == which, fmt::format("Wrong column number: {}. Was expecting: {}", col.GetColumnNumber(), which).c_str());
+        // BOOST_ASSERT_MSG(col.GetColumnNumber() == which, std::format("Wrong column number: {}. Was expecting: {}", col.GetColumnNumber(), which).c_str());
         return col;
     }
 
@@ -369,24 +370,24 @@ private:
 }; // -----  end of class PF_Chart_ReverseIterator  ----- 
 
 
-template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
+template <> struct std::formatter<PF_Chart>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Chart& chart, fmt::format_context& ctx) const
+    auto format(const PF_Chart& chart, std::format_context& ctx) const
     {
         std::string s;
-        fmt::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",
+        std::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",
             chart.GetSymbol(), chart.GetChartBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
-        ranges::for_each(chart, [&s](const auto& col) {fmt::format_to(std::back_inserter(s), "\t{}\n", col); } );
-    	fmt::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n",
+        ranges::for_each(chart, [&s](const auto& col) {std::format_to(std::back_inserter(s), "\t{}\n", col); } );
+    	std::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n",
         	chart.size(), chart.GetYLimits().first, chart.GetYLimits().second);
 
-        fmt::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());
+        std::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());
 
-        fmt::format_to(std::back_inserter(s), "Signals:\n");
+        std::format_to(std::back_inserter(s), "Signals:\n");
     	for (const auto& sig : chart.GetSignals())
     	{
-        	fmt::format_to(std::back_inserter(s), "\t{}\n", sig);
+        	std::format_to(std::back_inserter(s), "\t{}\n", sig);
     	}
 
         return formatter<std::string>::format(s, ctx);
@@ -395,7 +396,7 @@ template <> struct fmt::formatter<PF_Chart>: formatter<std::string>
 
 inline std::ostream& operator<<(std::ostream& os, const PF_Chart& chart)
 {
-    fmt::format_to(std::ostream_iterator<char>{os}, "{}\n", chart);
+    std::format_to(std::ostream_iterator<char>{os}, "{}\n", chart);
 
     return os;
 }

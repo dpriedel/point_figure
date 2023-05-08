@@ -40,6 +40,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+// #include <print>
 #include <utility>
 
 #include<date/tz.h>
@@ -128,9 +129,9 @@ PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad base_box_size, int3
     box_size_modifier_{std::move(box_size_modifier)}, max_columns_for_graph_{max_columns_for_graph}
 
 {
-    // fmt::print("params at chart start: {}, {}\n", base_box_size_, box_size_modifier_);
+    // std::print("params at chart start: {}, {}\n", base_box_size_, box_size_modifier_);
     fname_box_size_ = base_box_size_;
-    // fmt::print("params at chart start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, fname_box_size_);
+    // std::print("params at chart start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, fname_box_size_);
 
 	// stock prices are listed to 2 decimals.  If we are doing integral scale, then
 	// we limit box size to that.
@@ -138,7 +139,7 @@ PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad base_box_size, int3
 	boxes_ = Boxes{base_box_size_, box_size_modifier_, box_scale};
 	current_column_ = PF_Column(&boxes_, columns_.size(), reversal_boxes); 
 
-    // fmt::print("Boxes: {}\n", boxes_);
+    // std::print("Boxes: {}\n", boxes_);
 	chart_base_name_ = MakeChartBaseName();
 
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
@@ -375,7 +376,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
 
 std::string PF_Chart::MakeChartBaseName() const
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}",
+    std::string chart_name = std::format("{}_{}{}X{}_{}",
             symbol_,
             fname_box_size_,
             (IsPercent() ? "%" : ""),
@@ -386,7 +387,7 @@ std::string PF_Chart::MakeChartBaseName() const
 
 std::string PF_Chart::MakeChartFileName (std::string_view interval, std::string_view suffix) const
 {
-    std::string chart_name = fmt::format("{}{}.{}",
+    std::string chart_name = std::format("{}{}.{}",
             chart_base_name_,
             (! interval.empty() ? "_"s += interval : ""),
             suffix);
@@ -395,7 +396,7 @@ std::string PF_Chart::MakeChartFileName (std::string_view interval, std::string_
 
 void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filename, const streamed_prices& streamed_prices, const std::string& show_trend_lines, X_AxisFormat date_or_time) const
 {
-	BOOST_ASSERT_MSG(! empty(), fmt::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
+	BOOST_ASSERT_MSG(! empty(), std::format("Chart for symbol: {} contains no data. Unable to draw graphic.", symbol_).c_str());
 
     std::vector<double> highData;
     std::vector<double> lowData;
@@ -438,7 +439,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
         }
 		if (date_or_time == X_AxisFormat::e_show_date)
         {
-	        x_axis_labels.push_back(fmt::format("{:%F}", col.GetTimeSpan().first));
+	        x_axis_labels.push_back(std::format("{:%F}", col.GetTimeSpan().first));
         }
 		else
         {
@@ -464,7 +465,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     }
     if (date_or_time == X_AxisFormat::e_show_date)
     {
-        x_axis_labels.push_back(fmt::format("{:%F}", current_column_.GetTimeSpan().first));
+        x_axis_labels.push_back(std::format("{:%F}", current_column_.GetTimeSpan().first));
     }
     else
     {
@@ -585,7 +586,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 	std::string skipped_columns_text;
 	if (skipped_columns > 0)
 	{
-		skipped_columns_text = fmt::format(" (last {} cols)", max_columns_for_graph_);
+		skipped_columns_text = std::format(" (last {} cols)", max_columns_for_graph_);
 	}
     // some explanation for custom box colors. 
 
@@ -594,7 +595,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     {
         explanation_text = "Orange: 1-step Up then reversal Down. Green: 1-step Down then reversal Up.";
     }
-    auto chart_title = fmt::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetChartBoxSize(),
+    auto chart_title = std::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", GetChartBoxSize(),
                 (IsPercent() ? "%" : ""), GetReversalboxes(), symbol_,
                 (IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, std::chrono::clock_cast<std::chrono::system_clock>(last_change_date_), explanation_text);
 
@@ -648,7 +649,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
 void PF_Chart::ConvertChartToJsonAndWriteToFile (const fs::path& output_filename) const
 {
 	std::ofstream out{output_filename, std::ios::out | std::ios::binary};
-	BOOST_ASSERT_MSG(out.is_open(), fmt::format("Unable to open file: {} for chart output.", output_filename).c_str());
+	BOOST_ASSERT_MSG(out.is_open(), std::format("Unable to open file: {} for chart output.", output_filename).c_str());
 	ConvertChartToJsonAndWriteToStream(out);
 	out.close();
 }		// -----  end of method PF_Chart::ConvertChartToJsonAndWriteToFile  ----- 
@@ -665,7 +666,7 @@ void PF_Chart::ConvertChartToJsonAndWriteToStream (std::ostream& stream) const
 void PF_Chart::ConvertChartToTableAndWriteToFile (const fs::path& output_filename, X_AxisFormat date_or_time) const
 {
 	std::ofstream out{output_filename, std::ios::out | std::ios::binary};
-	BOOST_ASSERT_MSG(out.is_open(), fmt::format("Unable to open file: {} for graphics data output.", output_filename).c_str());
+	BOOST_ASSERT_MSG(out.is_open(), std::format("Unable to open file: {} for graphics data output.", output_filename).c_str());
 	ConvertChartToTableAndWriteToStream(out);
 	out.close();
 }		// -----  end of method PF_Chart::ConvertChartToTableAndWriteToFile  ----- 
@@ -706,8 +707,8 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 
     for (const auto& col : columns_ | ranges::views::drop(skipped_columns))
     {
-        auto next_row = fmt::format(row_template,
-				date_or_time == X_AxisFormat::e_show_date ? fmt::format("{:%F}", col.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
+        auto next_row = std::format(row_template,
+				date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", col.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
 				col.GetDirection() == PF_Column::Direction::e_up ? col.GetBottom().ToStr() : col.GetTop().ToStr(),
 				col.GetBottom().ToStr(),
 				col.GetTop().ToStr(),
@@ -717,8 +718,8 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 		stream.write(next_row.data(), next_row.size());
     }
 
-    auto last_row = fmt::format(row_template,
-			date_or_time == X_AxisFormat::e_show_date ? fmt::format("{:%F}", current_column_.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
+    auto last_row = std::format(row_template,
+			date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", current_column_.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
 			current_column_.GetDirection() == PF_Column::Direction::e_up ? current_column_.GetBottom().ToStr() : current_column_.GetTop().ToStr(),
 			current_column_.GetBottom().ToStr(),
 			current_column_.GetTop().ToStr(),
@@ -842,7 +843,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
+        throw std::invalid_argument{std::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
 
 	max_columns_for_graph_ = new_data["max_columns"].asInt64();
@@ -865,7 +866,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
 DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days, int32_t scale)
 {
-    BOOST_ASSERT_MSG(the_data.size() > how_many_days, fmt::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
+    BOOST_ASSERT_MSG(the_data.size() > how_many_days, std::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
     DprDecimal::DDecQuad total{0};
 
@@ -881,7 +882,7 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 
         DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
         
-		// fmt::print("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i, high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
+		// std::print("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i, high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
         total += max;
     }
 
@@ -897,7 +898,7 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
 
 std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::string_view interval, std::string_view suffix)
 {
-    std::string chart_name = fmt::format("{}_{}{}X{}_{}{}.{}",
+    std::string chart_name = std::format("{}_{}{}X{}_{}{}.{}",
             std::get<PF_Chart::e_symbol>(vals),
             std::get<PF_Chart::e_box_size>(vals),
             (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
@@ -1031,7 +1032,8 @@ PF_Chart::PF_Chart_ReverseIterator& PF_Chart::PF_Chart_ReverseIterator::operator
     }
     if (std::cmp_less(index_-=n, 0))
     {
-        fmt::print("index in between: {}\n", index_);
+        // std::print("index in between: {}\n", index_);
+        std::cout << std::format("index in between: {}\n", index_);
         index_ = -1;
     }
     return *this;

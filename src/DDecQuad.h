@@ -8,12 +8,13 @@
 #ifndef _DDECQUAD_
 #define _DDECQUAD_
 
+#include <format>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <string_view>
 
-#include <fmt/format.h>
+// #include <fmt/format.h>
 
 extern "C"
 {
@@ -304,13 +305,13 @@ inline std::istream& operator>>(std::istream& is, DDecQuad& item)
 
 // custom fmtlib formatter for DDecQuad
 
-template <> struct fmt::formatter<DprDecimal::DDecQuad>: formatter<std::string>
+template <> struct std::formatter<DprDecimal::DDecQuad>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const DprDecimal::DDecQuad& number, fmt::format_context& ctx) const
+    auto format(const DprDecimal::DDecQuad& number, std::format_context& ctx) const
     {
         std::string s;
-		fmt::format_to(std::back_inserter(s), "{}", number.ToStr());
+		std::format_to(std::back_inserter(s), "{}", number.ToStr());
         return formatter<std::string>::format(s, ctx);
     }
 };

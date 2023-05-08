@@ -18,7 +18,7 @@
 #include <array>
 #include <charconv>
 
-#include <fmt/format.h>
+// #include <fmt/format.h>
 #include <string_view>
 
 #include "DDecQuad.h"
@@ -121,7 +121,7 @@ DDecQuad::DDecQuad(double number)
     }
     else
     {
-        throw std::runtime_error(fmt::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
+        throw std::runtime_error(std::format("Problem converting double to decimal: {}\n", std::make_error_code(ec).message()));
     }
 
     DDecQuad::InitContext();
@@ -210,7 +210,7 @@ double DDecQuad::ToDouble () const
     double result{};
     if (auto [p, ec] = std::from_chars(temp.data(), temp.data() + temp.size(), result); ec != std::errc())
     {
-        throw std::runtime_error(fmt::format("Problem converting decimal to double: {}\n", std::make_error_code(ec).message()));
+        throw std::runtime_error(std::format("Problem converting decimal to double: {}\n", std::make_error_code(ec).message()));
     }
     return result ;
 }		// -----  end of method DDecQuad::ToDouble  ----- 

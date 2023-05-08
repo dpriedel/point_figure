@@ -15,6 +15,7 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
+#include <format>
 #include <iostream>
 #include <mutex>
 #include <regex>
@@ -22,8 +23,8 @@
 
 // #include <date/date.h>
 
-#include <fmt/format.h>
-#include <fmt/chrono.h>
+// #include <fmt/format.h>
+// #include <fmt/chrono.h>
 
 #include <range/v3/algorithm/for_each.hpp>
 
@@ -397,7 +398,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
         symbols += *s;
     }
 
-    const std::string request = fmt::format("https://{}{}/?tickers={}&token={}", host_, websocket_prefix_, symbols, api_key_);
+    const std::string request = std::format("https://{}{}/?tickers={}&token={}", host_, websocket_prefix_, symbols, api_key_);
 
     http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
     req.set(http::field::host, host_);
@@ -480,7 +481,7 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     // and then formatting changes the date (becomes a day earlier) for some reason (time zone 
     // related maybe?? )
 
-    const std::string request = fmt::format("https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
+    const std::string request = std::format("https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
             host_, symbol, start_date, end_date, api_key_, "json", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
 
     http::request<http::string_body> req{http::verb::get, request.c_str(), version_};

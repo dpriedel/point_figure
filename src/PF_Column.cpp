@@ -45,7 +45,7 @@
 #include <exception>
 #include <memory>
 
-#include <fmt/format.h>
+// #include <fmt/format.h>
 
 #include "Boxes.h"
 #include "DDecQuad.h"
@@ -324,7 +324,7 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
+        throw std::invalid_argument{std::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
 
     had_reversal_ = new_data["had_reversal"].asBool();

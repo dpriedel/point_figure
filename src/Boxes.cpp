@@ -31,12 +31,13 @@
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <cstdint>
+#include <utility>
+
+// #include <fmt/format.h>
+
 #include <range/v3/algorithm/adjacent_find.hpp>
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/for_each.hpp>
-#include <utility>
-
-#include <fmt/format.h>
 
 #include "Boxes.h"
 #include "utilities.h"
@@ -56,9 +57,9 @@ Boxes::Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_
     {
         base_box_size_.Rescale(MIN_EXPONENT);
     }
-    // fmt::print("params at Boxes start: {}, {}\n", base_box_size_, box_size_modifier_);
+    // std::print("params at Boxes start: {}, {}\n", base_box_size_, box_size_modifier_);
 	runtime_box_size_ = base_box_size_;
-    // fmt::print("params at Boxes start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, runtime_box_size_);
+    // std::print("params at Boxes start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, runtime_box_size_);
 
     if (box_size_modifier_ != 0.0)
     {
@@ -248,7 +249,7 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
 
 Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), fmt::format("Current value: {} is not contained in boxes.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value).c_str());
 
     if (box_scale_ == BoxScale::e_percent)
     {
@@ -278,7 +279,7 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
 
 Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value) const
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), fmt::format("Current value: {} is not contained in boxes.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value).c_str());
 
     if (box_scale_ == BoxScale::e_percent)
     {
@@ -292,7 +293,7 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value) const
     // index operator below will throw.
 
     auto found_it = ranges::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), fmt::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value).c_str());
 
     size_t box_index = ranges::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
@@ -335,7 +336,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
     // index operator below will throw.
 
     auto found_it = ranges::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), fmt::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value).c_str());
 
     size_t box_index = ranges::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
@@ -343,7 +344,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
 
 Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), fmt::format("Current value: {} is not contained in boxes.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value).c_str());
 
     if (box_scale_ == BoxScale::e_percent)
     {
@@ -382,7 +383,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
 
 Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value) const
 {
-    BOOST_ASSERT_MSG(current_value > boxes_.front() && current_value <= boxes_.back(), fmt::format("Lookup-only search for previous box for value: {} failed.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value > boxes_.front() && current_value <= boxes_.back(), std::format("Lookup-only search for previous box for value: {} failed.", current_value).c_str());
 
     if (box_scale_ == BoxScale::e_percent)
     {
@@ -403,7 +404,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value) const
     }
 
     size_t box_index = ranges::distance(boxes_.begin(), found_it);
-    BOOST_ASSERT_MSG(box_index > 0, fmt::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindPrevBox  ----- 
 
@@ -465,7 +466,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     }
 
     size_t box_index = ranges::distance(boxes_.begin(), found_it);
-    BOOST_ASSERT_MSG(box_index > 0, fmt::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
@@ -613,7 +614,7 @@ void Boxes::FromJSON (const Json::Value& new_data)
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid box_type provided: {}. Must be 'integral' or 'fractional'.", box_type)};
+        throw std::invalid_argument{std::format("Invalid box_type provided: {}. Must be 'integral' or 'fractional'.", box_type)};
     }
 
     const auto box_scale = new_data["box_scale"].asString();
@@ -627,7 +628,7 @@ void Boxes::FromJSON (const Json::Value& new_data)
     }
     else
     {
-        throw std::invalid_argument{fmt::format("Invalid box scale provided: {}. Must be 'linear' or 'percent'.", box_scale)};
+        throw std::invalid_argument{std::format("Invalid box scale provided: {}. Must be 'linear' or 'percent'.", box_scale)};
     }
     
     // lastly, we can do our boxes 
@@ -644,14 +645,14 @@ void Boxes::FromJSON (const Json::Value& new_data)
 
 void Boxes::PushFront(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, base_box_size_, boxes_[0], boxes_[1], boxes_[2], boxes_[3], boxes_[4]).c_str());
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, base_box_size_, boxes_[0], boxes_[1], boxes_[2], boxes_[3], boxes_[4]).c_str());
     boxes_.insert(boxes_.begin(), std::move(new_box));
 
 }		// -----  end of method Boxes::PushFront  ----- 
 
 void Boxes::PushBack(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, fmt::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, base_box_size_, boxes_[MAX_BOXES - 5], boxes_[MAX_BOXES - 4],
+    BOOST_ASSERT_MSG(boxes_.size() < MAX_BOXES, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", MAX_BOXES, base_box_size_, boxes_[MAX_BOXES - 5], boxes_[MAX_BOXES - 4],
                 boxes_[MAX_BOXES - 3], boxes_[MAX_BOXES - 2], boxes_[MAX_BOXES - 1]).c_str());
     boxes_.push_back(std::move(new_box));
 }		// -----  end of method Boxes::PushBack  ----- 

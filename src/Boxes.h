@@ -36,10 +36,13 @@
 
 #include <cstdint>
 #include <deque>
+#include <format>
+#include <iterator>
+
 #include <json/json.h>
 
-#include <fmt/format.h>
-#include <fmt/ranges.h>
+// #include <fmt/format.h>
+// #include <fmt/ranges.h>
 
 #include "DDecQuad.h"
 
@@ -150,66 +153,66 @@ private:
 
 // custom fmtlib formatter for BoxType
 
-template <> struct fmt::formatter<Boxes::BoxType>: formatter<std::string>
+template <> struct std::formatter<Boxes::BoxType>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes::BoxType& box_type, fmt::format_context& ctx) const
+    auto format(const Boxes::BoxType& box_type, std::format_context& ctx) const
     {
         std::string s;
-		fmt::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_integral ? "integral" : "fractional"));
+		std::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_integral ? "integral" : "fractional"));
         return formatter<std::string>::format(s, ctx);
     }
 };
 
 // custom fmtlib formatter for BoxScale
 
-template <> struct fmt::formatter<Boxes::BoxScale>: formatter<std::string>
+template <> struct std::formatter<Boxes::BoxScale>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes::BoxScale& box_scale, fmt::format_context& ctx) const
+    auto format(const Boxes::BoxScale& box_scale, std::format_context& ctx) const
     {
         std::string s;
-		fmt::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_linear ? "linear" : "percent"));
+		std::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_linear ? "linear" : "percent"));
         return formatter<std::string>::format(s, ctx);
     }
 };
 
 // inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxType box_type)
 // {
-//     fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_type);
+//     std::format_to(std::ostream_iterator<char>{os}, "{}", box_type);
 //
 // 	return os;
 // }
 //
 // inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxScale box_scale)
 // {
-//     fmt::format_to(std::ostream_iterator<char>{os}, "{}", box_scale);
+//     std::format_to(std::ostream_iterator<char>{os}, "{}", box_scale);
 //
 // 	return os;
 // }
 //
-template <> struct fmt::formatter<Boxes>: formatter<std::string>
+template <> struct std::formatter<Boxes>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes& boxes, fmt::format_context& ctx) const
+    auto format(const Boxes& boxes, std::format_context& ctx) const
     {
         std::string s;
-    	fmt::format_to(std::back_inserter(s),
+    	std::format_to(std::back_inserter(s),
         	"Boxes: how many: {}. box size: {}. factor up: {}. factor down: {}. exponent: {}. box type: {}. box scale: {}.\n",
         	boxes.GetHowMany(), boxes.GetBoxSize(), boxes.GetScaleUpFactor(), boxes.GetScaleDownFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
-    	fmt::format_to(std::back_inserter(s), "{}", "[");
+    	std::format_to(std::back_inserter(s), "{}", "[");
     	for(auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
     	{
-			fmt::format_to(std::back_inserter(s), "{}{}", box, (--i > 0 ? ", " : ""));
+			std::format_to(std::back_inserter(s), "{}{}", box, (--i > 0 ? ", " : ""));
     	}
-    	fmt::format_to(std::back_inserter(s), "{}", "]");
+    	std::format_to(std::back_inserter(s), "{}", "]");
         return formatter<std::string>::format(s, ctx);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
 {
-    fmt::format_to(std::ostream_iterator<char>{os}, "{}", boxes);
+    std::format_to(std::ostream_iterator<char>{os}, "{}", boxes);
 
     return os;
 }
