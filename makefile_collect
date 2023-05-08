@@ -111,7 +111,7 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug_collect
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2b -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2b -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
@@ -125,7 +125,7 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
 
-COMPILE=$(CPP) -c  -x c++  -O3 -std=c++2b -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3 -std=c++2b -flto -DBOOST_ENABLE_ASSERT_HANDLER -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O3  -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)

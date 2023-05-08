@@ -34,8 +34,6 @@
 #include <exception>
 #include <iostream>
  
-#include <fmt/format.h>
-
 #include <pybind11/embed.h> // everything needed for embedding
 namespace py = pybind11;
 using namespace py::literals;
