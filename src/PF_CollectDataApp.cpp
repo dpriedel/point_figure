@@ -37,6 +37,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <format>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -50,7 +51,7 @@
 #include <thread>
 #include <type_traits>
 
-#include <fmt/ranges.h>
+// #include <fmt/ranges.h>
 
 #include <range/v3/action/sort.hpp>
 #include <range/v3/action/unique.hpp>
@@ -185,7 +186,7 @@ void PF_CollectDataApp::ConfigureLogging ()
 
 bool PF_CollectDataApp::Startup ()
 {
-    spdlog::info(fmt::format("\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n", std::chrono::system_clock::now()));
+    spdlog::info(std::format("\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n", std::chrono::system_clock::now()));
     bool result{true};
 	try
 	{	
@@ -196,7 +197,7 @@ bool PF_CollectDataApp::Startup ()
 	}
 	catch(const std::exception& e)
 	{
-        spdlog::error(fmt::format("Problem in startup: {}\n", e.what()));
+        spdlog::error(std::format("Problem in startup: {}\n", e.what()));
 		//	we're outta here!
 
 //		this->Shutdown();
@@ -223,7 +224,7 @@ bool PF_CollectDataApp::CheckArgs ()
 
 	//	let's get our input and output set up
 	
-    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan", fmt::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
+    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan", std::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
     mode_ = mode_i == "load" ? Mode::e_load : mode_i == "update" ? Mode::e_update : Mode::e_daily_scan;
 
     // do daily-scan edits upfront because we only need a couple
@@ -282,13 +283,13 @@ bool PF_CollectDataApp::CheckArgs ()
 
     // now make sure we can find our data for input and output.
 
-    BOOST_ASSERT_MSG(new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database", fmt::format("New data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
+    BOOST_ASSERT_MSG(new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database", std::format("New data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
     new_data_source_ = new_data_source_i == "file" ? Source::e_file : new_data_source_i == "database" ? Source::e_DB : Source::e_streaming;
     
-    BOOST_ASSERT_MSG(chart_data_source_i == "file" || chart_data_source_i == "database", fmt::format("Existing chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
+    BOOST_ASSERT_MSG(chart_data_source_i == "file" || chart_data_source_i == "database", std::format("Existing chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
     chart_data_source_ = chart_data_source_i == "file" ? Source::e_file : Source::e_DB;
     
-    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database", fmt::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
+    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database", std::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
     if (use_min_max_)
@@ -303,9 +304,9 @@ bool PF_CollectDataApp::CheckArgs ()
         // for file input, we always need to have our raw data inputs 
 
         BOOST_ASSERT_MSG(! new_data_input_directory_.empty(), "Must specify 'new-data-dir' when data source is 'file'.");
-        BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), fmt::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
+        BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_), std::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
 
-        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json", fmt::format("New data files must be: 'csv' or 'json': {}", source_format_i).c_str());
+        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json", std::format("New data files must be: 'csv' or 'json': {}", source_format_i).c_str());
         source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
 
         // if we are adding to existing data then we need to know where to find that data  
@@ -313,7 +314,7 @@ bool PF_CollectDataApp::CheckArgs ()
         if (mode_ == Mode::e_update && chart_data_source_ == Source::e_file)
         {
         	BOOST_ASSERT_MSG(! input_chart_directory_.empty(), "Must specify 'chart-data-dir' when data source is 'file' and mode is 'update'.");
-        	BOOST_ASSERT_MSG(fs::exists(input_chart_directory_), fmt::format("Can't find new existing chart data directory: {}", input_chart_directory_).c_str());
+        	BOOST_ASSERT_MSG(fs::exists(input_chart_directory_), std::format("Can't find new existing chart data directory: {}", input_chart_directory_).c_str());
 
     		// we could write out data to a separate location if we want 
     		// otherwise, use the charts directory. 
@@ -325,7 +326,7 @@ bool PF_CollectDataApp::CheckArgs ()
         }
     }
 
-    BOOST_ASSERT_MSG(graphics_format_i_ == "svg" || graphics_format_i_ == "csv", fmt::format("graphics-format must be either 'svg' or 'csv': {}", graphics_format_i_).c_str());
+    BOOST_ASSERT_MSG(graphics_format_i_ == "svg" || graphics_format_i_ == "csv", std::format("graphics-format must be either 'svg' or 'csv': {}", graphics_format_i_).c_str());
     graphics_format_ = graphics_format_i_ == "svg" ? GraphicsFormat::e_svg : GraphicsFormat::e_csv;
     
     if (destination_ == Destination::e_file)
@@ -369,7 +370,7 @@ bool PF_CollectDataApp::CheckArgs ()
     if (new_data_source_ != Source::e_DB && use_ATR_)
     {
         BOOST_ASSERT_MSG(! tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
-        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), fmt::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
+        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), std::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
     }
     
     if (new_data_source_ == Source::e_DB)
@@ -379,15 +380,15 @@ bool PF_CollectDataApp::CheckArgs ()
 
     if (! exchange_.empty())
     {
-    	BOOST_ASSERT_MSG(exchange_ == "AMEX" || exchange_ == "NYSE" || exchange_ == "NASDAQ", fmt::format("exchange: {} must be 'AMEX' or 'NYSE' or 'NASDAQ'.", exchange_).c_str());
+    	BOOST_ASSERT_MSG(exchange_ == "AMEX" || exchange_ == "NYSE" || exchange_ == "NASDAQ", std::format("exchange: {} must be 'AMEX' or 'NYSE' or 'NASDAQ'.", exchange_).c_str());
     }
     
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
 
-    BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle", fmt::format("show-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
+    BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle", std::format("show-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
 
     const std::map<std::string, Interval> possible_intervals = {{"eod", Interval::e_eod}, {"live", Interval::e_live}, {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5}, {"min1", Interval::e_min1}, {"min5", Interval::e_min5}};
-    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), fmt::format("Interval must be: 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
+    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), std::format("Interval must be: 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i).c_str());
     interval_ = possible_intervals.find(interval_i)->second;
   
     // provide our default value here.
@@ -399,7 +400,7 @@ bool PF_CollectDataApp::CheckArgs ()
 
     // edit and translate from text to enums...
 
-    ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", fmt::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str()); });
+    ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", std::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str()); });
     ranges::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
 
     // we can compute whether boxes are fractions or intergers from input. This may be changed by the Boxes code later. 
@@ -407,7 +408,7 @@ bool PF_CollectDataApp::CheckArgs ()
     // generate PF_Chart type combinations from input params.
 
     auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
-    ranges::for_each(params, [](const auto& x) {fmt::print("{}\n", x); });
+    // ranges::for_each(params, [](const auto& x) {std::cout << std::format("{}\n", x); });
 
 	return true ;
 }		// -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
@@ -484,11 +485,11 @@ void PF_CollectDataApp::ParseProgramOptions (const std::vector<std::string>& tok
     }
     po::notify(variablemap_);    
 
-	// fmt::print("\nRuntime parameters:\n");
+	// std::print("\nRuntime parameters:\n");
  //    for (const auto& [param, value] : variablemap_)
  //    {
 	// 	// std::cout << "param: " << param << " value: " << value.as<std::string>() << '\n';
-	// 	fmt::print("param: {}. value: .\n", param);
+	// 	std::print("param: {}. value: .\n", param);
  //    }
 }		/* -----  end of method ExtractorApp::ParsePrograoptions_  ----- */
 
@@ -556,7 +557,7 @@ void PF_CollectDataApp::Run_Load()
         try
         {
             fs::path symbol_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-            BOOST_ASSERT_MSG(fs::exists(symbol_file_name), fmt::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
+            BOOST_ASSERT_MSG(fs::exists(symbol_file_name), std::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
             // TODO(dpriedel): add json code
             BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
             auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
@@ -566,7 +567,7 @@ void PF_CollectDataApp::Run_Load()
         }
         catch (const std::exception& e)
         {
-            spdlog::error(fmt::format("Unable to load data for symbol: {} from file because: {}.", symbol, e.what()));
+            spdlog::error(std::format("Unable to load data for symbol: {} from file because: {}.", symbol, e.what()));
         }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
@@ -586,9 +587,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 	{
 		symbol_list_ = pf_db.ListSymbolsOnExchange(exchange_);
 	}
-	// fmt::print("symbol list: {}\n", symbol_list_);
+	// std::print("symbol list: {}\n", symbol_list_);
 
-	pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+	pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
     const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
 
@@ -615,7 +616,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 		{
 			// first, get ready to retrieve our data from DB.  Do this once per symbol.
 
-			std::string get_symbol_prices_cmd = fmt::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= {} ORDER BY date ASC",
+			std::string get_symbol_prices_cmd = std::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= {} ORDER BY date ASC",
 					price_fld_name_,
 					db_params_.db_data_source_,
 					c.quote(symbol),
@@ -633,7 +634,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 
 			std::vector<std::string> the_symbol{symbol};
     		auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
-			// ranges::for_each(params, [](const auto& x) {fmt::print("{}\n", x); });
+			// ranges::for_each(params, [](const auto& x) {std::print("{}\n", x); });
 
     		for (const auto& val : params)
     		{
@@ -650,16 +651,16 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 				}
    	    		catch (const std::exception& e)
    	    		{
-                    spdlog::error(fmt::format("Unable to load data for symbol chart: {} from DB because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
+                    spdlog::error(std::format("Unable to load data for symbol chart: {} from DB because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
    	    		}
    	        }
    	    }
    	    catch (const std::exception& e)
    	    {
-            spdlog::error(fmt::format("Unable to retrieve data for symbol: {} from DB because: {}.", symbol, e.what()));
+            spdlog::error(std::format("Unable to retrieve data for symbol: {} from DB because: {}.", symbol, e.what()));
    	    }
     }
-    spdlog::info(fmt::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: {}.", total_symbols_processed, total_charts_processed, total_charts_updated));
+    spdlog::info(std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: {}.", total_symbols_processed, total_charts_processed, total_charts_updated));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 }		// -----  end of method PF_CollectDataApp::Run_Load  -----
@@ -694,7 +695,7 @@ void PF_CollectDataApp::Run_Update()
 				new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             }
             fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-            BOOST_ASSERT_MSG(fs::exists(update_file_name), fmt::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
+            BOOST_ASSERT_MSG(fs::exists(update_file_name), std::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
             // TODO(dpriedel): add json code
             BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
             AddPriceDataToExistingChartCSV(new_chart, update_file_name);
@@ -702,7 +703,7 @@ void PF_CollectDataApp::Run_Update()
         }
         catch (const std::exception& e)
         {
-            spdlog::error(fmt::format("Unable to update data for chart: {} from file because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
+            spdlog::error(std::format("Unable to update data for chart: {} from file because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
         }
     }
 }		// -----  end of method PF_CollectDataApp::Run_Update  -----
@@ -719,7 +720,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 
     const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
 	auto db_data = pf_db.GetPriceDataForSymbolsInList(symbol_list_, begin_date_, price_fld_name_, dt_format);
-	// ranges::for_each(db_data, [](const auto& xx) {fmt::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
+	// ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
 
@@ -731,7 +732,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
     for (const auto& symbol_rng : db_data | data_for_symbol)
     {
         const auto& symbol = symbol_rng[0].symbol_;
-		// fmt::print("symbol: {}\n", symbol);
+		// std::print("symbol: {}\n", symbol);
 		std::vector<std::string> the_symbol{symbol};
 
     	auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
@@ -773,7 +774,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
         	}
         	catch (const std::exception& e)
         	{
-        		spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
+        		spdlog::error(std::format("Unable to update data for chart: {} from DB because: {}.", new_chart.MakeChartFileName(interval_i, ""), e.what()));
         	}
     	}
     }
@@ -824,10 +825,10 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, cons
     const auto header_record = symbol_data_records.front();
 
     auto date_column = FindColumnIndex(header_record, "date", ',');
-    BOOST_ASSERT_MSG(date_column.has_value(), fmt::format("Can't find 'date' field in header record: {}.", header_record).c_str());
+    BOOST_ASSERT_MSG(date_column.has_value(), std::format("Can't find 'date' field in header record: {}.", header_record).c_str());
     
     auto close_column = FindColumnIndex(header_record, price_fld_name_, ',');
-    BOOST_ASSERT_MSG(close_column.has_value(), fmt::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
+    BOOST_ASSERT_MSG(close_column.has_value(), std::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
 
     ranges::for_each(symbol_data_records | ranges::views::drop(1), [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
         {
@@ -925,7 +926,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
     }
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to compute ATR from DB for: '{}' because: {}.\n", symbol, e.what()));
+        spdlog::error(std::format("Unable to compute ATR from DB for: '{}' because: {}.\n", symbol, e.what()));
    	}
 
     return atr;
@@ -940,9 +941,9 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeRangeForChartFromDB (const std::s
 
     // set up a DB connection so query arguments can be properly quoted.
     PF_DB the_db{db_params_};
-    pqxx::connection c{fmt::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-	std::string get_price_range_cmd = fmt::format("SELECT (MAX(adjclose) - MIN(adjclose)) AS range FROM {} WHERE date BETWEEN {} AND '{}' AND symbol = {}",
+	std::string get_price_range_cmd = std::format("SELECT (MAX(adjclose) - MIN(adjclose)) AS range FROM {} WHERE date BETWEEN {} AND '{}' AND symbol = {}",
 			db_params_.db_data_source_,
             c.quote(begin_date_),			                                   
             today,
@@ -958,11 +959,11 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeRangeForChartFromDB (const std::s
 	try
 	{
 		price_range = the_db.RunSQLQueryUsingRows<DprDecimal::DDecQuad>(get_price_range_cmd, Row2Range)[0];
-        spdlog::debug(fmt::format("Price range query: {}. Result: {}\n", get_price_range_cmd, price_range));
+        spdlog::debug(std::format("Price range query: {}. Result: {}\n", get_price_range_cmd, price_range));
     }
    	catch (const std::exception& e)
    	{
-        spdlog::error(fmt::format("Unable to compute closing price range from DB for: '{}' because: {}.\n", symbol, e.what()));
+        spdlog::error(std::format("Unable to compute closing price range from DB for: '{}' because: {}.\n", symbol, e.what()));
    	}
 
     return price_range;
@@ -1258,7 +1259,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
     {
 
         auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(exchange, begin_date_, price_fld_name_, dt_format);
-        // ranges::for_each(db_data, [](const auto& xx) {fmt::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
+        // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {}, {}\n", xx.symbol, xx.tp, xx.price); });
 
         // then we process each sub-range and apply the data for each symbol to all PF_Chart variants that
         // we find in the DB for that symbol.
@@ -1268,7 +1269,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
             const auto& symbol = symbol_rng[0].symbol_;
             total_symbols_processed += 1;
 
-            // fmt::print("symbol: {}\n", symbol);
+            // std::print("symbol: {}\n", symbol);
 
             auto charts_for_symbol = pf_db.RetrieveAllEODChartsForSymbol(symbol);
 
@@ -1283,7 +1284,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                     ranges::for_each(symbol_rng, [&chart, &chart_needs_update](const auto& row) 
                         {
                             auto status = chart.AddValue(row.close_, row.date_);
-//                            fmt::print("status: {}. close: {}. date: {}.\n", status, row.close_, row.date_);
+//                            std::print("status: {}. close: {}. date: {}.\n", status, row.close_, row.date_);
                             chart_needs_update |= status == PF_Column::Status::e_accepted ? 1 : 0; 
                         });
                     if (chart_needs_update)
@@ -1295,13 +1296,13 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                 }
                 catch (const std::exception& e)
                 {
-                    spdlog::error(fmt::format("Unable to update data for chart: {} from DB because: {}.", chart.MakeChartFileName(interval_i, ""), e.what()));
+                    spdlog::error(std::format("Unable to update data for chart: {} from DB because: {}.", chart.MakeChartFileName(interval_i, ""), e.what()));
                 }
             }
         }
     }
 
-    spdlog::info(fmt::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: {}.", total_symbols_processed, total_charts_processed, total_charts_updated));
+    spdlog::info(std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: {}.", total_symbols_processed, total_charts_processed, total_charts_updated));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
@@ -1333,7 +1334,7 @@ void PF_CollectDataApp::Shutdown ()
             }
 			catch(const std::exception& e)
 			{
-        		spdlog::error(fmt::format("Problem in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
+        		spdlog::error(std::format("Problem in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
     		}
         }
     }
@@ -1353,12 +1354,12 @@ void PF_CollectDataApp::Shutdown ()
 			}
 			catch(const std::exception& e)
 			{
-        		spdlog::error(fmt::format("Problem storing data in DB in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.MakeChartFileName(interval_i, "")));
+        		spdlog::error(std::format("Problem storing data in DB in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(), chart.MakeChartFileName(interval_i, "")));
 			}
         }
     }
 
-    spdlog::info(fmt::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
+    spdlog::info(std::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
 }       // -----  end of method PF_CollectDataApp::Shutdown  -----
 
 void PF_CollectDataApp::WaitForTimer (const std::chrono::zoned_seconds& stop_at)
