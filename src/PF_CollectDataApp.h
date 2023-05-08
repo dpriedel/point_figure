@@ -35,6 +35,7 @@
 #define  PF_COLLECTDATAAPP_INC
 
 
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -49,8 +50,8 @@
 
 namespace po = boost::program_options;
 
-#include <date/date.h>
-#include <date/tz.h>
+// #include <date/date.h>
+// #include <date/tz.h>
 
 #include <spdlog/spdlog.h>
 
@@ -100,7 +101,7 @@ public:
     // for testing 
 
     static void SetSignal() { PF_CollectDataApp::had_signal_ = true; }
-    static void WaitForTimer(const date::zoned_seconds& stop_at);
+    static void WaitForTimer(const std::chrono::zoned_seconds& stop_at);
 
     // ====================  OPERATORS     =======================================
 

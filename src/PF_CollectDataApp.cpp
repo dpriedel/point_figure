@@ -68,7 +68,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
 
-#include <date/date.h>
+// #include <date/date.h>
 #include <date/chrono_io.h>
 #include <date/tz.h>
 
@@ -86,8 +86,7 @@ using namespace py::literals;
 #include "Tiingo.h"
 
 using namespace std::string_literals;
-using namespace date::literals;
-using namespace std::literals::chrono_literals;
+using namespace std::chrono_literals;
 
 bool PF_CollectDataApp::had_signal_ = false;
 
@@ -594,7 +593,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
 
     std::istringstream time_stream;
-    date::utc_time<date::utc_clock::duration> tp;
+    date::utc_time<std::chrono::utc_clock::duration> tp;
 
     // we know our database contains 'date's, but we need timepoints.
     // we'll handle that in the conversion routine below.
@@ -603,7 +602,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
         time_stream.clear();
         time_stream.str(std::string{std::get<0>(r)});
         date::from_stream(time_stream, dt_format, tp);
-        DateCloseRecord new_data{.date_=tp, .close_=std::get<1>(r)};
+        std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
+        DateCloseRecord new_data{.date_=tp1, .close_=std::get<1>(r)};
         return new_data;
     };
 
@@ -643,7 +643,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 					for (const auto& [new_date, new_price] : closing_prices)
 					{
 						// std::cout << "new value: " << new_price << "\t" << new_date << std::endl;
-						new_chart.AddValue(new_price, date::clock_cast<date::utc_clock>(new_date));
+						new_chart.AddValue(new_price, std::chrono::clock_cast<std::chrono::utc_clock>(new_date));
 					}
 					charts_.emplace_back(std::make_pair(symbol, new_chart));
                     ++total_charts_processed;
@@ -783,8 +783,8 @@ void PF_CollectDataApp::Run_Streaming()
 {
     auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
-    auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-    auto market_status = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time());
+    auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    auto market_status = GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
     if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
     {
@@ -887,7 +887,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
     // we need to start from yesterday since we won't get history data for today 
     // since we are doing this while the market is open
 
-    date::year_month_day today{--floor<date::days>(std::chrono::system_clock::now())};
+    std::chrono::year_month_day today{--floor<std::chrono::days>(std::chrono::system_clock::now())};
 
     // use our new holidays capability 
     // we look backwards here. so add an extra year in case we are near New Years.
@@ -904,8 +904,8 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
 
 DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::string& symbol) const
 {
-    auto today = date::year_month_day{floor<date::days>(std::chrono::system_clock::now())};
-//    date::year which_year = today.year();
+    auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
+//    std::chrono::year which_year = today.year();
 //    auto holidays = MakeHolidayList(which_year);
 //    ranges::copy(MakeHolidayList(--which_year), std::back_inserter(holidays));
 //    
@@ -933,7 +933,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
 
 DprDecimal::DDecQuad PF_CollectDataApp::ComputeRangeForChartFromDB (const std::string& symbol) const
 {
-    auto today = date::year_month_day{floor<date::days>(std::chrono::system_clock::now())};
+    auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
 
     // BUT, I expect the DB will only have data for trading days, so it will automatically 
     // skip weekends for me.
@@ -974,13 +974,13 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
     // are already open, the day's open.  We do this to capture 'gaps' and to set 
     // the direction at little sooner.
 
-    auto today = date::year_month_day{floor<date::days>(std::chrono::system_clock::now())};
-    date::year which_year = today.year();
+    auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
+    std::chrono::year which_year = today.year();
     auto holidays = MakeHolidayList(which_year);
     ranges::copy(MakeHolidayList(--which_year), std::back_inserter(holidays));
     
-    auto current_local_time = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-    auto market_status = GetUS_MarketStatus(std::string_view{date::current_zone()->name()}, current_local_time.get_local_time());
+    auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    auto market_status = GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
     Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
 
@@ -989,7 +989,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
         for (auto& [symbol, chart] : charts_)
         {
             auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No, &holidays);
-            chart.AddValue(history[0].close_, date::clock_cast<date::utc_clock>(current_local_time.get_sys_time()));
+            chart.AddValue(history[0].close_, std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
@@ -1000,8 +1000,8 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
             const std::string ticker = e["ticker"].asString();
             const std::string tstmp = e["timestamp"].asString();
             const auto quote_time_stamp = StringToUTCTimePoint("%FT%T%z", tstmp);
-            const auto close_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
-            const auto open_time_stamp = date::clock_cast<date::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
+            const auto close_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
+            const auto open_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
             try{
 				ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
@@ -1052,9 +1052,9 @@ void PF_CollectDataApp::CollectStreamingData ()
 
     // if we are here then we already know that the US market is open for trading.
 
-    auto today = date::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
+    auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
     // add a couple minutes for padding
-    auto local_market_close = date::zoned_seconds(date::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
+    auto local_market_close = std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
 
     std::mutex data_mutex;
     std::queue<std::string> streamed_data;
@@ -1361,7 +1361,7 @@ void PF_CollectDataApp::Shutdown ()
     spdlog::info(fmt::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
 }       // -----  end of method PF_CollectDataApp::Shutdown  -----
 
-void PF_CollectDataApp::WaitForTimer (const date::zoned_seconds& stop_at)
+void PF_CollectDataApp::WaitForTimer (const std::chrono::zoned_seconds& stop_at)
 {
     while(true)
     {
@@ -1373,7 +1373,7 @@ void PF_CollectDataApp::WaitForTimer (const date::zoned_seconds& stop_at)
             break;
         }
 
-        const date::zoned_seconds now = date::zoned_seconds(date::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+        const std::chrono::zoned_seconds now = std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
         if (now.get_sys_time() < stop_at.get_sys_time())
         {
             std::this_thread::sleep_for(1min);
