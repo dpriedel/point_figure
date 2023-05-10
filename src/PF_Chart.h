@@ -39,6 +39,7 @@
 #ifndef  PF_CHART_INC
 #define  PF_CHART_INC
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -46,6 +47,7 @@
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -55,7 +57,7 @@
 
 #include <json/json.h>
 
-#include <range/v3/algorithm/for_each.hpp>
+// #include <range/v3/algorithm/for_each.hpp>
 
 //namespace fs = std::filesystem;
 
@@ -181,7 +183,7 @@ public:
     // ====================  MUTATORS      =======================================
     
     PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
-    void LoadData(std::istream* input_data, std::string_view date_format, char delim);
+    void LoadData(std::istream* input_data, std::string_view date_format, std::string_view delim);
 
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
 
@@ -375,10 +377,11 @@ template <> struct std::formatter<PF_Chart>: std::formatter<std::string>
     // parse is inherited from formatter<string>.
     auto format(const PF_Chart& chart, std::format_context& ctx) const
     {
+        namespace rng = std::ranges;
         std::string s;
         std::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",
             chart.GetSymbol(), chart.GetChartBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
-        ranges::for_each(chart, [&s](const auto& col) {std::format_to(std::back_inserter(s), "\t{}\n", col); } );
+        rng::for_each(chart, [&s](const auto& col) {std::format_to(std::back_inserter(s), "\t{}\n", col); } );
     	std::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n",
         	chart.size(), chart.GetYLimits().first, chart.GetYLimits().second);
 

@@ -16,13 +16,17 @@
 // =====================================================================================
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <optional>
-#include <cstdint>
+#include <ranges>
 #include <utility>
 
-#include <range/v3/algorithm/find_if.hpp>
-#include <range/v3/view/filter.hpp>
+namespace rng = std::ranges;
+namespace vws = std::ranges::views;
+
+// #include <range/v3/algorithm/find_if.hpp>
+// #include <range/v3/view/filter.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -80,7 +84,7 @@ bool CanApplySignal(const PF_Chart& the_chart, const auto& signal)
 
     // see if we already have this signal for this column
 
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [number_cols, signal] (const PF_Signal& sig)
+	if (auto found_it = rng::find_if(the_chart.GetSignals(), [number_cols, signal] (const PF_Signal& sig)
 	    { return sig.column_number_ == number_cols - 1 && sig.signal_type_ == signal.signal_type_; });
 	    found_it != the_chart.GetSignals().end())
 	{
@@ -624,7 +628,7 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_ch
 
     PF_Signal dtop_buy;
 
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [this_col = number_cols - 1] (const PF_Signal& sig)
+	if (auto found_it = rng::find_if(the_chart.GetSignals(), [this_col = number_cols - 1] (const PF_Signal& sig)
 	    { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_DoubleTop_Buy; });
 	    found_it == the_chart.GetSignals().end())
 	{
@@ -637,7 +641,7 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_ch
 
 	// next, make sure there is no sell signal for previous column.
 
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 2] (const PF_Signal& sig)
+	if (auto found_it = rng::find_if(the_chart.GetSignals(), [prev_col = number_cols - 2] (const PF_Signal& sig)
 	    { return sig.column_number_ == prev_col && sig.signal_category_ == PF_SignalCategory::e_PF_Sell; });
 	    found_it != the_chart.GetSignals().end())
 	{
@@ -646,7 +650,7 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator() (const PF_Chart& the_ch
 
 	// now, look for preceding triple-top buy 
 	
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 3] (const PF_Signal& sig)
+	if (auto found_it = rng::find_if(the_chart.GetSignals(), [prev_col = number_cols - 3] (const PF_Signal& sig)
 	    { return sig.column_number_ == prev_col && (sig.signal_type_ == PF_SignalType::e_TripleTop_Buy || sig.signal_type_ == PF_SignalType::e_Bullish_TT_Buy); });
 	    found_it == the_chart.GetSignals().end())
 	{
@@ -681,7 +685,7 @@ std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator() (const PF_Chart& t
 
     PF_Signal dbot_sell;
 
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [this_col = number_cols - 1] (const PF_Signal& sig)
+	if (auto found_it = rng::find_if(the_chart.GetSignals(), [this_col = number_cols - 1] (const PF_Signal& sig)
 	    { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_DoubleBottom_Sell; });
 	    found_it == the_chart.GetSignals().end())
 	{
@@ -694,7 +698,7 @@ std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator() (const PF_Chart& t
 
 	// next, make sure there is no buy signal for previous column.
 
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 2] (const PF_Signal& sig)
+	if (auto found_it = rng::find_if(the_chart.GetSignals(), [prev_col = number_cols - 2] (const PF_Signal& sig)
 	    { return sig.column_number_ == prev_col && sig.signal_category_ == PF_SignalCategory::e_PF_Buy; });
 	    found_it != the_chart.GetSignals().end())
 	{
@@ -703,7 +707,7 @@ std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator() (const PF_Chart& t
 
 	// now, look for preceding triple-bottom sell
 	
-	if (auto found_it = ranges::find_if(the_chart.GetSignals(), [prev_col = number_cols - 3] (const PF_Signal& sig)
+	if (auto found_it = rng::find_if(the_chart.GetSignals(), [prev_col = number_cols - 3] (const PF_Signal& sig)
 	    { return sig.column_number_ == prev_col && (sig.signal_type_ == PF_SignalType::e_TripleBottom_Sell || sig.signal_type_ == PF_SignalType::e_Bearish_TB_Sell); });
 	    found_it == the_chart.GetSignals().end())
 	{

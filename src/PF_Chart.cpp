@@ -46,15 +46,17 @@
 #include<date/tz.h>
 
 //#include <chartdir.h>
-#include <fmt/format.h>
-#include <fmt/chrono.h>
+// #include <fmt/format.h>
+// #include <fmt/chrono.h>
 
-#include <range/v3/algorithm/for_each.hpp>
-#include <range/v3/algorithm/max_element.hpp>
-#include <range/v3/view/chunk_by.hpp>
-#include <range/v3/view/drop.hpp>
-#include <range/v3/view/filter.hpp>
+// #include <range/v3/algorithm/for_each.hpp>
+// #include <range/v3/algorithm/max_element.hpp>
+// #include <range/v3/view/chunk_by.hpp>
+// #include <range/v3/view/drop.hpp>
+// #include <range/v3/view/filter.hpp>
 
+namespace rng = std::ranges;
+namespace vws = std::ranges::views;
 
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/gil.h>
@@ -90,7 +92,7 @@ PF_Chart::PF_Chart (const PF_Chart& rhs)
 {
     // now, the reason for doing this explicitly is to fix the column box pointers.
 
-    ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+    rng::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
     current_column_.boxes_ = &boxes_;
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
@@ -113,7 +115,7 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 {
     // now, the reason for doing this explicitly is to fix the column box pointers.
 
-    ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+    rng::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
     current_column_.boxes_ = &boxes_;
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
@@ -196,7 +198,7 @@ PF_Chart& PF_Chart::operator= (const PF_Chart& rhs)
 
         // now, the reason for doing this explicitly is to fix the column box pointers.
 
-        ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+        rng::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
         current_column_.boxes_ = &boxes_;
     }
     return *this;
@@ -225,7 +227,7 @@ PF_Chart& PF_Chart::operator= (PF_Chart&& rhs) noexcept
 
         // now, the reason for doing this explicitly is to fix the column box pointers.
 
-        ranges::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
+        rng::for_each(columns_, [this] (auto& col) { col.boxes_ = &this->boxes_; });
         current_column_.boxes_ = &boxes_;
     }
     return *this;
@@ -345,7 +347,7 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
     return status;
 }		// -----  end of method PF_Chart::AddValue  ----- 
 
-void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format, char delim)
+void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format, std::string_view delim)
 {
     std::string buffer;
     while ( ! input_data->eof())
@@ -420,7 +422,7 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     const auto& first_col = this->operator[](0);
     double openning_price = first_col.GetDirection() == PF_Column::Direction::e_up ? first_col.GetBottom().ToDouble() : first_col.GetTop().ToDouble();
 
-    for (const auto& col : columns_ | ranges::views::drop(skipped_columns))
+    for (const auto& col : columns_ | vws::drop(skipped_columns))
     {
         lowData.push_back(col.GetBottom().ToDouble());
         highData.push_back(col.GetTop().ToDouble());
@@ -507,10 +509,10 @@ void PF_Chart::ConstructChartGraphAndWriteToFile (const fs::path& output_filenam
     int had_tb_catapult_sell = 0;
 
     for (const auto& sigs : sngls
-            | ranges::views::filter([skipped_columns] (const auto& s) { return s.column_number_ >= skipped_columns; })
-            | ranges::views::chunk_by([](const auto& a, const auto& b) { return a.column_number_ == b.column_number_; }))
+            | vws::filter([skipped_columns] (const auto& s) { return s.column_number_ >= skipped_columns; })
+            | vws::chunk_by([](const auto& a, const auto& b) { return a.column_number_ == b.column_number_; }))
     {
-        const auto most_important = ranges::max_element(sigs, {}, [](const auto& s) { return std::to_underlying(s.priority_); }) ;
+        const auto most_important = rng::max_element(sigs, {}, [](const auto& s) { return std::to_underlying(s.priority_); }) ;
         switch (most_important->signal_type_)
         {
             using enum PF_SignalType;
@@ -705,7 +707,7 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 	std::string header_record{"date\topen\tlow\thigh\tclose\tcolor\tindex\n"};
 	stream.write(header_record.data(), header_record.size());
 
-    for (const auto& col : columns_ | ranges::views::drop(skipped_columns))
+    for (const auto& col : columns_ | vws::drop(skipped_columns))
     {
         auto next_row = std::format(row_template,
 				date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", col.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
@@ -816,7 +818,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
     const auto& signals = new_data["signals"];
     signals_.clear();
-    ranges::for_each(signals, [this](const auto& next_val) { this->signals_.push_back(PF_SignalFromJSON(next_val)); });
+    rng::for_each(signals, [this](const auto& next_val) { this->signals_.push_back(PF_SignalFromJSON(next_val)); });
 
     first_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["first_date"].asInt64()}};
     last_change_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
@@ -853,7 +855,7 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
 
     const auto& cols = new_data["columns"];
     columns_.clear();
-    ranges::for_each(cols, [this](const auto& next_val) { this->columns_.emplace_back(&boxes_, next_val); });
+    rng::for_each(cols, [this](const auto& next_val) { this->columns_.emplace_back(&boxes_, next_val); });
 
     current_column_ = PF_Column{&boxes_, new_data["current_column"]};
 }		// -----  end of method PF_Chart::FromJSON  ----- 

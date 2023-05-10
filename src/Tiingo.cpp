@@ -15,18 +15,23 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
+#include <algorithm>
 #include <format>
 #include <iostream>
 #include <mutex>
+#include <ranges>
 #include <regex>
 #include <string_view>
+
+namespace rng = std::ranges;
+namespace vws = std::ranges::views;
 
 // #include <date/date.h>
 
 // #include <fmt/format.h>
 // #include <fmt/chrono.h>
 
-#include <range/v3/algorithm/for_each.hpp>
+// #include <range/v3/algorithm/for_each.hpp>
 
 #include "Tiingo.h"
 #include "boost/beast/core/buffers_to_string.hpp"
@@ -231,7 +236,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
             new_value.time_stamp_ = data[1].asString();
             new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
             new_value.ticker_ = data[3].asString();
-            ranges::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+            rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
             new_value.last_price_ = DprDecimal::DDecQuad{m[1].str()};
             new_value.last_size_ = data[10].asInt();
 
