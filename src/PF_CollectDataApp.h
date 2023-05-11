@@ -130,7 +130,7 @@ protected:
 
     [[nodiscard]] static PF_Chart    LoadAndParsePriceDataJSON(const fs::path& symbol_file_name);
     void    AddPriceDataToExistingChartCSV(PF_Chart& new_chart, const fs::path& update_file_name) const;
-    [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, char delim);
+    [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, std::string_view delim);
 
     void    PrimeChartsForStreaming();
     void    CollectStreamingData();

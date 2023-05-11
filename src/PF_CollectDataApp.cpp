@@ -32,7 +32,7 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include "utilities.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -42,29 +42,33 @@
 #include <future>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <mutex>
 #include <queue>
+#include <ranges>
 #include <sstream>
-
-#include <map>
 #include <string_view>
 #include <thread>
 #include <type_traits>
 
+namespace rng = std::ranges;
+namespace vws = std::ranges::views;
+
+#include <range/v3/range/conversion.hpp>
 // #include <fmt/ranges.h>
 
-#include <range/v3/action/sort.hpp>
-#include <range/v3/action/unique.hpp>
-#include <range/v3/action/push_back.hpp>
-#include <range/v3/algorithm/copy.hpp>
-#include <range/v3/algorithm/equal.hpp>
-#include <range/v3/algorithm/find_if.hpp>
-#include <range/v3/algorithm/for_each.hpp>
-#include <range/v3/view/cartesian_product.hpp>
-#include <range/v3/view/chunk_by.hpp>
-#include <range/v3/view/drop.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/for_each.hpp>
+// #include <range/v3/action/sort.hpp>
+// #include <range/v3/action/unique.hpp>
+// #include <range/v3/action/push_back.hpp>
+// #include <range/v3/algorithm/copy.hpp>
+// #include <range/v3/algorithm/equal.hpp>
+// #include <range/v3/algorithm/find_if.hpp>
+// #include <range/v3/algorithm/for_each.hpp>
+// #include <range/v3/view/cartesian_product.hpp>
+// #include <range/v3/view/chunk_by.hpp>
+// #include <range/v3/view/drop.hpp>
+// #include <range/v3/view/filter.hpp>
+// #include <range/v3/view/for_each.hpp>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
@@ -85,6 +89,7 @@ using namespace py::literals;
 #include "PF_Column.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
+#include "utilities.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -186,7 +191,8 @@ void PF_CollectDataApp::ConfigureLogging ()
 
 bool PF_CollectDataApp::Startup ()
 {
-    spdlog::info(std::format("\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n", std::chrono::system_clock::now()));
+    constexpr const char* time_fmt = "\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n";
+    spdlog::info(std::format("\n\n*** Starting run {} ***\n", std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
     bool result{true};
 	try
 	{	
@@ -263,8 +269,10 @@ bool PF_CollectDataApp::CheckArgs ()
 
 	if (! symbol_list_i_.empty() && symbol_list_i_ != "ALL")
 	{
-		ranges::actions::push_back(symbol_list_, split_string<std::string>(symbol_list_i_, ','));
-		symbol_list_ |= ranges::actions::sort | ranges::actions::unique;
+		rng::for_each(split_string<std::string>(symbol_list_i_, ","), [this] (const auto sym) { symbol_list_.push_back(sym); });
+        rng::sort(symbol_list_);
+        const auto[first, last] = rng::unique(symbol_list_);
+        symbol_list_.erase(first, last);
 	}
 
 	// if symbol-list is 'ALL' then we will generate a list of symbols from our source database.
@@ -278,7 +286,7 @@ bool PF_CollectDataApp::CheckArgs ()
 	{
     	// now we want upper case symbols.
 
-    	ranges::for_each(symbol_list_, [](auto& symbol) { ranges::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
+    	rng::for_each(symbol_list_, [](auto& symbol) { rng::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
 	}
 
     // now make sure we can find our data for input and output.
@@ -400,15 +408,15 @@ bool PF_CollectDataApp::CheckArgs ()
 
     // edit and translate from text to enums...
 
-    ranges::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", std::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str()); });
-    ranges::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
+    rng::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", std::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str()); });
+    rng::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
 
     // we can compute whether boxes are fractions or intergers from input. This may be changed by the Boxes code later. 
 
     // generate PF_Chart type combinations from input params.
 
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
-    // ranges::for_each(params, [](const auto& x) {std::cout << std::format("{}\n", x); });
+    auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
+    rng::for_each(params, [](const auto& x) {std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x), std::get<2>(x), std::get<3>(x)); });
 
 	return true ;
 }		// -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
@@ -547,7 +555,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 
 void PF_CollectDataApp::Run_Load()
 {
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_,  scale_list_);
+    auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_,  scale_list_);
 
 	// TODO(dpriedel): move file read out of loop and into a buffer
 	
@@ -633,7 +641,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     		// so, make a single element list for the call below and then generate the other combinations.
 
 			std::vector<std::string> the_symbol{symbol};
-    		auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
+    		auto params = vws::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
 			// ranges::for_each(params, [](const auto& x) {std::print("{}\n", x); });
 
     		for (const auto& val : params)
@@ -667,7 +675,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 
 void PF_CollectDataApp::Run_Update()
 {
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
+    auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
     // look for existing data and load the saved JSON data if we have it.
     // then add the new data to the chart.
@@ -724,7 +732,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
 
-    auto data_for_symbol = ranges::views::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
+    auto data_for_symbol = vws::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
 
     // then we process each sub-range and apply the data for each symbol to all PF_Chart variants that were
     // asked for.
@@ -735,7 +743,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 		// std::print("symbol: {}\n", symbol);
 		std::vector<std::string> the_symbol{symbol};
 
-    	auto params = ranges::views::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
+    	auto params = vws::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
 
     	for (const auto& val : params)
     	{
@@ -768,7 +776,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 
                 // apply new data to chart (which may be empty)
 
-                ranges::for_each(symbol_rng, [&new_chart](const auto& row) { new_chart.AddValue(row.close_, row.date_); });
+                rng::for_each(symbol_rng, [&new_chart](const auto& row) { new_chart.AddValue(row.close_, row.date_); });
 
             	charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
         	}
@@ -782,7 +790,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
 
 void PF_CollectDataApp::Run_Streaming()
 {
-    auto params = ranges::views::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
+    auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
     auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
     auto market_status = GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
@@ -821,18 +829,18 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, cons
 {
     const std::string file_content = LoadDataFileForUse(update_file_name);
 
-    const auto symbol_data_records = split_string<std::string_view>(file_content, '\n');
+    const auto symbol_data_records = split_string<std::string_view>(file_content, "\n");
     const auto header_record = symbol_data_records.front();
 
-    auto date_column = FindColumnIndex(header_record, "date", ',');
+    auto date_column = FindColumnIndex(header_record, "date", ",");
     BOOST_ASSERT_MSG(date_column.has_value(), std::format("Can't find 'date' field in header record: {}.", header_record).c_str());
     
-    auto close_column = FindColumnIndex(header_record, price_fld_name_, ',');
+    auto close_column = FindColumnIndex(header_record, price_fld_name_, ",");
     BOOST_ASSERT_MSG(close_column.has_value(), std::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
 
-    ranges::for_each(symbol_data_records | ranges::views::drop(1), [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
+    rng::for_each(symbol_data_records | vws::drop(1), [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
         {
-            const auto fields = split_string<std::string_view> (record, ',');
+            const auto fields = split_string<std::string_view> (record, ",");
             const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
             new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToUTCTimePoint(dt_format, fields[date_col]));
         });
@@ -857,9 +865,9 @@ PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON (const fs::path& symbol_fi
     return new_chart;
 }		// -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  ----- 
 
-std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, char delim) 
+std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, std::string_view column_name, std::string_view delim) 
 {
-    auto fields = rng_split_string<std::string_view>(header, delim);
+    auto fields = rng_split_string<std::string_view>(header, delim) | ranges::to<std::vector>();
     auto do_compare([&column_name](const auto& field_name)
     {
         // need case insensitive compare
@@ -870,12 +878,12 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
         {
             return false;
         }
-        return ranges::equal(column_name, field_name, [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
+        return rng::equal(column_name, field_name, [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
     });
 
-    if (auto found_it = ranges::find_if(fields, do_compare); found_it != ranges::end(fields))
+    if (auto found_it = rng::find_if(fields, do_compare); found_it != rng::end(fields))
     {
-        return ranges::distance(ranges::begin(fields), found_it);
+        return rng::size(rng::subrange(fields.begin(), found_it));
     }
     return {};
 
@@ -894,7 +902,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
     // we look backwards here. so add an extra year in case we are near New Years.
     
     auto holidays = MakeHolidayList(today.year());
-    ranges::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
+    rng::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
 
     const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, UseAdjusted::e_Yes, &holidays);
 
@@ -978,7 +986,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
     auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
     std::chrono::year which_year = today.year();
     auto holidays = MakeHolidayList(which_year);
-    ranges::copy(MakeHolidayList(--which_year), std::back_inserter(holidays));
+    rng::copy(MakeHolidayList(--which_year), std::back_inserter(holidays));
     
     auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
     auto market_status = GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
@@ -1005,7 +1013,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
             const auto open_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
             try{
-				ranges::for_each(charts_ | ranges::views::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+				rng::for_each(charts_ | vws::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
 						[&] (auto& symbol_and_chart)
 						{
 						    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
@@ -1100,8 +1108,11 @@ void PF_CollectDataApp::ProcessStreamedData (Tiingo* quotes, const bool* had_sig
             // each symbol will have its own thread.
 
             std::vector<std::string> tickers_in_update;
-            ranges::for_each(pf_data, [&tickers_in_update](const auto& u) {tickers_in_update.push_back(u.ticker_); });
-            tickers_in_update |= ranges::actions::sort | ranges::actions::unique;
+            rng::for_each(pf_data, [&tickers_in_update](const auto& u) {tickers_in_update.push_back(u.ticker_); });
+
+            rng::sort(tickers_in_update);
+            const auto[first, last] = rng::unique(tickers_in_update);
+            tickers_in_update.erase(first, last);
 
             if (tickers_in_update.size() > 1)
             {
@@ -1197,9 +1208,9 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
     // to all appropriate charts so we find all the charts for each symbol and give each a 
     // chance at the new data.
 
-    for (const auto& new_value: updates | ranges::views::filter([&ticker] (const auto& update) { return update.ticker_ == ticker; }))
+    for (const auto& new_value: updates | vws::filter([&ticker] (const auto& update) { return update.ticker_ == ticker; }))
     {
-        ranges::for_each(charts_ | ranges::views::filter([&ticker] (const auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+        rng::for_each(charts_ | vws::filter([&ticker] (const auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
             [this, &need_to_update_graph, &new_value, &ticker] (auto& symbol_and_chart)
             {
                 auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
@@ -1218,7 +1229,9 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
     // we could have multiple chart updates for any given symbol but we only
     // want to update files and graphic once per symbol.
 
-    need_to_update_graph |= ranges::actions::sort | ranges::actions::unique;
+    rng::sort(need_to_update_graph );
+    const auto[first, last] = rng::unique(need_to_update_graph);
+    need_to_update_graph.erase(first, last);
 
     for (const PF_Chart* chart : need_to_update_graph)
     {
@@ -1249,11 +1262,11 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     // do no process symbols from the INDEX list 
 
-    const auto no_index = ranges::views::filter( [] (const auto& xchng) { return xchng != "INDX"; });
+    const auto no_index = vws::filter( [] (const auto& xchng) { return xchng != "INDX"; });
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges by symbol below.
 
-    auto data_for_symbol = ranges::views::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
+    auto data_for_symbol = vws::chunk_by([](const auto& a, const auto& b) { return a.symbol_ == b.symbol_; });
 
     for (const auto& exchange : exchanges | no_index)
     {
@@ -1281,7 +1294,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                 bool chart_needs_update = false;
                 try
                 {
-                    ranges::for_each(symbol_rng, [&chart, &chart_needs_update](const auto& row) 
+                    rng::for_each(symbol_rng, [&chart, &chart_needs_update](const auto& row) 
                         {
                             auto status = chart.AddValue(row.close_, row.date_);
 //                            std::print("status: {}. close: {}. date: {}.\n", status, row.close_, row.date_);
@@ -1359,7 +1372,7 @@ void PF_CollectDataApp::Shutdown ()
         }
     }
 
-    spdlog::info(std::format("\n\n*** End run {:%a, %b %d, %Y at %I:%M:%S %p %Z} ***\n", std::chrono::system_clock::now()));
+    spdlog::info(std::format("\n\n*** End run {}  ***\n", std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
 }       // -----  end of method PF_CollectDataApp::Shutdown  -----
 
 void PF_CollectDataApp::WaitForTimer (const std::chrono::zoned_seconds& stop_at)
