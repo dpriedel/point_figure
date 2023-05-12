@@ -883,7 +883,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
 
     if (auto found_it = rng::find_if(fields, do_compare); found_it != rng::end(fields))
     {
-        return rng::size(rng::subrange(fields.begin(), found_it));
+        return rng::distance(fields.begin(), found_it);
     }
     return {};
 

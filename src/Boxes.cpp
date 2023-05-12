@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <ranges>
 #include <utility>
 
@@ -135,9 +136,9 @@ size_t Boxes::Distance (const Box& from, const Box& to) const
 
     if (from < to)
     {
-        return rng::size(rng::subrange(x, y));
+        return rng::distance(x, y);
     }
-    return rng::size(rng::subrange(y, x));
+    return rng::distance(y, x);
 }		// -----  end of method Boxes::Distance  ----- 
 
 
@@ -277,7 +278,7 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBox  ----- 
 
@@ -299,7 +300,7 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value) const
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value).c_str());
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBox  ----- 
 
@@ -327,7 +328,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
@@ -342,7 +343,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value).c_str());
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
@@ -375,7 +376,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     if (box_index == 0)
     {
         Box new_box = boxes_.front() - runtime_box_size_;
@@ -407,7 +408,7 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value) const
         }
     }
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindPrevBox  ----- 
@@ -439,7 +440,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     if (box_index == 0)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
@@ -469,7 +470,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
         }
     }
 
-    size_t box_index = rng::size(rng::subrange(boxes_.begin(), found_it));
+    size_t box_index = rng::distance(boxes_.begin(), found_it);
     BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
