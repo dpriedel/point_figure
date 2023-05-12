@@ -25,9 +25,6 @@
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
-// #include <range/v3/algorithm/find_if.hpp>
-// #include <range/v3/view/filter.hpp>
-
 #include <spdlog/spdlog.h>
 
 #include "Boxes.h"

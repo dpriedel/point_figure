@@ -14,8 +14,6 @@
 #include <iomanip>
 #include <string_view>
 
-// #include <fmt/format.h>
-
 extern "C"
 {
     #include <decQuad.h>

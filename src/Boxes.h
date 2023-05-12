@@ -41,9 +41,6 @@
 
 #include <json/json.h>
 
-// #include <fmt/format.h>
-// #include <fmt/ranges.h>
-
 #include "DDecQuad.h"
 
 // =====================================================================================

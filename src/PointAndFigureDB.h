@@ -40,7 +40,6 @@
 #include <string_view>
 #include <vector>
 
-// #include <date/date.h>
 #include <json/json.h>
 
 #include <pqxx/pqxx>

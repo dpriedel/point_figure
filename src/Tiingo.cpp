@@ -26,13 +26,6 @@
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
-// #include <date/date.h>
-
-// #include <fmt/format.h>
-// #include <fmt/chrono.h>
-
-// #include <range/v3/algorithm/for_each.hpp>
-
 #include "Tiingo.h"
 #include "boost/beast/core/buffers_to_string.hpp"
 

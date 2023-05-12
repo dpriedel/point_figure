@@ -38,12 +38,6 @@
 
 namespace rng = std::ranges;
 
-// #include <fmt/format.h>
-
-// #include <range/v3/algorithm/adjacent_find.hpp>
-// #include <range/v3/algorithm/find.hpp>
-// #include <range/v3/algorithm/for_each.hpp>
-
 #include "Boxes.h"
 #include "utilities.h"
 

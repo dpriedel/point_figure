@@ -45,7 +45,6 @@
 #include <exception>
 #include <memory>
 
-// #include <fmt/format.h>
 
 #include "Boxes.h"
 #include "DDecQuad.h"

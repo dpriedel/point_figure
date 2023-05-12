@@ -17,16 +17,13 @@
 #ifndef  _TIINGO_INC_
 #define  _TIINGO_INC_
 
-// #include <date/date.h>
 #include <chrono>
 #include <deque>
 #include <mutex>
 #include <queue>
-//#include <string>
 #include <vector>
 #include <sys/types.h>
 
-// #include <date/julian.h>
 #include <json/json.h>
 
 #pragma GCC diagnostic push

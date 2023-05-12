@@ -31,7 +31,6 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
-//#include <iterator>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -40,20 +39,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-// #include <print>
 #include <utility>
-
-#include<date/tz.h>
-
-//#include <chartdir.h>
-// #include <fmt/format.h>
-// #include <fmt/chrono.h>
-
-// #include <range/v3/algorithm/for_each.hpp>
-// #include <range/v3/algorithm/max_element.hpp>
-// #include <range/v3/view/chunk_by.hpp>
-// #include <range/v3/view/drop.hpp>
-// #include <range/v3/view/filter.hpp>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;

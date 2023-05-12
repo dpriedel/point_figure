@@ -18,7 +18,6 @@
 #include <array>
 #include <charconv>
 
-// #include <fmt/format.h>
 #include <string_view>
 
 #include "DDecQuad.h"
