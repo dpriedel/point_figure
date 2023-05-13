@@ -150,8 +150,6 @@ public:
 
     [[nodiscard]] std::string MakeChartFileName(std::string_view interval, std::string_view suffix) const;
 
-    void ConstructChartGraphAndWriteToFile(const fs::path& output_filename, const streamed_prices& streamed_prices, const std::string& show_trend_lines, X_AxisFormat date_or_time=X_AxisFormat::e_show_date) const;
-
     void ConvertChartToJsonAndWriteToFile(const fs::path& output_filename) const;
     void ConvertChartToJsonAndWriteToStream(std::ostream& stream) const;
 
@@ -177,6 +175,7 @@ public:
     PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, std::string_view delim);
 
+    int64_t GetMaxGraphicColumns(void) const  { return max_columns_for_graph_; }
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
 
     void AddSignal(const PF_Signal& new_sig) { signals_.push_back(new_sig); }
