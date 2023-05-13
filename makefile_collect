@@ -55,6 +55,7 @@ SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/Boxes.cpp \
 		$(SDIR2)/PF_Column.cpp \
 		$(SDIR2)/PF_Chart.cpp \
+		$(SDIR2)/ConstructChartGraphic.cpp \
 		$(SDIR2)/PointAndFigureDB.cpp \
 		$(SDIR2)/PF_Signals.cpp  \
 		$(SDIR2)/Tiingo.cpp #\
