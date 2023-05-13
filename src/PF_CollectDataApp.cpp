@@ -85,6 +85,7 @@ using namespace py::literals;
 
 #include "DDecQuad.h"
 #include "PF_Chart.h"
+#include "ConstructChartGraphic.h"
 #include "PF_CollectDataApp.h"
 #include "PF_Column.h"
 #include "PointAndFigureDB.h"
@@ -1237,7 +1238,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
     {
         py::gil_scoped_acquire gil{};
         fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-        chart->ConstructChartGraphAndWriteToFile(graph_file_path, streamed_prices_[chart->GetChartBaseName()], trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+        ConstructChartGraphAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()], trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
         fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
         chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
@@ -1337,7 +1338,7 @@ void PF_CollectDataApp::Shutdown ()
             	if (graphics_format_ == GraphicsFormat::e_svg)
             	{
 					fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					ConstructChartGraphAndWriteToFile(chart, graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
             	}
             	else
             	{
@@ -1361,7 +1362,7 @@ void PF_CollectDataApp::Shutdown ()
 				if (graphics_format_ == GraphicsFormat::e_svg)
 				{
 					fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
-					chart.ConstructChartGraphAndWriteToFile(graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+					ConstructChartGraphAndWriteToFile(chart, graph_file_path, (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}), trend_lines_, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
 				}
 				chart.StoreChartInChartsDB(pf_db, interval_i, interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date, graphics_format_ == GraphicsFormat::e_csv);
 			}
