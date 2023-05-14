@@ -121,20 +121,37 @@ def DrawChart(the_data, ReversalBoxes, IsUp, StepBack, ChartTitle, ChartFileName
     apds = []
 
     # if ReversalBoxes > 1:
-    for key in SIG_TYPE.keys():
-        if len(the_signals[key]) > 0:
-            mark, color = SIG_INFO[SIG_TYPE[key]]
-            apds.append(mpf.make_addplot(the_signals[key], ax=ax1, type="scatter", marker=mark, color=color))
+    if not UseLogScale:
+        for key in SIG_TYPE.keys():
+            if len(the_signals[key]) > 0:
+                mark, color = SIG_INFO[SIG_TYPE[key]]
+                apds.append(mpf.make_addplot(the_signals[key], ax=ax1, type="scatter", marker=mark, color=color))
 
-    mpf.plot(chart_data,
-             ax=ax1,
-             type="candle",
-             style=s,
-             marketcolor_overrides=mco,
-             # title=ChartTitle,
-             datetime_format=DateTimeFormat,
-             hlines=dict(hlines=[openning_price], colors=['r'], linestyle='dotted', linewidths=(2)),
-             addplot=apds)
+        mpf.plot(chart_data,
+                 ax=ax1,
+                 type="candle",
+                 style=s,
+                 marketcolor_overrides=mco,
+                 # title=ChartTitle,
+                 datetime_format=DateTimeFormat,
+                 hlines=dict(hlines=[openning_price], colors=['r'], linestyle='dotted', linewidths=(2)),
+                 addplot=apds)
+    else:
+        for key in SIG_TYPE.keys():
+            if len(the_signals[key]) > 0:
+                mark, color = SIG_INFO[SIG_TYPE[key]]
+                apds.append(mpf.make_addplot(the_signals[key], ax=ax1, type="scatter", marker=mark, color=color, yscale='log'))
+
+        mpf.plot(chart_data,
+                 ax=ax1,
+                 type="candle",
+                 style=s,
+                 marketcolor_overrides=mco,
+                 # title=ChartTitle,
+                 yscale='log',
+                 datetime_format=DateTimeFormat,
+                 hlines=dict(hlines=[openning_price], colors=['r'], linestyle='dotted', linewidths=(2)),
+                 addplot=apds)
 
     plt.figure(fig)
     plt.tick_params(which='both', left=True, right=True, labelright=True)
