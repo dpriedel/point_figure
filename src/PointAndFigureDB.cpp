@@ -62,7 +62,7 @@ PF_DB::PF_DB (const DB_Params& db_params)
         BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' to access PointAndFigure database.");
         BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' to access PointAndFigure database.");
         BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' to access PointAndFigure database.");
-        BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live' to access PointAndFigure database.");
+        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "'db-mode' must be 'test' or 'live' to access PointAndFigure database.");
 }  // -----  end of method PF_DB::PF_DB  (constructor)  ----- 
 
 
@@ -75,7 +75,7 @@ std::vector<std::string> PF_DB::ListExchanges () const
 	pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
     std::string get_exchanges_cmd = std::format("SELECT DISTINCT(exchange) FROM new_stock_data.names_and_symbols ORDER BY exchange ASC",
-            db_params_.db_data_source_
+            db_params_.stock_db_data_source_
             );
 
 	try
@@ -117,7 +117,7 @@ Json::Value PF_DB::GetPFChartData (const std::string file_name) const
     pqxx::transaction trxn{c};
 
 	auto retrieve_chart_data_cmd = std::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}",
-            db_params_.db_mode_,
+            db_params_.PF_db_mode_,
             trxn.quote(file_name)
             );
 
@@ -153,7 +153,7 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol (const std::string& s
     pqxx::transaction trxn{c};
 
 	auto retrieve_chart_data_cmd = std::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE symbol = {} and file_name like '%_eod.json' ",
-            db_params_.db_mode_,
+            db_params_.PF_db_mode_,
             trxn.quote(symbol)
             );
 
@@ -190,7 +190,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
 
-    auto delete_existing_data_cmd = std::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.db_mode_, trxn.quote(the_chart.MakeChartFileName(interval, "json")));
+    auto delete_existing_data_cmd = std::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.PF_db_mode_, trxn.quote(the_chart.MakeChartFileName(interval, "json")));
     trxn.exec(delete_existing_data_cmd);
 
 	auto json = the_chart.ToJSON();
@@ -200,7 +200,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 
 	const auto add_new_data_cmd = std::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
 			" VALUES({}, {}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}', '{}')",
-    		db_params_.db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", 
+    		db_params_.PF_db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", 
     		    "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
 			trxn.quote(the_chart.GetSymbol()),
 			trxn.quote(the_chart.GetFNameBoxSize().ToStr()),
@@ -236,7 +236,7 @@ void PF_DB::UpdatePFChartDataInDB (const PF_Chart& the_chart, std::string_view i
     const auto update_chart_data_cmd = std::format("UPDATE {}_point_and_figure.pf_charts "
             "SET chart_data = '{}', cvs_graphics_data = '{}', last_change_date = {}, last_checked_date = {}, current_direction = 'e_{}' "
             "WHERE symbol = {} and file_name = {}",
-    		db_params_.db_mode_,
+    		db_params_.PF_db_mode_,
 			for_db,
 			cvs_graphics_data,
 			trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
@@ -273,7 +273,7 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
 	std::string get_records_cmd = std::format("SELECT date, symbol, adjopen, adjhigh, adjlow, adjclose FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
-			db_params_.db_data_source_,
+			db_params_.stock_db_data_source_,
 			c.quote(symbol),
             date,
 			how_many		// need an extra row for the algorithm 
@@ -281,7 +281,7 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
     std::vector<StockDataRecord> records;
 	try
 	{
-	    BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
+	    BOOST_ASSERT_MSG(! db_params_.stock_db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
 
         records = RunSQLQueryUsingRows<StockDataRecord>(get_records_cmd, Row2StockDataRecord);
     }
@@ -336,7 +336,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
 
 		std::string get_symbol_prices_cmd = std::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
 				price_fld_name,
-				db_params_.db_data_source_,
+				db_params_.stock_db_data_source_,
 				query_list,
 				c.quote(begin_date)
 				);
@@ -383,7 +383,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
 
 		std::string get_symbol_prices_cmd = std::format("SELECT t1.symbol, t1.date, t1.{} FROM {} AS t1 INNER JOIN new_stock_data.names_and_symbols as t2 on t1.symbol = t2.symbol WHERE t2.exchange = {} AND t1.date >= {} ORDER BY t1.symbol ASC, t1.date ASC",
 				price_fld_name,
-				db_params_.db_data_source_,
+				db_params_.stock_db_data_source_,
 				c.quote(exchange),
 				c.quote(begin_date)
 				);

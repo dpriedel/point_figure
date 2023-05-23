@@ -106,7 +106,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
 
     // OK, we've got a value but may not yet have a direction.
 
-    if (direction_ == Direction::e_unknown)
+    if (direction_ == Direction::e_Unknown)
     {
         return TryToFindDirection(new_value, the_time);
     }
@@ -116,7 +116,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     // in which case, we start a new column (unless this is 
     // a 1-box reversal and we can reverse in place)
 
-    if (direction_ == Direction::e_up)
+    if (direction_ == Direction::e_Up)
     {
         return TryToExtendUp(new_value, the_time);
     }
@@ -132,7 +132,7 @@ PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_val
     bottom_ = top_;
     time_span_ = {the_time, the_time};
 
-    return {Status::e_accepted, std::nullopt};
+    return {Status::e_Accepted, std::nullopt};
 }		// -----  end of method PF_Column::StartColumn  ----- 
 
 
@@ -148,20 +148,20 @@ PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& 
 
     if (possible_value > top_)
     {
-        direction_ = Direction::e_up;
+        direction_ = Direction::e_Up;
         top_ = possible_value;
         time_span_.second = the_time;
-        return {Status::e_accepted, std::nullopt};
+        return {Status::e_Accepted, std::nullopt};
     }
     if (possible_value < bottom_)
     {
-        direction_ = Direction::e_down;
+        direction_ = Direction::e_Down;
         bottom_ = possible_value;
         time_span_.second = the_time;
-        return {Status::e_accepted, std::nullopt};
+        return {Status::e_Accepted, std::nullopt};
     }
 
-    return {Status::e_ignored, std::nullopt};
+    return {Status::e_Ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
 PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_value, TmPt the_time)
@@ -179,7 +179,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
             possible_new_top = boxes_->FindNextBox(top_);
         }
 
-        return {Status::e_accepted, std::nullopt};
+        return {Status::e_Accepted, std::nullopt};
     }
 
     // look for a reversal down 
@@ -203,16 +203,16 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
 
                 bottom_ = possible_new_column_top;      // from loop above
                 had_reversal_ = true;
-                direction_ = Direction::e_down;
+                direction_ = Direction::e_Down;
                 time_span_.second = the_time;
-                return {Status::e_accepted, std::nullopt};
+                return {Status::e_Accepted, std::nullopt};
             }
         }
 
         time_span_.second = the_time;
-        return {Status::e_reversal, MakeReversalColumn(Direction::e_down, boxes_->FindPrevBox(top_), the_time)};
+        return {Status::e_Reversal, MakeReversalColumn(Direction::e_Down, boxes_->FindPrevBox(top_), the_time)};
     }
-    return {Status::e_ignored, std::nullopt};
+    return {Status::e_Ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendUp  ----- 
 
 PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, TmPt the_time)
@@ -230,7 +230,7 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new
             possible_new_bottom = boxes_->FindPrevBox(bottom_);
         }
 
-        return {Status::e_accepted, std::nullopt};
+        return {Status::e_Accepted, std::nullopt};
     }
 
     // look for a reversal up 
@@ -254,16 +254,16 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new
 
                 top_ = possible_new_column_bottom;      // from loop above
                 had_reversal_ = true;
-                direction_ = Direction::e_up;
+                direction_ = Direction::e_Up;
                 time_span_.second = the_time;
-                return {Status::e_accepted, std::nullopt};
+                return {Status::e_Accepted, std::nullopt};
             }
         }
 
         time_span_.second = the_time;
-        return {Status::e_reversal, MakeReversalColumn(Direction::e_up, boxes_->FindNextBox(bottom_), the_time)};
+        return {Status::e_Reversal, MakeReversalColumn(Direction::e_Up, boxes_->FindNextBox(bottom_), the_time)};
     }
-    return {Status::e_ignored, std::nullopt};
+    return {Status::e_Ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendDown  ----- 
 
 Json::Value PF_Column::ToJSON () const
@@ -281,15 +281,15 @@ Json::Value PF_Column::ToJSON () const
     switch(direction_)
     {
         using enum Direction;
-        case e_unknown:
+        case e_Unknown:
             result["direction"] = "unknown";
             break;
 
-        case e_down:
+        case e_Down:
             result["direction"] = "down";
             break;
 
-        case e_up:
+        case e_Up:
             result["direction"] = "up";
             break;
     };
@@ -311,15 +311,15 @@ void PF_Column::FromJSON (const Json::Value& new_data)
     const auto direction = new_data["direction"].asString();
     if (direction == "up")
     {
-        direction_ = Direction::e_up;
+        direction_ = Direction::e_Up;
     }
     else if (direction == "down")
     {
-        direction_ = Direction::e_down;
+        direction_ = Direction::e_Down;
     }
     else if (direction == "unknown")
     {
-        direction_ = Direction::e_unknown;
+        direction_ = Direction::e_Unknown;
     }
     else
     {

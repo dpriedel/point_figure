@@ -277,7 +277,7 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
     {
     	if (the_time <= last_checked_date_)
     	{
-    		return PF_Column::Status::e_ignored;
+    		return PF_Column::Status::e_Ignored;
     	}
     }
     else
@@ -287,7 +287,7 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
 
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
 
-    if (status == PF_Column::Status::e_accepted)
+    if (status == PF_Column::Status::e_Accepted)
     {
         if (current_column_.GetTop() > y_max_)
         {
@@ -303,10 +303,10 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         if (auto had_signal = AddSignalsToChart(*this, new_value, the_time); had_signal)
         {
 
-        	status = PF_Column::Status::e_accepted_with_signal;
+        	status = PF_Column::Status::e_AcceptedWithSignal;
         }
     }
-    else if (status == PF_Column::Status::e_reversal)
+    else if (status == PF_Column::Status::e_Reversal)
     {
         columns_.push_back(current_column_);
         current_column_ = std::move(new_col.value());
@@ -319,7 +319,7 @@ PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_C
         // if (auto had_signal = PF_Chart::LookForSignals(*this, new_value, the_time); had_signal)
         if (auto had_signal = AddSignalsToChart(*this, new_value, the_time); had_signal)
         {
-        	status = PF_Column::Status::e_accepted_with_signal;
+        	status = PF_Column::Status::e_AcceptedWithSignal;
         }
     }
     current_direction_ = current_column_.GetDirection();
@@ -419,11 +419,11 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 
 	auto compute_color = [](const PF_Column& c)
 	{
-		if (c.GetDirection() == PF_Column::Direction::e_up)
+		if (c.GetDirection() == PF_Column::Direction::e_Up)
 		{
 			return (c.GetHadReversal() ? "blue\t3" : "green\t1");
 		}
-		if (c.GetDirection() == PF_Column::Direction::e_down)
+		if (c.GetDirection() == PF_Column::Direction::e_Down)
 		{
 			return (c.GetHadReversal() ? "orange\t2" : "red\t0");
 		}
@@ -439,10 +439,10 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
     {
         auto next_row = std::format(row_template,
 				date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", col.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
-				col.GetDirection() == PF_Column::Direction::e_up ? col.GetBottom().ToStr() : col.GetTop().ToStr(),
+				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetBottom().ToStr() : col.GetTop().ToStr(),
 				col.GetBottom().ToStr(),
 				col.GetTop().ToStr(),
-				col.GetDirection() == PF_Column::Direction::e_up ? col.GetTop().ToStr() : col.GetBottom().ToStr(),
+				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetTop().ToStr() : col.GetBottom().ToStr(),
 				compute_color(col)
         		);
 		stream.write(next_row.data(), next_row.size());
@@ -450,10 +450,10 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 
     auto last_row = std::format(row_template,
 			date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", current_column_.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
-			current_column_.GetDirection() == PF_Column::Direction::e_up ? current_column_.GetBottom().ToStr() : current_column_.GetTop().ToStr(),
+			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().ToStr() : current_column_.GetTop().ToStr(),
 			current_column_.GetBottom().ToStr(),
 			current_column_.GetTop().ToStr(),
-			current_column_.GetDirection() == PF_Column::Direction::e_up ? current_column_.GetTop().ToStr() : current_column_.GetBottom().ToStr(),
+			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().ToStr() : current_column_.GetBottom().ToStr(),
 			compute_color(current_column_)
         	);
 	stream.write(last_row.data(), last_row.size());
@@ -511,15 +511,15 @@ Json::Value PF_Chart::ToJSON () const
     switch(current_direction_)
     {
         using enum PF_Column::Direction;
-        case e_unknown:
+        case e_Unknown:
             result["current_direction"] = "unknown";
             break;
 
-        case e_down:
+        case e_Down:
             result["current_direction"] = "down";
             break;
 
-        case e_up:
+        case e_Up:
             result["current_direction"] = "up";
             break;
     };
@@ -561,15 +561,15 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     const auto direction = new_data["current_direction"].asString();
     if (direction == "up")
     {
-        current_direction_ = PF_Column::Direction::e_up;
+        current_direction_ = PF_Column::Direction::e_Up;
     }
     else if (direction == "down")
     {
-        current_direction_ = PF_Column::Direction::e_down;
+        current_direction_ = PF_Column::Direction::e_Down;
     }
     else if (direction == "unknown")
     {
-        current_direction_ = PF_Column::Direction::e_unknown;
+        current_direction_ = PF_Column::Direction::e_Unknown;
     }
     else
     {
@@ -631,9 +631,9 @@ std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::
     std::string chart_name = std::format("{}_{}{}X{}_{}{}.{}",
             std::get<PF_Chart::e_symbol>(vals),
             std::get<PF_Chart::e_box_size>(vals),
-            (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_percent ? "%" : ""),
+            (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Percent ? "%" : ""),
             std::get<PF_Chart::e_reversal>(vals),
-            (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_linear ? "linear" : "percent"),
+            (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Linear ? "linear" : "percent"),
             (! interval.empty() ? "_"s += interval : ""),
             suffix);
     return chart_name;

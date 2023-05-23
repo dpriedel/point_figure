@@ -51,11 +51,11 @@ class Boxes
 {
 public:
 
-    static constexpr std::size_t MAX_BOXES = 1000;			// too many boxes and everything becomes too slow
-    static constexpr int32_t MIN_EXPONENT = -5;
+    static constexpr std::size_t kMaxBoxes = 1000;			// too many boxes and everything becomes too slow
+    static constexpr int32_t kMinExponent = -5;
     										//
-    enum class BoxType { e_integral, e_fractional };
-    enum class BoxScale { e_linear, e_percent };
+    enum class BoxType { e_Integral, e_Fractional };
+    enum class BoxScale { e_Linear, e_Percent };
 
     using Box = DprDecimal::DDecQuad;
     using BoxList = std::deque<Box>;
@@ -65,7 +65,7 @@ public:
     Boxes (const Boxes& rhs) = default;
     Boxes (Boxes&& rhs) = default;
 
-    explicit Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_modifier=0, BoxScale box_scale=BoxScale::e_linear);
+    explicit Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_modifier=0, BoxScale box_scale=BoxScale::e_Linear);
 
     explicit Boxes(const Json::Value& new_data);
 
@@ -95,8 +95,8 @@ public:
 
     // we have some lookup-only uses
 
-    Box FindNextBox(const DprDecimal::DDecQuad& current_value) const;
-    Box FindPrevBox(const DprDecimal::DDecQuad& current_value) const;
+    [[nodiscard]] Box FindNextBox(const DprDecimal::DDecQuad& current_value) const;
+    [[nodiscard]] Box FindPrevBox(const DprDecimal::DDecQuad& current_value) const;
 
     // ====================  OPERATORS     ======================================= 
 
@@ -122,9 +122,9 @@ private:
     Box FirstBoxPerCent(const DprDecimal::DDecQuad& start_at);
     Box FindBoxPercent(const DprDecimal::DDecQuad& new_value);
     Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value);
-    Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value) const;
+    [[nodiscard]] Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value) const;
     Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value);
-    Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value) const;
+    [[nodiscard]] Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value) const;
     [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
 
 	// these functions implement our max number of boxes limit 
@@ -143,8 +143,8 @@ private:
     DprDecimal::DDecQuad percent_box_factor_down_ = -1;
 
     int32_t percent_exponent_ = 0;
-    BoxType box_type_ = BoxType::e_integral;      // whether to drop fractional part of new values.
-    BoxScale box_scale_ = BoxScale::e_linear;
+    BoxType box_type_ = BoxType::e_Integral;      // whether to drop fractional part of new values.
+    BoxScale box_scale_ = BoxScale::e_Linear;
 
 }; // -----  end of class Boxes  ----- 
 
@@ -156,7 +156,7 @@ template <> struct std::formatter<Boxes::BoxType>: std::formatter<std::string>
     auto format(const Boxes::BoxType& box_type, std::format_context& ctx) const
     {
         std::string s;
-		std::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_integral ? "integral" : "fractional"));
+		std::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_Integral ? "integral" : "fractional"));
         return formatter<std::string>::format(s, ctx);
     }
 };
@@ -169,7 +169,7 @@ template <> struct std::formatter<Boxes::BoxScale>: std::formatter<std::string>
     auto format(const Boxes::BoxScale& box_scale, std::format_context& ctx) const
     {
         std::string s;
-		std::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_linear ? "linear" : "percent"));
+		std::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_Linear ? "linear" : "percent"));
         return formatter<std::string>::format(s, ctx);
     }
 };

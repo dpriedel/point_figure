@@ -55,14 +55,14 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
     // we want to mark the openning value on the chart so change can be seen when drawing only most recent columns. 
     
     const auto& first_col = the_chart[0];
-    double openning_price = first_col.GetDirection() == PF_Column::Direction::e_up ? first_col.GetBottom().ToDouble() : first_col.GetTop().ToDouble();
+    double openning_price = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom().ToDouble() : first_col.GetTop().ToDouble();
 
     for (const auto& col : the_chart.GetColumns() | vws::drop(skipped_columns))
     {
         lowData.push_back(col.GetBottom().ToDouble());
         highData.push_back(col.GetTop().ToDouble());
 
-        if (col.GetDirection() == PF_Column::Direction::e_up)
+        if (col.GetDirection() == PF_Column::Direction::e_Up)
         {
             openData.push_back(col.GetBottom().ToDouble());
             closeData.push_back(col.GetTop().ToDouble());
@@ -88,7 +88,7 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
     lowData.push_back(the_chart.back().GetBottom().ToDouble());
     highData.push_back(the_chart.back().GetTop().ToDouble());
 
-    if (the_chart.back().GetDirection() == PF_Column::Direction::e_up)
+    if (the_chart.back().GetDirection() == PF_Column::Direction::e_Up)
     {
         openData.push_back(the_chart.back().GetBottom().ToDouble());
         closeData.push_back(the_chart.back().GetTop().ToDouble());
@@ -204,7 +204,7 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
 	if (the_chart.size() > 1)
 	{
 		auto first_col = the_chart[0];
-		first_value = first_col.GetDirection() == PF_Column::Direction::e_up ? first_col.GetBottom() : first_col.GetTop();
+		first_value = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom() : first_col.GetTop();
 		// apparently, this can happen 
 
 		if (first_value == 0.0)
@@ -214,9 +214,9 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
 	}
 	else
 	{
-		first_value = the_chart.back().GetDirection() == PF_Column::Direction::e_up ? the_chart.back().GetBottom() : the_chart.back().GetTop();
+		first_value = the_chart.back().GetDirection() == PF_Column::Direction::e_Up ? the_chart.back().GetBottom() : the_chart.back().GetTop();
 	}
-	last_value = the_chart.back().GetDirection() == PF_Column::Direction::e_up ? the_chart.back().GetTop() : the_chart.back().GetBottom();
+	last_value = the_chart.back().GetDirection() == PF_Column::Direction::e_Up ? the_chart.back().GetTop() : the_chart.back().GetBottom();
 
 	DprDecimal::DDecQuad overall_pct_chg = ((last_value - first_value) / first_value * 100).Rescale(-2);
 

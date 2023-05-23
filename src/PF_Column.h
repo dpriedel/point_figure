@@ -58,8 +58,8 @@ class PF_Column
 
 public:
 
-    enum class Direction {e_unknown, e_up, e_down};
-    enum class Status { e_accepted, e_ignored, e_reversal, e_accepted_with_signal };
+    enum class Direction {e_Unknown, e_Up, e_Down};
+    enum class Status { e_Accepted, e_Ignored, e_Reversal, e_AcceptedWithSignal };
 
     using TmPt = std::chrono::utc_time<std::chrono::utc_clock::duration>;
     using TimeSpan = std::pair<TmPt, TmPt>;
@@ -73,7 +73,7 @@ public:
     PF_Column(PF_Column&& rhs) = default;
 
     PF_Column(Boxes* boxes, int32_t column_number, int32_t reversal_boxes,
-            Direction direction = Direction::e_unknown,
+            Direction direction = Direction::e_Unknown,
             DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
 
     PF_Column(Boxes* boxes, const Json::Value& new_data);
@@ -134,7 +134,7 @@ private:
     int32_t reversal_boxes_ = -1;
     DprDecimal::DDecQuad top_ = -1;
     DprDecimal::DDecQuad bottom_ = -1;
-    Direction direction_ = Direction::e_unknown;
+    Direction direction_ = Direction::e_Unknown;
 
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;
@@ -156,15 +156,15 @@ template <> struct std::formatter<PF_Column::Direction>: std::formatter<std::str
         switch(direction)
         {
             using enum PF_Column::Direction;
-            case e_unknown:
+            case e_Unknown:
 				std::format_to(std::back_inserter(s), "{}", "unknown");
                 break;
 
-            case e_down:
+            case e_Down:
 				std::format_to(std::back_inserter(s), "{}", "down");
                 break;
 
-            case e_up:
+            case e_Up:
 				std::format_to(std::back_inserter(s), "{}", "up");
                 break;
         };
@@ -183,19 +183,19 @@ template <> struct std::formatter<PF_Column::Status>: std::formatter<std::string
         switch(status)
         {
             using enum PF_Column::Status;
-            case e_accepted:
+            case e_Accepted:
 				std::format_to(std::back_inserter(s), "{}", "accepted");
                 break;
 
-            case e_accepted_with_signal:
+            case e_AcceptedWithSignal:
 				std::format_to(std::back_inserter(s), "{}", "accepted w/signal");
                 break;
 
-            case e_ignored:
+            case e_Ignored:
 				std::format_to(std::back_inserter(s), "{}", "ignored");
                 break;
 
-            case e_reversal:
+            case e_Reversal:
 				std::format_to(std::back_inserter(s), "{}", "reversed");
                 break;
         };

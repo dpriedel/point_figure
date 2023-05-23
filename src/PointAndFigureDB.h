@@ -64,8 +64,8 @@ public:
 	    std::string user_name_;
 	    std::string db_name_;
 	    std::string host_name_ = "localhost";
-	    std::string db_mode_ = "test";
-	    std::string db_data_source_;
+	    std::string PF_db_mode_ = "test";
+	    std::string stock_db_data_source_;
 	    int32_t port_number_ = 5432;
     };
 

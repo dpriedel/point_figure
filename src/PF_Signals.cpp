@@ -310,7 +310,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
     for (int32_t index = number_cols - 2; index > boundary_column; --index)
     {
        // std::print("index2: {}\n", index);
-        if (the_chart[index].GetDirection() == PF_Column::Direction::e_up && the_chart[index].GetTop() == previous_top)
+        if (the_chart[index].GetDirection() == PF_Column::Direction::e_Up && the_chart[index].GetTop() == previous_top)
         {
             which_prev_col = index;
             break;
@@ -326,7 +326,7 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator() (const PF_Chart& the_chart,
         for (int32_t index = which_prev_col - 1; index > boundary_column; --index)
         {
 //            std::print("index2: {}\n", index);
-            if (the_chart[index].GetDirection() == PF_Column::Direction::e_up && the_chart[index].GetTop() == previous_top)
+            if (the_chart[index].GetDirection() == PF_Column::Direction::e_Up && the_chart[index].GetTop() == previous_top)
             {
                 ++ctr;
             }
@@ -391,7 +391,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
     for (int32_t index = number_cols - 2; index > boundary_column; --index)
     {
        // std::print("index2: {}\n", index);
-        if (the_chart[index].GetDirection() == PF_Column::Direction::e_down && the_chart[index].GetBottom() == previous_bottom)
+        if (the_chart[index].GetDirection() == PF_Column::Direction::e_Down && the_chart[index].GetBottom() == previous_bottom)
         {
             which_prev_col = index;
             break;
@@ -407,7 +407,7 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator() (const PF_Chart& the_chart
         for (int32_t index = which_prev_col - 1; index > boundary_column; --index)
         {
 //            std::print("index2: {}\n", index);
-            if (the_chart[index].GetDirection() == PF_Column::Direction::e_down && the_chart[index].GetBottom() == previous_bottom)
+            if (the_chart[index].GetDirection() == PF_Column::Direction::e_Down && the_chart[index].GetBottom() == previous_bottom)
             {
                 ++ctr;
             }

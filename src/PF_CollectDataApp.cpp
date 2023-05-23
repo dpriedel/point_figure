@@ -242,8 +242,8 @@ bool PF_CollectDataApp::CheckArgs ()
         BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when mode is 'daily-scan'.");
         BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when mode is 'daily-scan'.");
         BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when mode is 'daily-scan'.");
-        BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
-        BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
+        BOOST_ASSERT_MSG(! db_params_.stock_db_data_source_.empty(), "'db-data-source' must be specified when mode is 'daily-scan'.");
 
         BOOST_ASSERT_MSG(! begin_date_.empty(), "Must specify 'begin-date' when mode is 'daily-scan'.");
 
@@ -369,10 +369,10 @@ bool PF_CollectDataApp::CheckArgs ()
         BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(! db_params_.user_name_.empty(), "Must provide 'db-user' when data source or destination is 'database'.");
         BOOST_ASSERT_MSG(! db_params_.db_name_.empty(), "Must provide 'db-name' when data source or destination is 'database'.");
-        BOOST_ASSERT_MSG(db_params_.db_mode_ == "test" || db_params_.db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
+        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
         if (new_data_source_ == Source::e_DB)
         {
-			BOOST_ASSERT_MSG(! db_params_.db_data_source_.empty(), "'db-data-source' must be specified when load source is 'database'.");
+			BOOST_ASSERT_MSG(! db_params_.stock_db_data_source_.empty(), "'db-data-source' must be specified when load source is 'database'.");
 		}
     }
 
@@ -410,7 +410,7 @@ bool PF_CollectDataApp::CheckArgs ()
     // edit and translate from text to enums...
 
     rng::for_each(scale_i_list_, [](const auto& scale) { BOOST_ASSERT_MSG(scale == "linear" || scale == "percent", std::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str()); });
-    rng::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_linear : Boxes::BoxScale::e_percent); });
+    rng::for_each(scale_i_list_, [this] (const auto& scale_i) { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_Linear : Boxes::BoxScale::e_Percent); });
 
     // we can compute whether boxes are fractions or intergers from input. This may be changed by the Boxes code later. 
 
@@ -418,6 +418,7 @@ bool PF_CollectDataApp::CheckArgs ()
 
     auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
     rng::for_each(params, [](const auto& x) {std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x), std::get<2>(x), std::get<3>(x)); });
+    std::cout << std::endl;
 
 	return true ;
 }		// -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
@@ -460,8 +461,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-port",             po::value<int32_t>(&this->db_params_.port_number_)->default_value(5432), "Port number to use for database access. Default is '5432'.")
         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
-        ("db-mode",             po::value<std::string>(&this->db_params_.db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
-        ("db-data-source",      po::value<std::string>(&this->db_params_.db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
+        ("db-mode",             po::value<std::string>(&this->db_params_.PF_db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
+        ("stock-db-data-source",      po::value<std::string>(&this->db_params_.stock_db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
 
         ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
@@ -627,7 +628,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 
 			std::string get_symbol_prices_cmd = std::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= {} ORDER BY date ASC",
 					price_fld_name_,
-					db_params_.db_data_source_,
+					db_params_.stock_db_data_source_,
 					c.quote(symbol),
 					c.quote(begin_date_)
 					);
@@ -953,7 +954,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeRangeForChartFromDB (const std::s
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
 	std::string get_price_range_cmd = std::format("SELECT (MAX(adjclose) - MIN(adjclose)) AS range FROM {} WHERE date BETWEEN {} AND '{}' AND symbol = {}",
-			db_params_.db_data_source_,
+			db_params_.stock_db_data_source_,
             c.quote(begin_date_),			                                   
             today,
 			c.quote(symbol)
@@ -1215,14 +1216,14 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
             [this, &need_to_update_graph, &new_value, &ticker] (auto& symbol_and_chart)
             {
                 auto chart_changed = symbol_and_chart.second.AddValue(new_value.last_price_, PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
-                if (chart_changed != PF_Column::Status::e_ignored)
+                if (chart_changed != PF_Column::Status::e_Ignored)
                 {
                     need_to_update_graph.push_back(&symbol_and_chart.second);
                 }
                 const auto chart_name = symbol_and_chart.second.GetChartBaseName();
                 streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
                 streamed_prices_[chart_name].price_.push_back(new_value.last_price_.ToDouble());
-                streamed_prices_[chart_name].signal_type_.push_back(chart_changed == PF_Column::Status::e_accepted_with_signal ?
+                streamed_prices_[chart_name].signal_type_.push_back(chart_changed == PF_Column::Status::e_AcceptedWithSignal ?
                         std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_) : 0);
             });
     }
@@ -1299,7 +1300,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                         {
                             auto status = chart.AddValue(row.close_, row.date_);
 //                            std::print("status: {}. close: {}. date: {}.\n", status, row.close_, row.date_);
-                            chart_needs_update |= status == PF_Column::Status::e_accepted ? 1 : 0; 
+                            chart_needs_update |= status == PF_Column::Status::e_Accepted ? 1 : 0; 
                         });
                     if (chart_needs_update)
                     {

@@ -33,8 +33,10 @@
 
 class PF_Chart;
 
-enum class PF_SignalCategory {e_Unknown, e_PF_Buy, e_PF_Sell};
-enum class PF_CanUse1BoxReversal {e_Yes, e_No};
+enum class PF_SignalCategory {e_Unknown, e_PF_Buy, e_PF_Sell};      //NOLINT
+enum class PF_CanUse1BoxReversal {e_Yes, e_No};         //NOLINT
+
+// NOLINTBEGIN(readability-identifier-naming.*)
 enum class PF_SignalType {
     e_Unknown,
     e_DoubleTop_Buy,
@@ -89,7 +91,7 @@ struct PF_Catapult_Buy
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
     PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Buy;
     PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Buy;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
 
@@ -101,7 +103,7 @@ struct PF_Catapult_Sell
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
     PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Sell;
     PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Sell;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
 
@@ -113,7 +115,7 @@ struct PF_DoubleTopBuy
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
     PF_SignalType signal_type_ = PF_SignalType::e_DoubleTop_Buy;
     PF_SignalPriority priority_ = PF_SignalPriority::e_DoubleTop_Buy;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 3;
 
@@ -125,7 +127,7 @@ struct PF_TripleTopBuy
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
     PF_SignalType signal_type_ = PF_SignalType::e_TripleTop_Buy;
     PF_SignalPriority priority_ = PF_SignalPriority::e_TripleTop_Buy;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
@@ -137,7 +139,7 @@ struct PF_DoubleBottomSell
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
     PF_SignalType signal_type_ = PF_SignalType::e_DoubleBottom_Sell;
     PF_SignalPriority priority_ = PF_SignalPriority::e_DoubleBottom_Sell;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 3;
 
@@ -149,7 +151,7 @@ struct PF_TripleBottomSell
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
     PF_SignalType signal_type_ = PF_SignalType::e_TripleBottom_Sell;
     PF_SignalPriority priority_ = PF_SignalPriority::e_TripleBottom_Sell;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
@@ -161,7 +163,7 @@ struct PF_Bullish_TT_Buy
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
     PF_SignalType signal_type_ = PF_SignalType::e_Bullish_TT_Buy;
     PF_SignalPriority priority_ = PF_SignalPriority::e_Bullish_TT_Buy;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
@@ -173,7 +175,7 @@ struct PF_Bearish_TB_Sell
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
     PF_SignalType signal_type_ = PF_SignalType::e_Bearish_TB_Sell;
     PF_SignalPriority priority_ = PF_SignalPriority::e_Bearish_TB_Sell;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
 
@@ -185,7 +187,7 @@ struct PF_TTopCatapult_Buy
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
     PF_SignalType signal_type_ = PF_SignalType::e_TTop_Catapult_Buy;
     PF_SignalPriority priority_ = PF_SignalPriority::e_TTop_Catapult_Buy;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_up;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 7;
 
@@ -197,7 +199,7 @@ struct PF_TBottom_Catapult_Sell
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
     PF_SignalType signal_type_ = PF_SignalType::e_TBottom_Catapult_Sell;
     PF_SignalPriority priority_ = PF_SignalPriority::e_TBottom_Catapult_Sell;
-    PF_Column::Direction direction_ = PF_Column::Direction::e_down;
+    PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 7;
 
@@ -270,5 +272,6 @@ template <> struct std::formatter<PF_Signal>: std::formatter<std::string>
         return formatter<std::string>::format(s, ctx);
     }
 };
+// NOLINTEND(readability-identifier-naming.*)
 
 #endif   // ----- #ifndef PF_SIGNALS_INC  ----- 

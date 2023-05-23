@@ -97,7 +97,7 @@ public:
     PF_Chart (PF_Chart&& rhs) noexcept ;
 
     PF_Chart(std::string symbol, DprDecimal::DDecQuad base_box_size, int32_t reversal_boxes,
-            Boxes::BoxScale box_scale=Boxes::BoxScale::e_linear,
+            Boxes::BoxScale box_scale=Boxes::BoxScale::e_Linear,
             DprDecimal::DDecQuad box_size_modifier=0, int64_t max_columns_for_graph=0);
 
     PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad box_size_modifier, int64_t max_columns_for_graph)
@@ -160,8 +160,8 @@ public:
     void UpdateChartInChartsDB(const PF_DB& chart_db, std::string_view interval, X_AxisFormat date_or_time=X_AxisFormat::e_show_date, bool store_cvs_graphics=false) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
-    [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_percent; }
-    [[nodiscard]] bool IsFractional() const { return boxes_.GetBoxType() == Boxes::BoxType::e_fractional; }
+    [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_Percent; }
+    [[nodiscard]] bool IsFractional() const { return boxes_.GetBoxType() == Boxes::BoxType::e_Fractional; }
 
     [[nodiscard]] const Boxes& GetBoxes() const { return boxes_; }
     [[nodiscard]] const PF_SignalList& GetSignals() const { return signals_; }
@@ -175,7 +175,7 @@ public:
     PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, std::string_view delim);
 
-    int64_t GetMaxGraphicColumns(void) const  { return max_columns_for_graph_; }
+    [[nodiscard]] int64_t GetMaxGraphicColumns() const  { return max_columns_for_graph_; }
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
 
     void AddSignal(const PF_Signal& new_sig) { signals_.push_back(new_sig); }
@@ -230,7 +230,7 @@ private:
     DprDecimal::DDecQuad y_min_ = 100000;         // just a number
     DprDecimal::DDecQuad y_max_ = -1;
 
-    PF_Column::Direction current_direction_ = PF_Column::Direction::e_unknown;
+    PF_Column::Direction current_direction_ = PF_Column::Direction::e_Unknown;
 
 	int64_t max_columns_for_graph_ = 0;			// how many columns to show in graphic
 }; // -----  end of class PF_Chart  -----
