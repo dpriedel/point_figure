@@ -55,25 +55,10 @@ namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
 #include <range/v3/range/conversion.hpp>
-// #include <fmt/ranges.h>
-
-// #include <range/v3/action/sort.hpp>
-// #include <range/v3/action/unique.hpp>
-// #include <range/v3/action/push_back.hpp>
-// #include <range/v3/algorithm/copy.hpp>
-// #include <range/v3/algorithm/equal.hpp>
-// #include <range/v3/algorithm/find_if.hpp>
-// #include <range/v3/algorithm/for_each.hpp>
-// #include <range/v3/view/cartesian_product.hpp>
-// #include <range/v3/view/chunk_by.hpp>
-// #include <range/v3/view/drop.hpp>
-// #include <range/v3/view/filter.hpp>
-// #include <range/v3/view/for_each.hpp>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/async.h>
 
-// #include <date/date.h>
 #include <date/chrono_io.h>
 #include <date/tz.h>
 
