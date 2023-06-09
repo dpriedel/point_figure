@@ -14,6 +14,7 @@
 //
 // =====================================================================================
 
+#include <chrono>
 #include <ranges>
 
 namespace rng = std::ranges;
@@ -203,7 +204,7 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
 
 	if (the_chart.size() > 1)
 	{
-		auto first_col = the_chart[0];
+		const auto& first_col = the_chart[0];
 		first_value = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom() : first_col.GetTop();
 		// apparently, this can happen 
 
@@ -232,9 +233,11 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
     {
         explanation_text = "Orange: 1-step Up then reversal Down. Green: 1-step Down then reversal Up.";
     }
-    auto chart_title = std::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}", the_chart.GetChartBoxSize(),
-                (the_chart.IsPercent() ? "%" : ""), the_chart.GetReversalboxes(), the_chart.GetSymbol(),
-                (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text, std::chrono::clock_cast<std::chrono::system_clock>(the_chart.GetLastChangeTime()), explanation_text);
+    auto chart_title = std::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}",
+                                   the_chart.GetChartBoxSize(), (the_chart.IsPercent() ? "%" : ""),
+                                   the_chart.GetReversalboxes(), the_chart.GetSymbol(),
+                                   (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text,
+                                   std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::clock_cast<std::chrono::system_clock>(the_chart.GetLastChangeTime())), explanation_text);
 
     py::dict locals = py::dict{
         "the_data"_a = py::dict{
@@ -256,16 +259,16 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
         "UseLogScale"_a = the_chart.IsPercent(),
         "ShowTrendLines"_a = show_trend_lines,
         "the_signals"_a = py::dict{
-            "dt_buys"_a = had_dt_buy ? dt_buys : std::vector<double>{},
-            "db_sells"_a = had_db_sell ? db_sells : std::vector<double>{},
-            "tt_buys"_a = had_tt_buy ? tt_buys : std::vector<double>{},
-            "tb_sells"_a = had_tb_sell ? tb_sells : std::vector<double>{},
-            "bullish_tt_buys"_a = had_bullish_tt_buy ? btt_buys : std::vector<double>{},
-            "bearish_tb_sells"_a = had_bearish_tb_sell ? btb_sells : std::vector<double>{},
-            "catapult_buys"_a = had_catapult_buy ? cat_buys : std::vector<double>{},
-            "catapult_sells"_a = had_catapult_sell ? cat_sells : std::vector<double>{},
-            "tt_catapult_buys"_a = had_tt_catapult_buy ? tt_cat_buys : std::vector<double>{},
-            "tb_catapult_sells"_a = had_tb_catapult_sell ? tb_cat_sells : std::vector<double>{}
+            "dt_buys"_a = had_dt_buy != 0 ? dt_buys : std::vector<double>{},
+            "db_sells"_a = had_db_sell != 0 ? db_sells : std::vector<double>{},
+            "tt_buys"_a = had_tt_buy != 0 ? tt_buys : std::vector<double>{},
+            "tb_sells"_a = had_tb_sell != 0 ? tb_sells : std::vector<double>{},
+            "bullish_tt_buys"_a = had_bullish_tt_buy != 0 ? btt_buys : std::vector<double>{},
+            "bearish_tb_sells"_a = had_bearish_tb_sell != 0 ? btb_sells : std::vector<double>{},
+            "catapult_buys"_a = had_catapult_buy != 0 ? cat_buys : std::vector<double>{},
+            "catapult_sells"_a = had_catapult_sell != 0 ? cat_sells : std::vector<double>{},
+            "tt_catapult_buys"_a = had_tt_catapult_buy != 0 ? tt_cat_buys : std::vector<double>{},
+            "tb_catapult_sells"_a = had_tb_catapult_sell != 0 ? tb_cat_sells : std::vector<double>{}
         },
         "streamed_prices"_a = py::dict{
             "the_time"_a = streamed_prices.timestamp_,
