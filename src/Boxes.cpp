@@ -248,7 +248,7 @@ Boxes::Box Boxes::FindBoxPercent (const decimal::Decimal& new_value)
 
 Boxes::Box Boxes::FindNextBox (const decimal::Decimal& current_value)
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format("f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -278,7 +278,7 @@ Boxes::Box Boxes::FindNextBox (const decimal::Decimal& current_value)
 
 Boxes::Box Boxes::FindNextBox (const decimal::Decimal& current_value) const
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format("f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -292,7 +292,7 @@ Boxes::Box Boxes::FindNextBox (const decimal::Decimal& current_value) const
     // index operator below will throw.
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
@@ -335,7 +335,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const decimal::Decimal& current_value) con
     // index operator below will throw.
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
@@ -343,7 +343,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const decimal::Decimal& current_value) con
 
 Boxes::Box Boxes::FindPrevBox (const decimal::Decimal& current_value)
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format("f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -382,7 +382,7 @@ Boxes::Box Boxes::FindPrevBox (const decimal::Decimal& current_value)
 
 Boxes::Box Boxes::FindPrevBox (const decimal::Decimal& current_value) const
 {
-    BOOST_ASSERT_MSG(current_value > boxes_.front() && current_value <= boxes_.back(), std::format("Lookup-only search for previous box for value: {} failed.", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(current_value > boxes_.front() && current_value <= boxes_.back(), std::format("Lookup-only search for previous box for value: {} failed.", current_value.format("f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -403,7 +403,7 @@ Boxes::Box Boxes::FindPrevBox (const decimal::Decimal& current_value) const
     }
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
-    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindPrevBox  ----- 
 
@@ -465,7 +465,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const decimal::Decimal& current_value) con
     }
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
-    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
+    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
@@ -554,11 +554,11 @@ Json::Value Boxes::ToJSON () const
 {
     Json::Value result;
 
-    result["box_size"] = base_box_size_.format(":f");
-    result["box_size_modifier"] = box_size_modifier_.format(":f");
-    result["runtime_box_size"] = runtime_box_size_.format(":f");
-    result["factor_up"] = percent_box_factor_up_.format(":f");
-    result["factor_down"] = percent_box_factor_down_.format(":f");
+    result["box_size"] = base_box_size_.format("f");
+    result["box_size_modifier"] = box_size_modifier_.format("f");
+    result["runtime_box_size"] = runtime_box_size_.format("f");
+    result["factor_up"] = percent_box_factor_up_.format("f");
+    result["factor_down"] = percent_box_factor_down_.format("f");
     result["exponent"] = percent_exponent_;
 
     switch(box_type_)
@@ -586,7 +586,7 @@ Json::Value Boxes::ToJSON () const
     Json::Value the_boxes{Json::arrayValue};
     for (const auto& box : boxes_)
     {
-        the_boxes.append(box.format(":f"));
+        the_boxes.append(box.format("f"));
     }
     result["boxes"] = the_boxes;
 
@@ -644,15 +644,15 @@ void Boxes::FromJSON (const Json::Value& new_data)
 
 void Boxes::PushFront(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_.format(":f"), boxes_[0].format(":f"), boxes_[1].format(":f"), boxes_[2].format(":f"), boxes_[3].format(":f"), boxes_[4].format(":f")).c_str());
+    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_.format("f"), boxes_[0].format("f"), boxes_[1].format("f"), boxes_[2].format("f"), boxes_[3].format("f"), boxes_[4].format("f")).c_str());
     boxes_.insert(boxes_.begin(), std::move(new_box));
 
 }		// -----  end of method Boxes::PushFront  ----- 
 
 void Boxes::PushBack(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_.format(":f"), boxes_[kMaxBoxes - 5].format(":f"), boxes_[kMaxBoxes - 4].format(":f"),
-                boxes_[kMaxBoxes - 3].format(":f"), boxes_[kMaxBoxes - 2].format(":f"), boxes_[kMaxBoxes - 1].format(":f")).c_str());
+    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_.format("f"), boxes_[kMaxBoxes - 5].format("f"), boxes_[kMaxBoxes - 4].format("f"),
+                boxes_[kMaxBoxes - 3].format("f"), boxes_[kMaxBoxes - 2].format("f"), boxes_[kMaxBoxes - 1].format("f")).c_str());
     boxes_.push_back(std::move(new_box));
 }		// -----  end of method Boxes::PushBack  ----- 
 

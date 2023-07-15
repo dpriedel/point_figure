@@ -360,7 +360,7 @@ std::string PF_Chart::MakeChartBaseName() const
 {
     std::string chart_name = std::format("{}_{}{}X{}_{}",
             symbol_,
-            fname_box_size_.format("{g}"),
+            fname_box_size_.format("g"),
             (IsPercent() ? "%" : ""),
             GetReversalboxes(),
             (IsPercent() ? "percent" : "linear"));
@@ -439,10 +439,10 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
     {
         auto next_row = std::format(row_template,
 				date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", col.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
-				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetBottom().format("{g}") : col.GetTop().format("{g}"),
-				col.GetBottom().format("{g}"),
-				col.GetTop().format("{g}"),
-				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetTop().format("{g}") : col.GetBottom().format("{g}"),
+				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetBottom().format("g") : col.GetTop().format("g"),
+				col.GetBottom().format("g"),
+				col.GetTop().format("g"),
+				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetTop().format("g") : col.GetBottom().format("g"),
 				compute_color(col)
         		);
 		stream.write(next_row.data(), next_row.size());
@@ -450,10 +450,10 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 
     auto last_row = std::format(row_template,
 			date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", current_column_.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
-			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().format("{g}") : current_column_.GetTop().format("{g}"),
-			current_column_.GetBottom().format("{g}"),
-			current_column_.GetTop().format("{g}"),
-			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().format("{g}") : current_column_.GetBottom().format("{g}"),
+			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().format("g") : current_column_.GetTop().format("g"),
+			current_column_.GetBottom().format("g"),
+			current_column_.GetTop().format("g"),
+			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().format("g") : current_column_.GetBottom().format("g"),
 			compute_color(current_column_)
         	);
 	stream.write(last_row.data(), last_row.size());
@@ -502,11 +502,11 @@ Json::Value PF_Chart::ToJSON () const
     result["last_change_date"] = last_change_date_.time_since_epoch().count();
     result["last_check_date"] = last_checked_date_.time_since_epoch().count();
 
-    result["base_box_size"] = base_box_size_.format("{g}");
-    result["fname_box_size"] = fname_box_size_.format("{g}");
-    result["box_size_modifier"] = box_size_modifier_.format("{g}");
-    result["y_min"] = y_min_.format("{g}");
-    result["y_max"] = y_max_.format("{g}");
+    result["base_box_size"] = base_box_size_.format("g");
+    result["fname_box_size"] = fname_box_size_.format("g");
+    result["box_size_modifier"] = box_size_modifier_.format("g");
+    result["y_min"] = y_min_.format("g");
+    result["y_max"] = y_max_.format("g");
 
     switch(current_direction_)
     {
@@ -630,7 +630,7 @@ std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::
 {
     std::string chart_name = std::format("{}_{}{}X{}_{}{}.{}",
             std::get<PF_Chart::e_symbol>(vals),
-            std::get<PF_Chart::e_box_size>(vals).format("{g}"),
+            std::get<PF_Chart::e_box_size>(vals).format("g"),
             (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Percent ? "%" : ""),
             std::get<PF_Chart::e_reversal>(vals),
             (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Linear ? "linear" : "percent"),

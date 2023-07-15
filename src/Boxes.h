@@ -202,11 +202,11 @@ template <> struct std::formatter<Boxes>: std::formatter<std::string>
         std::string s;
     	std::format_to(std::back_inserter(s),
         	"Boxes: how many: {}. box size: {}. factor up: {}. factor down: {}. exponent: {}. box type: {}. box scale: {}.\n",
-        	boxes.GetHowMany(), boxes.GetBoxSize().format(":f"), boxes.GetScaleUpFactor().format(":f"), boxes.GetScaleDownFactor().format(":f"), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
+        	boxes.GetHowMany(), boxes.GetBoxSize().format("f"), boxes.GetScaleUpFactor().format("f"), boxes.GetScaleDownFactor().format("f"), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
     	std::format_to(std::back_inserter(s), "{}", "[");
     	for(auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
     	{
-			std::format_to(std::back_inserter(s), "{}{}", box.format(":f"), (--i > 0 ? ", " : ""));
+			std::format_to(std::back_inserter(s), "{}{}", box.format("f"), (--i > 0 ? ", " : ""));
     	}
     	std::format_to(std::back_inserter(s), "{}", "]");
         return formatter<std::string>::format(s, ctx);

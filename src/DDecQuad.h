@@ -145,7 +145,7 @@ private:
 inline std::string DDecQuad::ToStr() const
 {
     // char output [DECQUAD_String];
-    std::unique_ptr<char> s{mpd_format(&this->decimal_, "{g}", &mCtx_)};
+    std::unique_ptr<char> s{mpd_format(&this->decimal_, "g", &mCtx_)};
     return {s.get()};
 }
 
@@ -292,7 +292,7 @@ inline bool operator>=(const DDecQuad& lhs, const DDecQuad& rhs)
 
 inline std::ostream& operator<<(std::ostream& os, const DDecQuad& item)
 {
-    std::unique_ptr<char> s{mpd_format(&item.decimal_, "{g}", &DDecQuad::mCtx_)};
+    std::unique_ptr<char> s{mpd_format(&item.decimal_, "g", &DDecQuad::mCtx_)};
 	os << s.get();
 	return os;
 }

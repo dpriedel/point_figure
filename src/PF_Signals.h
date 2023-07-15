@@ -265,8 +265,8 @@ template <> struct std::formatter<PF_Signal>: std::formatter<std::string>
            std::to_underlying(signal.priority_),
            signal.tpt_,
            signal.column_number_,
-           signal.signal_price_.format("{g}"),
-           signal.box_.format("{g}")
+           signal.signal_price_.format("g"),
+           signal.box_.format("g")
        );
 
         return formatter<std::string>::format(s, ctx);

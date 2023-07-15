@@ -275,8 +275,8 @@ Json::Value PF_Column::ToJSON () const
 
     result["column_number"] = column_number_;
     result["reversal_boxes"] = reversal_boxes_;
-    result["top"] = top_.format("{g}");
-    result["bottom"] = bottom_.format("{g}");
+    result["top"] = top_.format("g");
+    result["bottom"] = bottom_.format("g");
 
     switch(direction_)
     {
