@@ -41,7 +41,11 @@
 
 #include <json/json.h>
 
-#include "DDecQuad.h"
+#include <decimal.hh>
+
+#include "utilities.h"
+
+// #include "DDecQuad.h"
 
 // =====================================================================================
 //        Class:  Boxes
@@ -57,7 +61,7 @@ public:
     enum class BoxType { e_Integral, e_Fractional };
     enum class BoxScale { e_Linear, e_Percent };
 
-    using Box = DprDecimal::DDecQuad;
+    using Box = decimal::Decimal;
     using BoxList = std::deque<Box>;
 
     // ====================  LIFECYCLE     ======================================= 
@@ -65,7 +69,9 @@ public:
     Boxes (const Boxes& rhs) = default;
     Boxes (Boxes&& rhs) = default;
 
-    explicit Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_modifier=0, BoxScale box_scale=BoxScale::e_Linear);
+    explicit Boxes (decimal::Decimal base_box_size, decimal::Decimal box_size_modifier=0, BoxScale box_scale=BoxScale::e_Linear);
+    explicit Boxes (double base_box_size, double box_size_modifier=0.0, BoxScale box_scale=BoxScale::e_Linear)
+       : Boxes(dbl2dec(base_box_size), dbl2dec(box_size_modifier), box_scale) {}; 
 
     explicit Boxes(const Json::Value& new_data);
 
@@ -73,11 +79,11 @@ public:
 
     // ====================  ACCESSORS     ======================================= 
 
-    [[nodiscard]] DprDecimal::DDecQuad GetBoxSize() const { return runtime_box_size_; }
+    [[nodiscard]] decimal::Decimal GetBoxSize() const { return runtime_box_size_; }
     [[nodiscard]] BoxType GetBoxType() const { return box_type_; }
     [[nodiscard]] BoxScale GetBoxScale() const { return box_scale_; }
-    [[nodiscard]] DprDecimal::DDecQuad GetScaleUpFactor() const { return percent_box_factor_up_; }
-    [[nodiscard]] DprDecimal::DDecQuad GetScaleDownFactor() const { return percent_box_factor_down_; }
+    [[nodiscard]] decimal::Decimal GetScaleUpFactor() const { return percent_box_factor_up_; }
+    [[nodiscard]] decimal::Decimal GetScaleDownFactor() const { return percent_box_factor_down_; }
     [[nodiscard]] int32_t GetExponent() const { return percent_exponent_; }
     [[nodiscard]] size_t GetHowMany() const { return boxes_.size(); }
 
@@ -89,14 +95,14 @@ public:
 
     // ====================  MUTATORS      ======================================= 
 
-    Box FindBox(const DprDecimal::DDecQuad& new_value);
-    Box FindNextBox(const DprDecimal::DDecQuad& current_value);
-    Box FindPrevBox(const DprDecimal::DDecQuad& current_value);
+    Box FindBox(const decimal::Decimal& new_value);
+    Box FindNextBox(const decimal::Decimal& current_value);
+    Box FindPrevBox(const decimal::Decimal& current_value);
 
     // we have some lookup-only uses
 
-    [[nodiscard]] Box FindNextBox(const DprDecimal::DDecQuad& current_value) const;
-    [[nodiscard]] Box FindPrevBox(const DprDecimal::DDecQuad& current_value) const;
+    [[nodiscard]] Box FindNextBox(const decimal::Decimal& current_value) const;
+    [[nodiscard]] Box FindPrevBox(const decimal::Decimal& current_value) const;
 
     // ====================  OPERATORS     ======================================= 
 
@@ -118,14 +124,14 @@ private:
 
     void FromJSON(const Json::Value& new_data);
 
-    Box FirstBox(const DprDecimal::DDecQuad& start_at);
-    Box FirstBoxPerCent(const DprDecimal::DDecQuad& start_at);
-    Box FindBoxPercent(const DprDecimal::DDecQuad& new_value);
-    Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value);
-    [[nodiscard]] Box FindNextBoxPercent(const DprDecimal::DDecQuad& current_value) const;
-    Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value);
-    [[nodiscard]] Box FindPrevBoxPercent(const DprDecimal::DDecQuad& current_value) const;
-    [[nodiscard]] Box RoundDownToNearestBox(const DprDecimal::DDecQuad& a_value) const;
+    Box FirstBox(const decimal::Decimal& start_at);
+    Box FirstBoxPerCent(const decimal::Decimal& start_at);
+    Box FindBoxPercent(const decimal::Decimal& new_value);
+    Box FindNextBoxPercent(const decimal::Decimal& current_value);
+    [[nodiscard]] Box FindNextBoxPercent(const decimal::Decimal& current_value) const;
+    Box FindPrevBoxPercent(const decimal::Decimal& current_value);
+    [[nodiscard]] Box FindPrevBoxPercent(const decimal::Decimal& current_value) const;
+    [[nodiscard]] Box RoundDownToNearestBox(const decimal::Decimal& a_value) const;
 
 	// these functions implement our max number of boxes limit 
 	
@@ -136,11 +142,11 @@ private:
 
     BoxList boxes_;
 
-    DprDecimal::DDecQuad base_box_size_ = -1;
-    DprDecimal::DDecQuad box_size_modifier_ = 0;
-    DprDecimal::DDecQuad runtime_box_size_ = -1;
-    DprDecimal::DDecQuad percent_box_factor_up_ = -1;
-    DprDecimal::DDecQuad percent_box_factor_down_ = -1;
+    decimal::Decimal base_box_size_ = -1;
+    decimal::Decimal box_size_modifier_ = 0;
+    decimal::Decimal runtime_box_size_ = -1;
+    decimal::Decimal percent_box_factor_up_ = -1;
+    decimal::Decimal percent_box_factor_down_ = -1;
 
     int32_t percent_exponent_ = 0;
     BoxType box_type_ = BoxType::e_Integral;      // whether to drop fractional part of new values.
@@ -196,11 +202,11 @@ template <> struct std::formatter<Boxes>: std::formatter<std::string>
         std::string s;
     	std::format_to(std::back_inserter(s),
         	"Boxes: how many: {}. box size: {}. factor up: {}. factor down: {}. exponent: {}. box type: {}. box scale: {}.\n",
-        	boxes.GetHowMany(), boxes.GetBoxSize(), boxes.GetScaleUpFactor(), boxes.GetScaleDownFactor(), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
+        	boxes.GetHowMany(), boxes.GetBoxSize().format(":f"), boxes.GetScaleUpFactor().format(":f"), boxes.GetScaleDownFactor().format(":f"), boxes.GetExponent(), boxes.GetBoxType(), boxes.GetBoxScale());
     	std::format_to(std::back_inserter(s), "{}", "[");
     	for(auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
     	{
-			std::format_to(std::back_inserter(s), "{}{}", box, (--i > 0 ? ", " : ""));
+			std::format_to(std::back_inserter(s), "{}{}", box.format(":f"), (--i > 0 ? ", " : ""));
     	}
     	std::format_to(std::back_inserter(s), "{}", "]");
         return formatter<std::string>::format(s, ctx);

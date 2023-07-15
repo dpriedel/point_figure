@@ -105,8 +105,8 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart (std::string symbol, DprDecimal::DDecQuad base_box_size, int32_t reversal_boxes,
-        Boxes::BoxScale box_scale, DprDecimal::DDecQuad box_size_modifier, int64_t max_columns_for_graph)
+PF_Chart::PF_Chart (std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes,
+        Boxes::BoxScale box_scale, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph)
     : symbol_{std::move(symbol)}, base_box_size_{std::move(base_box_size)},
     box_size_modifier_{std::move(box_size_modifier)}, max_columns_for_graph_{max_columns_for_graph}
 
@@ -269,7 +269,7 @@ bool PF_Chart::operator== (const PF_Chart& rhs) const
     return true;
 }		// -----  end of method PF_Chart::operator==  ----- 
 
-PF_Column::Status PF_Chart::AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time)
+PF_Column::Status PF_Chart::AddValue(const decimal::Decimal& new_value, PF_Column::TmPt the_time)
 {
     // when extending the chart, don't add 'old' data.
 
@@ -340,7 +340,7 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
         }
         auto fields = split_string<std::string_view>(buffer, delim);
 
-        AddValue(DprDecimal::DDecQuad{std::string{fields[1]}}, StringToUTCTimePoint(date_format, fields[0]));
+        AddValue(decimal::Decimal{std::string{fields[1]}}, StringToUTCTimePoint(date_format, fields[0]));
     }
 
     // make sure we keep the last column we were working on 
@@ -360,7 +360,7 @@ std::string PF_Chart::MakeChartBaseName() const
 {
     std::string chart_name = std::format("{}_{}{}X{}_{}",
             symbol_,
-            fname_box_size_,
+            fname_box_size_.format("{g}"),
             (IsPercent() ? "%" : ""),
             GetReversalboxes(),
             (IsPercent() ? "percent" : "linear"));
@@ -439,10 +439,10 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
     {
         auto next_row = std::format(row_template,
 				date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", col.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
-				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetBottom().ToStr() : col.GetTop().ToStr(),
-				col.GetBottom().ToStr(),
-				col.GetTop().ToStr(),
-				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetTop().ToStr() : col.GetBottom().ToStr(),
+				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetBottom().format("{g}") : col.GetTop().format("{g}"),
+				col.GetBottom().format("{g}"),
+				col.GetTop().format("{g}"),
+				col.GetDirection() == PF_Column::Direction::e_Up ? col.GetTop().format("{g}") : col.GetBottom().format("{g}"),
 				compute_color(col)
         		);
 		stream.write(next_row.data(), next_row.size());
@@ -450,10 +450,10 @@ void PF_Chart::ConvertChartToTableAndWriteToStream (std::ostream& stream, X_Axis
 
     auto last_row = std::format(row_template,
 			date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", current_column_.GetTimeSpan().first) : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
-			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().ToStr() : current_column_.GetTop().ToStr(),
-			current_column_.GetBottom().ToStr(),
-			current_column_.GetTop().ToStr(),
-			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().ToStr() : current_column_.GetBottom().ToStr(),
+			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().format("{g}") : current_column_.GetTop().format("{g}"),
+			current_column_.GetBottom().format("{g}"),
+			current_column_.GetTop().format("{g}"),
+			current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().format("{g}") : current_column_.GetBottom().format("{g}"),
 			compute_color(current_column_)
         	);
 	stream.write(last_row.data(), last_row.size());
@@ -502,11 +502,11 @@ Json::Value PF_Chart::ToJSON () const
     result["last_change_date"] = last_change_date_.time_since_epoch().count();
     result["last_check_date"] = last_checked_date_.time_since_epoch().count();
 
-    result["base_box_size"] = base_box_size_.ToStr();
-    result["fname_box_size"] = fname_box_size_.ToStr();
-    result["box_size_modifier"] = box_size_modifier_.ToStr();
-    result["y_min"] = y_min_.ToStr();
-    result["y_max"] = y_max_.ToStr();
+    result["base_box_size"] = base_box_size_.format("{g}");
+    result["fname_box_size"] = fname_box_size_.format("{g}");
+    result["box_size_modifier"] = box_size_modifier_.format("{g}");
+    result["y_min"] = y_min_.format("{g}");
+    result["y_max"] = y_max_.format("{g}");
 
     switch(current_direction_)
     {
@@ -552,11 +552,11 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     last_change_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
     last_checked_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
 
-    base_box_size_ = DprDecimal::DDecQuad{new_data["base_box_size"].asString()};
-    fname_box_size_ = DprDecimal::DDecQuad{new_data["fname_box_size"].asString()};
-    box_size_modifier_ = DprDecimal::DDecQuad{new_data["box_size_modifier"].asString()};
-    y_min_ = DprDecimal::DDecQuad{new_data["y_min"].asString()};
-    y_max_ = DprDecimal::DDecQuad{new_data["y_max"].asString()};
+    base_box_size_ = decimal::Decimal{new_data["base_box_size"].asString()};
+    fname_box_size_ = decimal::Decimal{new_data["fname_box_size"].asString()};
+    box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asString()};
+    y_min_ = decimal::Decimal{new_data["y_min"].asString()};
+    y_max_ = decimal::Decimal{new_data["y_max"].asString()};
 
     const auto direction = new_data["current_direction"].asString();
     if (direction == "up")
@@ -594,15 +594,15 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     //  Description:  Expects the input data is in descending order by date
     // =====================================================================================
 
-DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days, int32_t scale)
+decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days, int32_t scale)
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, std::format("Not enough data provided for: {}. Need at least: {} values. Got {}.", symbol, how_many_days, the_data.size()).c_str());
 
-    DprDecimal::DDecQuad total{0};
+    decimal::Decimal total{0};
 
-    DprDecimal::DDecQuad high_minus_low;
-    DprDecimal::DDecQuad high_minus_prev_close;
-    DprDecimal::DDecQuad low_minus_prev_close;
+    decimal::Decimal high_minus_low;
+    decimal::Decimal high_minus_prev_close;
+    decimal::Decimal low_minus_prev_close;
 
     for (int32_t i = 0; i < how_many_days; ++i)
     {
@@ -610,7 +610,7 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
         high_minus_prev_close = (the_data[i].high_ - the_data[i + 1].close_).abs();
         low_minus_prev_close = (the_data[i].low_ - the_data[i + 1].close_).abs();
 
-        DprDecimal::DDecQuad max = DprDecimal::max(high_minus_low, DprDecimal::max(high_minus_prev_close, low_minus_prev_close));
+        decimal::Decimal max = high_minus_low.max(high_minus_prev_close.max(low_minus_prev_close));
         
 		// std::print("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i, high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
         total += max;
@@ -621,16 +621,16 @@ DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<Stock
     total /= how_many_days;
     if (scale > -99)
     {
-        return total.Rescale(scale);
+        return total.rescale(scale);
     }
-    return total.Rescale(-3);
+    return total.rescale(-3);
 }		// -----  end of function ComputeATRUsingJSON  -----
 
 std::string MakeChartNameFromParams (const PF_Chart::PF_ChartParams& vals, std::string_view interval, std::string_view suffix)
 {
     std::string chart_name = std::format("{}_{}{}X{}_{}{}.{}",
             std::get<PF_Chart::e_symbol>(vals),
-            std::get<PF_Chart::e_box_size>(vals),
+            std::get<PF_Chart::e_box_size>(vals).format("{g}"),
             (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Percent ? "%" : ""),
             std::get<PF_Chart::e_reversal>(vals),
             (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Linear ? "linear" : "percent"),

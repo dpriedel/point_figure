@@ -47,7 +47,7 @@
 
 
 #include "Boxes.h"
-#include "DDecQuad.h"
+// #include "DDecQuad.h"
 #include "PF_Column.h"
 
 //--------------------------------------------------------------------------------------
@@ -57,7 +57,7 @@
 //--------------------------------------------------------------------------------------
 
 PF_Column::PF_Column(Boxes* boxes, int32_t column_number, int32_t reversal_boxes,
-            Direction direction, DprDecimal::DDecQuad top, DprDecimal::DDecQuad bottom)
+            Direction direction, decimal::Decimal top, decimal::Decimal bottom)
     : boxes_{boxes}, column_number_{column_number}, reversal_boxes_{reversal_boxes}, top_{top}, bottom_{bottom}, direction_{direction}
 {
 }  // -----  end of method PF_Column::PF_Column  (constructor)  -----
@@ -81,7 +81,7 @@ PF_Column::PF_Column (Boxes* boxes, const Json::Value& new_data)
     this->FromJSON(new_data);
 }  // -----  end of method PF_Column::PF_Column  (constructor)  ----- 
 
-PF_Column PF_Column::MakeReversalColumn (Direction direction, const DprDecimal::DDecQuad& value,
+PF_Column PF_Column::MakeReversalColumn (Direction direction, const decimal::Decimal& value,
         TmPt the_time)
 {
     auto new_column = PF_Column{boxes_, column_number_ + 1, reversal_boxes_, direction, value, value};
@@ -95,7 +95,7 @@ bool PF_Column::operator== (const PF_Column& rhs) const
         && rhs.top_ == top_ && rhs.bottom_ == bottom_ && rhs.had_reversal_ == had_reversal_;
 }		// -----  end of method PF_Column::operator==  ----- 
 
-PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::AddValue (const decimal::Decimal& new_value, TmPt the_time)
 {
     if (IsEmpty())
     {
@@ -123,7 +123,7 @@ PF_Column::AddResult PF_Column::AddValue (const DprDecimal::DDecQuad& new_value,
     return TryToExtendDown(new_value, the_time);
 }		// -----  end of method PF_Column::AddValue  ----- 
 
-PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::StartColumn (const decimal::Decimal& new_value, TmPt the_time)
 {
     // As this is the first entry in the column, just set fields 
     // to the input value rounded down to the nearest box value.
@@ -136,7 +136,7 @@ PF_Column::AddResult PF_Column::StartColumn (const DprDecimal::DDecQuad& new_val
 }		// -----  end of method PF_Column::StartColumn  ----- 
 
 
-PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::TryToFindDirection (const decimal::Decimal& new_value, TmPt the_time)
 {
     // NOTE: Since a new value may gap up or down, we could 
     // have multiple boxes to fill in. 
@@ -164,7 +164,7 @@ PF_Column::AddResult PF_Column::TryToFindDirection (const DprDecimal::DDecQuad& 
     return {Status::e_Ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToFindDirection  ----- 
 
-PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::TryToExtendUp (const decimal::Decimal& new_value, TmPt the_time)
 {
     // if we are going to extend the column up, then we need to move up by at least 1 box.
 
@@ -215,7 +215,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp (const DprDecimal::DDecQuad& new_v
     return {Status::e_Ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendUp  ----- 
 
-PF_Column::AddResult PF_Column::TryToExtendDown (const DprDecimal::DDecQuad& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::TryToExtendDown (const decimal::Decimal& new_value, TmPt the_time)
 {
     // if we are going to extend the column down, then we need to move down by at least 1 box.
 
@@ -275,8 +275,8 @@ Json::Value PF_Column::ToJSON () const
 
     result["column_number"] = column_number_;
     result["reversal_boxes"] = reversal_boxes_;
-    result["top"] = top_.ToStr();
-    result["bottom"] = bottom_.ToStr();
+    result["top"] = top_.format("{g}");
+    result["bottom"] = bottom_.format("{g}");
 
     switch(direction_)
     {
@@ -305,8 +305,8 @@ void PF_Column::FromJSON (const Json::Value& new_data)
 
     column_number_ = new_data["column_number"].asInt();
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
-    top_ = DprDecimal::DDecQuad{new_data["top"].asString()};
-    bottom_ = DprDecimal::DDecQuad{new_data["bottom"].asString()};
+    top_ = decimal::Decimal{new_data["top"].asString()};
+    bottom_ = decimal::Decimal{new_data["bottom"].asString()};
 
     const auto direction = new_data["direction"].asString();
     if (direction == "up")

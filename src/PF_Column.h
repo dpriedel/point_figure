@@ -41,8 +41,9 @@
 #include <optional>
 
 #include <json/json.h>
+#include <decimal.hh>
 
-#include "DDecQuad.h"
+// #include "DDecQuad.h"
 #include "utilities.h"
 
 class Boxes;
@@ -74,7 +75,7 @@ public:
 
     PF_Column(Boxes* boxes, int32_t column_number, int32_t reversal_boxes,
             Direction direction = Direction::e_Unknown,
-            DprDecimal::DDecQuad top =-1, DprDecimal::DDecQuad bottom =-1);
+            decimal::Decimal top =-1, decimal::Decimal bottom =-1);
 
     PF_Column(Boxes* boxes, const Json::Value& new_data);
 
@@ -83,8 +84,8 @@ public:
     // ====================  ACCESSORS     =======================================
 
 	[[nodiscard]] bool IsEmpty() const { return top_ == -1 && bottom_ == -1; }
-    [[nodiscard]] DprDecimal::DDecQuad GetTop() const { return top_; }
-    [[nodiscard]] DprDecimal::DDecQuad GetBottom() const { return  bottom_ ; }
+    [[nodiscard]] decimal::Decimal GetTop() const { return top_; }
+    [[nodiscard]] decimal::Decimal GetBottom() const { return  bottom_ ; }
     [[nodiscard]] Direction GetDirection() const { return direction_; }
     [[nodiscard]] int32_t GetColumnNumber() const { return column_number_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
@@ -95,7 +96,7 @@ public:
 
     // ====================  MUTATORS      =======================================
 
-    [[nodiscard]] AddResult AddValue(const DprDecimal::DDecQuad& new_value, TmPt the_time);
+    [[nodiscard]] AddResult AddValue(const decimal::Decimal& new_value, TmPt the_time);
 
     // ====================  OPERATORS     =======================================
 
@@ -111,7 +112,7 @@ public:
 protected:
     // make reversed column here because we know everything needed to do so.
 
-    PF_Column MakeReversalColumn(Direction direction, const DprDecimal::DDecQuad& value, TmPt the_time);
+    PF_Column MakeReversalColumn(Direction direction, const decimal::Decimal& value, TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -119,10 +120,10 @@ private:
 
     void FromJSON(const Json::Value& new_data);
 
-    [[nodiscard]] AddResult StartColumn(const DprDecimal::DDecQuad& new_value, TmPt the_time);
-    [[nodiscard]] AddResult TryToFindDirection(const DprDecimal::DDecQuad& new_value, TmPt the_time);
-    [[nodiscard]] AddResult TryToExtendUp(const DprDecimal::DDecQuad& new_value, TmPt the_time);
-    [[nodiscard]] AddResult TryToExtendDown(const DprDecimal::DDecQuad& new_value, TmPt the_time);
+    [[nodiscard]] AddResult StartColumn(const decimal::Decimal& new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToFindDirection(const decimal::Decimal& new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToExtendUp(const decimal::Decimal& new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToExtendDown(const decimal::Decimal& new_value, TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -132,8 +133,8 @@ private:
 
     int32_t column_number_ = -1;
     int32_t reversal_boxes_ = -1;
-    DprDecimal::DDecQuad top_ = -1;
-    DprDecimal::DDecQuad bottom_ = -1;
+    decimal::Decimal top_ = -1;
+    decimal::Decimal bottom_ = -1;
     Direction direction_ = Direction::e_Unknown;
 
     // for 1-box, can have both up and down in same column
@@ -224,7 +225,7 @@ template <> struct std::formatter<PF_Column>: std::formatter<std::string>
     {
         std::string s;
         std::format_to(std::back_inserter(s), "col nbr: {}. bottom: {}. top: {}. direction: {}. begin date: {:%F}. {}",
-            column.GetColumnNumber(), column.GetBottom(), column.GetTop(), column.GetDirection(), column.GetTimeSpan().first,
+            column.GetColumnNumber(), column.GetBottom().format("{g}"), column.GetTop().format("{g}"), column.GetDirection(), column.GetTimeSpan().first,
             (column.GetHadReversal() ? " one-step-back reversal." : ""));
 
         return formatter<std::string>::format(s, ctx);

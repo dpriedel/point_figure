@@ -48,35 +48,35 @@ namespace rng = std::ranges;
 //      Method:  Boxes
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-Boxes::Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_modifier, BoxScale box_scale)
+Boxes::Boxes (decimal::Decimal base_box_size, decimal::Decimal box_size_modifier, BoxScale box_scale)
     : base_box_size_{std::move(base_box_size)}, box_size_modifier_{std::move(box_size_modifier)}, 
     box_type_{BoxType::e_Fractional}, box_scale_{box_scale}
 {
-    if (base_box_size_.GetExponent() < kMinExponent)
+    if (base_box_size_.exponent() < kMinExponent)
     {
-        base_box_size_.Rescale(kMinExponent);
+        base_box_size_.rescale(kMinExponent);
     }
     // std::print("params at Boxes start: {}, {}\n", base_box_size_, box_size_modifier_);
 	runtime_box_size_ = base_box_size_;
     // std::print("params at Boxes start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, runtime_box_size_);
 
-    if (box_size_modifier_ != 0.0)
+    if (box_size_modifier_ != dbl2dec(0.0))
     {
-    	runtime_box_size_ = (base_box_size_ * box_size_modifier_).Rescale(std::max(base_box_size_.GetExponent(), box_size_modifier_.GetExponent()) - 1);
+    	runtime_box_size_ = (base_box_size_ * box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
 
     	// it seems that the rescaled box size value can turn out to be zero. If that 
     	// is the case, then go with the unscaled box size. 
 
-    	if (runtime_box_size_ == 0.0)
+    	if (runtime_box_size_ == dbl2dec(0.0))
     	{
-    		runtime_box_size_ = (base_box_size_ * box_size_modifier_).Rescale(kMinExponent);
+    		runtime_box_size_ = (base_box_size_ * box_size_modifier_).rescale(kMinExponent);
     	}
 
     	else        // percent box size
     	{
-            percent_box_factor_up_ = (1.0 + box_size_modifier_).Rescale(std::max(base_box_size_.GetExponent(), box_size_modifier_.GetExponent()) - 1);
-            percent_box_factor_down_ = (1.0 - box_size_modifier_).Rescale(std::max(base_box_size_.GetExponent(), box_size_modifier_.GetExponent()) - 1);
-            percent_exponent_ = percent_box_factor_up_ .GetExponent();
+            percent_box_factor_up_ = (dbl2dec(1.0) + box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
+            percent_box_factor_down_ = (dbl2dec(1.0) - box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
+            percent_exponent_ = percent_box_factor_up_ .exponent();
     	}
 
     }
@@ -84,22 +84,22 @@ Boxes::Boxes (DprDecimal::DDecQuad base_box_size, DprDecimal::DDecQuad box_size_
     {
         if (box_scale_ == BoxScale::e_Percent)
         {
-            percent_box_factor_up_ = (1.0 + base_box_size_);
-            percent_box_factor_down_ = (1.0 - base_box_size_);
-            percent_exponent_ = base_box_size_.GetExponent() - 1;
+            percent_box_factor_up_ = (dbl2dec(1.0) + base_box_size_);
+            percent_box_factor_down_ = (dbl2dec(1.0) - base_box_size_);
+            percent_exponent_ = base_box_size_.exponent() - 1;
         }
     }
 
     // try to keep box size from being too small
 
-    if (runtime_box_size_.GetExponent() < -3)
+    if (runtime_box_size_.exponent() < -3)
     {
-        runtime_box_size_.Rescale(-3);
+        runtime_box_size_.rescale(-3);
     }
 
     // we rarely need integral box types.
     
-    if (runtime_box_size_.GetExponent() >= 0)
+    if (runtime_box_size_.exponent() >= 0)
     {
         box_type_ = BoxType::e_Integral;
     }
@@ -136,7 +136,7 @@ size_t Boxes::Distance (const Box& from, const Box& to) const
 }		// -----  end of method Boxes::Distance  ----- 
 
 
-Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
+Boxes::Box Boxes::FindBox (const decimal::Decimal& new_value)
 {
     if (boxes_.empty())
     {
@@ -191,7 +191,7 @@ Boxes::Box Boxes::FindBox (const DprDecimal::DDecQuad& new_value)
     return boxes_.front();
 }		// -----  end of method Boxes::FindBox  ----- 
 
-Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
+Boxes::Box Boxes::FindBoxPercent (const decimal::Decimal& new_value)
 {
     auto box_finder = [&new_value](const auto& a, const auto& b) { return new_value >= a && new_value < b; };
 
@@ -219,11 +219,11 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
             // extend up 
 
             prev_back = boxes_.back();
-            Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
+            Box new_box = (boxes_.back() * percent_box_factor_up_).rescale(percent_exponent_);
             // stocks trade in pennies, so minimum difference is $0.01
-            if (new_box - boxes_.back() < .01)
+            if (new_box - boxes_.back() < dbl2dec(.01))
             {
-            	new_box = boxes_.back() + .01;
+            	new_box = boxes_.back() + dbl2dec(.01);
             }
             PushBack(std::move(new_box));
         }
@@ -234,11 +234,11 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
    
     do 
     {
-        Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        Box new_box = (boxes_.front() * percent_box_factor_down_).rescale(percent_exponent_);
         // stocks trade in pennies, so minimum difference is $0.01
-        if (boxes_.front() - new_box < .01)
+        if (boxes_.front() - new_box < dbl2dec(.01))
         {
-            new_box = boxes_.front() - .01;
+            new_box = boxes_.front() - dbl2dec(.01);
         }
         PushFront(new_box);
     } while (new_value < boxes_.front());
@@ -246,9 +246,9 @@ Boxes::Box Boxes::FindBoxPercent (const DprDecimal::DDecQuad& new_value)
     return boxes_.front();
 }		// -----  end of method Boxes::FindBox  ----- 
 
-Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
+Boxes::Box Boxes::FindNextBox (const decimal::Decimal& current_value)
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format(":f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -276,9 +276,9 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value)
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBox  ----- 
 
-Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value) const
+Boxes::Box Boxes::FindNextBox (const decimal::Decimal& current_value) const
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format(":f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -292,13 +292,13 @@ Boxes::Box Boxes::FindNextBox (const DprDecimal::DDecQuad& current_value) const
     // index operator below will throw.
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBox  ----- 
 
-Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
+Boxes::Box Boxes::FindNextBoxPercent (const decimal::Decimal& current_value)
 {
     auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
 
@@ -311,11 +311,11 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
     {
         if (current_value == boxes_.back())
         {
-            Box new_box = (boxes_.back() * percent_box_factor_up_).Rescale(percent_exponent_);
+            Box new_box = (boxes_.back() * percent_box_factor_up_).rescale(percent_exponent_);
             // stocks trade in pennies, so minimum difference is $0.01
-            if (new_box - boxes_.back() < .01)
+            if (new_box - boxes_.back() < dbl2dec(.01))
             {
-            	new_box = boxes_.back() + .01;
+            	new_box = boxes_.back() + dbl2dec(.01);
             }
             PushBack(new_box);
             return new_box;
@@ -326,7 +326,7 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
-Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value) const
+Boxes::Box Boxes::FindNextBoxPercent (const decimal::Decimal& current_value) const
 {
     auto box_finder = [&current_value](const auto& a, const auto& b) { return current_value >= a && current_value < b; };
 
@@ -335,15 +335,15 @@ Boxes::Box Boxes::FindNextBoxPercent (const DprDecimal::DDecQuad& current_value)
     // index operator below will throw.
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
-    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(found_it != boxes_.end(), std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
-Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
+Boxes::Box Boxes::FindPrevBox (const decimal::Decimal& current_value)
 {
-    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(), std::format("Current value: {} is not contained in boxes.", current_value.format(":f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -380,9 +380,9 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value)
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindPrevBox  ----- 
 
-Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value) const
+Boxes::Box Boxes::FindPrevBox (const decimal::Decimal& current_value) const
 {
-    BOOST_ASSERT_MSG(current_value > boxes_.front() && current_value <= boxes_.back(), std::format("Lookup-only search for previous box for value: {} failed.", current_value).c_str());
+    BOOST_ASSERT_MSG(current_value > boxes_.front() && current_value <= boxes_.back(), std::format("Lookup-only search for previous box for value: {} failed.", current_value.format(":f")).c_str());
 
     if (box_scale_ == BoxScale::e_Percent)
     {
@@ -403,19 +403,19 @@ Boxes::Box Boxes::FindPrevBox (const DprDecimal::DDecQuad& current_value) const
     }
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
-    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindPrevBox  ----- 
 
-Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
+Boxes::Box Boxes::FindPrevBoxPercent (const decimal::Decimal& current_value)
 {
     if (boxes_.size() == 1)
     {
-        Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        Box new_box = (boxes_.front() * percent_box_factor_down_).rescale(percent_exponent_);
         // stocks trade in pennies, so minimum difference is $0.01
-        if (boxes_.front() - new_box < .01)
+        if (boxes_.front() - new_box < dbl2dec(.01))
         {
-            new_box = boxes_.front() - .01;
+            new_box = boxes_.front() - dbl2dec(.01);
         }
         PushFront(new_box);
         return new_box;
@@ -437,11 +437,11 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     if (box_index == 0)
     {
-        Box new_box = (boxes_.front() * percent_box_factor_down_).Rescale(percent_exponent_);
+        Box new_box = (boxes_.front() * percent_box_factor_down_).rescale(percent_exponent_);
         // stocks trade in pennies, so minimum difference is $0.01
-        if (boxes_.front() - new_box < .01)
+        if (boxes_.front() - new_box < dbl2dec(.01))
         {
-            new_box = boxes_.front() - .01;
+            new_box = boxes_.front() - dbl2dec(.01);
         }
         PushFront(new_box);
         return boxes_.front();
@@ -449,7 +449,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
-Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value) const
+Boxes::Box Boxes::FindPrevBoxPercent (const decimal::Decimal& current_value) const
 {
     // this code will not match against the last value in the list 
 
@@ -465,7 +465,7 @@ Boxes::Box Boxes::FindPrevBoxPercent (const DprDecimal::DDecQuad& current_value)
     }
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
-    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value).c_str());
+    BOOST_ASSERT_MSG(box_index > 0, std::format("Lookup-only box search failed for: ", current_value.format(":f")).c_str());
     return boxes_.at(box_index - 1);
 }		// -----  end of method Boxes::FindNextBoxPercent  ----- 
 
@@ -494,7 +494,7 @@ bool Boxes::operator== (const Boxes& rhs) const
     return rhs.boxes_ == boxes_;
 }		// -----  end of method Boxes::operator==  ----- 
 
-Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
+Boxes::Box Boxes::FirstBox (const decimal::Decimal& start_at)
 {
     BOOST_ASSERT_MSG(base_box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
@@ -504,10 +504,10 @@ Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 //    }
     boxes_.clear();
 
-    DprDecimal::DDecQuad price_as_int_or_not;
+    decimal::Decimal price_as_int_or_not;
     if (box_type_ == BoxType::e_Integral)
     {
-        price_as_int_or_not = start_at.ToIntTruncated();
+        price_as_int_or_not = start_at.to_integral();
     }
     else
     {
@@ -521,7 +521,7 @@ Boxes::Box Boxes::FirstBox (const DprDecimal::DDecQuad& start_at)
 
 }		// -----  end of method Boxes::NewBox  ----- 
 
-Boxes::Box Boxes::FirstBoxPerCent (const DprDecimal::DDecQuad& start_at)
+Boxes::Box Boxes::FirstBoxPerCent (const decimal::Decimal& start_at)
 {
     BOOST_ASSERT_MSG(base_box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
@@ -533,19 +533,19 @@ Boxes::Box Boxes::FirstBoxPerCent (const DprDecimal::DDecQuad& start_at)
 
 }		// -----  end of method Boxes::NewBox  ----- 
 
-Boxes::Box Boxes::RoundDownToNearestBox (const DprDecimal::DDecQuad& a_value) const
+Boxes::Box Boxes::RoundDownToNearestBox (const decimal::Decimal& a_value) const
 {
-    DprDecimal::DDecQuad price_as_int;
+    decimal::Decimal price_as_int;
     if (box_type_ == BoxType::e_Integral)
     {
-        price_as_int = a_value.ToIntTruncated();
+        price_as_int = a_value.to_integral();
     }
     else
     {
         price_as_int = a_value;
     }
 
-    Box result = DprDecimal::Mod(price_as_int, base_box_size_) * base_box_size_;
+    Box result = price_as_int.divmod(base_box_size_).first * base_box_size_;
     return result;
 
 }		// -----  end of method PF_Column::RoundDowntoNearestBox  ----- 
@@ -554,11 +554,11 @@ Json::Value Boxes::ToJSON () const
 {
     Json::Value result;
 
-    result["box_size"] = base_box_size_.ToStr();
-    result["box_size_modifier"] = box_size_modifier_.ToStr();
-    result["runtime_box_size"] = runtime_box_size_.ToStr();
-    result["factor_up"] = percent_box_factor_up_.ToStr();
-    result["factor_down"] = percent_box_factor_down_.ToStr();
+    result["box_size"] = base_box_size_.format(":f");
+    result["box_size_modifier"] = box_size_modifier_.format(":f");
+    result["runtime_box_size"] = runtime_box_size_.format(":f");
+    result["factor_up"] = percent_box_factor_up_.format(":f");
+    result["factor_down"] = percent_box_factor_down_.format(":f");
     result["exponent"] = percent_exponent_;
 
     switch(box_type_)
@@ -586,7 +586,7 @@ Json::Value Boxes::ToJSON () const
     Json::Value the_boxes{Json::arrayValue};
     for (const auto& box : boxes_)
     {
-        the_boxes.append(box.ToStr());
+        the_boxes.append(box.format(":f"));
     }
     result["boxes"] = the_boxes;
 
@@ -595,11 +595,11 @@ Json::Value Boxes::ToJSON () const
 
 void Boxes::FromJSON (const Json::Value& new_data)
 {
-    base_box_size_ = DprDecimal::DDecQuad{new_data["box_size"].asString()};
-    box_size_modifier_ = DprDecimal::DDecQuad{new_data["box_size_modifier"].asString()};
-    runtime_box_size_ = DprDecimal::DDecQuad{new_data["runtime_box_size"].asString()};
-    percent_box_factor_up_ = DprDecimal::DDecQuad{new_data["factor_up"].asString()};
-    percent_box_factor_down_ = DprDecimal::DDecQuad{new_data["factor_down"].asString()};
+    base_box_size_ = decimal::Decimal{new_data["box_size"].asString()};
+    box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asString()};
+    runtime_box_size_ = decimal::Decimal{new_data["runtime_box_size"].asString()};
+    percent_box_factor_up_ = decimal::Decimal{new_data["factor_up"].asString()};
+    percent_box_factor_down_ = decimal::Decimal{new_data["factor_down"].asString()};
     percent_exponent_ = new_data["exponent"].asInt();
 
     const auto box_type = new_data["box_type"].asString();
@@ -644,15 +644,15 @@ void Boxes::FromJSON (const Json::Value& new_data)
 
 void Boxes::PushFront(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_, boxes_[0], boxes_[1], boxes_[2], boxes_[3], boxes_[4]).c_str());
+    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_.format(":f"), boxes_[0].format(":f"), boxes_[1].format(":f"), boxes_[2].format(":f"), boxes_[3].format(":f"), boxes_[4].format(":f")).c_str());
     boxes_.insert(boxes_.begin(), std::move(new_box));
 
 }		// -----  end of method Boxes::PushFront  ----- 
 
 void Boxes::PushBack(Box new_box)
 {
-    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_, boxes_[kMaxBoxes - 5], boxes_[kMaxBoxes - 4],
-                boxes_[kMaxBoxes - 3], boxes_[kMaxBoxes - 2], boxes_[kMaxBoxes - 1]).c_str());
+    BOOST_ASSERT_MSG(boxes_.size() < kMaxBoxes, std::format("Maximum number of boxes ({}) reached. Use a box size larger than: {}. [{}, {}, {}, {}, {}]", kMaxBoxes, base_box_size_.format(":f"), boxes_[kMaxBoxes - 5].format(":f"), boxes_[kMaxBoxes - 4].format(":f"),
+                boxes_[kMaxBoxes - 3].format(":f"), boxes_[kMaxBoxes - 2].format(":f"), boxes_[kMaxBoxes - 1].format(":f")).c_str());
     boxes_.push_back(std::move(new_box));
 }		// -----  end of method Boxes::PushBack  ----- 
 

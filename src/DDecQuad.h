@@ -9,16 +9,19 @@
 #define _DDECQUAD_
 
 #include <format>
-#include <iostream>
-#include <sstream>
 #include <iomanip>
+#include <iostream>
+#include <memory>
+#include <sstream>
 #include <string_view>
 
-extern "C"
-{
-    #include <decQuad.h>
-    #include <decimal128.h>
-}
+#include <mpdecimal.h>
+
+// extern "C"
+// {
+//     #include <decQuad.h>
+//     #include <decimal128.h>
+// }
 
 namespace DprDecimal
 {
@@ -72,10 +75,13 @@ public:
     DDecQuad (const char* number);              // NOLINT(google-explicit-constructor)
     DDecQuad (const std::string& number);       // NOLINT(google-explicit-constructor)
     DDecQuad (std::string_view number);         // NOLINT(google-explicit-constructor)
+    DDecQuad (const mpd_t& number);         // NOLINT(google-explicit-constructor)
+    DDecQuad (double number);	                // NOLINT(google-explicit-constructor)
+    // handle all our integer types here
+    // template <typename T>
+    // DDecQuad(T number);
     DDecQuad (int32_t number);                  // NOLINT(google-explicit-constructor)
     DDecQuad (uint32_t number);                 // NOLINT(google-explicit-constructor)
-    DDecQuad (const decNumber& number);         // NOLINT(google-explicit-constructor)
-    DDecQuad (double number);	                // NOLINT(google-explicit-constructor)
 
     ~DDecQuad() = default;
 
@@ -86,7 +92,7 @@ public:
     [[nodiscard]] int32_t ToIntTruncated() const;
     [[nodiscard]] double ToDouble() const;
 
-    [[nodiscard]] int32_t GetExponent() const { return decQuadGetExponent(&decimal_); }
+    [[nodiscard]] size_t GetExponent() const { return decimal_.exp; }
 
     [[nodiscard]] DDecQuad abs() const;
     [[nodiscard]] DDecQuad log_n() const;
@@ -106,13 +112,15 @@ public:
 
     DDecQuad& operator=(const DDecQuad& rhs);
     DDecQuad& operator=(DDecQuad&& rhs) noexcept ;
-    DDecQuad& operator=(int32_t rhs);
-    DDecQuad& operator=(uint32_t rhs);
     DDecQuad& operator=(double rhs);
-    DDecQuad& operator=(const decNumber& rhs);
+    DDecQuad& operator=(const mpd_t& rhs);
     DDecQuad& operator=(const char* rhs);
     DDecQuad& operator=(const std::string& rhs);
 
+    // template<typename T>
+    // DDecQuad& operator=(T rhs);
+    DDecQuad& operator=(int32_t rhs);
+    DDecQuad& operator=(uint32_t rhs);
 
 protected:
     // ====================  DATA MEMBERS  =======================================
@@ -123,8 +131,8 @@ private:
 
     // ====================  DATA MEMBERS  =======================================
     
-    decQuad decimal_;
-    static decContext mCtx_;
+    mpd_t decimal_;
+    static mpd_context_t mCtx_;
 
     static bool context_initialized_;
 
@@ -136,9 +144,9 @@ private:
 	
 inline std::string DDecQuad::ToStr() const
 {
-    char output [DECQUAD_String];
-    decQuadToString(&this->decimal_, output);
-    return {output};
+    // char output [DECQUAD_String];
+    std::unique_ptr<char> s{mpd_format(&this->decimal_, "{g}", &mCtx_)};
+    return {s.get()};
 }
 
 //
@@ -147,25 +155,25 @@ inline std::string DDecQuad::ToStr() const
 
 inline DDecQuad& DDecQuad::operator+=(const DDecQuad& rhs)
 {
-	decQuadAdd(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_add(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
 inline DDecQuad& DDecQuad::operator-=(const DDecQuad& rhs)
 {
-	decQuadSubtract(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_sub(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
 inline DDecQuad& DDecQuad::operator*=(const DDecQuad& rhs)
 {
-	decQuadMultiply(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_mul(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
 inline DDecQuad& DDecQuad::operator/=(const DDecQuad& rhs)
 {
-	decQuadDivide(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_div(&this->decimal_, &this->decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return *this;
 }
 
@@ -176,35 +184,35 @@ inline DDecQuad& DDecQuad::operator/=(const DDecQuad& rhs)
 inline DDecQuad operator+(const DDecQuad&lhs, const DDecQuad& rhs)
 {
 	DDecQuad result;
-	decQuadAdd(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_add(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
 inline DDecQuad operator-(const DDecQuad&lhs, const DDecQuad& rhs)
 {
 	DDecQuad result;
-	decQuadSubtract(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_sub(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
 inline DDecQuad operator*(const DDecQuad&lhs, const DDecQuad& rhs)
 {
 	DDecQuad result;
-	decQuadMultiply(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_mul(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
 inline DDecQuad operator/(const DDecQuad&lhs, const DDecQuad& rhs)
 {
 	DDecQuad result;
-	decQuadDivide(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_div(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
 inline DDecQuad Mod(const DDecQuad&lhs, const DDecQuad& rhs)
 {
 	DDecQuad result;
-	decQuadDivideInteger(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	mpd_divint(&result.decimal_, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
 	return result;
 }
 
@@ -240,9 +248,9 @@ inline bool operator==(const DDecQuad& lhs, const DDecQuad& rhs)
 //    {
 //        return false;
 //    }
-	decQuad result;
-	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
-	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 0;
+	mpd_t res;
+	int result = mpd_compare(&res, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return result == 0;
 }
 
 inline bool operator!=(const DDecQuad& lhs, const DDecQuad& rhs)
@@ -252,30 +260,30 @@ inline bool operator!=(const DDecQuad& lhs, const DDecQuad& rhs)
 
 inline bool operator<(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decQuad result;
-	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
-	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == -1;
+	mpd_t res;
+	int result = mpd_compare(&res, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return result == -1;
 }
 
 inline bool operator>(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decQuad result;
-	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
-	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) == 1;
+	mpd_t res;
+	int result = mpd_compare(&res, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return result == 1;
 }
 
 inline bool operator<=(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decQuad result;
-	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
-	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) < 1;
+	mpd_t res;
+	int result = mpd_compare(&res, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return result < 1;
 }
 
 inline bool operator>=(const DDecQuad& lhs, const DDecQuad& rhs)
 {
-	decQuad result;
-	decQuadCompare(&result, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
-	return decQuadToInt32(&result, &DDecQuad::mCtx_, DEC_ROUND_HALF_EVEN) >= 0;
+	mpd_t res;
+	int result = mpd_compare(&res, &lhs.decimal_, &rhs.decimal_, &DDecQuad::mCtx_);
+	return result >= 0;
 }
 
 //
@@ -284,9 +292,8 @@ inline bool operator>=(const DDecQuad& lhs, const DDecQuad& rhs)
 
 inline std::ostream& operator<<(std::ostream& os, const DDecQuad& item)
 {
-	char output [DECQUAD_String];
-	decQuadToString(&item.decimal_, output);
-	os << output;
+    std::unique_ptr<char> s{mpd_format(&item.decimal_, "{g}", &DDecQuad::mCtx_)};
+	os << s.get();
 	return os;
 }
 
@@ -295,7 +302,7 @@ inline std::istream& operator>>(std::istream& is, DDecQuad& item)
 	std::string temp;
 	is >> temp;
 //    std::cout << "temp from stream: " << temp << '\n';
-	decQuadFromString(&item.decimal_, temp.c_str(), &DDecQuad::mCtx_);
+	mpd_set_string(&item.decimal_, temp.c_str(), &DDecQuad::mCtx_);
 	return is;
 }
 

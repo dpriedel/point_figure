@@ -25,6 +25,7 @@
 #include <sys/types.h>
 
 #include <json/json.h>
+#include <decimal.hh>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -46,7 +47,7 @@ namespace net = boost::asio;            // from <boost/asio.hpp>
 namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
-#include "DDecQuad.h"
+// #include "DDecQuad.h"
 #include "utilities.h"
 
 // =====================================================================================
@@ -64,7 +65,7 @@ public:
         std::string ticker_;                        // Ticker
         std::string time_stamp_;                    // Date
         int64_t time_stamp_nanoseconds_utc_;        // time_stamp
-        DprDecimal::DDecQuad last_price_;           // Last Price
+        decimal::Decimal last_price_;           // Last Price
         int32_t last_size_;                         // Last Size
     };
     

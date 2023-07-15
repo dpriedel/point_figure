@@ -230,7 +230,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
             new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
             new_value.ticker_ = data[3].asString();
             rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-            new_value.last_price_ = DprDecimal::DDecQuad{m[1].str()};
+            new_value.last_price_ = decimal::Decimal{m[1].str()};
             new_value.last_size_ = data[10].asInt();
 
             pf_data.push_back(std::move(new_value));        

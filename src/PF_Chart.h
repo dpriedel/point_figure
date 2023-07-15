@@ -75,8 +75,8 @@ public:
 
 public:
 
-    using Y_Limits = std::pair<DprDecimal::DDecQuad, DprDecimal::DDecQuad>;
-    using PF_ChartParams = std::tuple<std::string, DprDecimal::DDecQuad, int32_t, Boxes::BoxScale>;
+    using Y_Limits = std::pair<decimal::Decimal, decimal::Decimal>;
+    using PF_ChartParams = std::tuple<std::string, decimal::Decimal, int32_t, Boxes::BoxScale>;
 
     enum  class X_AxisFormat {e_show_date, e_show_time};
 	enum {
@@ -96,11 +96,11 @@ public:
     PF_Chart (const PF_Chart& rhs);
     PF_Chart (PF_Chart&& rhs) noexcept ;
 
-    PF_Chart(std::string symbol, DprDecimal::DDecQuad base_box_size, int32_t reversal_boxes,
+    PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes,
             Boxes::BoxScale box_scale=Boxes::BoxScale::e_Linear,
-            DprDecimal::DDecQuad box_size_modifier=0, int64_t max_columns_for_graph=0);
+            decimal::Decimal box_size_modifier=0, int64_t max_columns_for_graph=0);
 
-    PF_Chart(const PF_ChartParams& vals, DprDecimal::DDecQuad box_size_modifier, int64_t max_columns_for_graph)
+    PF_Chart(const PF_ChartParams& vals, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph)
         : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals),
         		std::get<e_box_scale>(vals), box_size_modifier, max_columns_for_graph)
     {
@@ -128,8 +128,8 @@ public:
 	[[nodiscard]] const PF_Column& back() const { return current_column_; }
 
 	[[nodiscard]] bool empty() const { return columns_.empty() && current_column_.IsEmpty(); }
-    [[nodiscard]] DprDecimal::DDecQuad GetChartBoxSize() const { return boxes_.GetBoxSize(); }
-    [[nodiscard]] DprDecimal::DDecQuad GetFNameBoxSize() const { return fname_box_size_; }
+    [[nodiscard]] decimal::Decimal GetChartBoxSize() const { return boxes_.GetBoxSize(); }
+    [[nodiscard]] decimal::Decimal GetFNameBoxSize() const { return fname_box_size_; }
     [[nodiscard]] int32_t GetReversalboxes() const { return current_column_.GetReversalboxes(); }
     [[nodiscard]] Boxes::BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
     [[nodiscard]] Boxes::BoxType GetBoxType() const { return boxes_.GetBoxType(); }
@@ -172,7 +172,7 @@ public:
 
     // ====================  MUTATORS      =======================================
     
-    PF_Column::Status AddValue(const DprDecimal::DDecQuad& new_value, PF_Column::TmPt the_time);
+    PF_Column::Status AddValue(const decimal::Decimal& new_value, PF_Column::TmPt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, std::string_view delim);
 
     [[nodiscard]] int64_t GetMaxGraphicColumns() const  { return max_columns_for_graph_; }
@@ -219,16 +219,16 @@ private:
     std::string symbol_;
     std::string chart_base_name_;
 
-	DprDecimal::DDecQuad base_box_size_ = 0;	// box size to use when constructing file name 
-	DprDecimal::DDecQuad fname_box_size_ = 0;	// box size to use when constructing file name 
-	DprDecimal::DDecQuad box_size_modifier_ = 0;
+	decimal::Decimal base_box_size_ = 0;	// box size to use when constructing file name 
+	decimal::Decimal fname_box_size_ = 0;	// box size to use when constructing file name 
+	decimal::Decimal box_size_modifier_ = 0;
 
     PF_Column::TmPt first_date_ = {};			    //	earliest entry for symbol
     PF_Column::TmPt last_change_date_ = {};		//	date of last change to data
     PF_Column::TmPt last_checked_date_ = {};	    //	last time checked to see if update needed
 
-    DprDecimal::DDecQuad y_min_ = 100000;         // just a number
-    DprDecimal::DDecQuad y_max_ = -1;
+    decimal::Decimal y_min_ = 100000;         // just a number
+    decimal::Decimal y_max_ = -1;
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_Unknown;
 
@@ -371,10 +371,10 @@ template <> struct std::formatter<PF_Chart>: std::formatter<std::string>
         namespace rng = std::ranges;
         std::string s;
         std::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",
-            chart.GetSymbol(), chart.GetChartBoxSize(), chart.GetReversalboxes(), chart.GetBoxScale());
+            chart.GetSymbol(), chart.GetChartBoxSize().format("{g}"), chart.GetReversalboxes(), chart.GetBoxScale());
         rng::for_each(chart, [&s](const auto& col) {std::format_to(std::back_inserter(s), "\t{}\n", col); } );
     	std::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n",
-        	chart.size(), chart.GetYLimits().first, chart.GetYLimits().second);
+        	chart.size(), chart.GetYLimits().first.format("{g}"), chart.GetYLimits().second.format("{g}"));
 
         std::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());
 
@@ -407,7 +407,7 @@ std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams& vals, std::s
 
 // if we provide a scale factor > -99, then scale the value to that value. 
 // Otherwise, scale to -3 (.005) to prevent box sizes being too small.
-DprDecimal::DDecQuad ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days, int32_t scale=-99);
+decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockDataRecord>& the_data, int32_t how_many_days, int32_t scale=-99);
 
 
 #endif   // ----- #ifndef PF_CHART_INC  ----- 

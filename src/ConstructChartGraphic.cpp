@@ -56,23 +56,23 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
     // we want to mark the openning value on the chart so change can be seen when drawing only most recent columns. 
     
     const auto& first_col = the_chart[0];
-    double openning_price = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom().ToDouble() : first_col.GetTop().ToDouble();
+    double openning_price = first_col.GetDirection() == PF_Column::Direction::e_Up ? dec2dbl(first_col.GetBottom()) : dec2dbl(first_col.GetTop());
 
     for (const auto& col : the_chart.GetColumns() | vws::drop(skipped_columns))
     {
-        lowData.push_back(col.GetBottom().ToDouble());
-        highData.push_back(col.GetTop().ToDouble());
+        lowData.push_back(dec2dbl(col.GetBottom()));
+        highData.push_back(dec2dbl(col.GetTop()));
 
         if (col.GetDirection() == PF_Column::Direction::e_Up)
         {
-            openData.push_back(col.GetBottom().ToDouble());
-            closeData.push_back(col.GetTop().ToDouble());
+            openData.push_back(dec2dbl(col.GetBottom()));
+            closeData.push_back(dec2dbl(col.GetTop()));
             direction_is_up.push_back(true);
         }
         else
         {
-            openData.push_back(col.GetTop().ToDouble());
-            closeData.push_back(col.GetBottom().ToDouble());
+            openData.push_back(dec2dbl(col.GetTop()));
+            closeData.push_back(dec2dbl(col.GetBottom()));
             direction_is_up.push_back(false);
         }
 		if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
@@ -86,19 +86,19 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
         had_step_back.push_back(col.GetHadReversal());
     }
 
-    lowData.push_back(the_chart.back().GetBottom().ToDouble());
-    highData.push_back(the_chart.back().GetTop().ToDouble());
+    lowData.push_back(dec2dbl(the_chart.back().GetBottom()));
+    highData.push_back(dec2dbl(the_chart.back().GetTop()));
 
     if (the_chart.back().GetDirection() == PF_Column::Direction::e_Up)
     {
-        openData.push_back(the_chart.back().GetBottom().ToDouble());
-        closeData.push_back(the_chart.back().GetTop().ToDouble());
+        openData.push_back(dec2dbl(the_chart.back().GetBottom()));
+        closeData.push_back(dec2dbl(the_chart.back().GetTop()));
         direction_is_up.push_back(true);
     }
     else
     {
-        openData.push_back(the_chart.back().GetTop().ToDouble());
-        closeData.push_back(the_chart.back().GetBottom().ToDouble());
+        openData.push_back(dec2dbl(the_chart.back().GetTop()));
+        closeData.push_back(dec2dbl(the_chart.back().GetBottom()));
         direction_is_up.push_back(false);
     }
     if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
@@ -155,43 +155,43 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
             case e_Unknown:
                 break;
             case e_DoubleTop_Buy:
-                dt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                dt_buys[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_dt_buy += 1;
                 break;
             case e_DoubleBottom_Sell:
-                db_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                db_sells[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_db_sell += 1;
                 break;
             case e_TripleTop_Buy:
-                tt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                tt_buys[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_tt_buy += 1;
                 break;
             case e_TripleBottom_Sell:
-                tb_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                tb_sells[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_tb_sell += 1;
                 break;
             case e_Bullish_TT_Buy:
-                btt_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                btt_buys[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_bullish_tt_buy += 1;
                 break;
             case e_Bearish_TB_Sell:
-                btb_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                btb_sells[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_bearish_tb_sell += 1;
                 break;
             case e_Catapult_Buy:
-                cat_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                cat_buys[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_catapult_buy += 1;
                 break;
             case e_Catapult_Sell:
-                cat_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                cat_sells[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_catapult_sell += 1;
                 break;
             case e_TTop_Catapult_Buy:
-                tt_cat_buys[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                tt_cat_buys[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_tt_catapult_buy += 1;
                 break;
             case e_TBottom_Catapult_Sell:
-                tb_cat_sells[most_important->column_number_ - skipped_columns] = most_important->box_.ToDouble();
+                tb_cat_sells[most_important->column_number_ - skipped_columns] = dec2dbl(most_important->box_);
                 had_tb_catapult_sell += 1;
                 break;
         }
@@ -199,8 +199,8 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
 
 	// want to show approximate overall change in value (computed from boxes, not actual prices)
 	
-	DprDecimal::DDecQuad first_value = 0;
-	DprDecimal::DDecQuad last_value = 0;
+	decimal::Decimal first_value = 0;
+	decimal::Decimal last_value = 0;
 
 	if (the_chart.size() > 1)
 	{
@@ -208,9 +208,9 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
 		first_value = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom() : first_col.GetTop();
 		// apparently, this can happen 
 
-		if (first_value == 0.0)
+		if (first_value == dbl2dec(0.0))
 		{
-			first_value = 0.01;
+			first_value = dbl2dec(0.01);
 		}
 	}
 	else
@@ -219,7 +219,7 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
 	}
 	last_value = the_chart.back().GetDirection() == PF_Column::Direction::e_Up ? the_chart.back().GetTop() : the_chart.back().GetBottom();
 
-	DprDecimal::DDecQuad overall_pct_chg = ((last_value - first_value) / first_value * 100).Rescale(-2);
+	decimal::Decimal overall_pct_chg = ((last_value - first_value) / first_value * 100).rescale(-2);
 
 	std::string skipped_columns_text;
 	if (skipped_columns > 0)
@@ -234,9 +234,9 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
         explanation_text = "Orange: 1-step Up then reversal Down. Green: 1-step Down then reversal Up.";
     }
     auto chart_title = std::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}",
-                                   the_chart.GetChartBoxSize(), (the_chart.IsPercent() ? "%" : ""),
+                                   the_chart.GetChartBoxSize().format("{g}"), (the_chart.IsPercent() ? "%" : ""),
                                    the_chart.GetReversalboxes(), the_chart.GetSymbol(),
-                                   (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg, skipped_columns_text,
+                                   (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg.format("{g}"), skipped_columns_text,
                                    std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::clock_cast<std::chrono::system_clock>(the_chart.GetLastChangeTime())), explanation_text);
 
     py::dict locals = py::dict{
@@ -253,8 +253,8 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
         "ChartTitle"_a = chart_title,
         "ChartFileName"_a = output_filename.string(),
         "DateTimeFormat"_a = date_or_time == PF_Chart::X_AxisFormat::e_show_date ? "%Y-%m-%d" : "%H:%M:%S",
-        "Y_min"_a = the_chart.GetYLimits().first.ToDouble(),
-        "Y_max"_a = the_chart.GetYLimits().second.ToDouble(),
+        "Y_min"_a = dec2dbl(the_chart.GetYLimits().first),
+        "Y_max"_a = dec2dbl(the_chart.GetYLimits().second),
         "openning_price"_a = openning_price,
         "UseLogScale"_a = the_chart.IsPercent(),
         "ShowTrendLines"_a = show_trend_lines,

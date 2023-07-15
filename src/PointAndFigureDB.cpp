@@ -203,8 +203,8 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
     		db_params_.PF_db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", 
     		    "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
 			trxn.quote(the_chart.GetSymbol()),
-			trxn.quote(the_chart.GetFNameBoxSize().ToStr()),
-			trxn.quote(the_chart.GetChartBoxSize().ToStr()),
+			trxn.quote(the_chart.GetFNameBoxSize().format("{g}")),
+			trxn.quote(the_chart.GetChartBoxSize().format("{g}")),
 			the_chart.GetReversalboxes(),
 			json["boxes"]["box_type"].asString(),
 			json["boxes"]["box_scale"].asString(),
@@ -264,10 +264,10 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB (st
     auto Row2StockDataRecord = [](const auto& r) { return 
         StockDataRecord{.date_=std::string{r[0].template as<std::string_view>()},
                         .symbol_=std::string{r[1].template as<std::string_view>()},
-                        .open_=r[2].template as<std::string_view>(),
-                        .high_=r[3].template as<std::string_view>(),
-                        .low_=r[4].template as<std::string_view>(),
-                        .close_=r[5].template as<std::string_view>() };
+                        .open_=decimal::Decimal{r[2].c_str()},
+                        .high_=decimal::Decimal{r[3].c_str()},
+                        .low_=decimal::Decimal{r[4].c_str()},
+                        .close_=decimal::Decimal{r[5].c_str()} };
         };
 
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
@@ -326,7 +326,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
         time_stream.str(std::string{std::get<1>(r)});
         date::from_stream(time_stream, date_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
-        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp1, .close_=std::get<2>(r)};
+        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp1, .close_=decimal::Decimal{std::get<2>(r)}};
         return new_data;
     };
 
@@ -341,7 +341,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList (con
 				c.quote(begin_date)
 				);
 
-        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
+        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(get_symbol_prices_cmd, Row2Closing);
         spdlog::debug(std::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
    	}
    	catch (const std::exception& e)
@@ -373,7 +373,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
         time_stream.str(std::string{std::get<1>(r)});
         date::from_stream(time_stream, date_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
-        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp1, .close_=std::get<2>(r)};
+        MultiSymbolDateCloseRecord new_data{.symbol_=std::string{std::get<0>(r)},.date_=tp1, .close_=decimal::Decimal{std::get<2>(r)}};
         return new_data;
     };
 
@@ -388,7 +388,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange 
 				c.quote(begin_date)
 				);
 
-        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
+        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(get_symbol_prices_cmd, Row2Closing);
         spdlog::debug(std::format("Done retrieving data for symbols on exchange: {}. Got: {} rows.", exchange, db_data.size()));
    	}
    	catch (const std::exception& e)
