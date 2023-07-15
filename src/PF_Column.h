@@ -225,7 +225,7 @@ template <> struct std::formatter<PF_Column>: std::formatter<std::string>
     {
         std::string s;
         std::format_to(std::back_inserter(s), "col nbr: {}. bottom: {}. top: {}. direction: {}. begin date: {:%F}. {}",
-            column.GetColumnNumber(), column.GetBottom().format("g"), column.GetTop().format("g"), column.GetDirection(), column.GetTimeSpan().first,
+            column.GetColumnNumber(), column.GetBottom().format("f"), column.GetTop().format("f"), column.GetDirection(), column.GetTimeSpan().first,
             (column.GetHadReversal() ? " one-step-back reversal." : ""));
 
         return formatter<std::string>::format(s, ctx);

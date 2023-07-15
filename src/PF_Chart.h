@@ -371,10 +371,10 @@ template <> struct std::formatter<PF_Chart>: std::formatter<std::string>
         namespace rng = std::ranges;
         std::string s;
         std::format_to(std::back_inserter(s), "chart for ticker: {}. box size: {}. reversal boxes: {}. scale: {}.\n",
-            chart.GetSymbol(), chart.GetChartBoxSize().format("g"), chart.GetReversalboxes(), chart.GetBoxScale());
+            chart.GetSymbol(), chart.GetChartBoxSize().format("f"), chart.GetReversalboxes(), chart.GetBoxScale());
         rng::for_each(chart, [&s](const auto& col) {std::format_to(std::back_inserter(s), "\t{}\n", col); } );
     	std::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n",
-        	chart.size(), chart.GetYLimits().first.format("g"), chart.GetYLimits().second.format("g"));
+        	chart.size(), chart.GetYLimits().first.format("f"), chart.GetYLimits().second.format("f"));
 
         std::format_to(std::back_inserter(s), "{}\n", chart.GetBoxes());
 

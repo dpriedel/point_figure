@@ -234,9 +234,9 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
         explanation_text = "Orange: 1-step Up then reversal Down. Green: 1-step Down then reversal Up.";
     }
     auto chart_title = std::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}",
-                                   the_chart.GetChartBoxSize().format("g"), (the_chart.IsPercent() ? "%" : ""),
+                                   the_chart.GetChartBoxSize().format("f"), (the_chart.IsPercent() ? "%" : ""),
                                    the_chart.GetReversalboxes(), the_chart.GetSymbol(),
-                                   (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg.format("g"), skipped_columns_text,
+                                   (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg.format("f"), skipped_columns_text,
                                    std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::clock_cast<std::chrono::system_clock>(the_chart.GetLastChangeTime())), explanation_text);
 
     py::dict locals = py::dict{
