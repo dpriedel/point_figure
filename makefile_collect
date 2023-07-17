@@ -22,7 +22,6 @@ MAKE=gmake
 BOOSTDIR := /extra/boost/boost-1.82_gcc-13
 GCCDIR := /extra/gcc/gcc-13
 GTESTDIR := /usr/local/include
-DECIMALSRCDIR := /extra/gcc/decNumber_old
 UTILITYDIR := ${HOME}/projects/PF_Project/common_utilities
 CPP := $(GCCDIR)/bin/g++
 GCC := $(GCCDIR)/bin/gcc
@@ -39,7 +38,6 @@ OUTFILE := PF_CollectData
 CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
 	-I$(BOOSTDIR) \
-	-I$(DECIMALSRCDIR) \
 	-I$(UTILITYDIR)/include \
 	-I/usr/include/python3.11 \
 	-I/usr/lib/python3.11/site-packages/pybind11/include
@@ -51,7 +49,6 @@ SRCS1 := $(SDIR1)/Main.cpp
 
 SDIR2 := ./src
 SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
-		$(SDIR2)/DDecQuad.cpp \
 		$(SDIR2)/Boxes.cpp \
 		$(SDIR2)/PF_Column.cpp \
 		$(SDIR2)/PF_Chart.cpp \
@@ -60,31 +57,24 @@ SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/PF_Signals.cpp  \
 		$(SDIR2)/Tiingo.cpp #\
 
-SDIR3 := $(DECIMALSRCDIR)
-SRCS3 := $(SDIR3)/decQuad.c \
-		 $(SDIR3)/decNumber.c \
-		 $(SDIR3)/decContext.c
-
-# SDIR3a := $(DECIMALSRCDIR)/bid
-SDIR3a := $(DECIMALSRCDIR)
-SRCS3a := $(SDIR3a)/decimal128.c \
-		  $(SDIR3a)/decimal64.c
 
 SDIR4 := $(UTILITYDIR)/src
 SRCS4 := $(SDIR4)/utilities.cpp \
 		 $(SDIR4)/calfaq.c
 
-SRCS := $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS3a) $(SRCS4)
+SRCS := $(SRCS1) $(SRCS2) $(SRCS4)
 
-VPATH := $(SDIR1):$(SDIR2):$(SDIR3):$(SDIR3a):$(SDIR4)
+VPATH := $(SDIR1):$(SDIR2):$(SDIR4)
 
 CFG_LIB := -L/usr/local/lib \
 		-ldate-tz \
+		-lspdlog \
 		-lpqxx \
 		-lpq \
 		-L/usr/lib \
 		-lfmt \
-		-lspdlog \
+		-lmpdec++ \
+		-lmpdec \
 		-lcrypt \
 		-lpthread \
 		-lssl -lcrypto \
@@ -97,11 +87,9 @@ CFG_LIB := -L/usr/local/lib \
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
-OBJS3=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS3)))))
-OBJS3a=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS3a)))))
 OBJS4=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS4)))))
 
-OBJS=$(OBJS1) $(OBJS2) $(OBJS3) $(OBJS3a) $(OBJS4)
+OBJS=$(OBJS1) $(OBJS2) $(OBJS4)
 
 DEPS=$(OBJS:.o=.d)
 
@@ -112,7 +100,7 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug_collect
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2b -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2b -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DBOOST_REGEX_STANDALONE -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
@@ -126,7 +114,7 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
 
-COMPILE=$(CPP) -c  -x c++  -O3 -std=c++2b -flto -DBOOST_ENABLE_ASSERT_HANDLER -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3 -std=c++2b -flto -DBOOST_ENABLE_ASSERT_HANDLER -DBOOST_REGEX_STANDALONE -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O3  -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
@@ -142,7 +130,7 @@ $(OUTDIR)/%.o : %.cpp
 $(OUTDIR)/%.o : %.c
 	$(CCOMPILE)
 
-$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS3a) $(OBJS4)
+$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS4)
 	$(LINK)
 
 -include $(DEPS)
