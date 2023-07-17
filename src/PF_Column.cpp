@@ -305,8 +305,8 @@ void PF_Column::FromJSON (const Json::Value& new_data)
 
     column_number_ = new_data["column_number"].asInt();
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
-    top_ = decimal::Decimal{new_data["top"].asString()};
-    bottom_ = decimal::Decimal{new_data["bottom"].asString()};
+    top_ = decimal::Decimal{new_data["top"].asCString()};
+    bottom_ = decimal::Decimal{new_data["bottom"].asCString()};
 
     const auto direction = new_data["direction"].asString();
     if (direction == "up")

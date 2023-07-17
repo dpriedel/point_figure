@@ -54,7 +54,7 @@ Boxes::Boxes (decimal::Decimal base_box_size, decimal::Decimal box_size_modifier
 {
     if (base_box_size_.exponent() < kMinExponent)
     {
-        base_box_size_.rescale(kMinExponent);
+        base_box_size_ = base_box_size_.rescale(kMinExponent);
     }
     // std::print("params at Boxes start: {}, {}\n", base_box_size_, box_size_modifier_);
 	runtime_box_size_ = base_box_size_;
@@ -94,7 +94,7 @@ Boxes::Boxes (decimal::Decimal base_box_size, decimal::Decimal box_size_modifier
 
     if (runtime_box_size_.exponent() < -3)
     {
-        runtime_box_size_.rescale(-3);
+        runtime_box_size_ = runtime_box_size_.rescale(-3);
     }
 
     // we rarely need integral box types.
@@ -595,11 +595,11 @@ Json::Value Boxes::ToJSON () const
 
 void Boxes::FromJSON (const Json::Value& new_data)
 {
-    base_box_size_ = decimal::Decimal{new_data["box_size"].asString()};
-    box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asString()};
-    runtime_box_size_ = decimal::Decimal{new_data["runtime_box_size"].asString()};
-    percent_box_factor_up_ = decimal::Decimal{new_data["factor_up"].asString()};
-    percent_box_factor_down_ = decimal::Decimal{new_data["factor_down"].asString()};
+    base_box_size_ = decimal::Decimal{new_data["box_size"].asCString()};
+    box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asCString()};
+    runtime_box_size_ = decimal::Decimal{new_data["runtime_box_size"].asCString()};
+    percent_box_factor_up_ = decimal::Decimal{new_data["factor_up"].asCString()};
+    percent_box_factor_down_ = decimal::Decimal{new_data["factor_down"].asCString()};
     percent_exponent_ = new_data["exponent"].asInt();
 
     const auto box_type = new_data["box_type"].asString();
@@ -634,7 +634,7 @@ void Boxes::FromJSON (const Json::Value& new_data)
 
     const auto& the_boxes = new_data["boxes"];
     boxes_.clear();
-    rng::for_each(the_boxes, [this](const auto& next_box) { this->boxes_.emplace_back(next_box.asString()); });
+    rng::for_each(the_boxes, [this](const auto& next_box) { this->boxes_.emplace_back(next_box.asCString()); });
 
     // we expect these values to be in ascending order, so let'ts make sure 
 

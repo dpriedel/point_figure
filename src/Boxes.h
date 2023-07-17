@@ -73,6 +73,7 @@ public:
     explicit Boxes (double base_box_size, double box_size_modifier=0.0, BoxScale box_scale=BoxScale::e_Linear)
        : Boxes(dbl2dec(base_box_size), dbl2dec(box_size_modifier), box_scale) {}; 
 
+
     explicit Boxes(const Json::Value& new_data);
 
 	~Boxes() = default;

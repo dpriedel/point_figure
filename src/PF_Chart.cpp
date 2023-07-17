@@ -552,11 +552,11 @@ void PF_Chart::FromJSON (const Json::Value& new_data)
     last_change_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_change_date"].asInt64()}};
     last_checked_date_ = PF_Column::TmPt{std::chrono::nanoseconds{new_data["last_check_date"].asInt64()}};
 
-    base_box_size_ = decimal::Decimal{new_data["base_box_size"].asString()};
-    fname_box_size_ = decimal::Decimal{new_data["fname_box_size"].asString()};
-    box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asString()};
-    y_min_ = decimal::Decimal{new_data["y_min"].asString()};
-    y_max_ = decimal::Decimal{new_data["y_max"].asString()};
+    base_box_size_ = decimal::Decimal{new_data["base_box_size"].asCString()};
+    fname_box_size_ = decimal::Decimal{new_data["fname_box_size"].asCString()};
+    box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asCString()};
+    y_min_ = decimal::Decimal{new_data["y_min"].asCString()};
+    y_max_ = decimal::Decimal{new_data["y_max"].asCString()};
 
     const auto direction = new_data["current_direction"].asString();
     if (direction == "up")
