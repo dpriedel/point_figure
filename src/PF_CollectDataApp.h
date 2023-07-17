@@ -50,13 +50,17 @@
 
 namespace po = boost::program_options;
 
+#include <decimal.hh>
+
+using decimal::Decimal;
+
 // #include <date/date.h>
 // #include <date/tz.h>
 
 #include <spdlog/spdlog.h>
 
 #include "Boxes.h"
-#include "DDecQuad.h"
+// #include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
@@ -136,9 +140,9 @@ protected:
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
-    [[nodiscard]] DprDecimal::DDecQuad ComputeATRForChart(const std::string& symbol) const;
-    [[nodiscard]] DprDecimal::DDecQuad ComputeATRForChartFromDB(const std::string& symbol) const;
-    [[nodiscard]] DprDecimal::DDecQuad ComputeRangeForChartFromDB(const std::string& symbol) const;
+    [[nodiscard]] Decimal ComputeATRForChart(const std::string& symbol) const;
+    [[nodiscard]] Decimal ComputeATRForChartFromDB(const std::string& symbol) const;
+    [[nodiscard]] Decimal ComputeRangeForChartFromDB(const std::string& symbol) const;
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -196,6 +200,7 @@ private:
     std::string symbol_list_i_;
     std::string graphics_format_i_;
     std::vector<std::string> scale_i_list_;
+    std::vector<std::string> box_size_i_list_;
 
     Source new_data_source_ = Source::e_unknown;
     Source chart_data_source_ = Source::e_unknown;
@@ -209,7 +214,7 @@ private:
 
     std::vector<std::string> symbol_list_;
     std::vector<Boxes::BoxScale> scale_list_;
-    std::vector<DprDecimal::DDecQuad> box_size_list_;
+    std::vector<Decimal> box_size_list_;
     std::vector<int32_t> reversal_boxes_list_;
 
     std::string price_fld_name_;

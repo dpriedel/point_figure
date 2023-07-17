@@ -68,7 +68,7 @@ namespace vws = std::ranges::views;
 namespace py = pybind11;
 using namespace py::literals;
 
-#include "DDecQuad.h"
+// #include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "ConstructChartGraphic.h"
 #include "PF_CollectDataApp.h"
@@ -245,8 +245,12 @@ bool PF_CollectDataApp::CheckArgs ()
     // do these tests ourselves instead of specifying 'required' on Setup.
     // this is to avoid having to provide unnecessary arguments for daily scan processing.
 
-    BOOST_ASSERT_MSG(! box_size_list_.empty(), "Must provide at least 1 'boxsize' parameter.");
+    BOOST_ASSERT_MSG(! box_size_i_list_.empty(), "Must provide at least 1 'boxsize' parameter.");
     BOOST_ASSERT_MSG(! reversal_boxes_list_.empty(), "Must provide at least 1 'reversal' parameter.");
+
+    // this is a hack because the Decimal class has limited streams support
+    
+    std::ranges::for_each(box_size_i_list_, [this](const auto& b) { this->box_size_list_.emplace_back(Decimal{b}); });
 
 	// we now have two possible sources for symbols. We need to be sure we have 1 of them.
 	
@@ -402,7 +406,7 @@ bool PF_CollectDataApp::CheckArgs ()
     // generate PF_Chart type combinations from input params.
 
     auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
-    rng::for_each(params, [](const auto& x) {std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x), std::get<2>(x), std::get<3>(x)); });
+    rng::for_each(params, [](const auto& x) {std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"), std::get<2>(x), std::get<3>(x)); });
     std::cout << std::endl;
 
 	return true ;
@@ -431,7 +435,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
-		("boxsize,b",			po::value<std::vector<DprDecimal::DDecQuad>>(&this->box_size_list_),   	"box step size. 'n', 'm.n'")
+		("boxsize,b",			po::value<std::vector<std::string>>(&this->box_size_i_list_),   	"box step size. 'n', 'm.n'")
 		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_),		"reversal size in number of boxes.")
 		("max-graphic-cols",	po::value<int32_t>(&this->max_columns_for_graph_)->default_value(-1),
 									"maximum number of columns to show in graphic. Use -1 for ALL, 0 to keep existing value, if any, otherwise -1. >0 to specify how many columns.")
@@ -555,7 +559,7 @@ void PF_CollectDataApp::Run_Load()
             BOOST_ASSERT_MSG(fs::exists(symbol_file_name), std::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
             // TODO(dpriedel): add json code
             BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
-            auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
+            auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
             PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
             charts_.emplace_back(std::make_pair(symbol, new_chart));
@@ -599,7 +603,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
         time_stream.str(std::string{std::get<0>(r)});
         date::from_stream(time_stream, dt_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
-        DateCloseRecord new_data{.date_=tp1, .close_=std::get<1>(r)};
+        DateCloseRecord new_data{.date_=tp1, .close_=Decimal{std::get<1>(r)}};
         return new_data;
     };
 
@@ -618,10 +622,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 					c.quote(begin_date_)
 					);
 
-            const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd, Row2Closing);
+            const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, const char*>(get_symbol_prices_cmd, Row2Closing);
 
    	   	    // only need to compute this once per symbol also 
-   	   	    auto atr_or_range = use_ATR_ ? ComputeATRForChartFromDB(symbol) : use_min_max_ ? ComputeRangeForChartFromDB(symbol) : 0.0;
+   	   	    auto atr_or_range = use_ATR_ ? ComputeATRForChartFromDB(symbol) : use_min_max_ ? ComputeRangeForChartFromDB(symbol) : 0;
 
 			// There could be thousands of symbols in the database so we don't want to generate combinations for
 			// all of them at once.
@@ -686,7 +690,7 @@ void PF_CollectDataApp::Run_Update()
             {
                 // no existing data to update, so make a new chart
 
-                auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
+                auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
 				new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             }
             fs::path update_file_name = new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
@@ -757,7 +761,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
             	{
                 	// no existing data to update, so make a new chart
 
-                	auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0.0;
+                	auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0;
 					new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             	}
 
@@ -796,7 +800,7 @@ void PF_CollectDataApp::Run_Streaming()
     for (const auto& val : params)
     {
         const auto& symbol = std::get<PF_Chart::e_symbol>(val);
-        auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0.0;
+        auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
         PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
         charts_.emplace_back(std::make_pair(symbol, new_chart));
     }
@@ -829,7 +833,7 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart& new_chart, cons
         {
             const auto fields = split_string<std::string_view> (record, ",");
             const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
-            new_chart.AddValue(DprDecimal::DDecQuad(fields[close_col]), StringToUTCTimePoint(dt_format, fields[date_col]));
+            new_chart.AddValue(sv2dec(fields[close_col]), StringToUTCTimePoint(dt_format, fields[date_col]));
         });
 
 }		// -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV  ----- 
@@ -876,7 +880,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex (std::string_view header, 
 
 }		// -----  end of method PF_CollectDataApp::FindColumnIndex  ----- 
 
-DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& symbol) const
+Decimal PF_CollectDataApp::ComputeATRForChart (const std::string& symbol) const
 {
     Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_};
 
@@ -898,7 +902,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChart (const std::string& s
     return atr;
 }		// -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  ----- 
 
-DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::string& symbol) const
+Decimal PF_CollectDataApp::ComputeATRForChartFromDB (const std::string& symbol) const
 {
     auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
 //    std::chrono::year which_year = today.year();
@@ -913,7 +917,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
 
     PF_DB the_db{db_params_};
 
-    DprDecimal::DDecQuad atr{};
+    Decimal atr{};
 	try
 	{
 		auto price_data = the_db.RetrieveMostRecentStockDataRecordsFromDB(symbol, today, number_of_days_history_for_ATR_ + 1);
@@ -927,7 +931,7 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeATRForChartFromDB (const std::str
     return atr;
 }		// -----  end of method PF_CollectDataApp::ComputeATRUsingDB  ----- 
 
-DprDecimal::DDecQuad PF_CollectDataApp::ComputeRangeForChartFromDB (const std::string& symbol) const
+Decimal PF_CollectDataApp::ComputeRangeForChartFromDB (const std::string& symbol) const
 {
     auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
 
@@ -947,14 +951,14 @@ DprDecimal::DDecQuad PF_CollectDataApp::ComputeRangeForChartFromDB (const std::s
 
     c.close();
 
-    DprDecimal::DDecQuad price_range;
+    Decimal price_range;
 
-    auto Row2Range = [](const auto& r) { return DprDecimal::DDecQuad{r[0].template as<std::string_view>()}; };
+    auto Row2Range = [](const auto& r) { return Decimal{r[0].template as<const char*>()}; };
 
 	try
 	{
-		price_range = the_db.RunSQLQueryUsingRows<DprDecimal::DDecQuad>(get_price_range_cmd, Row2Range)[0];
-        spdlog::debug(std::format("Price range query: {}. Result: {}\n", get_price_range_cmd, price_range));
+		price_range = the_db.RunSQLQueryUsingRows<Decimal>(get_price_range_cmd, Row2Range)[0];
+        spdlog::debug(std::format("Price range query: {}. Result: {}\n", get_price_range_cmd, price_range.format("f")));
     }
    	catch (const std::exception& e)
    	{
@@ -1003,9 +1007,9 @@ void PF_CollectDataApp::PrimeChartsForStreaming ()
 				rng::for_each(charts_ | vws::filter([&ticker] (auto& symbol_and_chart) { return symbol_and_chart.first == ticker; }),
 						[&] (auto& symbol_and_chart)
 						{
-						    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["prevClose"].asString()}, close_time_stamp);
-						    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["open"].asString()}, open_time_stamp);
-						    symbol_and_chart.second.AddValue(DprDecimal::DDecQuad{e["last"].asString()}, quote_time_stamp);
+						    symbol_and_chart.second.AddValue(Decimal{e["prevClose"].asCString()}, close_time_stamp);
+						    symbol_and_chart.second.AddValue(Decimal{e["open"].asCString()}, open_time_stamp);
+						    symbol_and_chart.second.AddValue(Decimal{e["last"].asCString()}, quote_time_stamp);
 						});
             }
             catch (const std::exception& e)
@@ -1207,7 +1211,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData& upda
                 }
                 const auto chart_name = symbol_and_chart.second.GetChartBaseName();
                 streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
-                streamed_prices_[chart_name].price_.push_back(new_value.last_price_.ToDouble());
+                streamed_prices_[chart_name].price_.push_back(dec2dbl(new_value.last_price_));
                 streamed_prices_[chart_name].signal_type_.push_back(chart_changed == PF_Column::Status::e_AcceptedWithSignal ?
                         std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_) : 0);
             });
