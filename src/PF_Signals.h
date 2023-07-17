@@ -27,7 +27,6 @@
 
 #include <json/json.h>
 
-#include "DDecQuad.h"
 #include "PF_Column.h"
 #include "utilities.h"
 

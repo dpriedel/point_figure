@@ -49,7 +49,6 @@ namespace vws = std::ranges::views;
 using namespace std::string_literals;
 
 #include "PF_Signals.h"
-#include "DDecQuad.h"
 #include "PF_Chart.h"
 #include "PF_Column.h"
 #include "utilities.h"

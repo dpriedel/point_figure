@@ -43,7 +43,6 @@
 #include <json/json.h>
 #include <decimal.hh>
 
-// #include "DDecQuad.h"
 #include "utilities.h"
 
 class Boxes;
