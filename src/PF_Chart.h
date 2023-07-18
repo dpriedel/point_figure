@@ -98,9 +98,9 @@ public:
 
     PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes,
             Boxes::BoxScale box_scale=Boxes::BoxScale::e_Linear,
-            decimal::Decimal box_size_modifier=0, int64_t max_columns_for_graph=0);
+            decimal::Decimal box_size_modifier=0, size_t max_columns_for_graph=0);
 
-    PF_Chart(const PF_ChartParams& vals, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph)
+    PF_Chart(const PF_ChartParams& vals, decimal::Decimal box_size_modifier, size_t max_columns_for_graph)
         : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals),
         		std::get<e_box_scale>(vals), box_size_modifier, max_columns_for_graph)
     {
@@ -175,8 +175,8 @@ public:
     PF_Column::Status AddValue(const decimal::Decimal& new_value, PF_Column::TmPt the_time);
     void LoadData(std::istream* input_data, std::string_view date_format, std::string_view delim);
 
-    [[nodiscard]] int64_t GetMaxGraphicColumns() const  { return max_columns_for_graph_; }
-    void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
+    [[nodiscard]] size_t GetMaxGraphicColumns() const  { return max_columns_for_graph_; }
+    void SetMaxGraphicColumns(size_t max_cols) { max_columns_for_graph_ = max_cols; }
 
     void AddSignal(const PF_Signal& new_sig) { signals_.push_back(new_sig); }
 
@@ -232,7 +232,7 @@ private:
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_Unknown;
 
-	int64_t max_columns_for_graph_ = 0;			// how many columns to show in graphic
+	size_t max_columns_for_graph_ = 0;			// how many columns to show in graphic
 }; // -----  end of class PF_Chart  -----
 
 

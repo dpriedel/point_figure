@@ -105,7 +105,7 @@ PF_Chart::PF_Chart (PF_Chart&& rhs) noexcept
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart (std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes,
-        Boxes::BoxScale box_scale, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph)
+        Boxes::BoxScale box_scale, decimal::Decimal box_size_modifier, size_t max_columns_for_graph)
     : symbol_{std::move(symbol)}, base_box_size_{std::move(base_box_size)},
     box_size_modifier_{std::move(box_size_modifier)}, max_columns_for_graph_{max_columns_for_graph}
 
