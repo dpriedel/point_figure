@@ -38,10 +38,18 @@
 namespace py = pybind11;
 using namespace py::literals;
 
+#include <decimal.hh>
+
+using decimal::Decimal;
+
 #include "PF_CollectDataApp.h"
 
 int main(int argc, char** argv)
 {
+    decimal::context_template = decimal::IEEEContext(decimal::DECIMAL64);
+    decimal::context_template.round(decimal::ROUND_HALF_UP);
+    decimal::context = decimal::context_template;
+
 	//	help to optimize c++ stream I/O (may screw up threaded I/O though)
 
 	std::ios_base::sync_with_stdio(false);
