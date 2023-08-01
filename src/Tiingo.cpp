@@ -226,9 +226,9 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
         {
             PF_Data new_value;
             new_value.subscription_id_ = subscription_id_;
-            new_value.time_stamp_ = data[1].asString();
+            new_value.time_stamp_ = data[1].asCString();
             new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-            new_value.ticker_ = data[3].asString();
+            new_value.ticker_ = data[3].asCString();
             rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
             new_value.last_price_ = decimal::Decimal{m[1].str()};
             new_value.last_size_ = data[10].asInt();
@@ -240,7 +240,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
     }
     else if (message_type == "I")
     {
-        subscription_id_ = response["data"]["subscriptionId"].asString();
+        subscription_id_ = response["data"]["subscriptionId"].asCString();
 //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
         return pf_data;
     }
@@ -252,7 +252,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
     }
     else
     {
-        throw std::runtime_error("unexpected message type: "s + message_type.asString());
+        throw std::runtime_error("unexpected message type: "s + message_type.asCString());
     }
 
     return pf_data;
@@ -506,7 +506,7 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     // won't be converted to floats and give me a bunch of extra decimal digits.
     // These values are nicely rounded by Tiingo.
 
-    const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":([0-9]*\.[0-9]*))***"}; 
+    const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":\s*([0-9]*\.[0-9]*))***"}; 
     const std::string dest{R"***("$1":"$2")***"};
     auto result1 = std::regex_replace(result, source, dest);
 
