@@ -52,8 +52,6 @@ namespace po = boost::program_options;
 
 #include <decimal.hh>
 
-using decimal::Decimal;
-
 // #include <date/date.h>
 // #include <date/tz.h>
 
@@ -140,9 +138,9 @@ protected:
     void    CollectStreamingData();
     void    ProcessStreamedData(Tiingo* quotes, const bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
 
-    [[nodiscard]] Decimal ComputeATRForChart(const std::string& symbol) const;
-    [[nodiscard]] Decimal ComputeATRForChartFromDB(const std::string& symbol) const;
-    [[nodiscard]] Decimal ComputeRangeForChartFromDB(const std::string& symbol) const;
+    [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string& symbol) const;
+    [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string& symbol) const;
+    [[nodiscard]] decimal::Decimal ComputeRangeForChartFromDB(const std::string& symbol) const;
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -214,7 +212,7 @@ private:
 
     std::vector<std::string> symbol_list_;
     std::vector<Boxes::BoxScale> scale_list_;
-    std::vector<Decimal> box_size_list_;
+    std::vector<decimal::Decimal> box_size_list_;
     std::vector<int32_t> reversal_boxes_list_;
 
     std::string price_fld_name_;

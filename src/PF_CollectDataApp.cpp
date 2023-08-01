@@ -77,6 +77,8 @@ using namespace py::literals;
 #include "Tiingo.h"
 #include "utilities.h"
 
+using decimal::Decimal;
+
 using namespace std::string_literals;
 using namespace std::chrono_literals;
 
