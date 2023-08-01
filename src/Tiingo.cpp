@@ -240,7 +240,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
     }
     else if (message_type == "I")
     {
-        subscription_id_ = response["data"]["subscriptionId"].asCString();
+        subscription_id_ = response["data"]["subscriptionId"].asString();
 //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
         return pf_data;
     }
