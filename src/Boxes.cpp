@@ -60,22 +60,22 @@ Boxes::Boxes (decimal::Decimal base_box_size, decimal::Decimal box_size_modifier
 	runtime_box_size_ = base_box_size_;
     // std::print("params at Boxes start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, runtime_box_size_);
 
-    if (box_size_modifier_ != dbl2dec(0.0))
+    if (box_size_modifier_ != sv2dec("0.0"))
     {
     	runtime_box_size_ = (base_box_size_ * box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
 
     	// it seems that the rescaled box size value can turn out to be zero. If that 
     	// is the case, then go with the unscaled box size. 
 
-    	if (runtime_box_size_ == dbl2dec(0.0))
+    	if (runtime_box_size_ == sv2dec("0.0"))
     	{
     		runtime_box_size_ = (base_box_size_ * box_size_modifier_).rescale(kMinExponent);
     	}
 
     	else        // percent box size
     	{
-            percent_box_factor_up_ = (dbl2dec(1.0) + box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
-            percent_box_factor_down_ = (dbl2dec(1.0) - box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
+            percent_box_factor_up_ = (sv2dec("1.0") + box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
+            percent_box_factor_down_ = (sv2dec("1.0") - box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
             percent_exponent_ = percent_box_factor_up_ .exponent();
     	}
 
@@ -84,8 +84,8 @@ Boxes::Boxes (decimal::Decimal base_box_size, decimal::Decimal box_size_modifier
     {
         if (box_scale_ == BoxScale::e_Percent)
         {
-            percent_box_factor_up_ = (dbl2dec(1.0) + base_box_size_);
-            percent_box_factor_down_ = (dbl2dec(1.0) - base_box_size_);
+            percent_box_factor_up_ = (sv2dec("1.0") + base_box_size_);
+            percent_box_factor_down_ = (sv2dec("1.0") - base_box_size_);
             percent_exponent_ = base_box_size_.exponent() - 1;
         }
     }
@@ -221,9 +221,9 @@ Boxes::Box Boxes::FindBoxPercent (const decimal::Decimal& new_value)
             prev_back = boxes_.back();
             Box new_box = (boxes_.back() * percent_box_factor_up_).rescale(percent_exponent_);
             // stocks trade in pennies, so minimum difference is $0.01
-            if (new_box - boxes_.back() < dbl2dec(.01))
+            if (new_box - boxes_.back() < sv2dec(".01"))
             {
-            	new_box = boxes_.back() + dbl2dec(.01);
+            	new_box = boxes_.back() + sv2dec(".01");
             }
             PushBack(std::move(new_box));
         }
@@ -236,9 +236,9 @@ Boxes::Box Boxes::FindBoxPercent (const decimal::Decimal& new_value)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).rescale(percent_exponent_);
         // stocks trade in pennies, so minimum difference is $0.01
-        if (boxes_.front() - new_box < dbl2dec(.01))
+        if (boxes_.front() - new_box < sv2dec(".01"))
         {
-            new_box = boxes_.front() - dbl2dec(.01);
+            new_box = boxes_.front() - sv2dec(".01");
         }
         PushFront(new_box);
     } while (new_value < boxes_.front());
@@ -313,9 +313,9 @@ Boxes::Box Boxes::FindNextBoxPercent (const decimal::Decimal& current_value)
         {
             Box new_box = (boxes_.back() * percent_box_factor_up_).rescale(percent_exponent_);
             // stocks trade in pennies, so minimum difference is $0.01
-            if (new_box - boxes_.back() < dbl2dec(.01))
+            if (new_box - boxes_.back() < sv2dec(".01"))
             {
-            	new_box = boxes_.back() + dbl2dec(.01);
+            	new_box = boxes_.back() + sv2dec(".01");
             }
             PushBack(new_box);
             return new_box;
@@ -413,9 +413,9 @@ Boxes::Box Boxes::FindPrevBoxPercent (const decimal::Decimal& current_value)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).rescale(percent_exponent_);
         // stocks trade in pennies, so minimum difference is $0.01
-        if (boxes_.front() - new_box < dbl2dec(.01))
+        if (boxes_.front() - new_box < sv2dec(".01"))
         {
-            new_box = boxes_.front() - dbl2dec(.01);
+            new_box = boxes_.front() - sv2dec(".01");
         }
         PushFront(new_box);
         return new_box;
@@ -439,9 +439,9 @@ Boxes::Box Boxes::FindPrevBoxPercent (const decimal::Decimal& current_value)
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).rescale(percent_exponent_);
         // stocks trade in pennies, so minimum difference is $0.01
-        if (boxes_.front() - new_box < dbl2dec(.01))
+        if (boxes_.front() - new_box < sv2dec(".01"))
         {
-            new_box = boxes_.front() - dbl2dec(.01);
+            new_box = boxes_.front() - sv2dec(".01");
         }
         PushFront(new_box);
         return boxes_.front();

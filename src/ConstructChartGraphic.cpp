@@ -208,9 +208,9 @@ void ConstructChartGraphAndWriteToFile (const PF_Chart& the_chart, const fs::pat
 		first_value = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom() : first_col.GetTop();
 		// apparently, this can happen 
 
-		if (first_value == dbl2dec(0.0))
+		if (first_value == sv2dec("0.0"))
 		{
-			first_value = dbl2dec(0.01);
+			first_value = sv2dec("0.01");
 		}
 	}
 	else
