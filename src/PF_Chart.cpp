@@ -355,6 +355,16 @@ void PF_Chart::LoadData (std::istream* input_data, std::string_view date_format,
     current_direction_ = current_column_.GetDirection();
 }
 
+void PF_Chart::LoadDataFromFile(const std::string& file_name, std::string_view date_format, std::string_view delim)
+{
+    std::ifstream data_file{fs::path{file_name}, std::ios::in | std::ios::binary};
+    BOOST_ASSERT_MSG(data_file.is_open(), std::format("Unable to open data file: {}", file_name).c_str());
+
+    LoadData(&data_file, date_format, delim);
+
+    data_file.close();
+}
+
 std::string PF_Chart::MakeChartBaseName() const
 {
     std::string chart_name = std::format("{}_{}{}X{}_{}",

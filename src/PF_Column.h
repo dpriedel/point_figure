@@ -37,8 +37,9 @@
 #include <chrono>
 #include <cstdint>
 #include <format>
-#include <utility>
 #include <optional>
+#include <string_view>
+#include <utility>
 
 #include <json/json.h>
 #include <decimal.hh>
@@ -85,6 +86,8 @@ public:
 	[[nodiscard]] bool IsEmpty() const { return top_ == -1 && bottom_ == -1; }
     [[nodiscard]] decimal::Decimal GetTop() const { return top_; }
     [[nodiscard]] decimal::Decimal GetBottom() const { return  bottom_ ; }
+    [[nodiscard]] double GetTopAsDbl() const;
+    [[nodiscard]] double GetBottomAsDbl() const;
     [[nodiscard]] Direction GetDirection() const { return direction_; }
     [[nodiscard]] int32_t GetColumnNumber() const { return column_number_; }
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
@@ -96,6 +99,7 @@ public:
     // ====================  MUTATORS      =======================================
 
     [[nodiscard]] AddResult AddValue(const decimal::Decimal& new_value, TmPt the_time);
+    [[nodiscard]] AddResult AddValue(std::string_view new_value, std::string_view the_time);
 
     // ====================  OPERATORS     =======================================
 

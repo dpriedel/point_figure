@@ -170,10 +170,16 @@ public:
 
     [[nodiscard]] PF_ChartParams GetChartParams() const { return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxScale()}; }
 
+    [[nodiscard]] std::optional<PF_Signal> GetMostRecentSignal() const { return (signals_.empty() ? std::optional<PF_Signal>{std::nullopt} : signals_.back()); }
     // ====================  MUTATORS      =======================================
     
     PF_Column::Status AddValue(const decimal::Decimal& new_value, PF_Column::TmPt the_time);
+    PF_Column::Status AddValue(std::string_view new_value, std::string_view time_value, std::string_view time_format)
+        {
+            return AddValue(sv2dec(new_value), StringToUTCTimePoint(time_format, time_value));
+        }
     void LoadData(std::istream* input_data, std::string_view date_format, std::string_view delim);
+    void LoadDataFromFile(const std::string& file_name, std::string_view date_format, std::string_view delim);
 
     [[nodiscard]] int64_t GetMaxGraphicColumns() const  { return max_columns_for_graph_; }
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
