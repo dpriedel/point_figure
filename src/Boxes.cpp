@@ -76,7 +76,7 @@ Boxes::Boxes (decimal::Decimal base_box_size, decimal::Decimal box_size_modifier
     	{
             percent_box_factor_up_ = (sv2dec("1.0") + box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
             percent_box_factor_down_ = (sv2dec("1.0") - box_size_modifier_).rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
-            percent_exponent_ = percent_box_factor_up_ .exponent();
+            percent_exponent_ = percent_box_factor_up_.exponent();
     	}
 
     }
@@ -182,11 +182,11 @@ Boxes::Box Boxes::FindBox (const decimal::Decimal& new_value)
 
     // extend down 
    
-    do 
+    while (new_value < boxes_.front()) 
     {
         Box new_box = boxes_.front() - runtime_box_size_;
         PushFront(new_box);
-    } while (new_value < boxes_.front());
+    };
 
     return boxes_.front();
 }		// -----  end of method Boxes::FindBox  ----- 
@@ -232,7 +232,7 @@ Boxes::Box Boxes::FindBoxPercent (const decimal::Decimal& new_value)
 
     // extend down 
    
-    do 
+    while (new_value < boxes_.front()) 
     {
         Box new_box = (boxes_.front() * percent_box_factor_down_).rescale(percent_exponent_);
         // stocks trade in pennies, so minimum difference is $0.01
@@ -241,7 +241,7 @@ Boxes::Box Boxes::FindBoxPercent (const decimal::Decimal& new_value)
             new_box = boxes_.front() - sv2dec(".01");
         }
         PushFront(new_box);
-    } while (new_value < boxes_.front());
+    };
 
     return boxes_.front();
 }		// -----  end of method Boxes::FindBox  ----- 

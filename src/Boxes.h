@@ -147,7 +147,7 @@ private:
     decimal::Decimal percent_box_factor_up_ = -1;
     decimal::Decimal percent_box_factor_down_ = -1;
 
-    int32_t percent_exponent_ = 0;
+    int64_t percent_exponent_ = 0;
     BoxType box_type_ = BoxType::e_Integral;      // whether to drop fractional part of new values.
     BoxScale box_scale_ = BoxScale::e_Linear;
 
