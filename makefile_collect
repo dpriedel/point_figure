@@ -49,24 +49,17 @@ SRCS1 := $(SDIR1)/Main.cpp
 
 SDIR2 := ./src
 SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
-		$(SDIR2)/Boxes.cpp \
-		$(SDIR2)/PF_Column.cpp \
-		$(SDIR2)/PF_Chart.cpp \
 		$(SDIR2)/ConstructChartGraphic.cpp \
-		$(SDIR2)/PointAndFigureDB.cpp \
-		$(SDIR2)/PF_Signals.cpp  \
 		$(SDIR2)/Tiingo.cpp #\
 
 
-SDIR4 := $(UTILITYDIR)/src
-SRCS4 := $(SDIR4)/utilities.cpp \
-		 $(SDIR4)/calfaq.c
+SRCS := $(SRCS1) $(SRCS2)
 
-SRCS := $(SRCS1) $(SRCS2) $(SRCS4)
+VPATH := $(SDIR1):$(SDIR2)
 
-VPATH := $(SDIR1):$(SDIR2):$(SDIR4)
-
-CFG_LIB := -L/usr/local/lib \
+CFG_LIB := -L../lib_PF_Chart \
+		-lPF_Chart \
+		-L/usr/local/lib \
 		-ldate-tz \
 		-lspdlog \
 		-lpqxx \
@@ -87,9 +80,8 @@ CFG_LIB := -L/usr/local/lib \
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
-OBJS4=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS4)))))
 
-OBJS=$(OBJS1) $(OBJS2) $(OBJS4)
+OBJS=$(OBJS1) $(OBJS2)
 
 DEPS=$(OBJS:.o=.d)
 
