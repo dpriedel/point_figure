@@ -190,6 +190,12 @@ class PF_Chart
     {
         return AddValue(sv2dec(new_value), StringToUTCTimePoint(time_format, time_value));
     }
+        // for Python - value as floating point and time in seconds
+    PF_Column::Status AddValue(double new_value, int64_t the_time)
+    {
+        return AddValue(dbl2dec(new_value), PF_Column::TmPt{std::chrono::seconds(the_time)});
+    
+    }
     void LoadData(std::istream *input_data, std::string_view date_format, std::string_view delim);
     void LoadDataFromFile(const std::string &file_name, std::string_view date_format, std::string_view delim);
 
