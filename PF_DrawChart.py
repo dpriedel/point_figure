@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mplfinance as mpf
 
-import warnings
-import matplotlib.cbook
-warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
+# import warnings
+# import matplotlib.cbook
+# warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
 
 """
     Make this code into a module so it can be loaded at program
