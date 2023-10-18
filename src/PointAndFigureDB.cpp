@@ -198,10 +198,13 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 	wbuilder["indentation"] = "";
 	std::string for_db = Json::writeString(wbuilder, json);
 
-	const auto add_new_data_cmd = std::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
-			" VALUES({}, {}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', '{}', '{}')",
+    // std::string direction_fld_name = db_params_.PF_db_mode_ + '_' + "current_direction";
+    // std::string signal_fld_name = db_params_.PF_db_mode_ + '_' + "current_signal";
+
+	const auto add_new_data_cmd = std::format("INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
+			" VALUES({}, {}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', 'e_{}', '{}', '{}')",
     		db_params_.PF_db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name", "first_date", "last_change_date", 
-    		    "last_checked_date", "current_direction", "chart_data", "cvs_graphics_data",
+    		    "last_checked_date", "current_direction", "current_signal", "chart_data", "cvs_graphics_data",
 			trxn.quote(the_chart.GetSymbol()),
 			trxn.quote(the_chart.GetFNameBoxSize().format("f")),
 			trxn.quote(the_chart.GetChartBoxSize().format("f")),
@@ -213,6 +216,7 @@ void PF_DB::StorePFChartDataIntoDB (const PF_Chart& the_chart, std::string_view 
 			trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
 			trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())),
 			json["current_direction"].asString(),
+			the_chart.GetCurrentSignal().signal_type_,
 			for_db,
 			cvs_graphics_data
     	);
