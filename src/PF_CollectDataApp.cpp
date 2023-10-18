@@ -395,12 +395,13 @@ bool PF_CollectDataApp::CheckArgs()
     {
         BOOST_ASSERT_MSG(!begin_date_.empty(), "Must specify 'begin-date' when data source is 'database'.");
     }
-
+    const std::vector<std::string> exchanges{"AMEX", "BATS", "NASDAQ", "NMFQS", "NYSE", "OTCCE", "OTCGREY", "OTCMKTS", "OTCQB",
+                                                   "OTCQX", "PINK", "US"};
+    rng::for_each(exchange_, [](char &c) { c = std::toupper(c); });
     if (!exchange_.empty())
     {
-        BOOST_ASSERT_MSG(exchange_ == "AMEX" || exchange_ == "NYSE" || exchange_ == "NASDAQ",
-                         std::format("exchange: {} must be 'AMEX' or 'NYSE' or 'NASDAQ'.", exchange_).c_str());
-    }
+        BOOST_ASSERT_MSG(std::ranges::find(exchanges, exchange_) != exchanges.end(),
+                         std::format("exchange: {} must be 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', 'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.", exchange_).c_str()); }
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
 
