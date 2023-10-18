@@ -113,7 +113,7 @@ Json::Value PF_SignalToJSON(const PF_Signal &signal)
     switch (signal.signal_category_)
     {
         using enum PF_SignalCategory;
-        case e_Unknown:
+        case e_unknown:
             result["category"] = "unknown";
             break;
 
@@ -129,47 +129,47 @@ Json::Value PF_SignalToJSON(const PF_Signal &signal)
     switch (signal.signal_type_)
     {
         using enum PF_SignalType;
-        case e_Unknown:
+        case e_unknown:
             result["type"] = "unknown";
             break;
 
-        case e_DoubleTop_Buy:
+        case e_double_top_buy:
             result["type"] = "dt_buy";
             break;
 
-        case e_TripleTop_Buy:
+        case e_triple_top_buy:
             result["type"] = "tt_buy";
             break;
 
-        case e_DoubleBottom_Sell:
+        case e_double_bottom_sell:
             result["type"] = "db_sell";
             break;
 
-        case e_TripleBottom_Sell:
+        case e_triple_bottom_sell:
             result["type"] = "tb_sell";
             break;
 
-        case e_Bullish_TT_Buy:
+        case e_bullish_tt_buy:
             result["type"] = "bullish_tt_buy";
             break;
 
-        case e_Bearish_TB_Sell:
+        case e_bearish_tb_sell:
             result["type"] = "bearish_tb_sell";
             break;
 
-        case e_Catapult_Buy:
+        case e_catapult_buy:
             result["type"] = "catapult_buy";
             break;
 
-        case e_Catapult_Sell:
+        case e_catapult_sell:
             result["type"] = "catapult_sell";
             break;
 
-        case e_TTop_Catapult_Buy:
+        case e_ttop_catapult_buy:
             result["type"] = "ttop_catapult_buy";
             break;
 
-        case e_TBottom_Catapult_Sell:
+        case e_tbottom_catapult_sell:
             result["type"] = "tbot_catapult_sell";
             break;
     };
@@ -198,7 +198,7 @@ PF_Signal PF_SignalFromJSON(const Json::Value &new_data)
     }
     else if (category == "unknown")
     {
-        new_sig.signal_category_ = PF_SignalCategory::e_Unknown;
+        new_sig.signal_category_ = PF_SignalCategory::e_unknown;
     }
     else
     {
@@ -207,47 +207,47 @@ PF_Signal PF_SignalFromJSON(const Json::Value &new_data)
 
     if (const auto type = new_data["type"].asString(); type == "dt_buy")
     {
-        new_sig.signal_type_ = PF_SignalType::e_DoubleTop_Buy;
+        new_sig.signal_type_ = PF_SignalType::e_double_top_buy;
     }
     else if (type == "tt_buy")
     {
-        new_sig.signal_type_ = PF_SignalType::e_TripleTop_Buy;
+        new_sig.signal_type_ = PF_SignalType::e_triple_top_buy;
     }
     else if (type == "db_sell")
     {
-        new_sig.signal_type_ = PF_SignalType::e_DoubleBottom_Sell;
+        new_sig.signal_type_ = PF_SignalType::e_double_bottom_sell;
     }
     else if (type == "tb_sell")
     {
-        new_sig.signal_type_ = PF_SignalType::e_TripleBottom_Sell;
+        new_sig.signal_type_ = PF_SignalType::e_triple_bottom_sell;
     }
     else if (type == "bullish_tt_buy")
     {
-        new_sig.signal_type_ = PF_SignalType::e_Bullish_TT_Buy;
+        new_sig.signal_type_ = PF_SignalType::e_bullish_tt_buy;
     }
     else if (type == "bearish_tb_sell")
     {
-        new_sig.signal_type_ = PF_SignalType::e_Bearish_TB_Sell;
+        new_sig.signal_type_ = PF_SignalType::e_bearish_tb_sell;
     }
     else if (type == "catapult_buy")
     {
-        new_sig.signal_type_ = PF_SignalType::e_Catapult_Buy;
+        new_sig.signal_type_ = PF_SignalType::e_catapult_buy;
     }
     else if (type == "catapult_sell")
     {
-        new_sig.signal_type_ = PF_SignalType::e_Catapult_Sell;
+        new_sig.signal_type_ = PF_SignalType::e_catapult_sell;
     }
     else if (type == "ttop_catapult_buy")
     {
-        new_sig.signal_type_ = PF_SignalType::e_TTop_Catapult_Buy;
+        new_sig.signal_type_ = PF_SignalType::e_ttop_catapult_buy;
     }
     else if (type == "tbot_catapult_sell")
     {
-        new_sig.signal_type_ = PF_SignalType::e_TBottom_Catapult_Sell;
+        new_sig.signal_type_ = PF_SignalType::e_tbottom_catapult_sell;
     }
     else if (type == "unknown")
     {
-        new_sig.signal_type_ = PF_SignalType::e_Unknown;
+        new_sig.signal_type_ = PF_SignalType::e_unknown;
     }
     else
     {
@@ -336,8 +336,8 @@ std::optional<PF_Signal> PF_Catapult_Buy::operator()(const PF_Chart &the_chart, 
             // next box higher than the last column top.
 
             return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Buy,
-                              .signal_type_ = PF_SignalType::e_Catapult_Buy,
-                              .priority_ = PF_SignalPriority::e_Catapult_Buy,
+                              .signal_type_ = PF_SignalType::e_catapult_buy,
+                              .priority_ = PF_SignalPriority::e_catapult_buy,
                               .tpt_ = the_time,
                               .column_number_ = static_cast<int32_t>(number_cols - 1),
                               .signal_price_ = new_value,
@@ -418,8 +418,8 @@ std::optional<PF_Signal> PF_Catapult_Sell::operator()(const PF_Chart &the_chart,
             // next box higher than the last column top.
 
             return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Sell,
-                              .signal_type_ = PF_SignalType::e_Catapult_Sell,
-                              .priority_ = PF_SignalPriority::e_Catapult_Sell,
+                              .signal_type_ = PF_SignalType::e_catapult_sell,
+                              .priority_ = PF_SignalPriority::e_catapult_sell,
                               .tpt_ = the_time,
                               .column_number_ = static_cast<int32_t>(number_cols - 1),
                               .signal_price_ = new_value,
@@ -449,8 +449,8 @@ std::optional<PF_Signal> PF_DoubleTopBuy::operator()(const PF_Chart &the_chart, 
         // box higher than the last column top.
 
         return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Buy,
-                          .signal_type_ = PF_SignalType::e_DoubleTop_Buy,
-                          .priority_ = PF_SignalPriority::e_DoubleTop_Buy,
+                          .signal_type_ = PF_SignalType::e_double_top_buy,
+                          .priority_ = PF_SignalPriority::e_double_top_buy,
                           .tpt_ = the_time,
                           .column_number_ = static_cast<int32_t>(number_cols - 1),
                           .signal_price_ = new_value,
@@ -480,8 +480,8 @@ std::optional<PF_Signal> PF_TripleTopBuy::operator()(const PF_Chart &the_chart, 
         // box higher than the last column top.
 
         return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Buy,
-                          .signal_type_ = PF_SignalType::e_TripleTop_Buy,
-                          .priority_ = PF_SignalPriority::e_TripleTop_Buy,
+                          .signal_type_ = PF_SignalType::e_triple_top_buy,
+                          .priority_ = PF_SignalPriority::e_triple_top_buy,
                           .tpt_ = the_time,
                           .column_number_ = static_cast<int32_t>(number_cols - 1),
                           .signal_price_ = new_value,
@@ -510,8 +510,8 @@ std::optional<PF_Signal> PF_DoubleBottomSell::operator()(const PF_Chart &the_cha
         // box higher than the last column top.
 
         return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Sell,
-                          .signal_type_ = PF_SignalType::e_DoubleBottom_Sell,
-                          .priority_ = PF_SignalPriority::e_DoubleBottom_Sell,
+                          .signal_type_ = PF_SignalType::e_double_bottom_sell,
+                          .priority_ = PF_SignalPriority::e_double_bottom_sell,
                           .tpt_ = the_time,
                           .column_number_ = static_cast<int32_t>(number_cols - 1),
                           .signal_price_ = new_value,
@@ -541,8 +541,8 @@ std::optional<PF_Signal> PF_TripleBottomSell::operator()(const PF_Chart &the_cha
         // box higher than the last column top.
 
         return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Sell,
-                          .signal_type_ = PF_SignalType::e_TripleBottom_Sell,
-                          .priority_ = PF_SignalPriority::e_TripleBottom_Sell,
+                          .signal_type_ = PF_SignalType::e_triple_bottom_sell,
+                          .priority_ = PF_SignalPriority::e_triple_bottom_sell,
                           .tpt_ = the_time,
                           .column_number_ = static_cast<int32_t>(number_cols - 1),
                           .signal_price_ = new_value,
@@ -574,8 +574,8 @@ std::optional<PF_Signal> PF_Bullish_TT_Buy::operator()(const PF_Chart &the_chart
         // box higher than the last column top.
 
         return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Buy,
-                          .signal_type_ = PF_SignalType::e_Bullish_TT_Buy,
-                          .priority_ = PF_SignalPriority::e_Bullish_TT_Buy,
+                          .signal_type_ = PF_SignalType::e_bullish_tt_buy,
+                          .priority_ = PF_SignalPriority::e_bullish_tt_buy,
                           .tpt_ = the_time,
                           .column_number_ = static_cast<int32_t>(number_cols - 1),
                           .signal_price_ = new_value,
@@ -607,8 +607,8 @@ std::optional<PF_Signal> PF_Bearish_TB_Sell::operator()(const PF_Chart &the_char
         // box higher than the last column top.
 
         return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Sell,
-                          .signal_type_ = PF_SignalType::e_Bearish_TB_Sell,
-                          .priority_ = PF_SignalPriority::e_Bearish_TB_Sell,
+                          .signal_type_ = PF_SignalType::e_bearish_tb_sell,
+                          .priority_ = PF_SignalPriority::e_bearish_tb_sell,
                           .tpt_ = the_time,
                           .column_number_ = static_cast<int32_t>(number_cols - 1),
                           .signal_price_ = new_value,
@@ -635,7 +635,7 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator()(const PF_Chart &the_cha
     PF_Signal dtop_buy;
 
     if (auto found_it = rng::find_if(the_chart.GetSignals(), [this_col = number_cols - 1](const PF_Signal &sig)
-                                     { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_DoubleTop_Buy; });
+                                     { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_double_top_buy; });
         found_it == the_chart.GetSignals().end())
     {
         return {};
@@ -659,8 +659,8 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator()(const PF_Chart &the_cha
     if (auto found_it = rng::find_if(the_chart.GetSignals(),
                                      [prev_col = number_cols - 3](const PF_Signal &sig)
                                      {
-                                         return sig.column_number_ == prev_col && (sig.signal_type_ == PF_SignalType::e_TripleTop_Buy ||
-                                                                                   sig.signal_type_ == PF_SignalType::e_Bullish_TT_Buy);
+                                         return sig.column_number_ == prev_col && (sig.signal_type_ == PF_SignalType::e_triple_top_buy ||
+                                                                                   sig.signal_type_ == PF_SignalType::e_bullish_tt_buy);
                                      });
         found_it == the_chart.GetSignals().end())
     {
@@ -671,8 +671,8 @@ std::optional<PF_Signal> PF_TTopCatapult_Buy::operator()(const PF_Chart &the_cha
     // box higher than the last column top.
 
     return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Buy,
-                      .signal_type_ = PF_SignalType::e_TTop_Catapult_Buy,
-                      .priority_ = PF_SignalPriority::e_TTop_Catapult_Buy,
+                      .signal_type_ = PF_SignalType::e_ttop_catapult_buy,
+                      .priority_ = PF_SignalPriority::e_ttop_catapult_buy,
                       .tpt_ = the_time,
                       .column_number_ = static_cast<int32_t>(number_cols - 1),
                       .signal_price_ = new_value,
@@ -697,7 +697,7 @@ std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator()(const PF_Chart &th
     PF_Signal dbot_sell;
 
     if (auto found_it = rng::find_if(the_chart.GetSignals(), [this_col = number_cols - 1](const PF_Signal &sig)
-                                     { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_DoubleBottom_Sell; });
+                                     { return sig.column_number_ == this_col && sig.signal_type_ == PF_SignalType::e_double_bottom_sell; });
         found_it == the_chart.GetSignals().end())
     {
         return {};
@@ -721,8 +721,9 @@ std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator()(const PF_Chart &th
     if (auto found_it = rng::find_if(the_chart.GetSignals(),
                                      [prev_col = number_cols - 3](const PF_Signal &sig)
                                      {
-                                         return sig.column_number_ == prev_col && (sig.signal_type_ == PF_SignalType::e_TripleBottom_Sell ||
-                                                                                   sig.signal_type_ == PF_SignalType::e_Bearish_TB_Sell);
+                                         return sig.column_number_ == prev_col &&
+                                                (sig.signal_type_ == PF_SignalType::e_triple_bottom_sell ||
+                                                 sig.signal_type_ == PF_SignalType::e_bearish_tb_sell);
                                      });
         found_it == the_chart.GetSignals().end())
     {
@@ -733,8 +734,8 @@ std::optional<PF_Signal> PF_TBottom_Catapult_Sell::operator()(const PF_Chart &th
     // box higher than the last column top.
 
     return {PF_Signal{.signal_category_ = PF_SignalCategory::e_PF_Sell,
-                      .signal_type_ = PF_SignalType::e_TBottom_Catapult_Sell,
-                      .priority_ = PF_SignalPriority::e_TBottom_Catapult_Sell,
+                      .signal_type_ = PF_SignalType::e_tbottom_catapult_sell,
+                      .priority_ = PF_SignalPriority::e_tbottom_catapult_sell,
                       .tpt_ = the_time,
                       .column_number_ = static_cast<int32_t>(number_cols - 1),
                       .signal_price_ = new_value,

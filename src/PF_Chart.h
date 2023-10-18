@@ -140,6 +140,27 @@ class PF_Chart
 
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
+    // if you know that a signal was just triggered, then this routine
+    // will tell you what it was.
+    [[nodiscard]] std::optional<PF_Signal> GetMostRecentSignal() const
+    {
+        return (signals_.empty() ? std::optional<PF_Signal>{std::nullopt} : signals_.back());
+    }
+
+    // if you just want to know whether there is a signal active
+    // for the current column, then use this routine.
+
+    [[nodiscard]] PF_Signal GetCurrentSignal() const
+    {
+        if (!signals_.empty())
+        {
+            if (const auto &sig = signals_.back(); sig.column_number_ == current_column_.GetColumnNumber())
+            {
+                return sig;
+            }
+        }
+        return {};
+    }
     // includes 'current_column'
     // [[nodiscard]] int32_t GetNumberOfColumns() const { return columns_.size()
     // + 1; }
@@ -179,10 +200,6 @@ class PF_Chart
         return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxScale()};
     }
 
-    [[nodiscard]] std::optional<PF_Signal> GetMostRecentSignal() const
-    {
-        return (signals_.empty() ? std::optional<PF_Signal>{std::nullopt} : signals_.back());
-    }
     // ====================  MUTATORS =======================================
 
     PF_Column::Status AddValue(const decimal::Decimal &new_value, PF_Column::TmPt the_time);
@@ -190,11 +207,10 @@ class PF_Chart
     {
         return AddValue(sv2dec(new_value), StringToUTCTimePoint(time_format, time_value));
     }
-        // for Python - value as floating point and time in seconds
+    // for Python - value as floating point and time in seconds
     PF_Column::Status AddValue(double new_value, int64_t the_time)
     {
         return AddValue(dbl2dec(new_value), PF_Column::TmPt{std::chrono::seconds(the_time)});
-    
     }
     void LoadData(std::istream *input_data, std::string_view date_format, std::string_view delim);
     void LoadDataFromFile(const std::string &file_name, std::string_view date_format, std::string_view delim);
@@ -279,16 +295,20 @@ class PF_Chart::PF_Chart_Iterator
     using reference = const PF_Column &;
 
    public:
-    // ====================  LIFECYCLE =======================================
+    // ====================  LIFECYCLE
+    // =======================================
 
     PF_Chart_Iterator() = default;
     explicit PF_Chart_Iterator(const PF_Chart *chart, int32_t index = 0) : chart_{chart}, index_{index} {}
 
-    // ====================  ACCESSORS =======================================
+    // ====================  ACCESSORS
+    // =======================================
 
-    // ====================  MUTATORS =======================================
+    // ====================  MUTATORS
+    // =======================================
 
-    // ====================  OPERATORS =======================================
+    // ====================  OPERATORS
+    // =======================================
 
     bool operator==(const PF_Chart_Iterator &rhs) const;
     bool operator!=(const PF_Chart_Iterator &rhs) const { return !(*this == rhs); }
@@ -361,16 +381,20 @@ class PF_Chart::PF_Chart_ReverseIterator
     using reference = const PF_Column &;
 
    public:
-    // ====================  LIFECYCLE =======================================
+    // ====================  LIFECYCLE
+    // =======================================
 
     PF_Chart_ReverseIterator() = default;
     explicit PF_Chart_ReverseIterator(const PF_Chart *chart, int32_t index) : chart_{chart}, index_{index} {}
 
-    // ====================  ACCESSORS =======================================
+    // ====================  ACCESSORS
+    // =======================================
 
-    // ====================  MUTATORS =======================================
+    // ====================  MUTATORS
+    // =======================================
 
-    // ====================  OPERATORS =======================================
+    // ====================  OPERATORS
+    // =======================================
 
     bool operator==(const PF_Chart_ReverseIterator &rhs) const;
     bool operator!=(const PF_Chart_ReverseIterator &rhs) const { return !(*this == rhs); }

@@ -23,6 +23,7 @@
 #include <chrono>
 #include <cstdint>
 #include <format>
+#include <map>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -34,7 +35,7 @@ class PF_Chart;
 
 enum class PF_SignalCategory
 {
-    e_Unknown,
+    e_unknown,
     e_PF_Buy,
     e_PF_Sell
 };    // NOLINT
@@ -47,43 +48,43 @@ enum class PF_CanUse1BoxReversal
 // NOLINTBEGIN(readability-identifier-naming.*)
 enum class PF_SignalType
 {
-    e_Unknown,
-    e_DoubleTop_Buy,
-    e_DoubleBottom_Sell,
-    e_TripleTop_Buy,
-    e_TripleBottom_Sell,
-    e_Bullish_TT_Buy,
-    e_Bearish_TB_Sell,
-    e_Catapult_Buy,
-    e_Catapult_Sell,
-    e_TTop_Catapult_Buy,
-    e_TBottom_Catapult_Sell
+    e_unknown,
+    e_double_top_buy,
+    e_double_bottom_sell,
+    e_triple_top_buy,
+    e_triple_bottom_sell,
+    e_bullish_tt_buy,
+    e_bearish_tb_sell,
+    e_catapult_buy,
+    e_catapult_sell,
+    e_ttop_catapult_buy,
+    e_tbottom_catapult_sell
 };
 
 // if we have multiple signals at the same point, show highest priority signal.
 
 enum class PF_SignalPriority
 {
-    e_Unknown = -1,
-    e_DoubleTop_Buy = 1,
-    e_DoubleBottom_Sell = 1,
-    e_TripleTop_Buy = 5,
-    e_TripleBottom_Sell = 5,
-    e_Bullish_TT_Buy = 10,
-    e_Bearish_TB_Sell = 10,
-    e_Catapult_Buy = 5,
-    e_Catapult_Sell = 5,
-    e_TTop_Catapult_Buy = 15,
-    e_TBottom_Catapult_Sell = 15
+    e_unknown = -1,
+    e_double_top_buy = 1,
+    e_double_bottom_sell = 1,
+    e_triple_top_buy = 5,
+    e_triple_bottom_sell = 5,
+    e_bullish_tt_buy = 10,
+    e_bearish_tb_sell = 10,
+    e_catapult_buy = 5,
+    e_catapult_sell = 5,
+    e_ttop_catapult_buy = 15,
+    e_tbottom_catapult_sell = 15
 };
 
 inline int32_t CmpSigPriority(const PF_SignalPriority lhs, const PF_SignalPriority rhs) { return (lhs < rhs ? -1 : lhs > rhs ? 1 : 0); };
 
 struct PF_Signal
 {
-    PF_SignalCategory signal_category_ = PF_SignalCategory::e_Unknown;
-    PF_SignalType signal_type_ = PF_SignalType::e_Unknown;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_Unknown;
+    PF_SignalCategory signal_category_ = PF_SignalCategory::e_unknown;
+    PF_SignalType signal_type_ = PF_SignalType::e_unknown;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_unknown;
     std::chrono::utc_time<std::chrono::utc_clock::duration> tpt_ = {};
     int32_t column_number_ = -1;
     decimal::Decimal signal_price_ = -1;
@@ -100,8 +101,8 @@ using PF_SignalList = std::vector<PF_Signal>;
 struct PF_Catapult_Buy
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
-    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Buy;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_catapult_buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_catapult_buy;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
@@ -113,8 +114,8 @@ struct PF_Catapult_Buy
 struct PF_Catapult_Sell
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
-    PF_SignalType signal_type_ = PF_SignalType::e_Catapult_Sell;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_Catapult_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_catapult_sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_catapult_sell;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_Yes;
     int32_t minimum_cols_ = 4;
@@ -126,8 +127,8 @@ struct PF_Catapult_Sell
 struct PF_DoubleTopBuy
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
-    PF_SignalType signal_type_ = PF_SignalType::e_DoubleTop_Buy;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_DoubleTop_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_double_top_buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_double_top_buy;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 3;
@@ -139,8 +140,8 @@ struct PF_DoubleTopBuy
 struct PF_TripleTopBuy
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
-    PF_SignalType signal_type_ = PF_SignalType::e_TripleTop_Buy;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_TripleTop_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_triple_top_buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_triple_top_buy;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
@@ -152,8 +153,8 @@ struct PF_TripleTopBuy
 struct PF_DoubleBottomSell
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
-    PF_SignalType signal_type_ = PF_SignalType::e_DoubleBottom_Sell;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_DoubleBottom_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_double_bottom_sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_double_bottom_sell;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 3;
@@ -165,8 +166,8 @@ struct PF_DoubleBottomSell
 struct PF_TripleBottomSell
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
-    PF_SignalType signal_type_ = PF_SignalType::e_TripleBottom_Sell;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_TripleBottom_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_triple_bottom_sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_triple_bottom_sell;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
@@ -178,8 +179,8 @@ struct PF_TripleBottomSell
 struct PF_Bullish_TT_Buy
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
-    PF_SignalType signal_type_ = PF_SignalType::e_Bullish_TT_Buy;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_Bullish_TT_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_bullish_tt_buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_bullish_tt_buy;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
@@ -191,8 +192,8 @@ struct PF_Bullish_TT_Buy
 struct PF_Bearish_TB_Sell
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
-    PF_SignalType signal_type_ = PF_SignalType::e_Bearish_TB_Sell;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_Bearish_TB_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_bearish_tb_sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_bearish_tb_sell;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 5;
@@ -204,8 +205,8 @@ struct PF_Bearish_TB_Sell
 struct PF_TTopCatapult_Buy
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Buy;
-    PF_SignalType signal_type_ = PF_SignalType::e_TTop_Catapult_Buy;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_TTop_Catapult_Buy;
+    PF_SignalType signal_type_ = PF_SignalType::e_ttop_catapult_buy;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_ttop_catapult_buy;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Up;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 7;
@@ -217,8 +218,8 @@ struct PF_TTopCatapult_Buy
 struct PF_TBottom_Catapult_Sell
 {
     PF_SignalCategory signal_category_ = PF_SignalCategory::e_PF_Sell;
-    PF_SignalType signal_type_ = PF_SignalType::e_TBottom_Catapult_Sell;
-    PF_SignalPriority priority_ = PF_SignalPriority::e_TBottom_Catapult_Sell;
+    PF_SignalType signal_type_ = PF_SignalType::e_tbottom_catapult_sell;
+    PF_SignalPriority priority_ = PF_SignalPriority::e_tbottom_catapult_sell;
     PF_Column::Direction direction_ = PF_Column::Direction::e_Down;
     PF_CanUse1BoxReversal use1box_ = PF_CanUse1BoxReversal::e_No;
     int32_t minimum_cols_ = 7;
@@ -235,51 +236,64 @@ bool AddSignalsToChart(PF_Chart &the_chart, const decimal::Decimal &new_value, P
 // custom formatter
 
 template <>
+struct std::formatter<PF_SignalType> : std::formatter<std::string>
+{
+    // parse is inherited from formatter<string>.
+    auto format(const PF_SignalType &signal_type, std::format_context &ctx) const
+    {
+        std::string s;
+        std::string sig_type;
+
+        switch (signal_type)
+        {
+            using enum PF_SignalType;
+            case e_unknown:
+                sig_type = "unknown";
+                break;
+            case e_double_top_buy:
+                sig_type = "double_top_buy";
+                break;
+            case e_double_bottom_sell:
+                sig_type = "double_bottom_sell";
+                break;
+            case e_triple_top_buy:
+                sig_type = "triple_top_buy";
+                break;
+            case e_triple_bottom_sell:
+                sig_type = "triple_bottom_sell";
+                break;
+            case e_bullish_tt_buy:
+                sig_type = "bullish_tt_buy";
+                break;
+            case e_bearish_tb_sell:
+                sig_type = "bearish_tb_sell";
+                break;
+            case e_catapult_buy:
+                sig_type = "catapult_buy";
+                break;
+            case e_catapult_sell:
+                sig_type = "catapult_sell";
+                break;
+            case e_ttop_catapult_buy:
+                sig_type = "ttop_catapult_buy";
+                break;
+            case e_tbottom_catapult_sell:
+                sig_type = "tbottom_catapult_sell";
+                break;
+        }
+
+        std::format_to(std::back_inserter(s), "{}", sig_type);
+        return formatter<std::string>::format(s, ctx);
+    }
+};
+
+template <>
 struct std::formatter<PF_Signal> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
     auto format(const PF_Signal &signal, std::format_context &ctx) const
     {
         std::string s;
-        std::string sig_type;
-
-        switch (signal.signal_type_)
-        {
-            using enum PF_SignalType;
-            case e_Unknown:
-                sig_type = "Unknown";
-                break;
-            case e_DoubleTop_Buy:
-                sig_type = "DblTop Buy";
-                break;
-            case e_DoubleBottom_Sell:
-                sig_type = "DblBtm Sell";
-                break;
-            case e_TripleTop_Buy:
-                sig_type = "TripleTop Buy";
-                break;
-            case e_TripleBottom_Sell:
-                sig_type = "TripleBtm Sell";
-                break;
-            case e_Bullish_TT_Buy:
-                sig_type = "Bullish TT Buy";
-                break;
-            case e_Bearish_TB_Sell:
-                sig_type = "Bearish TB Sell";
-                break;
-            case e_Catapult_Buy:
-                sig_type = "Catapult Buy";
-                break;
-            case e_Catapult_Sell:
-                sig_type = "Catapult Sell";
-                break;
-            case e_TTop_Catapult_Buy:
-                sig_type = "TTop Catapult Buy";
-                break;
-            case e_TBottom_Catapult_Sell:
-                sig_type = "TBtm Catapult Sell";
-                break;
-        }
 
         std::format_to(std::back_inserter(s),
                        "category: {}. type: {}. priority: {}. time: {:%F %X}. col: {}. "
@@ -288,8 +302,8 @@ struct std::formatter<PF_Signal> : std::formatter<std::string>
                        (signal.signal_category_ == PF_SignalCategory::e_PF_Buy    ? "Buy"
                         : signal.signal_category_ == PF_SignalCategory::e_PF_Sell ? "Sell"
                                                                                   : "Unknown"),
-                       sig_type, std::to_underlying(signal.priority_), signal.tpt_, signal.column_number_, signal.signal_price_.format("f"),
-                       signal.box_.format("f"));
+                       signal.signal_type_, std::to_underlying(signal.priority_), signal.tpt_, signal.column_number_,
+                       signal.signal_price_.format("f"), signal.box_.format("f"));
 
         return formatter<std::string>::format(s, ctx);
     }
