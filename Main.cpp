@@ -46,20 +46,20 @@ using decimal::Decimal;
 
 int main(int argc, char** argv)
 {
-    decimal::context_template = decimal::IEEEContext(decimal::DECIMAL64);
-    decimal::context_template.round(decimal::ROUND_HALF_UP);
-    decimal::context = decimal::context_template;
-
-	//	help to optimize c++ stream I/O (may screw up threaded I/O though)
-
-	std::ios_base::sync_with_stdio(false);
-
 	int result = 0;
-
-    py::scoped_interpreter guard{false}; // start the interpreter and keep it alive
 
 	try
 	{
+        decimal::context_template = decimal::IEEEContext(decimal::DECIMAL64);
+        decimal::context_template.round(decimal::ROUND_HALF_UP);
+        decimal::context = decimal::context_template;
+
+	    //	help to optimize c++ stream I/O (may screw up threaded I/O though)
+
+	    std::ios_base::sync_with_stdio(false);
+
+        py::scoped_interpreter guard{false}; // start the interpreter and keep it alive
+
         py::exec(R"(
             import PF_DrawChart
             )"
@@ -80,14 +80,17 @@ int main(int argc, char** argv)
         auto ec = e.code();
         std::cerr << "Category: " << ec.category().name() << ". Value: " << ec.value() <<
                 ". Message: " << ec.message() << '\n';
+        result = 3;
     }
     catch (std::exception& e)
     {
         std::cout << "Problem collecting files: " << e.what() << '\n';
+        result = 4;
     }
     catch (...)
     {
         std::cout << "Unknown problem collecting files." << '\n';
+        result = 5;
     }
 
 	return result;
