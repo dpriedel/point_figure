@@ -178,7 +178,7 @@ Json::Value PF_SignalToJSON(const PF_Signal &signal)
 
     result["time"] = signal.tpt_.time_since_epoch().count();
     result["column"] = signal.column_number_;
-    result["price"] = signal.signal_price_.format("f");
+    result["price"] = signal.signal_price_.format(".2f");
     result["box"] = signal.box_.format("f");
 
     return result;

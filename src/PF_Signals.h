@@ -303,7 +303,7 @@ struct std::formatter<PF_Signal> : std::formatter<std::string>
                         : signal.signal_category_ == PF_SignalCategory::e_PF_Sell ? "Sell"
                                                                                   : "Unknown"),
                        signal.signal_type_, std::to_underlying(signal.priority_), signal.tpt_, signal.column_number_,
-                       signal.signal_price_.format("f"), signal.box_.format("f"));
+                       signal.signal_price_.format(".2f"), signal.box_.format("f"));
 
         return formatter<std::string>::format(s, ctx);
     }
