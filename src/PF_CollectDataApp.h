@@ -146,7 +146,7 @@ class PF_CollectDataApp
 
     void ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, const std::string &ticker);
 
-    std::tuple<int, int, int>  ProcessSymbolsFromDB(const std::vector<std::string>& symbol_list);
+    std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
 
     // ====================  DATA MEMBERS
     // =======================================

@@ -407,12 +407,16 @@ bool PF_CollectDataApp::CheckArgs()
     {
         const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
                                                  "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
-        rng::for_each(exchange_list_, [&exchanges](const auto& xchg) {
-        BOOST_ASSERT_MSG(std::ranges::find(exchanges, xchg) != exchanges.end(),
-                         std::format("exchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
-                                     "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
-                                     xchg)
-                             .c_str());});
+        rng::for_each(exchange_list_,
+                      [&exchanges](const auto &xchg)
+                      {
+                          BOOST_ASSERT_MSG(
+                              std::ranges::find(exchanges, xchg) != exchanges.end(),
+                              std::format("exchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
+                                          "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
+                                          xchg)
+                                  .c_str());
+                      });
     }
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
@@ -640,7 +644,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     {
         PF_DB pf_db{db_params_};
 
-        for (const auto& xchg : exchange_list_)
+        for (const auto &xchg : exchange_list_)
         {
             auto symbol_list = pf_db.ListSymbolsOnExchange(xchg);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
@@ -666,7 +670,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 }    // -----  end of method PF_CollectDataApp::Run_Load  -----
 
-std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vector<std::string>& symbol_list)
+std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list)
 {
     int32_t total_symbols_processed = 0;
     int32_t total_charts_processed = 0;
