@@ -2,7 +2,7 @@
 //
 //       Filename:  PointAndFigureDB.h
 //
-//    Description: Encapsulate code for database access 
+//    Description: Encapsulate code for database access
 //
 //        Version:  1.0
 //        Created:  08/04/2022 10:03:19 AM
@@ -10,7 +10,7 @@
 //       Compiler:  g++
 //
 //         Author:  David P. Riedel (), driedel@cox.net
-//   Organization:  
+//   Organization:
 //
 //   License:       The GPLv3 License (GPLv3)
 
@@ -31,19 +31,17 @@
 //
 // =====================================================================================
 
-
-#ifndef  _POINTANDFIGUREDB_INC_
-#define  _POINTANDFIGUREDB_INC_
-
-#include <chrono>
-#include <string>
-#include <string_view>
-#include <vector>
+#ifndef _POINTANDFIGUREDB_INC_
+#define _POINTANDFIGUREDB_INC_
 
 #include <json/json.h>
 
+#include <chrono>
 #include <pqxx/pqxx>
 #include <pqxx/stream_from>
+#include <string>
+#include <string_view>
+#include <vector>
 
 class PF_Chart;
 
@@ -55,24 +53,23 @@ class PF_Chart;
 // =====================================================================================
 class PF_DB
 {
-public:
-
+   public:
     // keep our database related parms together
 
     struct DB_Params
     {
-	    std::string user_name_;
-	    std::string db_name_;
-	    std::string host_name_ = "localhost";
-	    std::string PF_db_mode_ = "test";
-	    std::string stock_db_data_source_;
-	    int32_t port_number_ = 5432;
+        std::string user_name_;
+        std::string db_name_;
+        std::string host_name_ = "localhost";
+        std::string PF_db_mode_ = "test";
+        std::string stock_db_data_source_;
+        int32_t port_number_ = 5432;
     };
 
-	// ====================  LIFECYCLE     ======================================= 
-	PF_DB () = default;                             // constructor 
+    // ====================  LIFECYCLE     =======================================
+    PF_DB() = default;    // constructor
     PF_DB(const DB_Params& db_params);
-	// ====================  ACCESSORS     ======================================= 
+    // ====================  ACCESSORS     =======================================
 
     [[nodiscard]] std::vector<std::string> ListExchanges() const;
     [[nodiscard]] std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange) const;
@@ -82,66 +79,74 @@ public:
 
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;
     void UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;
-    
-    [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB (std::string_view symbol, std::chrono::year_month_day date, int how_many) const;
 
-    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsInList (const std::vector<std::string>& symbol_list, const std::string& begin_date, const std::string& price_fld_name, const char* date_format) const;
-    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange (const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name, const char* date_format) const;
+    [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB(std::string_view symbol,
+                                                                                        std::chrono::year_month_day date,
+                                                                                        int how_many) const;
 
-    template<typename T>
+    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsInList(const std::vector<std::string>& symbol_list,
+                                                                                       const std::string& begin_date,
+                                                                                       const std::string& price_fld_name,
+                                                                                       const char* date_format) const;
+    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange(const std::string& exchange,
+                                                                                           const std::string& begin_date,
+                                                                                           const std::string& price_fld_name,
+                                                                                           const char* date_format) const;
+
+    template <typename T>
     [[nodiscard]] std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
 
-    template<typename T, typename ...Vals>
+    template <typename T, typename... Vals>
     [[nodiscard]] std::vector<T> RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const;
 
-	// ====================  MUTATORS      ======================================= 
+    // ====================  MUTATORS      =======================================
 
-	// ====================  OPERATORS     ======================================= 
+    // ====================  OPERATORS     =======================================
 
-protected:
-	// ====================  METHODS       ======================================= 
+   protected:
+    // ====================  METHODS       =======================================
 
-	// ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
-private:
-	// ====================  METHODS       ======================================= 
+   private:
+    // ====================  METHODS       =======================================
 
-	// ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
     DB_Params db_params_;
 
-}; // -----  end of class PF_DB  ----- 
+};    // -----  end of class PF_DB  -----
 
 // NOTE: I really want to have the below routines instantiate the connection object but I need
 // that to happen where the query_cmd is created so THAT code can use the connection's escape or quote methods
 // to properly handle possible user data in the query.
 
-template<typename T>
+template <typename T>
 std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::transaction trxn{c};		// we are read-only for this work
+    pqxx::transaction trxn{c};    // we are read-only for this work
 
-	auto results = trxn.exec(query_cmd);
-	trxn.commit();
+    auto results = trxn.exec(query_cmd);
+    trxn.commit();
 
     std::vector<T> data;
     data.reserve(1000);
 
-    for (const auto& row: results)
+    for (const auto& row : results)
     {
         T new_data = converter(row);
         data.push_back(std::move(new_data));
     }
     data.shrink_to_fit();
-	return data;
+    return data;
 }
 
-template<typename T, typename ...Vals>
+template <typename T, typename... Vals>
 std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-	pqxx::transaction trxn{c};		// we are read-only for this work
+    pqxx::transaction trxn{c};    // we are read-only for this work
 
     std::vector<T> data;
     data.reserve(10'000);
@@ -154,9 +159,9 @@ std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const
         data.push_back(std::move(new_data));
     }
     // stream.complete();
-	trxn.commit();
+    trxn.commit();
 
     data.shrink_to_fit();
     return data;
 }
-#endif   // ----- #ifndef _POINTANDFIGUREDB_INC_  ----- 
+#endif    // ----- #ifndef _POINTANDFIGUREDB_INC_  -----
