@@ -266,8 +266,8 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (symbol_list_i_ == "ALL")
     {
-        BOOST_ASSERT_MSG(!exchange_.empty(),
-                         "When 'ALL' is specified for symbol-list, exchange must "
+        BOOST_ASSERT_MSG(!exchange_list_.empty(),
+                         "When 'ALL' is specified for symbol-list, exchange-list must "
                          "also be specified.");
         symbol_list_.clear();
     }
@@ -276,6 +276,14 @@ bool PF_CollectDataApp::CheckArgs()
         // now we want upper case symbols.
 
         rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
+    }
+
+    if (!exchange_list_.empty())
+    {
+        rng::for_each(exchange_list_, [](auto &xchg) { rng::for_each(xchg, [](char &c) { c = std::toupper(c); }); });
+        rng::sort(exchange_list_);
+        const auto [first, last] = rng::unique(exchange_list_);
+        exchange_list_.erase(first, last);
     }
 
     // now make sure we can find our data for input and output.
@@ -395,16 +403,16 @@ bool PF_CollectDataApp::CheckArgs()
     {
         BOOST_ASSERT_MSG(!begin_date_.empty(), "Must specify 'begin-date' when data source is 'database'.");
     }
-    const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
-                                             "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
-    if (!exchange_.empty())
+    if (!exchange_list_.empty())
     {
-        rng::for_each(exchange_, [](char &c) { c = std::toupper(c); });
-        BOOST_ASSERT_MSG(std::ranges::find(exchanges, exchange_) != exchanges.end(),
+        const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
+                                                 "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
+        rng::for_each(exchange_list_, [&exchanges](const auto& xchg) {
+        BOOST_ASSERT_MSG(std::ranges::find(exchanges, xchg) != exchanges.end(),
                          std::format("exchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
                                      "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
-                                     exchange_)
-                             .c_str());
+                                     xchg)
+                             .c_str());});
     }
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
@@ -474,7 +482,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'.")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'.")
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
-		("exchange",			po::value<std::string>(&this->exchange_),	"exchange: use symbols from specified exchange. Possible values: 'AMEX', 'NYSE', 'NASDAQ' or none (use values from all exchanges). Default is: not specified.")
+		("exchange-list",		po::value<std::vector<std::string>>(&this->exchange_list_),	"exchange-list: use symbols from specified exchange(s). Possible values: 'AMEX', 'NYSE', 'NASDAQ', etc. Default is: not specified.")
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
@@ -628,13 +636,43 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     // we can handle mass symbol loads because we do a symbol-at-a-time DB query
     // so we don't get an impossible amount of data back from the DB
 
-    PF_DB pf_db{db_params_};
-
     if (symbol_list_i_ == "ALL")
     {
-        symbol_list_ = pf_db.ListSymbolsOnExchange(exchange_);
+        PF_DB pf_db{db_params_};
+
+        for (const auto& xchg : exchange_list_)
+        {
+            auto symbol_list = pf_db.ListSymbolsOnExchange(xchg);
+            const auto counts = ProcessSymbolsFromDB(symbol_list);
+            total_symbols_processed += std::get<0>(counts);
+            total_charts_processed += std::get<1>(counts);
+            total_charts_updated += std::get<2>(counts);
+        }
+    }
+    else
+    {
+        const auto counts = ProcessSymbolsFromDB(symbol_list_);
+        total_symbols_processed += std::get<0>(counts);
+        total_charts_processed += std::get<1>(counts);
+        total_charts_updated += std::get<2>(counts);
     }
     // std::print("symbol list: {}\n", symbol_list_);
+
+    spdlog::info(
+        std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
+                    "{}.",
+                    total_symbols_processed, total_charts_processed, total_charts_updated));
+
+    return {total_symbols_processed, total_charts_processed, total_charts_updated};
+}    // -----  end of method PF_CollectDataApp::Run_Load  -----
+
+std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vector<std::string>& symbol_list)
+{
+    int32_t total_symbols_processed = 0;
+    int32_t total_charts_processed = 0;
+    int32_t total_charts_updated = 0;
+
+    PF_DB pf_db{db_params_};
 
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
@@ -656,7 +694,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
         return new_data;
     };
 
-    for (const auto &symbol : symbol_list_)
+    for (const auto &symbol : symbol_list)
     {
         ++total_symbols_processed;
 
@@ -714,13 +752,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
             spdlog::error(std::format("Unable to retrieve data for symbol: {} from DB because: {}.", symbol, e.what()));
         }
     }
-    spdlog::info(
-        std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
-                    "{}.",
-                    total_symbols_processed, total_charts_processed, total_charts_updated));
-
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
-}    // -----  end of method PF_CollectDataApp::Run_Load  -----
+}    // -----  end of method PF_CollectDataApp::ProcessSymbolsFromDB  -----
 
 void PF_CollectDataApp::Run_Update()
 {

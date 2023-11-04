@@ -146,6 +146,8 @@ class PF_CollectDataApp
 
     void ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, const std::string &ticker);
 
+    std::tuple<int, int, int>  ProcessSymbolsFromDB(const std::vector<std::string>& symbol_list);
+
     // ====================  DATA MEMBERS
     // =======================================
 
@@ -236,6 +238,7 @@ class PF_CollectDataApp
     std::string chart_data_source_i;
     std::string use_adjusted_i;
     std::string symbol_list_i_;
+    std::string exchange_list_i_;
     std::string graphics_format_i_;
     std::vector<std::string> scale_i_list_;
     std::vector<std::string> box_size_i_list_;
@@ -251,12 +254,12 @@ class PF_CollectDataApp
     Interval interval_ = Interval::e_unknown;
 
     std::vector<std::string> symbol_list_;
+    std::vector<std::string> exchange_list_;
     std::vector<Boxes::BoxScale> scale_list_;
     std::vector<decimal::Decimal> box_size_list_;
     std::vector<int32_t> reversal_boxes_list_;
 
     std::string price_fld_name_;
-    std::string exchange_;
     std::string trend_lines_;
     std::string begin_date_;
 
