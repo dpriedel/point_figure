@@ -54,6 +54,7 @@ namespace vws = std::ranges::views;
 
 #include <date/chrono_io.h>
 #include <date/tz.h>
+#include <fmt/ranges.h>
 #include <pybind11/embed.h>
 #include <pybind11/gil.h>
 #include <spdlog/async.h>
@@ -223,6 +224,15 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(!db_params_.db_name_.empty(), "Must provide 'db-name' when mode is 'daily-scan'.");
         BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
         BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(), "'db-data-source' must be specified when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(!exchange_list_i_.empty(), "'exchange-list' must be provided when mode is 'daily-scan'.");
+
+        // setup or list exchanges to use.
+        rng::for_each(split_string<std::string>(exchange_list_i_, ","), [this](const auto xchng) { exchange_list_.push_back(xchng); });
+        rng::for_each(exchange_list_, [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
+        rng::sort(exchange_list_);
+        const auto [first, last] = rng::unique(exchange_list_);
+        exchange_list_.erase(first, last);
+        spdlog::debug(fmt::format("exchanges for scan: {}\n", exchange_list_));
 
         BOOST_ASSERT_MSG(!begin_date_.empty(), "Must specify 'begin-date' when mode is 'daily-scan'.");
 
@@ -266,7 +276,7 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (symbol_list_i_ == "ALL")
     {
-        BOOST_ASSERT_MSG(!exchange_list_.empty(),
+        BOOST_ASSERT_MSG(!exchange_list_i_.empty(),
                          "When 'ALL' is specified for symbol-list, exchange-list must "
                          "also be specified.");
         symbol_list_.clear();
@@ -278,9 +288,10 @@ bool PF_CollectDataApp::CheckArgs()
         rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
     }
 
-    if (!exchange_list_.empty())
+    if (!exchange_list_i_.empty())
     {
-        rng::for_each(exchange_list_, [](auto &xchg) { rng::for_each(xchg, [](char &c) { c = std::toupper(c); }); });
+        rng::for_each(split_string<std::string>(exchange_list_i_, ","), [this](const auto xchng) { exchange_list_.push_back(xchng); });
+        rng::for_each(exchange_list_, [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
         rng::sort(exchange_list_);
         const auto [first, last] = rng::unique(exchange_list_);
         exchange_list_.erase(first, last);
@@ -408,13 +419,13 @@ bool PF_CollectDataApp::CheckArgs()
         const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
                                                  "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
         rng::for_each(exchange_list_,
-                      [&exchanges](const auto &xchg)
+                      [&exchanges](const auto &xchng)
                       {
                           BOOST_ASSERT_MSG(
-                              std::ranges::find(exchanges, xchg) != exchanges.end(),
+                              std::ranges::find(exchanges, xchng) != exchanges.end(),
                               std::format("exchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
                                           "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
-                                          xchg)
+                                          xchng)
                                   .c_str());
                       });
     }
@@ -486,7 +497,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'.")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'.")
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
-		("exchange-list",		po::value<std::vector<std::string>>(&this->exchange_list_),	"exchange-list: use symbols from specified exchange(s). Possible values: 'AMEX', 'NYSE', 'NASDAQ', etc. Default is: not specified.")
+		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s). Possible values: 'AMEX', 'NYSE', 'NASDAQ', etc. Default is: not specified.")
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
@@ -644,9 +655,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     {
         PF_DB pf_db{db_params_};
 
-        for (const auto &xchg : exchange_list_)
+        for (const auto &xchng : exchange_list_)
         {
-            auto symbol_list = pf_db.ListSymbolsOnExchange(xchg);
+            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
             total_symbols_processed += std::get<0>(counts);
             total_charts_processed += std::get<1>(counts);
@@ -1382,18 +1393,26 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
     const auto *dt_format = "%F";
 
     auto exchanges = pf_db.ListExchanges();
+    spdlog::debug(fmt::format("exchanges for scan: {}\n", exchanges));
 
-    // do no process symbols from the INDEX list
+    // do not process symbols from the INDEX list
 
-    const auto no_index = vws::filter([](const auto &xchng) { return xchng != "INDX"; });
+    const auto use_xchngs = vws::filter([this](const auto &xchng)
+                                        { return (xchng != "INDX") && (rng::find(this->exchange_list_, xchng) != exchange_list_.end()); });
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges
     // by symbol below.
 
     auto data_for_symbol = vws::chunk_by([](const auto &a, const auto &b) { return a.symbol_ == b.symbol_; });
 
-    for (const auto &exchange : exchanges | no_index)
+    for (const auto &exchange : exchanges | use_xchngs)
     {
+        spdlog::info(std::format("Scanning charts for exchange: {}.", exchange));
+
+        int32_t exchange_symbols_processed = 0;
+        int32_t exchange_charts_processed = 0;
+        int32_t exchange_charts_updated = 0;
+
         auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(exchange, begin_date_, price_fld_name_, dt_format);
         // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
         // {}\n", xx.symbol, xx.tp, xx.price); });
@@ -1404,7 +1423,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
         for (const auto &symbol_rng : db_data | data_for_symbol)
         {
             const auto &symbol = symbol_rng[0].symbol_;
-            total_symbols_processed += 1;
+            exchange_symbols_processed += 1;
 
             // std::print("symbol: {}\n", symbol);
 
@@ -1414,7 +1433,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
             {
                 // apply new data to chart (which may be empty)
 
-                total_charts_processed += 1;
+                exchange_charts_processed += 1;
                 bool chart_needs_update = false;
                 try
                 {
@@ -1434,7 +1453,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                         // we are only doing EOD charts in this routine.
                         chart.UpdateChartInChartsDB(pf_db, interval_i, PF_Chart::X_AxisFormat::e_show_date,
                                                     graphics_format_ == GraphicsFormat::e_csv);
-                        total_charts_updated += 1;
+                        exchange_charts_updated += 1;
                     }
                 }
                 catch (const std::exception &e)
@@ -1446,6 +1465,14 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                 }
             }
         }
+
+        total_symbols_processed += exchange_symbols_processed;
+        total_charts_processed += exchange_charts_processed;
+        total_charts_updated += exchange_charts_updated;
+        spdlog::info(
+            std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts updated: "
+                        "{}.",
+                        exchange, exchange_symbols_processed, exchange_charts_processed, exchange_charts_updated));
     }
 
     spdlog::info(
