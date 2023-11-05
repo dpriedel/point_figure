@@ -74,7 +74,7 @@ class PF_DB
     [[nodiscard]] std::vector<std::string> ListExchanges() const;
     [[nodiscard]] std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange) const;
 
-    [[nodiscard]] Json::Value GetPFChartData(const std::string file_name) const;
+    [[nodiscard]] Json::Value GetPFChartData(const std::string& file_name) const;
     [[nodiscard]] std::vector<PF_Chart> RetrieveAllEODChartsForSymbol(const std::string& symbol) const;
 
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const;

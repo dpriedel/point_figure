@@ -105,7 +105,7 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange)
     return symbols;
 }    // -----  end of method PF_DB::ListSymbolsOnExchange  -----
 
-Json::Value PF_DB::GetPFChartData(const std::string file_name) const
+Json::Value PF_DB::GetPFChartData(const std::string& file_name) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};
