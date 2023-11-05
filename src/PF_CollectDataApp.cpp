@@ -662,6 +662,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
             total_symbols_processed += std::get<0>(counts);
             total_charts_processed += std::get<1>(counts);
             total_charts_updated += std::get<2>(counts);
+            spdlog::info(
+                std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts loaded: "
+                            "{}.",
+                            xchng, std::get<0>(counts), std::get<1>(counts), std::get<2>(counts)));
         }
     }
     else
@@ -674,7 +678,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     // std::print("symbol list: {}\n", symbol_list_);
 
     spdlog::info(
-        std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
+        std::format("Total symbols: {}. Total charts generated: {}. Total charts loaded: "
                     "{}.",
                     total_symbols_processed, total_charts_processed, total_charts_updated));
 
@@ -1531,6 +1535,7 @@ void PF_CollectDataApp::Shutdown()
     }
     else
     {
+        int32_t chart_count = 0;
         PF_DB pf_db{db_params_};
         for (const auto &[symbol, chart] : charts_)
         {
@@ -1549,6 +1554,7 @@ void PF_CollectDataApp::Shutdown()
                     pf_db, interval_i,
                     interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date,
                     graphics_format_ == GraphicsFormat::e_csv);
+                ++chart_count;
             }
             catch (const std::exception &e)
             {
@@ -1558,6 +1564,7 @@ void PF_CollectDataApp::Shutdown()
                                 e.what(), chart.MakeChartFileName(interval_i, "")));
             }
         }
+        spdlog::info(std::format("Stored {} charts in DB.", chart_count));
     }
 
     spdlog::info(std::format("\n\n*** End run {}  ***\n", std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
