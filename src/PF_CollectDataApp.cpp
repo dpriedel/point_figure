@@ -214,6 +214,47 @@ bool PF_CollectDataApp::CheckArgs()
                      std::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
     mode_ = mode_i == "load" ? Mode::e_load : mode_i == "update" ? Mode::e_update : Mode::e_daily_scan;
 
+    // now make sure we can find our data for input and output.
+
+    BOOST_ASSERT_MSG(new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database",
+                     std::format("New data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
+    new_data_source_ = new_data_source_i == "file" ? Source::e_file : new_data_source_i == "database" ? Source::e_DB : Source::e_streaming;
+
+    BOOST_ASSERT_MSG(chart_data_source_i == "file" || chart_data_source_i == "database",
+                     std::format("Existing chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
+    chart_data_source_ = chart_data_source_i == "file" ? Source::e_file : Source::e_DB;
+
+    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database",
+                     std::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
+    destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
+
+    if (new_data_source_ == Source::e_DB)
+    {
+        // set up exchange list early.
+
+        if (! exchange_list_i_.empty())
+        {
+            rng::for_each(split_string<std::string>(exchange_list_i_, ","), [this](const auto xchng) { exchange_list_.push_back(xchng); });
+            rng::for_each(exchange_list_, [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
+            rng::sort(exchange_list_);
+            const auto [first, last] = rng::unique(exchange_list_);
+            exchange_list_.erase(first, last);
+
+            const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
+                "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
+            rng::for_each(exchange_list_,
+                          [&exchanges](const auto &xchng)
+                          {
+                              BOOST_ASSERT_MSG(
+                              std::ranges::find(exchanges, xchng) != exchanges.end(),
+                              std::format("exchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
+                                          "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
+                                          xchng)
+                              .c_str());
+                          });
+            spdlog::debug(fmt::format("exchanges for scan and bulk load: {}\n", exchange_list_));
+        }
+    }
     // do daily-scan edits upfront because we only need a couple
 
     if (mode_ == Mode::e_daily_scan)
@@ -224,15 +265,8 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(!db_params_.db_name_.empty(), "Must provide 'db-name' when mode is 'daily-scan'.");
         BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
         BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(), "'db-data-source' must be specified when mode is 'daily-scan'.");
-        BOOST_ASSERT_MSG(!exchange_list_i_.empty(), "'exchange-list' must be provided when mode is 'daily-scan'.");
 
         // setup or list exchanges to use.
-        rng::for_each(split_string<std::string>(exchange_list_i_, ","), [this](const auto xchng) { exchange_list_.push_back(xchng); });
-        rng::for_each(exchange_list_, [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
-        rng::sort(exchange_list_);
-        const auto [first, last] = rng::unique(exchange_list_);
-        exchange_list_.erase(first, last);
-        spdlog::debug(fmt::format("exchanges for scan: {}\n", exchange_list_));
 
         BOOST_ASSERT_MSG(!begin_date_.empty(), "Must specify 'begin-date' when mode is 'daily-scan'.");
 
@@ -276,9 +310,6 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (symbol_list_i_ == "ALL")
     {
-        BOOST_ASSERT_MSG(!exchange_list_i_.empty(),
-                         "When 'ALL' is specified for symbol-list, exchange-list must "
-                         "also be specified.");
         symbol_list_.clear();
     }
     else
@@ -287,29 +318,6 @@ bool PF_CollectDataApp::CheckArgs()
 
         rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
     }
-
-    if (!exchange_list_i_.empty())
-    {
-        rng::for_each(split_string<std::string>(exchange_list_i_, ","), [this](const auto xchng) { exchange_list_.push_back(xchng); });
-        rng::for_each(exchange_list_, [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
-        rng::sort(exchange_list_);
-        const auto [first, last] = rng::unique(exchange_list_);
-        exchange_list_.erase(first, last);
-    }
-
-    // now make sure we can find our data for input and output.
-
-    BOOST_ASSERT_MSG(new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database",
-                     std::format("New data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
-    new_data_source_ = new_data_source_i == "file" ? Source::e_file : new_data_source_i == "database" ? Source::e_DB : Source::e_streaming;
-
-    BOOST_ASSERT_MSG(chart_data_source_i == "file" || chart_data_source_i == "database",
-                     std::format("Existing chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
-    chart_data_source_ = chart_data_source_i == "file" ? Source::e_file : Source::e_DB;
-
-    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database",
-                     std::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
-    destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
     if (use_min_max_)
     {
@@ -414,21 +422,6 @@ bool PF_CollectDataApp::CheckArgs()
     {
         BOOST_ASSERT_MSG(!begin_date_.empty(), "Must specify 'begin-date' when data source is 'database'.");
     }
-    if (!exchange_list_.empty())
-    {
-        const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
-                                                 "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
-        rng::for_each(exchange_list_,
-                      [&exchanges](const auto &xchng)
-                      {
-                          BOOST_ASSERT_MSG(
-                              std::ranges::find(exchanges, xchng) != exchanges.end(),
-                              std::format("exchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
-                                          "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
-                                          xchng)
-                                  .c_str());
-                      });
-    }
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
 
@@ -497,7 +490,11 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'.")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'.")
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
-		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s). Possible values: 'AMEX', 'NYSE', 'NASDAQ', etc. Default is: not specified.")
+
+		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s) for daily-scan and bulk loads from database. Default is: not specified.")
+		("min-close-start-date",	po::value<std::string>(&this->min_close_start_date_),	"Start date to use for finding minimum closing price for a symbol.")
+		("min-close-price",	    po::value<std::string>(&this->min_close_price_i_)->default_value("5.00"),	"Minimum closing price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
+
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
