@@ -228,7 +228,7 @@ bool PF_CollectDataApp::CheckArgs()
                      std::format("\nData destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
-    if (new_data_source_ == Source::e_DB)
+    if (mode_ == Mode::e_daily_scan || new_data_source_ == Source::e_DB)
     {
         // set up exchange list early.
 
@@ -1393,20 +1393,24 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
     PF_DB pf_db{db_params_};
     const auto *dt_format = "%F";
 
-    auto exchanges = pf_db.ListExchanges();
-    spdlog::debug(fmt::format("exchanges for scan: {}\n", exchanges));
+    if (exchange_list_.empty())
+    {
+        exchange_list_ = pf_db.ListExchanges();
 
-    // do not process symbols from the INDEX list
+        // eliminate some exchanges we don't want to process
 
-    const auto use_xchngs = vws::filter([this](const auto &xchng)
-                                        { return (xchng != "INDX") && (rng::find(this->exchange_list_, xchng) != exchange_list_.end()); });
+        auto dont_use = [](const auto& xchng) { return xchng == "NMFQS" && xchng == "INDX" && xchng == "US"; };
+        const auto [first, last] = rng::remove_if(exchange_list_, dont_use);
+        exchange_list_.erase(first, last);
+    }
+    spdlog::debug(fmt::format("exchanges for scan: {}\n", exchange_list_));
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges
     // by symbol below.
 
     auto data_for_symbol = vws::chunk_by([](const auto &a, const auto &b) { return a.symbol_ == b.symbol_; });
 
-    for (const auto &exchange : exchanges | use_xchngs)
+    for (const auto &exchange : exchange_list_)
     {
         spdlog::info(std::format("Scanning charts for exchange: {}.", exchange));
 
