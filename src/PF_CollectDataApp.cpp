@@ -205,27 +205,27 @@ bool PF_CollectDataApp::CheckArgs()
 {
     //	an easy check first
 
-    BOOST_ASSERT_MSG(!(use_ATR_ && use_min_max_), "Can not use both ATR and MinMax for computing box size.");
+    BOOST_ASSERT_MSG(!(use_ATR_ && use_min_max_), "\nCan not use both ATR and MinMax for computing box size.");
     boxsize_source_ = (use_ATR_ ? BoxsizeSource::e_from_ATR : use_min_max_ ? BoxsizeSource::e_from_MinMax : BoxsizeSource::e_from_args);
 
     //	let's get our input and output set up
 
     BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan",
-                     std::format("Mode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
+                     std::format("\nMode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
     mode_ = mode_i == "load" ? Mode::e_load : mode_i == "update" ? Mode::e_update : Mode::e_daily_scan;
 
     // now make sure we can find our data for input and output.
 
     BOOST_ASSERT_MSG(new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database",
-                     std::format("New data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
+                     std::format("\nNew data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
     new_data_source_ = new_data_source_i == "file" ? Source::e_file : new_data_source_i == "database" ? Source::e_DB : Source::e_streaming;
 
     BOOST_ASSERT_MSG(chart_data_source_i == "file" || chart_data_source_i == "database",
-                     std::format("Existing chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
+                     std::format("\nExisting chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
     chart_data_source_ = chart_data_source_i == "file" ? Source::e_file : Source::e_DB;
 
     BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database",
-                     std::format("Data destination must be: 'file' or 'database': {}", destination_i).c_str());
+                     std::format("\nData destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
     if (new_data_source_ == Source::e_DB)
@@ -247,7 +247,7 @@ bool PF_CollectDataApp::CheckArgs()
                           {
                               BOOST_ASSERT_MSG(
                               std::ranges::find(exchanges, xchng) != exchanges.end(),
-                              std::format("exchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
+                              std::format("\nexchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
                                           "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
                                           xchng)
                               .c_str());
@@ -259,16 +259,16 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (mode_ == Mode::e_daily_scan)
     {
-        BOOST_ASSERT_MSG(!db_params_.host_name_.empty(), "Must provide 'db-host' when mode is 'daily-scan'.");
-        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "Must provide 'db-port' when mode is 'daily-scan'.");
-        BOOST_ASSERT_MSG(!db_params_.user_name_.empty(), "Must provide 'db-user' when mode is 'daily-scan'.");
-        BOOST_ASSERT_MSG(!db_params_.db_name_.empty(), "Must provide 'db-name' when mode is 'daily-scan'.");
-        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
-        BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(), "'db-data-source' must be specified when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(!db_params_.host_name_.empty(), "\nMust provide 'db-host' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "\nMust provide 'db-port' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(!db_params_.user_name_.empty(), "\nMust provide 'db-user' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(!db_params_.db_name_.empty(), "\nMust provide 'db-name' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "\n'db-mode' must be 'test' or 'live'.");
+        BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(), "\n'db-data-source' must be specified when mode is 'daily-scan'.");
 
         // setup or list exchanges to use.
 
-        BOOST_ASSERT_MSG(!begin_date_.empty(), "Must specify 'begin-date' when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(!begin_date_.empty(), "\nMust specify 'begin-date' when mode is 'daily-scan'.");
 
         // we need this
 
@@ -284,8 +284,8 @@ bool PF_CollectDataApp::CheckArgs()
     // this is to avoid having to provide unnecessary arguments for daily scan
     // processing.
 
-    BOOST_ASSERT_MSG(!box_size_i_list_.empty(), "Must provide at least 1 'boxsize' parameter.");
-    BOOST_ASSERT_MSG(!reversal_boxes_list_.empty(), "Must provide at least 1 'reversal' parameter.");
+    BOOST_ASSERT_MSG(!box_size_i_list_.empty(), "\nMust provide at least 1 'boxsize' parameter.");
+    BOOST_ASSERT_MSG(!reversal_boxes_list_.empty(), "\nMust provide at least 1 'reversal' parameter.");
 
     // this is a hack because the Decimal class has limited streams support
 
@@ -294,8 +294,8 @@ bool PF_CollectDataApp::CheckArgs()
     // we now have two possible sources for symbols. We need to be sure we have
     // 1 of them.
 
-    BOOST_ASSERT_MSG(symbol_list_i_ != "*", "'*' is no longer valid for symbol-list. Use 'ALL' instead.");
-    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty(), "Must provide either 1 or more '-s' values or 'symbol-list' list.");
+    BOOST_ASSERT_MSG(symbol_list_i_ != "*", "\n'*' is no longer valid for symbol-list. Use 'ALL' instead.");
+    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty(), "\nMust provide either 1 or more '-s' values or 'symbol-list' list.");
 
     if (!symbol_list_i_.empty() && symbol_list_i_ != "ALL")
     {
@@ -322,7 +322,7 @@ bool PF_CollectDataApp::CheckArgs()
     if (use_min_max_)
     {
         BOOST_ASSERT_MSG(mode_ == Mode::e_load && new_data_source_ == Source::e_DB,
-                         "MinMax is only available for loads using the DB as a source");
+                         "\nMinMax is only available for loads using the DB as a source");
     }
 
     // possibly empty if this is our first time or we are starting over
@@ -331,12 +331,12 @@ bool PF_CollectDataApp::CheckArgs()
     {
         // for file input, we always need to have our raw data inputs
 
-        BOOST_ASSERT_MSG(!new_data_input_directory_.empty(), "Must specify 'new-data-dir' when data source is 'file'.");
+        BOOST_ASSERT_MSG(!new_data_input_directory_.empty(), "\nMust specify 'new-data-dir' when data source is 'file'.");
         BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_),
-                         std::format("Can't find new data input directory: {}", new_data_input_directory_).c_str());
+                         std::format("\nCan't find new data input directory: {}", new_data_input_directory_).c_str());
 
         BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json",
-                         std::format("New data files must be: 'csv' or 'json': {}", source_format_i).c_str());
+                         std::format("\nNew data files must be: 'csv' or 'json': {}", source_format_i).c_str());
         source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
 
         // if we are adding to existing data then we need to know where to find
@@ -345,10 +345,10 @@ bool PF_CollectDataApp::CheckArgs()
         if (mode_ == Mode::e_update && chart_data_source_ == Source::e_file)
         {
             BOOST_ASSERT_MSG(!input_chart_directory_.empty(),
-                             "Must specify 'chart-data-dir' when data source is "
+                             "\nMust specify 'chart-data-dir' when data source is "
                              "'file' and mode is 'update'.");
             BOOST_ASSERT_MSG(fs::exists(input_chart_directory_),
-                             std::format("Can't find new existing chart data directory: {}", input_chart_directory_).c_str());
+                             std::format("\nCan't find new existing chart data directory: {}", input_chart_directory_).c_str());
 
             // we could write out data to a separate location if we want
             // otherwise, use the charts directory.
@@ -361,12 +361,12 @@ bool PF_CollectDataApp::CheckArgs()
     }
 
     BOOST_ASSERT_MSG(graphics_format_i_ == "svg" || graphics_format_i_ == "csv",
-                     std::format("graphics-format must be either 'svg' or 'csv': {}", graphics_format_i_).c_str());
+                     std::format("\ngraphics-format must be either 'svg' or 'csv': {}", graphics_format_i_).c_str());
     graphics_format_ = graphics_format_i_ == "svg" ? GraphicsFormat::e_svg : GraphicsFormat::e_csv;
 
     if (destination_ == Destination::e_file)
     {
-        BOOST_ASSERT_MSG(!output_chart_directory_.empty(), "Must specify 'output-chart-dir' when data destination is 'file'.");
+        BOOST_ASSERT_MSG(!output_chart_directory_.empty(), "\nMust specify 'output-chart-dir' when data destination is 'file'.");
         if (!fs::exists(output_chart_directory_))
         {
             fs::create_directories(output_chart_directory_);
@@ -382,7 +382,7 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (destination_ == Destination::e_file || graphics_format_ == GraphicsFormat::e_svg)
     {
-        BOOST_ASSERT_MSG(!output_graphs_directory_.empty(), "Must specify 'output-graph-dir'.");
+        BOOST_ASSERT_MSG(!output_graphs_directory_.empty(), "\nMust specify 'output-graph-dir'.");
         if (!fs::exists(output_graphs_directory_))
         {
             fs::create_directories(output_graphs_directory_);
@@ -392,46 +392,46 @@ bool PF_CollectDataApp::CheckArgs()
     if (new_data_source_ == Source::e_DB || destination_ == Destination::e_DB)
     {
         BOOST_ASSERT_MSG(!db_params_.host_name_.empty(),
-                         "Must provide 'db-host' when data source or destination "
+                         "\nMust provide 'db-host' when data source or destination "
                          "is 'database'.");
         BOOST_ASSERT_MSG(db_params_.port_number_ != -1,
-                         "Must provide 'db-port' when data source or destination "
+                         "\nMust provide 'db-port' when data source or destination "
                          "is 'database'.");
         BOOST_ASSERT_MSG(!db_params_.user_name_.empty(),
-                         "Must provide 'db-user' when data source or destination "
+                         "\nMust provide 'db-user' when data source or destination "
                          "is 'database'.");
         BOOST_ASSERT_MSG(!db_params_.db_name_.empty(),
-                         "Must provide 'db-name' when data source or destination "
+                         "M\nust provide 'db-name' when data source or destination "
                          "is 'database'.");
-        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "'db-mode' must be 'test' or 'live'.");
+        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "\n'db-mode' must be 'test' or 'live'.");
         if (new_data_source_ == Source::e_DB)
         {
             BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(),
-                             "'db-data-source' must be specified when load "
+                             "\n'db-data-source' must be specified when load "
                              "source is 'database'.");
         }
     }
 
     if (new_data_source_ != Source::e_DB && use_ATR_)
     {
-        BOOST_ASSERT_MSG(!tiingo_api_key_.empty(), "Must specify api 'key' file when data source is 'streaming'.");
-        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), std::format("Can't find tiingo api key file: {}", tiingo_api_key_).c_str());
+        BOOST_ASSERT_MSG(!tiingo_api_key_.empty(), "\nMust specify api 'key' file when data source is 'streaming'.");
+        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
     }
 
     if (new_data_source_ == Source::e_DB)
     {
-        BOOST_ASSERT_MSG(!begin_date_.empty(), "Must specify 'begin-date' when data source is 'database'.");
+        BOOST_ASSERT_MSG(!begin_date_.empty(), "\nMust specify 'begin-date' when data source is 'database'.");
     }
 
-    BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "max-graphic-cols must be >= -1.");
+    BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "\nmax-graphic-cols must be >= -1.");
 
     BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle",
-                     std::format("show-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
+                     std::format("\nshow-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
 
     const std::map<std::string, Interval> possible_intervals = {{"eod", Interval::e_eod},   {"live", Interval::e_live},
                                                                 {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5},
                                                                 {"min1", Interval::e_min1}, {"min5", Interval::e_min5}};
-    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), std::format("Interval must be: 'eod', 'live', 'sec1', "
+    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), std::format("\nInterval must be: 'eod', 'live', 'sec1', "
                                                                           "'sec5', 'min1', 'min5': {}",
                                                                           interval_i)
                                                                   .c_str());
@@ -450,7 +450,7 @@ bool PF_CollectDataApp::CheckArgs()
                   [](const auto &scale)
                   {
                       BOOST_ASSERT_MSG(scale == "linear" || scale == "percent",
-                                       std::format("Chart scale must be: 'linear' or 'percent': {}", scale).c_str());
+                                       std::format("\nChart scale must be: 'linear' or 'percent': {}", scale).c_str());
                   });
     rng::for_each(scale_i_list_, [this](const auto &scale_i)
                   { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_Linear : Boxes::BoxScale::e_Percent); });
@@ -624,9 +624,9 @@ void PF_CollectDataApp::Run_Load()
             fs::path symbol_file_name =
                 new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
             BOOST_ASSERT_MSG(fs::exists(symbol_file_name),
-                             std::format("Can't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
+                             std::format("\nCan't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
             // TODO(dpriedel): add json code
-            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for loading symbol data.");
+            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "\nJSON files are not yet supported for loading symbol data.");
             auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
             PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
@@ -803,9 +803,9 @@ void PF_CollectDataApp::Run_Update()
             fs::path update_file_name =
                 new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
             BOOST_ASSERT_MSG(fs::exists(update_file_name),
-                             std::format("Can't find data file for symbol: {} for update.", update_file_name).c_str());
+                             std::format("\nCan't find data file for symbol: {} for update.", update_file_name).c_str());
             // TODO(dpriedel): add json code
-            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "JSON files are not yet supported for updating symbol data.");
+            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "\nJSON files are not yet supported for updating symbol data.");
             AddPriceDataToExistingChartCSV(new_chart, update_file_name);
             charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
         }
@@ -940,11 +940,11 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, cons
     const auto header_record = symbol_data_records.front();
 
     auto date_column = FindColumnIndex(header_record, "date", ",");
-    BOOST_ASSERT_MSG(date_column.has_value(), std::format("Can't find 'date' field in header record: {}.", header_record).c_str());
+    BOOST_ASSERT_MSG(date_column.has_value(), std::format("\nCan't find 'date' field in header record: {}.", header_record).c_str());
 
     auto close_column = FindColumnIndex(header_record, price_fld_name_, ",");
     BOOST_ASSERT_MSG(close_column.has_value(),
-                     std::format("Can't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
+                     std::format("\nCan't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
 
     rng::for_each(symbol_data_records | vws::drop(1),
                   [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
