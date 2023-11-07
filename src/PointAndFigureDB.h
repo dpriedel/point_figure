@@ -72,7 +72,8 @@ class PF_DB
     // ====================  ACCESSORS     =======================================
 
     [[nodiscard]] std::vector<std::string> ListExchanges() const;
-    [[nodiscard]] std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange) const;
+    [[nodiscard]] std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange, const std::string& min_closing_price,
+                                                                 const std::chrono::year_month_day& min_closing_start_date) const;
 
     [[nodiscard]] Json::Value GetPFChartData(const std::string& file_name) const;
     [[nodiscard]] std::vector<PF_Chart> RetrieveAllEODChartsForSymbol(const std::string& symbol) const;
@@ -88,10 +89,9 @@ class PF_DB
                                                                                        const std::string& begin_date,
                                                                                        const std::string& price_fld_name,
                                                                                        const char* date_format) const;
-    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange(const std::string& exchange,
-                                                                                           const std::string& begin_date,
-                                                                                           const std::string& price_fld_name,
-                                                                                           const char* date_format) const;
+    [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange(
+        const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name, const char* date_format,
+        const std::string& min_closing_price, const std::chrono::year_month_day& min_closing_start_date) const;
 
     template <typename T>
     [[nodiscard]] std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;

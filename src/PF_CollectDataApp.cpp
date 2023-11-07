@@ -228,11 +228,23 @@ bool PF_CollectDataApp::CheckArgs()
                      std::format("\nData destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
+    if (min_close_start_date_i_.empty())
+    {
+        // compute our default value.
+        // default is 6 months prior to today
+        // (use 183 days as approximations)
+
+        min_close_start_date_ = floor<std::chrono::days>(std::chrono::system_clock::now()) - std::chrono::days{183};
+        BOOST_ASSERT_MSG(
+            min_close_start_date_.ok(),
+            std::format("\nComputed 'min-close-start-date': {} is not a valid date. Specify on command line.", min_close_start_date_)
+                .c_str());
+    }
     if (mode_ == Mode::e_daily_scan || new_data_source_ == Source::e_DB)
     {
         // set up exchange list early.
 
-        if (! exchange_list_i_.empty())
+        if (!exchange_list_i_.empty())
         {
             rng::for_each(split_string<std::string>(exchange_list_i_, ","), [this](const auto xchng) { exchange_list_.push_back(xchng); });
             rng::for_each(exchange_list_, [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
@@ -241,17 +253,18 @@ bool PF_CollectDataApp::CheckArgs()
             exchange_list_.erase(first, last);
 
             const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
-                "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
-            rng::for_each(exchange_list_,
-                          [&exchanges](const auto &xchng)
-                          {
-                              BOOST_ASSERT_MSG(
-                              std::ranges::find(exchanges, xchng) != exchanges.end(),
-                              std::format("\nexchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
-                                          "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
-                                          xchng)
-                              .c_str());
-                          });
+                                                     "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
+            rng::for_each(
+                exchange_list_,
+                [&exchanges](const auto &xchng)
+                {
+                    BOOST_ASSERT_MSG(
+                        std::ranges::find(exchanges, xchng) != exchanges.end(),
+                        std::format("\nexchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
+                                    "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
+                                    xchng)
+                            .c_str());
+                });
             spdlog::debug(fmt::format("exchanges for scan and bulk load: {}\n", exchange_list_));
         }
     }
@@ -295,7 +308,6 @@ bool PF_CollectDataApp::CheckArgs()
     // 1 of them.
 
     BOOST_ASSERT_MSG(symbol_list_i_ != "*", "\n'*' is no longer valid for symbol-list. Use 'ALL' instead.");
-    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty(), "\nMust provide either 1 or more '-s' values or 'symbol-list' list.");
 
     if (!symbol_list_i_.empty() && symbol_list_i_ != "ALL")
     {
@@ -314,10 +326,11 @@ bool PF_CollectDataApp::CheckArgs()
     }
     else
     {
-        // now we want upper case symbols.
-
         rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
     }
+
+    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty() || !exchange_list_i_.empty(),
+                     "\nMust provide either 1 or more '-s' values or 'symbol-list' or 'exchange-list' list.");
 
     if (use_min_max_)
     {
@@ -492,8 +505,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
 
 		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s) for daily-scan and bulk loads from database. Default is: not specified.")
-		("min-close-start-date",	po::value<std::string>(&this->min_close_start_date_),	"Start date to use for finding minimum closing price for a symbol.")
-		("min-close-price",	    po::value<std::string>(&this->min_close_price_i_)->default_value("5.00"),	"Minimum closing price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
+		("min-close-start-date",	po::value<std::string>(&this->min_close_start_date_i_),	"Start date to use for finding minimum closing price for a symbol. Default: 6 months ago.")
+		("min-close-price",	    po::value<std::string>(&this->min_close_price_)->default_value("5.00"),	"Minimum closing price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
 
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
@@ -654,13 +667,16 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 
         for (const auto &xchng : exchange_list_)
         {
-            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng);
+            spdlog::info(std::format("Building charts for symbols on xchng: {} with adjusted close (on or after: {}) >= {}.", xchng,
+                                     min_close_start_date_, min_close_price_));
+
+            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_close_price_, min_close_start_date_);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
             total_symbols_processed += std::get<0>(counts);
             total_charts_processed += std::get<1>(counts);
             total_charts_updated += std::get<2>(counts);
             spdlog::info(
-                std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts loaded: "
+                std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts built: "
                             "{}.",
                             xchng, std::get<0>(counts), std::get<1>(counts), std::get<2>(counts)));
         }
@@ -675,7 +691,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     // std::print("symbol list: {}\n", symbol_list_);
 
     spdlog::info(
-        std::format("Total symbols: {}. Total charts generated: {}. Total charts loaded: "
+        std::format("Total symbols: {}. Total charts generated: {}. Total charts built: "
                     "{}.",
                     total_symbols_processed, total_charts_processed, total_charts_updated));
 
@@ -1399,7 +1415,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
         // eliminate some exchanges we don't want to process
 
-        auto dont_use = [](const auto& xchng) { return xchng == "NMFQS" && xchng == "INDX" && xchng == "US"; };
+        auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" && xchng == "INDX" && xchng == "US"; };
         const auto [first, last] = rng::remove_if(exchange_list_, dont_use);
         exchange_list_.erase(first, last);
     }
@@ -1410,15 +1426,17 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     auto data_for_symbol = vws::chunk_by([](const auto &a, const auto &b) { return a.symbol_ == b.symbol_; });
 
-    for (const auto &exchange : exchange_list_)
+    for (const auto &xchng : exchange_list_)
     {
-        spdlog::info(std::format("Scanning charts for exchange: {}.", exchange));
+        spdlog::info(std::format("Scanning charts for symbols on xchng: {} with adjusted close (on or after: {}) >= {}.", xchng,
+                                 min_close_start_date_, min_close_price_));
 
         int32_t exchange_symbols_processed = 0;
         int32_t exchange_charts_processed = 0;
         int32_t exchange_charts_updated = 0;
 
-        auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(exchange, begin_date_, price_fld_name_, dt_format);
+        auto db_data =
+            pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, price_fld_name_, dt_format, min_close_price_, min_close_start_date_);
         // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
         // {}\n", xx.symbol, xx.tp, xx.price); });
 
@@ -1446,11 +1464,6 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                                   [&chart, &chart_needs_update](const auto &row)
                                   {
                                       auto status = chart.AddValue(row.close_, row.date_);
-                                      //                            std::print("status:
-                                      //                            {}. close: {}. date:
-                                      //                            {}.\n", status,
-                                      //                            row.close_,
-                                      //                            row.date_);
                                       chart_needs_update |= status == PF_Column::Status::e_Accepted ? 1 : 0;
                                   });
                     if (chart_needs_update)
@@ -1477,7 +1490,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
         spdlog::info(
             std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts updated: "
                         "{}.",
-                        exchange, exchange_symbols_processed, exchange_charts_processed, exchange_charts_updated));
+                        xchng, exchange_symbols_processed, exchange_charts_processed, exchange_charts_updated));
     }
 
     spdlog::info(

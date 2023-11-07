@@ -84,7 +84,8 @@ std::vector<std::string> PF_DB::ListExchanges() const
     return exchanges;
 }    // -----  end of method PF_DB::ListExchanges  -----
 
-std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange) const
+std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange, const std::string& min_closing_price,
+                                                      const std::chrono::year_month_day& min_closing_start_date) const
 {
     std::vector<std::string> symbols;
 
@@ -94,8 +95,9 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange)
 
     try
     {
-        std::string get_symbols_cmd = std::format(
-            "SELECT DISTINCT(symbol) FROM new_stock_data.names_and_symbols WHERE exchange = {} ORDER BY symbol ASC", c.quote(exchange));
+        std::string get_symbols_cmd =
+            std::format("SELECT * FROM new_stock_data.find_symbols_gte_min_adjclose({}, {}, {})", c.quote(exchange),
+                        c.quote(min_closing_price), c.quote(min_closing_start_date));
         symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
     }
     catch (const std::exception& e)
@@ -339,9 +341,9 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
     return db_data;
 }    // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----
 
-std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(const std::string& exchange, const std::string& begin_date,
-                                                                                const std::string& price_fld_name,
-                                                                                const char* date_format) const
+std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
+    const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name, const char* date_format,
+    const std::string& min_closing_price, const std::chrono::year_month_day& min_closing_start_date) const
 {
     PF_DB pf_db{db_params_};
 
@@ -371,11 +373,11 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
     try
     {
         // first, get ready to retrieve our data from DB.  Do this for all our symbols here.
-
         std::string get_symbol_prices_cmd = std::format(
-            "SELECT t1.symbol, t1.date, t1.{} FROM {} AS t1 INNER JOIN new_stock_data.names_and_symbols as t2 on t1.symbol = t2.symbol "
-            "WHERE t2.exchange = {} AND t1.date >= {} ORDER BY t1.symbol ASC, t1.date ASC",
-            price_fld_name, db_params_.stock_db_data_source_, c.quote(exchange), c.quote(begin_date));
+            "SELECT symbol, date, {} FROM {} WHERE date >= {} AND symbol IN (SELECT * FROM "
+            "new_stock_data.find_symbols_gte_min_adjclose({}, {}, {})) ORDER BY symbol ASC, date ASC",
+            price_fld_name, db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(exchange), c.quote(min_closing_price),
+            c.quote(min_closing_start_date));
 
         db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
             get_symbol_prices_cmd, Row2Closing);
