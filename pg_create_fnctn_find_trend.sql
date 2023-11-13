@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION new_stock_data.find_trend(
 RETURNS TABLE (
     symbol TEXT,
     date DATE,
-    adjclose NUMERIC(14, 4)
+    split_adj_close NUMERIC(14, 4)
 )
 AS
 $BODY$
@@ -26,20 +26,20 @@ BEGIN
     SELECT
         t1.symbol,
         t1.date,
-        t1.adjclose
+        t1.split_adj_close
     FROM
         (
         SELECT
             t0.date,
             t0.symbol,
-            t0.adjclose,
+            t0.split_adj_close,
             SUM(t0.close_up_or_down) OVER w AS trend
         FROM
             new_stock_data.current_data AS t0
         WHERE
             t0.date > start_date
-            AND t0.adjclose >= min_close
-            AND t0.adjvolume >= min_volume
+            AND t0.split_adj_close >= min_close
+            AND t0.split_adj_volume >= min_volume
         WINDOW w AS (PARTITION BY t0.symbol ORDER BY t0.date ASC ROWS BETWEEN trend_len - 1 PRECEDING AND CURRENT ROW)
         ORDER BY
             t0.symbol, t0.date
