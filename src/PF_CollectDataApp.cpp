@@ -1083,7 +1083,7 @@ Decimal PF_CollectDataApp::ComputeRangeForChartFromDB(const std::string &symbol)
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
     std::string get_price_range_cmd = std::format(
-        "SELECT (MAX(adjclose) - MIN(adjclose)) AS range FROM {} "
+        "SELECT (MAX(split_adj_close) - MIN(split_adj_close)) AS range FROM {} "
         "WHERE date BETWEEN {} AND '{}' AND symbol = {}",
         db_params_.stock_db_data_source_, c.quote(begin_date_), today, c.quote(symbol));
 

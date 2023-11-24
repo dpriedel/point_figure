@@ -96,7 +96,7 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange,
     try
     {
         std::string get_symbols_cmd =
-            std::format("SELECT * FROM new_stock_data.find_symbols_gte_min_adjclose({}, {}, {})", c.quote(exchange),
+            std::format("SELECT * FROM new_stock_data.find_symbols_gte_min_split_adj_close({}, {}, {})", c.quote(exchange),
                         c.quote(min_closing_price), c.quote(min_closing_start_date));
         symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
     }
@@ -260,7 +260,7 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
     std::string get_records_cmd = std::format(
-        "SELECT date, symbol, adjopen, adjhigh, adjlow, adjclose FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
+        "SELECT date, symbol, split_adj_open, split_adj_high, split_adj_low, split_adj_close FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
         db_params_.stock_db_data_source_, c.quote(symbol), date,
         how_many    // need an extra row for the algorithm
     );
@@ -375,7 +375,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
         // first, get ready to retrieve our data from DB.  Do this for all our symbols here.
         std::string get_symbol_prices_cmd = std::format(
             "SELECT symbol, date, {} FROM {} WHERE date >= {} AND symbol IN (SELECT * FROM "
-            "new_stock_data.find_symbols_gte_min_adjclose({}, {}, {})) ORDER BY symbol ASC, date ASC",
+            "new_stock_data.find_symbols_gte_min_split_adj_close({}, {}, {})) ORDER BY symbol ASC, date ASC",
             price_fld_name, db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(exchange), c.quote(min_closing_price),
             c.quote(min_closing_start_date));
 
