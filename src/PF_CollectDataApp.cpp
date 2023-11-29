@@ -477,7 +477,7 @@ bool PF_CollectDataApp::CheckArgs()
     rng::for_each(
         params, [](const auto &x)
         { std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"), std::get<2>(x), std::get<3>(x)); });
-    std::cout << std::endl;
+    std::cout << '\n';
 
     return true;
 }    // -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
@@ -664,6 +664,15 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     if (symbol_list_i_ == "ALL")
     {
         PF_DB pf_db{db_params_};
+
+        exchange_list_ = pf_db.ListExchanges();
+
+        // eliminate some exchanges we don't want to process
+
+        auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" || xchng == "INDX" || xchng == "US"; };
+        const auto [first, last] = rng::remove_if(exchange_list_, dont_use);
+        exchange_list_.erase(first, last);
+        spdlog::debug(fmt::format("exchanges for scan: {}\n", exchange_list_));
 
         for (const auto &xchng : exchange_list_)
         {
@@ -1415,7 +1424,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
         // eliminate some exchanges we don't want to process
 
-        auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" && xchng == "INDX" && xchng == "US"; };
+        auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" || xchng == "INDX" || xchng == "US"; };
         const auto [first, last] = rng::remove_if(exchange_list_, dont_use);
         exchange_list_.erase(first, last);
     }
