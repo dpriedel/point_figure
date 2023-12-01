@@ -228,18 +228,6 @@ bool PF_CollectDataApp::CheckArgs()
                      std::format("\nData destination must be: 'file' or 'database': {}", destination_i).c_str());
     destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
 
-    if (min_close_start_date_i_.empty())
-    {
-        // compute our default value.
-        // default is 6 months prior to today
-        // (use 183 days as approximations)
-
-        min_close_start_date_ = floor<std::chrono::days>(std::chrono::system_clock::now()) - std::chrono::days{183};
-        BOOST_ASSERT_MSG(
-            min_close_start_date_.ok(),
-            std::format("\nComputed 'min-close-start-date': {} is not a valid date. Specify on command line.", min_close_start_date_)
-                .c_str());
-    }
     if (mode_ == Mode::e_daily_scan || new_data_source_ == Source::e_DB)
     {
         // set up exchange list early.
@@ -477,7 +465,7 @@ bool PF_CollectDataApp::CheckArgs()
     rng::for_each(
         params, [](const auto &x)
         { std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"), std::get<2>(x), std::get<3>(x)); });
-    std::cout << '\n';
+    std::cout << std::endl;             // force a flush
 
     return true;
 }    // -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
@@ -505,8 +493,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
 
 		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s) for daily-scan and bulk loads from database. Default is: not specified.")
-		("min-close-start-date",	po::value<std::string>(&this->min_close_start_date_i_),	"Start date to use for finding minimum closing price for a symbol. Default: 6 months ago.")
 		("min-close-price",	    po::value<std::string>(&this->min_close_price_)->default_value("5.00"),	"Minimum closing price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
+		("min-close-volume",    po::value<int64_t>(&this->min_close_volume_)->default_value(100'000),	"Minimum closing volume for a symbol to filter small stocks from daily-scan and bulk loads. Default is 100'000")
 
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
@@ -679,7 +667,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
             spdlog::info(std::format("Building charts for symbols on xchng: {} with adjusted close (on or after: {}) >= {}.", xchng,
                                      min_close_start_date_, min_close_price_));
 
-            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_close_price_, min_close_start_date_);
+            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_close_price_, min_close_volume_);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
             total_symbols_processed += std::get<0>(counts);
             total_charts_processed += std::get<1>(counts);
@@ -894,7 +882,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                 }
                 else    // should only be database here
                 {
-                    new_chart = PF_Chart::MakeChartFromDB(db_params_, val, interval_i);
+                    new_chart = PF_Chart::MakeChartFromDB(PF_DB{db_params_}, val, interval_i);
                 }
                 if (new_chart.empty())
                 {
@@ -1445,7 +1433,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
         int32_t exchange_charts_updated = 0;
 
         auto db_data =
-            pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, price_fld_name_, dt_format, min_close_price_, min_close_start_date_);
+            pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, price_fld_name_, dt_format, min_close_price_, min_close_volume_);
         // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
         // {}\n", xx.symbol, xx.tp, xx.price); });
 

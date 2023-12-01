@@ -31,7 +31,7 @@
 //
 // =====================================================================================
 
-#include <date/date.h>    // for from_stream
+#include <date/date.h>  // for from_stream
 
 #include <boost/assert.hpp>
 #include <format>
@@ -60,7 +60,7 @@ PF_DB::PF_DB(const DB_Params& db_params) : db_params_{db_params}
     BOOST_ASSERT_MSG(!db_params_.db_name_.empty(), "Must provide 'db-name' to access PointAndFigure database.");
     BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live",
                      "'db-mode' must be 'test' or 'live' to access PointAndFigure database.");
-}    // -----  end of method PF_DB::PF_DB  (constructor)  -----
+}  // -----  end of method PF_DB::PF_DB  (constructor)  -----
 
 std::vector<std::string> PF_DB::ListExchanges() const
 {
@@ -70,8 +70,9 @@ std::vector<std::string> PF_DB::ListExchanges() const
 
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-    std::string get_exchanges_cmd = std::format("SELECT DISTINCT(exchange) FROM new_stock_data.names_and_symbols ORDER BY exchange ASC",
-                                                db_params_.stock_db_data_source_);
+    std::string get_exchanges_cmd =
+        std::format("SELECT DISTINCT(exchange) FROM new_stock_data.names_and_symbols ORDER BY exchange ASC",
+                    db_params_.stock_db_data_source_);
 
     try
     {
@@ -82,10 +83,10 @@ std::vector<std::string> PF_DB::ListExchanges() const
         spdlog::error(std::format("Unable to load list of exchanges from database because: {}\n", e.what()));
     }
     return exchanges;
-}    // -----  end of method PF_DB::ListExchanges  -----
+}  // -----  end of method PF_DB::ListExchanges  -----
 
 std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange, const std::string& min_closing_price,
-                                                      const std::chrono::year_month_day& min_closing_start_date) const
+                                                      int64_t min_closing_volume) const
 {
     std::vector<std::string> symbols;
 
@@ -96,8 +97,8 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange,
     try
     {
         std::string get_symbols_cmd =
-            std::format("SELECT * FROM new_stock_data.find_symbols_gte_min_split_adj_close({}, {}, {})", c.quote(exchange),
-                        c.quote(min_closing_price), c.quote(min_closing_start_date));
+            std::format("SELECT * FROM new_stock_data.find_symbols_gte_min_close_volume({}, {}, {})", c.quote(exchange),
+                        c.quote(min_closing_price), min_closing_volume);
         symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
     }
     catch (const std::exception& e)
@@ -105,15 +106,16 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange,
         spdlog::error(std::format("Unable to load list of symbols for exchange: {} because: {}\n", exchange, e.what()));
     }
     return symbols;
-}    // -----  end of method PF_DB::ListSymbolsOnExchange  -----
+}  // -----  end of method PF_DB::ListSymbolsOnExchange  -----
 
 Json::Value PF_DB::GetPFChartData(const std::string& file_name) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};
 
-    auto retrieve_chart_data_cmd = std::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}",
-                                               db_params_.PF_db_mode_, trxn.quote(file_name));
+    auto retrieve_chart_data_cmd =
+        std::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.PF_db_mode_,
+                    trxn.quote(file_name));
 
     // it's possible we get no records so use this more general command
     auto results = trxn.exec(retrieve_chart_data_cmd);
@@ -137,7 +139,7 @@ Json::Value PF_DB::GetPFChartData(const std::string& file_name) const
         throw std::runtime_error(std::format("Problem parsing data from DB for file: {}.\n{}", file_name, err));
     }
     return chart_data;
-}    // -----  end of method PF_DB::GetPFChartData  -----
+}  // -----  end of method PF_DB::GetPFChartData  -----
 
 std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol(const std::string& symbol) const
 {
@@ -146,9 +148,9 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol(const std::string& sy
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};
 
-    auto retrieve_chart_data_cmd =
-        std::format("SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE symbol = {} and file_name like '%_eod.json' ",
-                    db_params_.PF_db_mode_, trxn.quote(symbol));
+    auto retrieve_chart_data_cmd = std::format(
+        "SELECT chart_data FROM {}_point_and_figure.pf_charts WHERE symbol = {} and file_name like '%_eod.json' ",
+        db_params_.PF_db_mode_, trxn.quote(symbol));
 
     // it's possible we get no records so use this more general command
     auto results = trxn.exec(retrieve_chart_data_cmd);
@@ -176,15 +178,17 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol(const std::string& sy
         charts.push_back(std::move(retrieved_chart));
     }
     return charts;
-}    // -----  end of method PF_DB::RetrieveAllEODChartsForSymbol  -----
+}  // -----  end of method PF_DB::RetrieveAllEODChartsForSymbol  -----
 
-void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const
+void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval,
+                                   const std::string& cvs_graphics_data) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
 
-    auto delete_existing_data_cmd = std::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.PF_db_mode_,
-                                                trxn.quote(the_chart.MakeChartFileName(interval, "json")));
+    auto delete_existing_data_cmd =
+        std::format("DELETE FROM {}_point_and_figure.pf_charts WHERE file_name = {}", db_params_.PF_db_mode_,
+                    trxn.quote(the_chart.MakeChartFileName(interval, "json")));
     trxn.exec(delete_existing_data_cmd);
 
     auto json = the_chart.ToJSON();
@@ -198,12 +202,14 @@ void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view i
     const auto add_new_data_cmd = std::format(
         "INSERT INTO {}_point_and_figure.pf_charts ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})"
         " VALUES({}, {}, {}, {}, 'e_{}', 'e_{}', {}, {}, {}, {}, 'e_{}', 'e_{}', '{}', '{}')",
-        db_params_.PF_db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale", "file_name",
-        "first_date", "last_change_date", "last_checked_date", "current_direction", "current_signal", "chart_data", "cvs_graphics_data",
-        trxn.quote(the_chart.GetSymbol()), trxn.quote(the_chart.GetFNameBoxSize().format("f")),
-        trxn.quote(the_chart.GetChartBoxSize().format("f")), the_chart.GetReversalboxes(), json["boxes"]["box_type"].asString(),
-        json["boxes"]["box_scale"].asString(), trxn.quote(the_chart.MakeChartFileName(interval, "json")),
-        trxn.quote(std::format("{:%F %T}", the_chart.GetFirstTime())), trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
+        db_params_.PF_db_mode_, "symbol", "fname_box_size", "chart_box_size", "reversal_boxes", "box_type", "box_scale",
+        "file_name", "first_date", "last_change_date", "last_checked_date", "current_direction", "current_signal",
+        "chart_data", "cvs_graphics_data", trxn.quote(the_chart.GetSymbol()),
+        trxn.quote(the_chart.GetFNameBoxSize().format("f")), trxn.quote(the_chart.GetChartBoxSize().format("f")),
+        the_chart.GetReversalboxes(), json["boxes"]["box_type"].asString(), json["boxes"]["box_scale"].asString(),
+        trxn.quote(the_chart.MakeChartFileName(interval, "json")),
+        trxn.quote(std::format("{:%F %T}", the_chart.GetFirstTime())),
+        trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
         trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
         the_chart.GetCurrentSignal().signal_type_, for_db, cvs_graphics_data);
 
@@ -211,9 +217,10 @@ void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view i
     trxn.exec(add_new_data_cmd);
 
     trxn.commit();
-}    // -----  end of method PF_DB::StorePFChartDataIntoDB  -----
+}  // -----  end of method PF_DB::StorePFChartDataIntoDB  -----
 
-void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval, const std::string& cvs_graphics_data) const
+void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval,
+                                  const std::string& cvs_graphics_data) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
@@ -225,9 +232,11 @@ void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view in
 
     const auto update_chart_data_cmd = std::format(
         "UPDATE {}_point_and_figure.pf_charts "
-        "SET chart_data = '{}', cvs_graphics_data = '{}', last_change_date = {}, last_checked_date = {}, current_direction = 'e_{}' "
+        "SET chart_data = '{}', cvs_graphics_data = '{}', last_change_date = {}, last_checked_date = {}, "
+        "current_direction = 'e_{}' "
         "WHERE symbol = {} and file_name = {}",
-        db_params_.PF_db_mode_, for_db, cvs_graphics_data, trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
+        db_params_.PF_db_mode_, for_db, cvs_graphics_data,
+        trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
         trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
         trxn.quote(the_chart.GetSymbol()), trxn.quote(the_chart.MakeChartFileName(interval, "json")));
 
@@ -235,7 +244,7 @@ void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view in
     trxn.exec(update_chart_data_cmd);
 
     trxn.commit();
-}    // -----  end of method PF_DB::UpdatePFChartDataInDB  -----
+}  // -----  end of method PF_DB::UpdatePFChartDataInDB  -----
 
 // ===  FUNCTION  ======================================================================
 //         Name:  RetrieveMostRecentStockDataRecordsFromDB
@@ -244,7 +253,8 @@ void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view in
 //      date, exchange, symbol, open, high, low, close
 // =====================================================================================
 
-std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std::string_view symbol, std::chrono::year_month_day date,
+std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std::string_view symbol,
+                                                                             std::chrono::year_month_day date,
                                                                              int how_many) const
 {
     auto Row2StockDataRecord = [](const auto& r)
@@ -260,14 +270,16 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
     std::string get_records_cmd = std::format(
-        "SELECT date, symbol, split_adj_open, split_adj_high, split_adj_low, split_adj_close FROM {} WHERE symbol = {} AND date <= '{}' ORDER BY date DESC LIMIT {}",
+        "SELECT date, symbol, split_adj_open, split_adj_high, split_adj_low, split_adj_close FROM {} WHERE symbol = {} "
+        "AND date <= '{}' ORDER BY date DESC LIMIT {}",
         db_params_.stock_db_data_source_, c.quote(symbol), date,
-        how_many    // need an extra row for the algorithm
+        how_many  // need an extra row for the algorithm
     );
     std::vector<StockDataRecord> records;
     try
     {
-        BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(), "'db-data-source' must be specified to access stock_data database.");
+        BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(),
+                         "'db-data-source' must be specified to access stock_data database.");
 
         records = RunSQLQueryUsingRows<StockDataRecord>(get_records_cmd, Row2StockDataRecord);
     }
@@ -276,7 +288,7 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std
         spdlog::error(std::format("Unable to run query: {}\n\tbecause: {}\n", get_records_cmd, e.what()));
     }
     return records;
-}    // -----  end of function PF_DB::RetrieveMostRecentStockDataRecordsFromDB   -----
+}  // -----  end of function PF_DB::RetrieveMostRecentStockDataRecordsFromDB   -----
 
 std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(const std::vector<std::string>& symbol_list,
                                                                             const std::string& begin_date,
@@ -326,12 +338,14 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
         // first, get ready to retrieve our data from DB.  Do this for all our symbols here.
 
         std::string get_symbol_prices_cmd =
-            std::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC", price_fld_name,
-                        db_params_.stock_db_data_source_, query_list, c.quote(begin_date));
+            std::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
+                        price_fld_name, db_params_.stock_db_data_source_, query_list, c.quote(begin_date));
 
-        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
-            get_symbol_prices_cmd, Row2Closing);
-        spdlog::debug(std::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
+        db_data =
+            pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
+                get_symbol_prices_cmd, Row2Closing);
+        spdlog::debug(
+            std::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
     }
     catch (const std::exception& e)
     {
@@ -339,11 +353,11 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
     }
 
     return db_data;
-}    // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----
+}  // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----
 
 std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
-    const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name, const char* date_format,
-    const std::string& min_closing_price, const std::chrono::year_month_day& min_closing_start_date) const
+    const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name,
+    const char* date_format, const std::string& min_closing_price, int64_t min_closing_volume) const
 {
     PF_DB pf_db{db_params_};
 
@@ -375,18 +389,21 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
         // first, get ready to retrieve our data from DB.  Do this for all our symbols here.
         std::string get_symbol_prices_cmd = std::format(
             "SELECT symbol, date, {} FROM {} WHERE date >= {} AND symbol IN (SELECT * FROM "
-            "new_stock_data.find_symbols_gte_min_split_adj_close({}, {}, {})) ORDER BY symbol ASC, date ASC",
-            price_fld_name, db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(exchange), c.quote(min_closing_price),
-            c.quote(min_closing_start_date));
+            "new_stock_data.find_symbols_gte_min_close_volume({}, {}, {})) ORDER BY symbol ASC, date ASC",
+            price_fld_name, db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(exchange),
+            c.quote(min_closing_price), min_closing_volume);
 
-        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
-            get_symbol_prices_cmd, Row2Closing);
-        spdlog::debug(std::format("Done retrieving data for symbols on exchange: {}. Got: {} rows.", exchange, db_data.size()));
+        db_data =
+            pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
+                get_symbol_prices_cmd, Row2Closing);
+        spdlog::debug(
+            std::format("Done retrieving data for symbols on exchange: {}. Got: {} rows.", exchange, db_data.size()));
     }
     catch (const std::exception& e)
     {
-        spdlog::error(std::format("Unable to retrieve DB data from symbols on exchange: {} because: {}.", exchange, e.what()));
+        spdlog::error(
+            std::format("Unable to retrieve DB data from symbols on exchange: {} because: {}.", exchange, e.what()));
     }
 
     return db_data;
-}    // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----
+}  // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----

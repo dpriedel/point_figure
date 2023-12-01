@@ -263,7 +263,8 @@ class PF_CollectDataApp
     std::string trend_lines_;
     std::string begin_date_;
     std::string min_close_price_;
-    std::string min_close_start_date_i_;
+
+    int64_t min_close_volume_;
 
     std::chrono::year_month_day min_close_start_date_;
 
