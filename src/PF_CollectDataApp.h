@@ -266,8 +266,6 @@ class PF_CollectDataApp
 
     int64_t min_close_volume_;
 
-    std::chrono::year_month_day min_close_start_date_;
-
     int32_t max_columns_for_graph_ = -1;
     int32_t number_of_days_history_for_ATR_ = 0;
     bool input_is_path_ = false;

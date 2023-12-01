@@ -118,8 +118,8 @@ int wait_for_any(std::vector<std::future<T>> &vf, std::chrono::steady_clock::dur
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 PF_CollectDataApp::PF_CollectDataApp(int argc, char *argv[])
-    : argc_{argc}, argv_{argv} {}    // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
-                                     // -----
+    : argc_{argc}, argv_{argv} {}  // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
+                                   // -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_CollectDataApp
@@ -127,8 +127,8 @@ PF_CollectDataApp::PF_CollectDataApp(int argc, char *argv[])
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 PF_CollectDataApp::PF_CollectDataApp(const std::vector<std::string> &tokens)
-    : tokens_{tokens} {}    // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
-                            // -----
+    : tokens_{tokens} {}  // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
+                          // -----
 
 void PF_CollectDataApp::ConfigureLogging()
 {
@@ -158,8 +158,10 @@ void PF_CollectDataApp::ConfigureLogging()
     // we are running before 'CheckArgs' so we need to do a little editiing
     // ourselves.
 
-    const std::map<std::string, spdlog::level::level_enum> levels{
-        {"none", spdlog::level::off}, {"error", spdlog::level::err}, {"information", spdlog::level::info}, {"debug", spdlog::level::debug}};
+    const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
+                                                                  {"error", spdlog::level::err},
+                                                                  {"information", spdlog::level::info},
+                                                                  {"debug", spdlog::level::debug}};
 
     auto which_level = levels.find(logging_level_);
     if (which_level != levels.end())
@@ -167,12 +169,13 @@ void PF_CollectDataApp::ConfigureLogging()
         spdlog::set_level(which_level->second);
     }
 
-}    // -----  end of method PF_CollectDataApp::ConfigureLogging  -----
+}  // -----  end of method PF_CollectDataApp::ConfigureLogging  -----
 
 bool PF_CollectDataApp::Startup()
 {
     constexpr const char *time_fmt = "\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n";
-    spdlog::info(std::format("\n\n*** Starting run {} ***\n", std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
+    spdlog::info(std::format("\n\n*** Starting run {} ***\n",
+                             std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
     bool result{true};
     try
     {
@@ -199,14 +202,16 @@ bool PF_CollectDataApp::Startup()
         result = false;
     }
     return result;
-}    // -----  end of method PF_CollectDataApp::Do_StartUp  -----
+}  // -----  end of method PF_CollectDataApp::Do_StartUp  -----
 
 bool PF_CollectDataApp::CheckArgs()
 {
     //	an easy check first
 
     BOOST_ASSERT_MSG(!(use_ATR_ && use_min_max_), "\nCan not use both ATR and MinMax for computing box size.");
-    boxsize_source_ = (use_ATR_ ? BoxsizeSource::e_from_ATR : use_min_max_ ? BoxsizeSource::e_from_MinMax : BoxsizeSource::e_from_args);
+    boxsize_source_ = (use_ATR_       ? BoxsizeSource::e_from_ATR
+                       : use_min_max_ ? BoxsizeSource::e_from_MinMax
+                                      : BoxsizeSource::e_from_args);
 
     //	let's get our input and output set up
 
@@ -216,12 +221,16 @@ bool PF_CollectDataApp::CheckArgs()
 
     // now make sure we can find our data for input and output.
 
-    BOOST_ASSERT_MSG(new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database",
-                     std::format("\nNew data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
-    new_data_source_ = new_data_source_i == "file" ? Source::e_file : new_data_source_i == "database" ? Source::e_DB : Source::e_streaming;
+    BOOST_ASSERT_MSG(
+        new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database",
+        std::format("\nNew data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
+    new_data_source_ = new_data_source_i == "file"       ? Source::e_file
+                       : new_data_source_i == "database" ? Source::e_DB
+                                                         : Source::e_streaming;
 
-    BOOST_ASSERT_MSG(chart_data_source_i == "file" || chart_data_source_i == "database",
-                     std::format("\nExisting chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
+    BOOST_ASSERT_MSG(
+        chart_data_source_i == "file" || chart_data_source_i == "database",
+        std::format("\nExisting chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
     chart_data_source_ = chart_data_source_i == "file" ? Source::e_file : Source::e_DB;
 
     BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database",
@@ -234,25 +243,26 @@ bool PF_CollectDataApp::CheckArgs()
 
         if (!exchange_list_i_.empty())
         {
-            rng::for_each(split_string<std::string>(exchange_list_i_, ","), [this](const auto xchng) { exchange_list_.push_back(xchng); });
-            rng::for_each(exchange_list_, [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
+            rng::for_each(split_string<std::string>(exchange_list_i_, ","),
+                          [this](const auto xchng) { exchange_list_.push_back(xchng); });
+            rng::for_each(exchange_list_,
+                          [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
             rng::sort(exchange_list_);
             const auto [first, last] = rng::unique(exchange_list_);
             exchange_list_.erase(first, last);
 
             const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
                                                      "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
-            rng::for_each(
-                exchange_list_,
-                [&exchanges](const auto &xchng)
-                {
-                    BOOST_ASSERT_MSG(
-                        std::ranges::find(exchanges, xchng) != exchanges.end(),
-                        std::format("\nexchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', 'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
-                                    "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
-                                    xchng)
-                            .c_str());
-                });
+            rng::for_each(exchange_list_,
+                          [&exchanges](const auto &xchng)
+                          {
+                              BOOST_ASSERT_MSG(std::ranges::find(exchanges, xchng) != exchanges.end(),
+                                               std::format("\nexchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', "
+                                                           "'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
+                                                           "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
+                                                           xchng)
+                                                   .c_str());
+                          });
             spdlog::debug(fmt::format("exchanges for scan and bulk load: {}\n", exchange_list_));
         }
     }
@@ -264,8 +274,10 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(db_params_.port_number_ != -1, "\nMust provide 'db-port' when mode is 'daily-scan'.");
         BOOST_ASSERT_MSG(!db_params_.user_name_.empty(), "\nMust provide 'db-user' when mode is 'daily-scan'.");
         BOOST_ASSERT_MSG(!db_params_.db_name_.empty(), "\nMust provide 'db-name' when mode is 'daily-scan'.");
-        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "\n'db-mode' must be 'test' or 'live'.");
-        BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(), "\n'db-data-source' must be specified when mode is 'daily-scan'.");
+        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live",
+                         "\n'db-mode' must be 'test' or 'live'.");
+        BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(),
+                         "\n'db-data-source' must be specified when mode is 'daily-scan'.");
 
         // setup or list exchanges to use.
 
@@ -299,7 +311,8 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (!symbol_list_i_.empty() && symbol_list_i_ != "ALL")
     {
-        rng::for_each(split_string<std::string>(symbol_list_i_, ","), [this](const auto sym) { symbol_list_.push_back(sym); });
+        rng::for_each(split_string<std::string>(symbol_list_i_, ","),
+                      [this](const auto sym) { symbol_list_.push_back(sym); });
         rng::sort(symbol_list_);
         const auto [first, last] = rng::unique(symbol_list_);
         symbol_list_.erase(first, last);
@@ -332,7 +345,8 @@ bool PF_CollectDataApp::CheckArgs()
     {
         // for file input, we always need to have our raw data inputs
 
-        BOOST_ASSERT_MSG(!new_data_input_directory_.empty(), "\nMust specify 'new-data-dir' when data source is 'file'.");
+        BOOST_ASSERT_MSG(!new_data_input_directory_.empty(),
+                         "\nMust specify 'new-data-dir' when data source is 'file'.");
         BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_),
                          std::format("\nCan't find new data input directory: {}", new_data_input_directory_).c_str());
 
@@ -348,8 +362,9 @@ bool PF_CollectDataApp::CheckArgs()
             BOOST_ASSERT_MSG(!input_chart_directory_.empty(),
                              "\nMust specify 'chart-data-dir' when data source is "
                              "'file' and mode is 'update'.");
-            BOOST_ASSERT_MSG(fs::exists(input_chart_directory_),
-                             std::format("\nCan't find new existing chart data directory: {}", input_chart_directory_).c_str());
+            BOOST_ASSERT_MSG(
+                fs::exists(input_chart_directory_),
+                std::format("\nCan't find new existing chart data directory: {}", input_chart_directory_).c_str());
 
             // we could write out data to a separate location if we want
             // otherwise, use the charts directory.
@@ -367,7 +382,8 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (destination_ == Destination::e_file)
     {
-        BOOST_ASSERT_MSG(!output_chart_directory_.empty(), "\nMust specify 'output-chart-dir' when data destination is 'file'.");
+        BOOST_ASSERT_MSG(!output_chart_directory_.empty(),
+                         "\nMust specify 'output-chart-dir' when data destination is 'file'.");
         if (!fs::exists(output_chart_directory_))
         {
             fs::create_directories(output_chart_directory_);
@@ -404,7 +420,8 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(!db_params_.db_name_.empty(),
                          "M\nust provide 'db-name' when data source or destination "
                          "is 'database'.");
-        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live", "\n'db-mode' must be 'test' or 'live'.");
+        BOOST_ASSERT_MSG(db_params_.PF_db_mode_ == "test" || db_params_.PF_db_mode_ == "live",
+                         "\n'db-mode' must be 'test' or 'live'.");
         if (new_data_source_ == Source::e_DB)
         {
             BOOST_ASSERT_MSG(!db_params_.stock_db_data_source_.empty(),
@@ -416,7 +433,8 @@ bool PF_CollectDataApp::CheckArgs()
     if (new_data_source_ != Source::e_DB && use_ATR_)
     {
         BOOST_ASSERT_MSG(!tiingo_api_key_.empty(), "\nMust specify api 'key' file when data source is 'streaming'.");
-        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_), std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
+        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_),
+                         std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
     }
 
     if (new_data_source_ == Source::e_DB)
@@ -453,8 +471,11 @@ bool PF_CollectDataApp::CheckArgs()
                       BOOST_ASSERT_MSG(scale == "linear" || scale == "percent",
                                        std::format("\nChart scale must be: 'linear' or 'percent': {}", scale).c_str());
                   });
-    rng::for_each(scale_i_list_, [this](const auto &scale_i)
-                  { this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_Linear : Boxes::BoxScale::e_Percent); });
+    rng::for_each(scale_i_list_,
+                  [this](const auto &scale_i) {
+                      this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_Linear
+                                                                         : Boxes::BoxScale::e_Percent);
+                  });
 
     // we can compute whether boxes are fractions or intergers from input. This
     // may be changed by the Boxes code later.
@@ -462,13 +483,16 @@ bool PF_CollectDataApp::CheckArgs()
     // generate PF_Chart type combinations from input params.
 
     auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
-    rng::for_each(
-        params, [](const auto &x)
-        { std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"), std::get<2>(x), std::get<3>(x)); });
-    std::cout << std::endl;             // force a flush
+    rng::for_each(params,
+                  [](const auto &x)
+                  {
+                      std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"),
+                                               std::get<2>(x), std::get<3>(x));
+                  });
+    std::cout << std::endl;  // force a flush
 
     return true;
-}    // -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
+}  // -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
 
 // clang-format off
 
@@ -609,7 +633,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         }
     }
     return {};
-}    // -----  end of method PF_CollectDataApp::Do_Run  -----
+}  // -----  end of method PF_CollectDataApp::Do_Run  -----
 
 void PF_CollectDataApp::Run_Load()
 {
@@ -624,10 +648,12 @@ void PF_CollectDataApp::Run_Load()
         {
             fs::path symbol_file_name =
                 new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-            BOOST_ASSERT_MSG(fs::exists(symbol_file_name),
-                             std::format("\nCan't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
+            BOOST_ASSERT_MSG(
+                fs::exists(symbol_file_name),
+                std::format("\nCan't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
             // TODO(dpriedel): add json code
-            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "\nJSON files are not yet supported for loading symbol data.");
+            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv,
+                             "\nJSON files are not yet supported for loading symbol data.");
             auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
             PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
             AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
@@ -638,7 +664,7 @@ void PF_CollectDataApp::Run_Load()
             spdlog::error(std::format("Unable to load data for symbol: {} from file because: {}.", symbol, e.what()));
         }
     }
-}    // -----  end of method PF_CollectDataApp::Run_Load  -----
+}  // -----  end of method PF_CollectDataApp::Run_Load  -----
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 {
@@ -664,8 +690,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 
         for (const auto &xchng : exchange_list_)
         {
-            spdlog::info(std::format("Building charts for symbols on xchng: {} with adjusted close (on or after: {}) >= {}.", xchng,
-                                     min_close_start_date_, min_close_price_));
+            spdlog::info(
+                std::format("Building charts for symbols on xchng: {} with adjusted close >= {} and volume >= {}.",
+                            xchng, min_close_price_, min_close_volume_));
 
             auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_close_price_, min_close_volume_);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
@@ -693,7 +720,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
                     total_symbols_processed, total_charts_processed, total_charts_updated));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
-}    // -----  end of method PF_CollectDataApp::Run_Load  -----
+}  // -----  end of method PF_CollectDataApp::Run_Load  -----
 
 std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list)
 {
@@ -737,11 +764,13 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
                 "{} ORDER BY date ASC",
                 price_fld_name_, db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date_));
 
-            const auto closing_prices =
-                pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, const char *>(get_symbol_prices_cmd, Row2Closing);
+            const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, const char *>(
+                get_symbol_prices_cmd, Row2Closing);
 
             // only need to compute this once per symbol also
-            auto atr_or_range = use_ATR_ ? ComputeATRForChartFromDB(symbol) : use_min_max_ ? ComputeRangeForChartFromDB(symbol) : 0;
+            auto atr_or_range = use_ATR_       ? ComputeATRForChartFromDB(symbol)
+                                : use_min_max_ ? ComputeRangeForChartFromDB(symbol)
+                                               : 0;
 
             // There could be thousands of symbols in the database so we don't
             // want to generate combinations for all of them at once. so, make a
@@ -782,7 +811,7 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
         }
     }
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
-}    // -----  end of method PF_CollectDataApp::ProcessSymbolsFromDB  -----
+}  // -----  end of method PF_CollectDataApp::ProcessSymbolsFromDB  -----
 
 void PF_CollectDataApp::Run_Update()
 {
@@ -797,7 +826,8 @@ void PF_CollectDataApp::Run_Update()
         PF_Chart new_chart;
         try
         {
-            fs::path existing_data_file_name = input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
+            fs::path existing_data_file_name =
+                input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -815,10 +845,12 @@ void PF_CollectDataApp::Run_Update()
             }
             fs::path update_file_name =
                 new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-            BOOST_ASSERT_MSG(fs::exists(update_file_name),
-                             std::format("\nCan't find data file for symbol: {} for update.", update_file_name).c_str());
+            BOOST_ASSERT_MSG(
+                fs::exists(update_file_name),
+                std::format("\nCan't find data file for symbol: {} for update.", update_file_name).c_str());
             // TODO(dpriedel): add json code
-            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv, "\nJSON files are not yet supported for updating symbol data.");
+            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv,
+                             "\nJSON files are not yet supported for updating symbol data.");
             AddPriceDataToExistingChartCSV(new_chart, update_file_name);
             charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
         }
@@ -828,7 +860,7 @@ void PF_CollectDataApp::Run_Update()
                                       new_chart.MakeChartFileName(interval_i, ""), e.what()));
         }
     }
-}    // -----  end of method PF_CollectDataApp::Run_Update  -----
+}  // -----  end of method PF_CollectDataApp::Run_Update  -----
 
 void PF_CollectDataApp::Run_UpdateFromDB()
 {
@@ -870,7 +902,8 @@ void PF_CollectDataApp::Run_UpdateFromDB()
             {
                 if (chart_data_source_ == Source::e_file)
                 {
-                    fs::path existing_data_file_name = input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
+                    fs::path existing_data_file_name =
+                        input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
                     if (fs::exists(existing_data_file_name))
                     {
                         new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -880,7 +913,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                         }
                     }
                 }
-                else    // should only be database here
+                else  // should only be database here
                 {
                     new_chart = PF_Chart::MakeChartFromDB(PF_DB{db_params_}, val, interval_i);
                 }
@@ -905,15 +938,16 @@ void PF_CollectDataApp::Run_UpdateFromDB()
             }
         }
     }
-}    // -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
+}  // -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
 
 void PF_CollectDataApp::Run_Streaming()
 {
     auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
-    auto current_local_time =
-        std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-    auto market_status = GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
+    auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(),
+                                                         floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    auto market_status =
+        GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
     if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
     {
@@ -953,22 +987,25 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, cons
     const auto header_record = symbol_data_records.front();
 
     auto date_column = FindColumnIndex(header_record, "date", ",");
-    BOOST_ASSERT_MSG(date_column.has_value(), std::format("\nCan't find 'date' field in header record: {}.", header_record).c_str());
+    BOOST_ASSERT_MSG(date_column.has_value(),
+                     std::format("\nCan't find 'date' field in header record: {}.", header_record).c_str());
 
     auto close_column = FindColumnIndex(header_record, price_fld_name_, ",");
-    BOOST_ASSERT_MSG(close_column.has_value(),
-                     std::format("\nCan't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
+    BOOST_ASSERT_MSG(
+        close_column.has_value(),
+        std::format("\nCan't find price field: {} in header record: {}.", price_fld_name_, header_record).c_str());
 
-    rng::for_each(symbol_data_records | vws::drop(1),
-                  [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
-                  {
-                      const auto fields = split_string<std::string_view>(record, ",");
-                      const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
-                      new_chart.AddValue(sv2dec(fields[close_col]), StringToUTCTimePoint(dt_format, fields[date_col]));
-                  });
+    rng::for_each(
+        symbol_data_records | vws::drop(1),
+        [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
+        {
+            const auto fields = split_string<std::string_view>(record, ",");
+            const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+            new_chart.AddValue(sv2dec(fields[close_col]), StringToUTCTimePoint(dt_format, fields[date_col]));
+        });
 
-}    // -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV
-     // -----
+}  // -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV
+   // -----
 
 PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
 {
@@ -986,9 +1023,10 @@ PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON(const fs::path &symbol_fil
 
     PF_Chart new_chart{saved_data};
     return new_chart;
-}    // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
+}  // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
 
-std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, std::string_view column_name, std::string_view delim)
+std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, std::string_view column_name,
+                                                      std::string_view delim)
 {
     auto fields = rng_split_string<std::string_view>(header, delim) | ranges::to<std::vector>();
     auto do_compare(
@@ -1002,7 +1040,8 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, s
             {
                 return false;
             }
-            return rng::equal(column_name, field_name, [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
+            return rng::equal(column_name, field_name,
+                              [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
         });
 
     if (auto found_it = rng::find_if(fields, do_compare); found_it != rng::end(fields))
@@ -1011,7 +1050,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, s
     }
     return {};
 
-}    // -----  end of method PF_CollectDataApp::FindColumnIndex  -----
+}  // -----  end of method PF_CollectDataApp::FindColumnIndex  -----
 
 Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
 {
@@ -1029,13 +1068,13 @@ Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
     auto holidays = MakeHolidayList(today.year());
     rng::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
 
-    const auto history =
-        history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1, UseAdjusted::e_Yes, &holidays);
+    const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1,
+                                                                UseAdjusted::e_Yes, &holidays);
 
     auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_);
 
     return atr;
-}    // -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  -----
+}  // -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  -----
 
 Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) const
 {
@@ -1057,7 +1096,8 @@ Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) c
     Decimal atr{};
     try
     {
-        auto price_data = the_db.RetrieveMostRecentStockDataRecordsFromDB(symbol, today, number_of_days_history_for_ATR_ + 1);
+        auto price_data =
+            the_db.RetrieveMostRecentStockDataRecordsFromDB(symbol, today, number_of_days_history_for_ATR_ + 1);
         atr = ComputeATR(symbol, price_data, number_of_days_history_for_ATR_);
     }
     catch (const std::exception &e)
@@ -1066,7 +1106,7 @@ Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) c
     }
 
     return atr;
-}    // -----  end of method PF_CollectDataApp::ComputeATRUsingDB  -----
+}  // -----  end of method PF_CollectDataApp::ComputeATRUsingDB  -----
 
 Decimal PF_CollectDataApp::ComputeRangeForChartFromDB(const std::string &symbol) const
 {
@@ -1104,7 +1144,7 @@ Decimal PF_CollectDataApp::ComputeRangeForChartFromDB(const std::string &symbol)
     }
 
     return price_range;
-}    // -----  end of method PF_CollectDataApp::ComputeRangeForChartFromDB -----
+}  // -----  end of method PF_CollectDataApp::ComputeRangeForChartFromDB -----
 
 void PF_CollectDataApp::PrimeChartsForStreaming()
 {
@@ -1117,9 +1157,10 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     auto holidays = MakeHolidayList(which_year);
     rng::copy(MakeHolidayList(--which_year), std::back_inserter(holidays));
 
-    auto current_local_time =
-        std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-    auto market_status = GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
+    auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(),
+                                                         floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    auto market_status =
+        GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
     Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
 
@@ -1128,8 +1169,10 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
         for (auto &[symbol, chart] : charts_)
         {
             auto history = history_getter.GetMostRecentTickerData(
-                symbol, today, 2, price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No, &holidays);
-            chart.AddValue(history[0].close_, std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
+                symbol, today, 2, price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No,
+                &holidays);
+            chart.AddValue(history[0].close_,
+                           std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
@@ -1140,27 +1183,31 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
             const std::string ticker = e["ticker"].asString();
             const std::string tstmp = e["timestamp"].asString();
             const auto quote_time_stamp = StringToUTCTimePoint("%FT%T%z", tstmp);
-            const auto close_time_stamp =
-                std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
-            const auto open_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
+            const auto close_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(
+                GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
+            const auto open_time_stamp =
+                std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
             try
             {
-                rng::for_each(charts_ | vws::filter([&ticker](auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
-                              [&](auto &symbol_and_chart)
-                              {
-                                  symbol_and_chart.second.AddValue(Decimal{e["prevClose"].asCString()}, close_time_stamp);
-                                  symbol_and_chart.second.AddValue(Decimal{e["open"].asCString()}, open_time_stamp);
-                                  symbol_and_chart.second.AddValue(Decimal{e["last"].asCString()}, quote_time_stamp);
-                              });
+                rng::for_each(
+                    charts_ |
+                        vws::filter([&ticker](auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+                    [&](auto &symbol_and_chart)
+                    {
+                        symbol_and_chart.second.AddValue(Decimal{e["prevClose"].asCString()}, close_time_stamp);
+                        symbol_and_chart.second.AddValue(Decimal{e["open"].asCString()}, open_time_stamp);
+                        symbol_and_chart.second.AddValue(Decimal{e["last"].asCString()}, quote_time_stamp);
+                    });
             }
             catch (const std::exception &e)
             {
-                std::cout << "Problem initializing streaming data for symbol: " << ticker << " because: " << e.what() << std::endl;
+                std::cout << "Problem initializing streaming data for symbol: " << ticker << " because: " << e.what()
+                          << std::endl;
             }
         }
     }
-}    // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
+}  // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
 
 void PF_CollectDataApp::CollectStreamingData()
 {
@@ -1202,7 +1249,8 @@ void PF_CollectDataApp::CollectStreamingData()
 
     auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
     // add a couple minutes for padding
-    auto local_market_close = std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
+    auto local_market_close =
+        std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
 
     std::mutex data_mutex;
     std::queue<std::string> streamed_data;
@@ -1210,8 +1258,8 @@ void PF_CollectDataApp::CollectStreamingData()
     py::gil_scoped_release gil{};
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
-    auto streaming_task =
-        std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_,
+                                     &data_mutex, &streamed_data);
     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &quotes,
                                       &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
@@ -1225,7 +1273,7 @@ void PF_CollectDataApp::CollectStreamingData()
 
     ProcessStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
-}    // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
+}  // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
 
 void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_signal, std::mutex *data_mutex,
                                             std::queue<std::string> *streamed_data)
@@ -1261,7 +1309,8 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
                 std::vector<std::future<void>> tasks;
                 for (const auto &ticker : tickers_in_update)
                 {
-                    tasks.emplace_back(std::async(std::launch::async, &PF_CollectDataApp::ProcessUpdatesForSymbol, this, pf_data, ticker));
+                    tasks.emplace_back(std::async(std::launch::async, &PF_CollectDataApp::ProcessUpdatesForSymbol, this,
+                                                  pf_data, ticker));
                 }
                 // now, let's wait till they're all done
                 // and then we'll do the next bunch.
@@ -1281,7 +1330,8 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
 
                         spdlog::error(e.what());
                         auto ec = e.code();
-                        spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(), ec.message());
+                        spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(),
+                                      ec.message());
 
                         // OK, let's remember our first time here.
 
@@ -1342,7 +1392,7 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
         std::rethrow_exception(ep);
     }
 
-}    // -----  end of method PF_CollectDataApp::ProcessStreamedData  -----
+}  // -----  end of method PF_CollectDataApp::ProcessStreamedData  -----
 
 void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, const std::string &ticker)
 {
@@ -1352,25 +1402,28 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
     // new value to all appropriate charts so we find all the charts for each
     // symbol and give each a chance at the new data.
 
-    for (const auto &new_value : updates | vws::filter([&ticker](const auto &update) { return update.ticker_ == ticker; }))
+    for (const auto &new_value :
+         updates | vws::filter([&ticker](const auto &update) { return update.ticker_ == ticker; }))
     {
-        rng::for_each(charts_ | vws::filter([&ticker](const auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
-                      [this, &need_to_update_graph, &new_value, &ticker](auto &symbol_and_chart)
-                      {
-                          auto chart_changed = symbol_and_chart.second.AddValue(
-                              new_value.last_price_, PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
-                          if (chart_changed != PF_Column::Status::e_Ignored)
-                          {
-                              need_to_update_graph.push_back(&symbol_and_chart.second);
-                          }
-                          const auto chart_name = symbol_and_chart.second.GetChartBaseName();
-                          streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
-                          streamed_prices_[chart_name].price_.push_back(dec2dbl(new_value.last_price_));
-                          streamed_prices_[chart_name].signal_type_.push_back(
-                              chart_changed == PF_Column::Status::e_AcceptedWithSignal
-                                  ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
-                                  : 0);
-                      });
+        rng::for_each(
+            charts_ | vws::filter([&ticker](const auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+            [this, &need_to_update_graph, &new_value, &ticker](auto &symbol_and_chart)
+            {
+                auto chart_changed = symbol_and_chart.second.AddValue(
+                    new_value.last_price_,
+                    PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
+                if (chart_changed != PF_Column::Status::e_Ignored)
+                {
+                    need_to_update_graph.push_back(&symbol_and_chart.second);
+                }
+                const auto chart_name = symbol_and_chart.second.GetChartBaseName();
+                streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
+                streamed_prices_[chart_name].price_.push_back(dec2dbl(new_value.last_price_));
+                streamed_prices_[chart_name].signal_type_.push_back(
+                    chart_changed == PF_Column::Status::e_AcceptedWithSignal
+                        ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
+                        : 0);
+            });
     }
 
     // we could have multiple chart updates for any given symbol but we only
@@ -1384,13 +1437,13 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
     {
         py::gil_scoped_acquire gil{};
         fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-        ConstructChartGraphAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()], trend_lines_,
-                                          PF_Chart::X_AxisFormat::e_show_time);
+        ConstructChartGraphAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
+                                          trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
         fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
         chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
     }
-}    // -----  end of method PF_CollectDataApp::ProcessUpdatesForSymbol  -----
+}  // -----  end of method PF_CollectDataApp::ProcessUpdatesForSymbol  -----
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 {
@@ -1425,15 +1478,15 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     for (const auto &xchng : exchange_list_)
     {
-        spdlog::info(std::format("Scanning charts for symbols on xchng: {} with adjusted close (on or after: {}) >= {}.", xchng,
-                                 min_close_start_date_, min_close_price_));
+        spdlog::info(std::format("Scanning charts for symbols on xchng: {} with adjusted close >= {} and volume >= {}.",
+                                 xchng, min_close_price_, min_close_volume_));
 
         int32_t exchange_symbols_processed = 0;
         int32_t exchange_charts_processed = 0;
         int32_t exchange_charts_updated = 0;
 
-        auto db_data =
-            pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, price_fld_name_, dt_format, min_close_price_, min_close_volume_);
+        auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, price_fld_name_, dt_format,
+                                                              min_close_price_, min_close_volume_);
         // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
         // {}\n", xx.symbol, xx.tp, xx.price); });
 
@@ -1497,7 +1550,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
-}    // -----  end of method PF_CollectDataApp::Run_DailyScan  -----
+}  // -----  end of method PF_CollectDataApp::Run_DailyScan  -----
 
 void PF_CollectDataApp::Shutdown()
 {
@@ -1510,7 +1563,8 @@ void PF_CollectDataApp::Shutdown()
             try
             {
                 fs::path output_file_name =
-                    output_chart_directory_ / chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "json");
+                    output_chart_directory_ /
+                    chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "json");
                 chart.ConvertChartToJsonAndWriteToFile(output_file_name);
 
                 if (graphics_format_ == GraphicsFormat::e_svg)
@@ -1520,9 +1574,11 @@ void PF_CollectDataApp::Shutdown()
                         (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
                     ConstructChartGraphAndWriteToFile(
                         chart, graph_file_path,
-                        (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}),
+                        (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
+                                                                 : streamed_prices{}),
                         trend_lines_,
-                        interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+                        interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
+                                                     : PF_Chart::X_AxisFormat::e_show_date);
                 }
                 else
                 {
@@ -1536,11 +1592,12 @@ void PF_CollectDataApp::Shutdown()
             }
             catch (const std::exception &e)
             {
-                spdlog::error(
-                    std::format("Problem in shutdown: {} for chart: {}.\nTrying to "
-                                "complete "
-                                "shutdown.",
-                                e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
+                spdlog::error(std::format(
+                    "Problem in shutdown: {} for chart: {}.\nTrying to "
+                    "complete "
+                    "shutdown.",
+                    e.what(),
+                    chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
             }
         }
     }
@@ -1557,14 +1614,16 @@ void PF_CollectDataApp::Shutdown()
                     fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
                     ConstructChartGraphAndWriteToFile(
                         chart, graph_file_path,
-                        (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()] : streamed_prices{}),
+                        (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
+                                                                 : streamed_prices{}),
                         trend_lines_,
-                        interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date);
+                        interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
+                                                     : PF_Chart::X_AxisFormat::e_show_date);
                 }
-                chart.StoreChartInChartsDB(
-                    pf_db, interval_i,
-                    interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time : PF_Chart::X_AxisFormat::e_show_date,
-                    graphics_format_ == GraphicsFormat::e_csv);
+                chart.StoreChartInChartsDB(pf_db, interval_i,
+                                           interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
+                                                                        : PF_Chart::X_AxisFormat::e_show_date,
+                                           graphics_format_ == GraphicsFormat::e_csv);
                 ++chart_count;
             }
             catch (const std::exception &e)
@@ -1578,8 +1637,9 @@ void PF_CollectDataApp::Shutdown()
         spdlog::info(std::format("Stored {} charts in DB.", chart_count));
     }
 
-    spdlog::info(std::format("\n\n*** End run {}  ***\n", std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
-}    // -----  end of method PF_CollectDataApp::Shutdown  -----
+    spdlog::info(std::format("\n\n*** End run {}  ***\n",
+                             std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
+}  // -----  end of method PF_CollectDataApp::Shutdown  -----
 
 void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
 {
@@ -1593,8 +1653,8 @@ void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
             break;
         }
 
-        const std::chrono::zoned_seconds now =
-            std::chrono::zoned_seconds(std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+        const std::chrono::zoned_seconds now = std::chrono::zoned_seconds(
+            std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
         if (now.get_sys_time() < stop_at.get_sys_time())
         {
             std::this_thread::sleep_for(1min);
@@ -1606,7 +1666,7 @@ void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
             break;
         }
     }
-}    // -----  end of method PF_CollectDataApp::WaitForTimer  -----
+}  // -----  end of method PF_CollectDataApp::WaitForTimer  -----
 
 void PF_CollectDataApp::HandleSignal(int signal)
 
