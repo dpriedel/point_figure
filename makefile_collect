@@ -107,7 +107,7 @@ ifeq "$(CFG)" "Release"
 OUTDIR=Release
 
 COMPILE=$(CPP) -c  -x c++  -O3 -std=c++2b -flto -DBOOST_ENABLE_ASSERT_HANDLER -DBOOST_REGEX_STANDALONE -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
-CCOMPILE=$(GCC) -c  -O3  -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+CCOMPILE=$(GCC) -c  -O3 -flto  -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 
 LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
@@ -116,13 +116,13 @@ endif #	RELEASE configuration
 # Build rules
 all: $(OUTFILE)
 
-$(OUTDIR)/%.o : %.cpp 
+$(OUTDIR)/%.o : %.cpp
 	$(COMPILE)
 
 $(OUTDIR)/%.o : %.c
 	$(CCOMPILE)
 
-$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS4)
+$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS4) ../lib_PF_Chart/libPF_Chart.a
 	$(LINK)
 
 -include $(DEPS)
