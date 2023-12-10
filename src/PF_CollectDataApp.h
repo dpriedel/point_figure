@@ -73,7 +73,7 @@ class PF_CollectDataApp
     using PF_Data = std::vector<std::pair<std::string, PF_Chart>>;
 
     // ====================  LIFECYCLE =======================================
-    PF_CollectDataApp(int argc, char *argv[]);    // constructor
+    PF_CollectDataApp(int argc, char *argv[]);  // constructor
 
     // use ctor below for testing with predefined options
 
@@ -128,11 +128,13 @@ class PF_CollectDataApp
 
     [[nodiscard]] static PF_Chart LoadAndParsePriceDataJSON(const fs::path &symbol_file_name);
     void AddPriceDataToExistingChartCSV(PF_Chart &new_chart, const fs::path &update_file_name) const;
-    [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name, std::string_view delim);
+    [[nodiscard]] static std::optional<int> FindColumnIndex(std::string_view header, std::string_view column_name,
+                                                            std::string_view delim);
 
     void PrimeChartsForStreaming();
     void CollectStreamingData();
-    void ProcessStreamedData(Tiingo *quotes, const bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
+    void ProcessStreamedData(Tiingo *quotes, const bool *had_signal, std::mutex *data_mutex,
+                             std::queue<std::string> *streamed_data);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
@@ -155,9 +157,9 @@ class PF_CollectDataApp
 
     PF_Data charts_;
 
-    po::positional_options_description positional_;          //	old style
-                                                             // options
-    std::unique_ptr<po::options_description> newoptions_;    //	new style options (with identifiers)
+    po::positional_options_description positional_;        //	old style
+                                                           // options
+    std::unique_ptr<po::options_description> newoptions_;  //	new style options (with identifiers)
     po::variables_map variablemap_;
 
     int argc_ = 0;
@@ -255,7 +257,7 @@ class PF_CollectDataApp
 
     std::vector<std::string> symbol_list_;
     std::vector<std::string> exchange_list_;
-    std::vector<Boxes::BoxScale> scale_list_;
+    std::vector<BoxScale> scale_list_;
     std::vector<decimal::Decimal> box_size_list_;
     std::vector<int32_t> reversal_boxes_list_;
 
@@ -264,7 +266,7 @@ class PF_CollectDataApp
     std::string begin_date_;
     std::string min_close_price_;
 
-    int64_t min_close_volume_;
+    int64_t min_close_volume_ = 100'000;
 
     int32_t max_columns_for_graph_ = -1;
     int32_t number_of_days_history_for_ATR_ = 0;
@@ -274,6 +276,6 @@ class PF_CollectDataApp
     bool use_min_max_ = false;
 
     static bool had_signal_;
-};    // -----  end of class PF_CollectDataApp  -----
+};  // -----  end of class PF_CollectDataApp  -----
 
-#endif    // ----- #ifndef PF_COLLECTDATAAPP_INC  -----
+#endif  // ----- #ifndef PF_COLLECTDATAAPP_INC  -----

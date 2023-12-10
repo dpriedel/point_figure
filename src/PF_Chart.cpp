@@ -125,7 +125,7 @@ PF_Chart::PF_Chart(PF_Chart &&rhs) noexcept
 //--------------------------------------------------------------------------------------
 
 PF_Chart::PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes, decimal::Decimal box_size_modifier,
-                   Boxes::BoxScale box_scale, int64_t max_columns_for_graph)
+                   BoxScale box_scale, int64_t max_columns_for_graph)
     : symbol_{std::move(symbol)},
       base_box_size_{std::move(base_box_size)},
       fname_box_size_{base_box_size_},
@@ -665,8 +665,8 @@ std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams &vals, std::s
 {
     std::string chart_name =
         std::format("{}_{}{}X{}_{}{}.{}", std::get<PF_Chart::e_symbol>(vals), std::get<PF_Chart::e_box_size>(vals).format("f"),
-                    (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Percent ? "%" : ""), std::get<PF_Chart::e_reversal>(vals),
-                    (std::get<PF_Chart::e_box_scale>(vals) == Boxes::BoxScale::e_Linear ? "linear" : "percent"),
+                    (std::get<PF_Chart::e_box_scale>(vals) == BoxScale::e_Percent ? "%" : ""), std::get<PF_Chart::e_reversal>(vals),
+                    (std::get<PF_Chart::e_box_scale>(vals) == BoxScale::e_Linear ? "linear" : "percent"),
                     (!interval.empty() ? "_"s += interval : ""), suffix);
     return chart_name;
 }    // -----  end of method MakeChartNameFromParams  -----

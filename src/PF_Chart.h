@@ -74,7 +74,7 @@ class PF_Chart
 
    public:
     using Y_Limits = std::pair<decimal::Decimal, decimal::Decimal>;
-    using PF_ChartParams = std::tuple<std::string, decimal::Decimal, int32_t, Boxes::BoxScale>;
+    using PF_ChartParams = std::tuple<std::string, decimal::Decimal, int32_t, BoxScale>;
 
     enum class X_AxisFormat
     {
@@ -100,7 +100,7 @@ class PF_Chart
     PF_Chart(PF_Chart &&rhs) noexcept;
 
     PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes, decimal::Decimal box_size_modifier = 0,
-             Boxes::BoxScale box_scale = Boxes::BoxScale::e_Linear, int64_t max_columns_for_graph = 0);
+             BoxScale box_scale = BoxScale::e_Linear, int64_t max_columns_for_graph = 0);
 
     PF_Chart(const PF_ChartParams &vals, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph)
         : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals), box_size_modifier,
@@ -133,8 +133,8 @@ class PF_Chart
     [[nodiscard]] decimal::Decimal GetChartBoxSize() const { return boxes_.GetBoxSize(); }
     [[nodiscard]] decimal::Decimal GetFNameBoxSize() const { return fname_box_size_; }
     [[nodiscard]] int32_t GetReversalboxes() const { return current_column_.GetReversalboxes(); }
-    [[nodiscard]] Boxes::BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
-    [[nodiscard]] Boxes::BoxType GetBoxType() const { return boxes_.GetBoxType(); }
+    [[nodiscard]] BoxScale GetBoxScale() const { return boxes_.GetBoxScale(); }
+    [[nodiscard]] BoxType GetBoxType() const { return boxes_.GetBoxType(); }
     [[nodiscard]] std::string GetSymbol() const { return symbol_; }
     [[nodiscard]] std::string GetChartBaseName() const { return chart_base_name_; }
 
@@ -186,8 +186,8 @@ class PF_Chart
                                bool store_cvs_graphics = false) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
-    [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == Boxes::BoxScale::e_Percent; }
-    [[nodiscard]] bool IsFractional() const { return boxes_.GetBoxType() == Boxes::BoxType::e_Fractional; }
+    [[nodiscard]] bool IsPercent() const { return boxes_.GetBoxScale() == BoxScale::e_Percent; }
+    [[nodiscard]] bool IsFractional() const { return boxes_.GetBoxType() == BoxType::e_Fractional; }
 
     [[nodiscard]] const Boxes &GetBoxes() const { return boxes_; }
     [[nodiscard]] const PF_SignalList &GetSignals() const { return signals_; }

@@ -256,12 +256,9 @@ bool PF_CollectDataApp::CheckArgs()
             rng::for_each(exchange_list_,
                           [&exchanges](const auto &xchng)
                           {
-                              BOOST_ASSERT_MSG(std::ranges::find(exchanges, xchng) != exchanges.end(),
-                                               std::format("\nexchange: {} must be one of: 'AMEX', 'BATS', 'NASDAQ', "
-                                                           "'NMFQS', 'NYSE', 'OTCCE', 'OTCGREY', "
-                                                           "'OTCMKTS', 'OTCQB', 'OTCQX', 'PINK', 'US'.",
-                                                           xchng)
-                                                   .c_str());
+                              BOOST_ASSERT_MSG(
+                                  std::ranges::find(exchanges, xchng) != exchanges.end(),
+                                  fmt::format("\nexchange: {} must be one of: {}.\n", xchng, exchanges).c_str());
                           });
             spdlog::debug(fmt::format("exchanges for scan and bulk load: {}\n", exchange_list_));
         }
@@ -473,8 +470,8 @@ bool PF_CollectDataApp::CheckArgs()
                   });
     rng::for_each(scale_i_list_,
                   [this](const auto &scale_i) {
-                      this->scale_list_.emplace_back(scale_i == "linear" ? Boxes::BoxScale::e_Linear
-                                                                         : Boxes::BoxScale::e_Percent);
+                      this->scale_list_.emplace_back(scale_i == "linear" ? BoxScale::e_Linear
+                                                                         : BoxScale::e_Percent);
                   });
 
     // we can compute whether boxes are fractions or intergers from input. This

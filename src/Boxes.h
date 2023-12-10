@@ -45,6 +45,9 @@
 
 #include "utilities.h"
 
+enum class BoxType { e_Integral, e_Fractional };
+enum class BoxScale { e_Linear, e_Percent };
+
 // =====================================================================================
 //        Class:  Boxes
 //  Description:  Manage creation and use of P & F boxes 
@@ -56,9 +59,6 @@ public:
     static constexpr std::size_t kMaxBoxes = 1000;			// too many boxes and everything becomes too slow
     static constexpr int32_t kMinExponent = -5;
     										//
-    enum class BoxType { e_Integral, e_Fractional };
-    enum class BoxScale { e_Linear, e_Percent };
-
     using Box = decimal::Decimal;
     using BoxList = std::deque<Box>;
 
@@ -155,38 +155,38 @@ private:
 
 // custom fmtlib formatter for BoxType
 
-template <> struct std::formatter<Boxes::BoxType>: std::formatter<std::string>
+template <> struct std::formatter<BoxType>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes::BoxType& box_type, std::format_context& ctx) const
+    auto format(const BoxType& box_type, std::format_context& ctx) const
     {
         std::string s;
-		std::format_to(std::back_inserter(s), "{}", (box_type == Boxes::BoxType::e_Integral ? "integral" : "fractional"));
+		std::format_to(std::back_inserter(s), "{}", (box_type == BoxType::e_Integral ? "integral" : "fractional"));
         return formatter<std::string>::format(s, ctx);
     }
 };
 
 // custom fmtlib formatter for BoxScale
 
-template <> struct std::formatter<Boxes::BoxScale>: std::formatter<std::string>
+template <> struct std::formatter<BoxScale>: std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes::BoxScale& box_scale, std::format_context& ctx) const
+    auto format(const BoxScale& box_scale, std::format_context& ctx) const
     {
         std::string s;
-		std::format_to(std::back_inserter(s), "{}", (box_scale == Boxes::BoxScale::e_Linear ? "linear" : "percent"));
+		std::format_to(std::back_inserter(s), "{}", (box_scale == BoxScale::e_Linear ? "linear" : "percent"));
         return formatter<std::string>::format(s, ctx);
     }
 };
 
-// inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxType box_type)
+// inline std::ostream& operator<<(std::ostream& os, const BoxType box_type)
 // {
 //     std::format_to(std::ostream_iterator<char>{os}, "{}", box_type);
 //
 // 	return os;
 // }
 //
-// inline std::ostream& operator<<(std::ostream& os, const Boxes::BoxScale box_scale)
+// inline std::ostream& operator<<(std::ostream& os, const BoxScale box_scale)
 // {
 //     std::format_to(std::ostream_iterator<char>{os}, "{}", box_scale);
 //
