@@ -34,3 +34,7 @@ symbol_plot.gpl
 # for clang
 .cache/*
 
+# real file is elsewhere
+
+pg_create_new_stock_tables.sql
+
