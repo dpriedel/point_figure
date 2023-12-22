@@ -1,8 +1,0 @@
-
-" let's help our file searchs
-
-set path+=./src
-set path+=~/projects/common_utilities
-set path+=~/projects/common_utilities/include
-set path+=~/projects/common_utilities/src
-
