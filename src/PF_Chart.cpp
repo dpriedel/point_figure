@@ -427,9 +427,10 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns)
     rng::for_each(*this | column_filter,
                   [&result](const auto &col)
                   {
+                      auto col_nbr = col.GetColumnNumber();
                       rng::for_each(col.GetColumnBoxes(),
-                                    [&result, &col](const auto &box) {
-                                        result.push_back(std::pair{col.GetColumnNumber(), box});
+                                    [&result, &col, col_nbr](const auto &box) {
+                                        result.push_back(std::pair{col_nbr, box});
                                     });
                   });
 
