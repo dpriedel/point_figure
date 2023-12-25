@@ -397,52 +397,40 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns)
 {
     ColumnBoxList result;
 
-    rng::for_each(*this,
-                  [&result, &which_columns](const auto &col)
+    const auto column_filter = rng::views::filter(
+        [&which_columns](const auto &col)
+        {
+            using enum ColumnFilter;
+            if (which_columns == e_up_column && col.GetDirection() == PF_Column::Direction::e_Up &&
+                !col.GetHadReversal())
+            {
+                return true;
+            }
+            if (which_columns == e_down_column && col.GetDirection() == PF_Column::Direction::e_Down &&
+                !col.GetHadReversal())
+            {
+                return true;
+            }
+            if (which_columns == e_reversed_to_up && col.GetDirection() == PF_Column::Direction::e_Up &&
+                col.GetHadReversal())
+            {
+                return true;
+            }
+            if (which_columns == e_reversed_to_down && col.GetDirection() == PF_Column::Direction::e_Down &&
+                col.GetHadReversal())
+            {
+                return true;
+            }
+            return false;
+        });
+
+    rng::for_each(*this | column_filter,
+                  [&result](const auto &col)
                   {
-                      switch (which_columns)
-                      {
-                          using enum ColumnFilter;
-                          case e_up_column:
-                              if (col.GetDirection() == PF_Column::Direction::e_Up && !col.GetHadReversal())
-                              {
-                                  rng::for_each(col.GetColumnBoxes(),
-                                                [&result, &col](const auto &box) {
-                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
-                                                });
-                              }
-                              break;
-
-                          case e_down_column:
-                              if (col.GetDirection() == PF_Column::Direction::e_Down && !col.GetHadReversal())
-                              {
-                                  rng::for_each(col.GetColumnBoxes(),
-                                                [&result, &col](const auto &box) {
-                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
-                                                });
-                              }
-                              break;
-
-                          case e_reversed_to_up:
-                              if (col.GetDirection() == PF_Column::Direction::e_Up && col.GetHadReversal())
-                              {
-                                  rng::for_each(col.GetColumnBoxes(),
-                                                [&result, &col](const auto &box) {
-                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
-                                                });
-                              }
-                              break;
-
-                          case e_reversed_to_down:
-                              if (col.GetDirection() == PF_Column::Direction::e_Down && col.GetHadReversal())
-                              {
-                                  rng::for_each(col.GetColumnBoxes(),
-                                                [&result, &col](const auto &box) {
-                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
-                                                });
-                              }
-                              break;
-                      }
+                      rng::for_each(col.GetColumnBoxes(),
+                                    [&result, &col](const auto &box) {
+                                        result.push_back(std::pair{col.GetColumnNumber(), box});
+                                    });
                   });
 
     return result;
