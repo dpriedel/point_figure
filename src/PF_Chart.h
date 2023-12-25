@@ -61,6 +61,10 @@
 #include "PointAndFigureDB.h"
 #include "utilities.h"
 
+// helpers for building chart graphics
+
+enum class ColumnFilter { e_up_column, e_down_column, e_reversed_to_up, e_reversed_to_down };
+
 class PF_Chart
 {
    public:
@@ -88,19 +92,17 @@ class PF_Chart
         e_reversal,
         e_box_scale
     };
-    // make it look like a range
-    // TODO(dpriedel): use a custom iterator which will include current_column_
-    // in the iteration.
-
+    //
     //    using const_iterator = std::vector<PF_Column>::const_iterator;
 
     // ====================  LIFECYCLE =======================================
-    PF_Chart() = default;    // constructor
+    PF_Chart() = default;  // constructor
     PF_Chart(const PF_Chart &rhs);
     PF_Chart(PF_Chart &&rhs) noexcept;
 
-    PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes, decimal::Decimal box_size_modifier = 0,
-             BoxScale box_scale = BoxScale::e_Linear, int64_t max_columns_for_graph = 0);
+    PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes,
+             decimal::Decimal box_size_modifier = 0, BoxScale box_scale = BoxScale::e_Linear,
+             int64_t max_columns_for_graph = 0);
 
     PF_Chart(const PF_ChartParams &vals, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph)
         : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals), box_size_modifier,
@@ -177,12 +179,16 @@ class PF_Chart
     void ConvertChartToJsonAndWriteToFile(const fs::path &output_filename) const;
     void ConvertChartToJsonAndWriteToStream(std::ostream &stream) const;
 
-    void ConvertChartToTableAndWriteToFile(const fs::path &output_filename, X_AxisFormat date_or_time = X_AxisFormat::e_show_date) const;
-    void ConvertChartToTableAndWriteToStream(std::ostream &stream, X_AxisFormat date_or_time = X_AxisFormat::e_show_date) const;
+    void ConvertChartToTableAndWriteToFile(const fs::path &output_filename,
+                                           X_AxisFormat date_or_time = X_AxisFormat::e_show_date) const;
+    void ConvertChartToTableAndWriteToStream(std::ostream &stream,
+                                             X_AxisFormat date_or_time = X_AxisFormat::e_show_date) const;
 
-    void StoreChartInChartsDB(const PF_DB &chart_db, std::string_view interval, X_AxisFormat date_or_time = X_AxisFormat::e_show_date,
+    void StoreChartInChartsDB(const PF_DB &chart_db, std::string_view interval,
+                              X_AxisFormat date_or_time = X_AxisFormat::e_show_date,
                               bool store_cvs_graphics = false) const;
-    void UpdateChartInChartsDB(const PF_DB &chart_db, std::string_view interval, X_AxisFormat date_or_time = X_AxisFormat::e_show_date,
+    void UpdateChartInChartsDB(const PF_DB &chart_db, std::string_view interval,
+                               X_AxisFormat date_or_time = X_AxisFormat::e_show_date,
                                bool store_cvs_graphics = false) const;
 
     [[nodiscard]] Json::Value ToJSON() const;
@@ -199,6 +205,12 @@ class PF_Chart
     {
         return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxScale()};
     }
+
+    // collect list of boxes for all columns with the specified direction
+
+    using ColumnBoxList = std::vector<std::pair<int, Boxes::Box>>;
+
+    [[nodiscard]] ColumnBoxList GetBoxesForColumns(ColumnFilter which_columns) const;
 
     // ====================  MUTATORS =======================================
 
@@ -262,22 +274,22 @@ class PF_Chart
     std::string symbol_;
     std::string chart_base_name_;
 
-    decimal::Decimal base_box_size_ = 0;     // box size to use when constructing file name
-    decimal::Decimal fname_box_size_ = 0;    // box size to use when constructing file name
+    decimal::Decimal base_box_size_ = 0;   // box size to use when constructing file name
+    decimal::Decimal fname_box_size_ = 0;  // box size to use when constructing file name
     decimal::Decimal box_size_modifier_ = 0;
 
-    PF_Column::TmPt first_date_ = {};           //	earliest entry for symbol
-    PF_Column::TmPt last_change_date_ = {};     //	date of last change to
-                                                // data
-    PF_Column::TmPt last_checked_date_ = {};    //	last time checked to see if update needed
+    PF_Column::TmPt first_date_ = {};         //	earliest entry for symbol
+    PF_Column::TmPt last_change_date_ = {};   //	date of last change to
+                                              // data
+    PF_Column::TmPt last_checked_date_ = {};  //	last time checked to see if update needed
 
-    decimal::Decimal y_min_ = 100000;    // just a number
+    decimal::Decimal y_min_ = 100000;  // just a number
     decimal::Decimal y_max_ = -1;
 
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_Unknown;
 
-    int64_t max_columns_for_graph_ = 0;    // how many columns to show in graphic
-};                                         // -----  end of class PF_Chart  -----
+    int64_t max_columns_for_graph_ = 0;  // how many columns to show in graphic
+};                                       // -----  end of class PF_Chart  -----
 
 // =====================================================================================
 //        Class:  PF_Chart_Iterator
@@ -363,7 +375,7 @@ class PF_Chart::PF_Chart_Iterator
     const PF_Chart *chart_ = nullptr;
     int32_t index_ = -1;
 
-};    // -----  end of class PF_Chart_Iterator  -----
+};  // -----  end of class PF_Chart_Iterator  -----
 
 // =====================================================================================
 //        Class:  PF_Chart_ReverseIterator
@@ -449,7 +461,7 @@ class PF_Chart::PF_Chart_ReverseIterator
     const PF_Chart *chart_ = nullptr;
     int32_t index_ = -1;
 
-};    // -----  end of class PF_Chart_ReverseIterator  -----
+};  // -----  end of class PF_Chart_ReverseIterator  -----
 
 template <>
 struct std::formatter<PF_Chart> : std::formatter<std::string>
@@ -462,7 +474,8 @@ struct std::formatter<PF_Chart> : std::formatter<std::string>
         std::format_to(std::back_inserter(s),
                        "chart for ticker: {}. box size: {}. reversal boxes: "
                        "{}. scale: {}.\n",
-                       chart.GetSymbol(), chart.GetChartBoxSize().format("f"), chart.GetReversalboxes(), chart.GetBoxScale());
+                       chart.GetSymbol(), chart.GetChartBoxSize().format("f"), chart.GetReversalboxes(),
+                       chart.GetBoxScale());
         rng::for_each(chart, [&s](const auto &col) { std::format_to(std::back_inserter(s), "\t{}\n", col); });
         std::format_to(std::back_inserter(s), "number of columns: {}. min value: {}. max value: {}.\n", chart.size(),
                        chart.GetYLimits().first.format("f"), chart.GetYLimits().second.format("f"));
@@ -488,7 +501,8 @@ inline std::ostream &operator<<(std::ostream &os, const PF_Chart &chart)
 
 // for those times you need a name but don't have the chart object yet.
 
-std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams &vals, std::string_view interval, std::string_view suffix);
+std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams &vals, std::string_view interval,
+                                    std::string_view suffix);
 
 // In order to set our box size, we use the Average True Range method. For
 // each symbol, we will look up the 'n' most recent historical values
@@ -498,7 +512,7 @@ std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams &vals, std::s
 
 // if we provide a scale factor > -99, then scale the value to that value.
 // Otherwise, scale to -3 (.005) to prevent box sizes being too small.
-decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockDataRecord> &the_data, int32_t how_many_days,
-                            int32_t scale = -99);
+decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockDataRecord> &the_data,
+                            int32_t how_many_days, int32_t scale = -99);
 
-#endif    // ----- #ifndef PF_CHART_INC  -----
+#endif  // ----- #ifndef PF_CHART_INC  -----

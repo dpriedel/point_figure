@@ -44,9 +44,9 @@
 #include <json/json.h>
 #include <decimal.hh>
 
+#include "Boxes.h"
 #include "utilities.h"
 
-class Boxes;
 class PF_Chart;
 
 // =====================================================================================
@@ -66,6 +66,8 @@ public:
     using TimeSpan = std::pair<TmPt, TmPt>;
 
     using AddResult = std::pair<Status, std::optional<PF_Column>>;
+
+    using ColumnBoxes = std::vector<Boxes::Box>;
 
     // ====================  LIFECYCLE     =======================================
 
@@ -93,6 +95,12 @@ public:
     [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
     [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
     [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
+
+    // we return an actual list of the boxes rather than
+    // a range in case the underlying Boxes list is modified
+    // after we got our result.
+
+    [[nodiscard]] ColumnBoxes GetColumnBoxes() const;
 
     [[nodiscard]] Json::Value ToJSON() const;
 

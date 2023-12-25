@@ -44,6 +44,7 @@
 
 #include <exception>
 #include <memory>
+#include <ranges>
 
 
 #include "Boxes.h"
@@ -265,6 +266,23 @@ PF_Column::AddResult PF_Column::TryToExtendDown (const decimal::Decimal& new_val
     return {Status::e_Ignored, std::nullopt};
 }		// -----  end of method PF_Column::TryToExtendDown  ----- 
 
+PF_Column::ColumnBoxes PF_Column::GetColumnBoxes() const
+
+{
+    ColumnBoxes result;
+
+    const auto& boxes = boxes_->GetBoxList();
+    const auto& first_col_box = std::ranges::find(boxes, bottom_);
+
+    // need to include the top box so go 1 past it.  May return 'end' if this is
+    // highest column in the chart.
+    const auto& last_col_box = std::ranges::find_if(boxes, [this](const auto& e) { return e > top_; });
+
+    std::ranges::for_each(first_col_box, last_col_box, [&result](const auto& e) { result.push_back(e); });
+
+    return result;
+}		// -----  end of method PF_Column::GetColumnBoxes  ----- 
+//
 Json::Value PF_Column::ToJSON () const
 {
     Json::Value result;

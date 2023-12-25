@@ -84,7 +84,7 @@ PF_Chart::PF_Chart(const PF_Chart &rhs)
 
     rng::for_each(columns_, [this](auto &col) { col.boxes_ = &this->boxes_; });
     current_column_.boxes_ = &boxes_;
-}    // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_Chart
@@ -116,7 +116,7 @@ PF_Chart::PF_Chart(PF_Chart &&rhs) noexcept
 
     rng::for_each(columns_, [this](auto &col) { col.boxes_ = &this->boxes_; });
     current_column_.boxes_ = &boxes_;
-}    // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_Chart
@@ -124,8 +124,8 @@ PF_Chart::PF_Chart(PF_Chart &&rhs) noexcept
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Chart::PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes, decimal::Decimal box_size_modifier,
-                   BoxScale box_scale, int64_t max_columns_for_graph)
+PF_Chart::PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t reversal_boxes,
+                   decimal::Decimal box_size_modifier, BoxScale box_scale, int64_t max_columns_for_graph)
     : symbol_{std::move(symbol)},
       base_box_size_{std::move(base_box_size)},
       fname_box_size_{base_box_size_},
@@ -148,7 +148,7 @@ PF_Chart::PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t r
     // std::print("Boxes: {}\n", boxes_);
     chart_base_name_ = MakeChartBaseName();
 
-}    // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_Chart
@@ -165,7 +165,7 @@ PF_Chart::PF_Chart(const Json::Value &new_data)
     {
         spdlog::debug("Trying to construct PF_Chart from empty JSON value.");
     }
-}    // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_Chart
@@ -177,7 +177,7 @@ PF_Chart PF_Chart::MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, s
     Json::Value chart_data = chart_db.GetPFChartData(MakeChartNameFromParams(vals, interval, "json"));
     PF_Chart chart_from_db{chart_data};
     return chart_from_db;
-}    // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+}  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
 
 PF_Chart &PF_Chart::operator=(const PF_Chart &rhs)
 {
@@ -207,7 +207,7 @@ PF_Chart &PF_Chart::operator=(const PF_Chart &rhs)
         current_column_.boxes_ = &boxes_;
     }
     return *this;
-}    // -----  end of method PF_Chart::operator=  -----
+}  // -----  end of method PF_Chart::operator=  -----
 
 PF_Chart &PF_Chart::operator=(PF_Chart &&rhs) noexcept
 {
@@ -237,13 +237,13 @@ PF_Chart &PF_Chart::operator=(PF_Chart &&rhs) noexcept
         current_column_.boxes_ = &boxes_;
     }
     return *this;
-}    // -----  end of method PF_Chart::operator=  -----
+}  // -----  end of method PF_Chart::operator=  -----
 
 PF_Chart &PF_Chart::operator=(const Json::Value &new_data)
 {
     this->FromJSON(new_data);
     return *this;
-}    // -----  end of method PF_Chart::operator=  -----
+}  // -----  end of method PF_Chart::operator=  -----
 
 bool PF_Chart::operator==(const PF_Chart &rhs) const
 {
@@ -293,7 +293,7 @@ bool PF_Chart::operator==(const PF_Chart &rhs) const
     }
 
     return true;
-}    // -----  end of method PF_Chart::operator==  -----
+}  // -----  end of method PF_Chart::operator==  -----
 
 PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Column::TmPt the_time)
 {
@@ -352,7 +352,7 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
     current_direction_ = current_column_.GetDirection();
     last_checked_date_ = the_time;
     return status;
-}    // -----  end of method PF_Chart::AddValue  -----
+}  // -----  end of method PF_Chart::AddValue  -----
 
 void PF_Chart::LoadData(std::istream *input_data, std::string_view date_format, std::string_view delim)
 {
@@ -391,20 +391,77 @@ void PF_Chart::LoadDataFromFile(const std::string &file_name, std::string_view d
     LoadData(&data_file, date_format, delim);
 
     data_file.close();
-}
+}  // -----  end of method PF_Chart::LoadDataFromFile  -----
 
+PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns) const
+{
+    ColumnBoxList result;
+
+    rng::for_each(*this,
+                  [&result, &which_columns](const auto &col)
+                  {
+                      switch (which_columns)
+                      {
+                          using enum ColumnFilter;
+                          case e_up_column:
+                              if (col.GetDirection() == PF_Column::Direction::e_Up && !col.GetHadReversal())
+                              {
+                                  rng::for_each(col.GetColumnBoxes(),
+                                                [&result, &col](const auto &box) {
+                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
+                                                });
+                              }
+                              break;
+
+                          case e_down_column:
+                              if (col.GetDirection() == PF_Column::Direction::e_Down && !col.GetHadReversal())
+                              {
+                                  rng::for_each(col.GetColumnBoxes(),
+                                                [&result, &col](const auto &box) {
+                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
+                                                });
+                              }
+                              break;
+
+                          case e_reversed_to_up:
+                              if (col.GetDirection() == PF_Column::Direction::e_Up && col.GetHadReversal())
+                              {
+                                  rng::for_each(col.GetColumnBoxes(),
+                                                [&result, &col](const auto &box) {
+                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
+                                                });
+                              }
+                              break;
+
+                          case e_reversed_to_down:
+                              if (col.GetDirection() == PF_Column::Direction::e_Down && col.GetHadReversal())
+                              {
+                                  rng::for_each(col.GetColumnBoxes(),
+                                                [&result, &col](const auto &box) {
+                                                    result.push_back(std::pair{col.GetColumnNumber(), box});
+                                                });
+                              }
+                              break;
+                      }
+                  });
+
+    return result;
+}  // -----  end of method PF_Chart::GetBoxesForColumns  -----
+//
 std::string PF_Chart::MakeChartBaseName() const
 {
-    std::string chart_name = std::format("{}_{}{}X{}_{}", symbol_, fname_box_size_.format("f"), (IsPercent() ? "%" : ""),
-                                         GetReversalboxes(), (IsPercent() ? "percent" : "linear"));
+    std::string chart_name =
+        std::format("{}_{}{}X{}_{}", symbol_, fname_box_size_.format("f"), (IsPercent() ? "%" : ""), GetReversalboxes(),
+                    (IsPercent() ? "percent" : "linear"));
     return chart_name;
-}    // -----  end of method PF_Chart::ChartName  -----
+}  // -----  end of method PF_Chart::ChartName  -----
 
 std::string PF_Chart::MakeChartFileName(std::string_view interval, std::string_view suffix) const
 {
-    std::string chart_name = std::format("{}{}.{}", chart_base_name_, (!interval.empty() ? "_"s += interval : ""), suffix);
+    std::string chart_name =
+        std::format("{}{}.{}", chart_base_name_, (!interval.empty() ? "_"s += interval : ""), suffix);
     return chart_name;
-}    // -----  end of method PF_Chart::ChartName  -----
+}  // -----  end of method PF_Chart::ChartName  -----
 
 void PF_Chart::ConvertChartToJsonAndWriteToFile(const fs::path &output_filename) const
 {
@@ -412,24 +469,25 @@ void PF_Chart::ConvertChartToJsonAndWriteToFile(const fs::path &output_filename)
     BOOST_ASSERT_MSG(out.is_open(), std::format("Unable to open file: {} for chart output.", output_filename).c_str());
     ConvertChartToJsonAndWriteToStream(out);
     out.close();
-}    // -----  end of method PF_Chart::ConvertChartToJsonAndWriteToFile  -----
+}  // -----  end of method PF_Chart::ConvertChartToJsonAndWriteToFile  -----
 
 void PF_Chart::ConvertChartToJsonAndWriteToStream(std::ostream &stream) const
 {
     Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";    // compact printing and string formatting
+    builder["indentation"] = "";  // compact printing and string formatting
     std::unique_ptr<Json::StreamWriter> const writer(builder.newStreamWriter());
     writer->write(this->ToJSON(), &stream);
-    stream << std::endl;    // add lf and flush
-}    // -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  -----
+    stream << std::endl;  // add lf and flush
+}  // -----  end of method PF_Chart::ConvertChartToJsonAndWriteToStream  -----
 
 void PF_Chart::ConvertChartToTableAndWriteToFile(const fs::path &output_filename, X_AxisFormat date_or_time) const
 {
     std::ofstream out{output_filename, std::ios::out | std::ios::binary};
-    BOOST_ASSERT_MSG(out.is_open(), std::format("Unable to open file: {} for graphics data output.", output_filename).c_str());
+    BOOST_ASSERT_MSG(out.is_open(),
+                     std::format("Unable to open file: {} for graphics data output.", output_filename).c_str());
     ConvertChartToTableAndWriteToStream(out);
     out.close();
-}    // -----  end of method PF_Chart::ConvertChartToTableAndWriteToFile  -----
+}  // -----  end of method PF_Chart::ConvertChartToTableAndWriteToFile  -----
 
 void PF_Chart::ConvertChartToTableAndWriteToStream(std::ostream &stream, X_AxisFormat date_or_time) const
 {
@@ -443,7 +501,8 @@ void PF_Chart::ConvertChartToTableAndWriteToStream(std::ostream &stream, X_AxisF
     //  color index can be used with custom palettes such as in gnuplot
     //
 
-    size_t skipped_columns = max_columns_for_graph_ < 1 || size() <= max_columns_for_graph_ ? 0 : size() - max_columns_for_graph_;
+    size_t skipped_columns =
+        max_columns_for_graph_ < 1 || size() <= max_columns_for_graph_ ? 0 : size() - max_columns_for_graph_;
 
     constexpr auto row_template = "{}\t{}\t{}\t{}\t{}\t{}\n";
 
@@ -473,22 +532,23 @@ void PF_Chart::ConvertChartToTableAndWriteToStream(std::ostream &stream, X_AxisF
                                                       : UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first),
             col.GetDirection() == PF_Column::Direction::e_Up ? col.GetBottom().format("f") : col.GetTop().format("f"),
             col.GetBottom().format("f"), col.GetTop().format("f"),
-            col.GetDirection() == PF_Column::Direction::e_Up ? col.GetTop().format("f") : col.GetBottom().format("f"), compute_color(col));
+            col.GetDirection() == PF_Column::Direction::e_Up ? col.GetTop().format("f") : col.GetBottom().format("f"),
+            compute_color(col));
         stream.write(next_row.data(), next_row.size());
     }
 
-    auto last_row =
-        std::format(row_template,
-                    date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", current_column_.GetTimeSpan().first)
-                                                              : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
-                    current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().format("f")
-                                                                                 : current_column_.GetTop().format("f"),
-                    current_column_.GetBottom().format("f"), current_column_.GetTop().format("f"),
-                    current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().format("f")
-                                                                                 : current_column_.GetBottom().format("f"),
-                    compute_color(current_column_));
+    auto last_row = std::format(
+        row_template,
+        date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", current_column_.GetTimeSpan().first)
+                                                  : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
+        current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().format("f")
+                                                                     : current_column_.GetTop().format("f"),
+        current_column_.GetBottom().format("f"), current_column_.GetTop().format("f"),
+        current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().format("f")
+                                                                     : current_column_.GetBottom().format("f"),
+        compute_color(current_column_));
     stream.write(last_row.data(), last_row.size());
-}    // -----  end of method PF_Chart::ConvertChartToTableAndWriteToStream -----
+}  // -----  end of method PF_Chart::ConvertChartToTableAndWriteToStream -----
 
 void PF_Chart::StoreChartInChartsDB(const PF_DB &chart_db, std::string_view interval, X_AxisFormat date_or_time,
                                     bool store_cvs_graphics) const
@@ -501,7 +561,7 @@ void PF_Chart::StoreChartInChartsDB(const PF_DB &chart_db, std::string_view inte
         cvs_graphics = oss.str();
     }
     chart_db.StorePFChartDataIntoDB(*this, interval, cvs_graphics);
-}    // -----  end of method PF_Chart::StoreChartInChartsDB  -----
+}  // -----  end of method PF_Chart::StoreChartInChartsDB  -----
 
 void PF_Chart::UpdateChartInChartsDB(const PF_DB &chart_db, std::string_view interval, X_AxisFormat date_or_time,
                                      bool store_cvs_graphics) const
@@ -514,7 +574,7 @@ void PF_Chart::UpdateChartInChartsDB(const PF_DB &chart_db, std::string_view int
         cvs_graphics = oss.str();
     }
     chart_db.UpdatePFChartDataInDB(*this, interval, cvs_graphics);
-}    // -----  end of method PF_Chart::StoreChartInChartsDB  -----
+}  // -----  end of method PF_Chart::StoreChartInChartsDB  -----
 
 Json::Value PF_Chart::ToJSON() const
 {
@@ -567,7 +627,7 @@ Json::Value PF_Chart::ToJSON() const
 
     return result;
 
-}    // -----  end of method PF_Chart::ToJSON  -----
+}  // -----  end of method PF_Chart::ToJSON  -----
 
 void PF_Chart::FromJSON(const Json::Value &new_data)
 {
@@ -604,7 +664,8 @@ void PF_Chart::FromJSON(const Json::Value &new_data)
     }
     else
     {
-        throw std::invalid_argument{std::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
+        throw std::invalid_argument{
+            std::format("Invalid direction provided: {}. Must be 'up', 'down', 'unknown'.", direction)};
     }
 
     max_columns_for_graph_ = new_data["max_columns"].asInt64();
@@ -617,7 +678,7 @@ void PF_Chart::FromJSON(const Json::Value &new_data)
     rng::for_each(cols, [this](const auto &next_val) { this->columns_.emplace_back(&boxes_, next_val); });
 
     current_column_ = PF_Column{&boxes_, new_data["current_column"]};
-}    // -----  end of method PF_Chart::FromJSON  -----
+}  // -----  end of method PF_Chart::FromJSON  -----
 
 // ===  FUNCTION
 // ======================================================================
@@ -625,7 +686,8 @@ void PF_Chart::FromJSON(const Json::Value &new_data)
 //  Description:  Expects the input data is in descending order by date
 // =====================================================================================
 
-decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockDataRecord> &the_data, int32_t how_many_days, int32_t scale)
+decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockDataRecord> &the_data,
+                            int32_t how_many_days, int32_t scale)
 {
     BOOST_ASSERT_MSG(the_data.size() > how_many_days, std::format("Not enough data provided for: {}. Need at "
                                                                   "least: {} values. Got {}.",
@@ -659,33 +721,40 @@ decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockData
         return total.rescale(scale);
     }
     return total.rescale(-3);
-}    // -----  end of function ComputeATRUsingJSON  -----
+}  // -----  end of function ComputeATRUsingJSON  -----
 
-std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams &vals, std::string_view interval, std::string_view suffix)
+std::string MakeChartNameFromParams(const PF_Chart::PF_ChartParams &vals, std::string_view interval,
+                                    std::string_view suffix)
 {
-    std::string chart_name =
-        std::format("{}_{}{}X{}_{}{}.{}", std::get<PF_Chart::e_symbol>(vals), std::get<PF_Chart::e_box_size>(vals).format("f"),
-                    (std::get<PF_Chart::e_box_scale>(vals) == BoxScale::e_Percent ? "%" : ""), std::get<PF_Chart::e_reversal>(vals),
-                    (std::get<PF_Chart::e_box_scale>(vals) == BoxScale::e_Linear ? "linear" : "percent"),
-                    (!interval.empty() ? "_"s += interval : ""), suffix);
+    std::string chart_name = std::format(
+        "{}_{}{}X{}_{}{}.{}", std::get<PF_Chart::e_symbol>(vals), std::get<PF_Chart::e_box_size>(vals).format("f"),
+        (std::get<PF_Chart::e_box_scale>(vals) == BoxScale::e_Percent ? "%" : ""), std::get<PF_Chart::e_reversal>(vals),
+        (std::get<PF_Chart::e_box_scale>(vals) == BoxScale::e_Linear ? "linear" : "percent"),
+        (!interval.empty() ? "_"s += interval : ""), suffix);
     return chart_name;
-}    // -----  end of method MakeChartNameFromParams  -----
+}  // -----  end of method MakeChartNameFromParams  -----
 
-PF_Chart::iterator PF_Chart::begin() { return iterator{this}; }    // -----  end of method PF_Chart::begin  -----
+PF_Chart::iterator PF_Chart::begin() { return iterator{this}; }  // -----  end of method PF_Chart::begin  -----
 
-PF_Chart::const_iterator PF_Chart::begin() const { return const_iterator{this}; }    // -----  end of method PF_Chart::begin  -----
+PF_Chart::const_iterator PF_Chart::begin() const
+{
+    return const_iterator{this};
+}  // -----  end of method PF_Chart::begin  -----
 
-PF_Chart::iterator PF_Chart::end() { return iterator(this, this->size()); }    // -----  end of method PF_Chart::end  -----
+PF_Chart::iterator PF_Chart::end()
+{
+    return iterator(this, this->size());
+}  // -----  end of method PF_Chart::end  -----
 
 PF_Chart::const_iterator PF_Chart::end() const
 {
     return const_iterator(this, this->size());
-}    // -----  end of method PF_Chart::end  -----
+}  // -----  end of method PF_Chart::end  -----
 
 bool PF_Chart::PF_Chart_Iterator::operator==(const PF_Chart_Iterator &rhs) const
 {
     return (chart_ == rhs.chart_ && index_ == rhs.index_);
-}    // -----  end of method PF_Chart::PF_Chart_Iterator::operator==  -----
+}  // -----  end of method PF_Chart::PF_Chart_Iterator::operator==  -----
 
 PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator++()
 {
@@ -698,7 +767,7 @@ PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator++()
         index_ = chart_->size();
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_Iterator::operator++  -----
+}  // -----  end of method PF_Chart::PF_Chart_Iterator::operator++  -----
 
 PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator+=(difference_type n)
 {
@@ -711,7 +780,7 @@ PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator+=(difference_
         index_ = chart_->size();
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_Iterator::operator+=  -----
+}  // -----  end of method PF_Chart::PF_Chart_Iterator::operator+=  -----
 
 PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator--()
 {
@@ -724,7 +793,7 @@ PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator--()
         index_ = 0;
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_Iterator::operator--  -----
+}  // -----  end of method PF_Chart::PF_Chart_Iterator::operator--  -----
 
 PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator-=(difference_type n)
 {
@@ -737,30 +806,33 @@ PF_Chart::PF_Chart_Iterator &PF_Chart::PF_Chart_Iterator::operator-=(difference_
         index_ = 0;
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_Iterator::operator-+  -----
+}  // -----  end of method PF_Chart::PF_Chart_Iterator::operator-+  -----
 
 PF_Chart::reverse_iterator PF_Chart::rbegin()
 {
     return reverse_iterator{this, static_cast<int32_t>(this->size() - 1)};
-}    // -----  end of method PF_Chart::rbegin  -----
+}  // -----  end of method PF_Chart::rbegin  -----
 
 PF_Chart::const_reverse_iterator PF_Chart::rbegin() const
 {
     return const_reverse_iterator{this, static_cast<int32_t>(this->size() - 1)};
-}    // -----  end of method PF_Chart::rbegin  -----
+}  // -----  end of method PF_Chart::rbegin  -----
 
-PF_Chart::reverse_iterator PF_Chart::rend() { return reverse_iterator(this, -1); }    // -----  end of method PF_Chart::rend  -----
+PF_Chart::reverse_iterator PF_Chart::rend()
+{
+    return reverse_iterator(this, -1);
+}  // -----  end of method PF_Chart::rend  -----
 
 PF_Chart::const_reverse_iterator PF_Chart::rend() const
 {
     return const_reverse_iterator(this, -1);
-}    // -----  end of method PF_Chart::rend  -----
+}  // -----  end of method PF_Chart::rend  -----
 
 bool PF_Chart::PF_Chart_ReverseIterator::operator==(const PF_Chart_ReverseIterator &rhs) const
 {
     return (chart_ == rhs.chart_ && index_ == rhs.index_);
-}    // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator==
-     // -----
+}  // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator==
+   // -----
 
 PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator++()
 {
@@ -773,8 +845,8 @@ PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator
         index_ = -1;
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator++
-     // -----
+}  // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator++
+   // -----
 
 PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator+=(difference_type n)
 {
@@ -789,8 +861,8 @@ PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator
         index_ = -1;
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator+=
-     // -----
+}  // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator+=
+   // -----
 
 PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator--()
 {
@@ -803,8 +875,8 @@ PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator
         index_ = chart_->size();
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator--
-     // -----
+}  // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator--
+   // -----
 
 PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator-=(difference_type n)
 {
@@ -817,5 +889,5 @@ PF_Chart::PF_Chart_ReverseIterator &PF_Chart::PF_Chart_ReverseIterator::operator
         index_ = chart_->size();
     }
     return *this;
-}    // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator-+
-     // -----
+}  // -----  end of method PF_Chart::PF_Chart_ReverseIterator::operator-+
+   // -----
