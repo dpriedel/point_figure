@@ -398,7 +398,7 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns)
     ColumnBoxList result;
 
     const auto column_filter = rng::views::filter(
-        [&which_columns](const auto &col)
+        [&which_columns, this](const auto &col)
         {
             using enum ColumnFilter;
             if (which_columns == e_up_column && col.GetDirection() == PF_Column::Direction::e_Up &&
@@ -411,13 +411,13 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns)
             {
                 return true;
             }
-            if (which_columns == e_reversed_to_up && col.GetDirection() == PF_Column::Direction::e_Up &&
-                col.GetHadReversal())
+            if (which_columns == e_reversed_to_up && col.GetReversalboxes() == 1 &&
+                col.GetDirection() == PF_Column::Direction::e_Up && col.GetHadReversal())
             {
                 return true;
             }
-            if (which_columns == e_reversed_to_down && col.GetDirection() == PF_Column::Direction::e_Down &&
-                col.GetHadReversal())
+            if (which_columns == e_reversed_to_down && col.GetReversalboxes() == 1 &&
+                col.GetDirection() == PF_Column::Direction::e_Down && col.GetHadReversal())
             {
                 return true;
             }
