@@ -1006,19 +1006,7 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, cons
 
 PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
 {
-    const std::string file_content = LoadDataFileForUse(symbol_file_name);
-
-    JSONCPP_STRING err;
-    Json::Value saved_data;
-
-    Json::CharReaderBuilder builder;
-    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    if (!reader->parse(file_content.data(), file_content.data() + file_content.size(), &saved_data, &err))
-    {
-        throw std::runtime_error("Problem parsing test data file: "s + err);
-    }
-
-    PF_Chart new_chart{saved_data};
+    PF_Chart new_chart = PF_Chart::MakeChartFromJSONFile(symbol_file_name);
     return new_chart;
 }  // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
 
