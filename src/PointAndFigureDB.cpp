@@ -211,7 +211,7 @@ void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view i
         trxn.quote(std::format("{:%F %T}", the_chart.GetFirstTime())),
         trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
         trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
-        the_chart.GetCurrentSignal().signal_type_, for_db, cvs_graphics_data);
+        the_chart.GetCurrentSignal().value_or(PF_Signal{}).signal_type_, for_db, cvs_graphics_data);
 
     // std::cout << add_new_data_cmd << std::endl;
     trxn.exec(add_new_data_cmd);
