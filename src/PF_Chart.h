@@ -116,6 +116,9 @@ class PF_Chart
 
     static PF_Chart MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval);
 
+    // mainly for Python wrapper
+    static PF_Chart MakeChartFromJSONFile(const fs::path& file_name);
+
     // ====================  ACCESSORS =======================================
 
     [[nodiscard]] iterator begin();
@@ -152,7 +155,7 @@ class PF_Chart
     // if you just want to know whether there is a signal active
     // for the current column, then use this routine.
 
-    [[nodiscard]] PF_Signal GetCurrentSignal() const
+    [[nodiscard]] std::optional<PF_Signal> GetCurrentSignal() const
     {
         if (!signals_.empty())
         {
@@ -197,7 +200,10 @@ class PF_Chart
 
     [[nodiscard]] const Boxes &GetBoxes() const { return boxes_; }
     [[nodiscard]] const PF_SignalList &GetSignals() const { return signals_; }
-    [[nodiscard]] const std::vector<PF_Column> &GetColumns() const { return columns_; }
+
+    // NOTE: this does NOT include current_column_ so in order to avoid confusion, remove it.
+    // ** use the iterator interface to properly access columns **
+    // [[nodiscard]] const std::vector<PF_Column> &GetColumns() const { return columns_; }
     // [[nodiscard]] const PF_Column& GetCurrentColumn() const { return
     // current_column_; }
 
@@ -206,9 +212,11 @@ class PF_Chart
         return {symbol_, fname_box_size_, current_column_.GetReversalboxes(), boxes_.GetBoxScale()};
     }
 
-    // collect list of boxes for all columns with the specified direction
+    // for drawing chart, boxes are needed in floating point format, not decimal
 
-    using ColumnBoxList = std::vector<std::pair<int, Boxes::Box>>;
+    using ColumnBoxList = std::vector<std::pair<int, double>>;
+
+    // collect list of boxes and column numbers for all columns with the specified direction
 
     [[nodiscard]] ColumnBoxList GetBoxesForColumns(ColumnFilter which_columns) const;
 

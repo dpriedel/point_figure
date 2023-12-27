@@ -37,6 +37,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -178,6 +179,18 @@ PF_Chart PF_Chart::MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, s
     PF_Chart chart_from_db{chart_data};
     return chart_from_db;
 }  // -----  end of method PF_Chart::PF_Chart  (constructor)  -----
+
+//--------------------------------------------------------------------------------------
+//       Class:  PF_Chart
+//      Method:  PF_Chart
+// Description:  constructor
+//--------------------------------------------------------------------------------------
+PF_Chart PF_Chart::MakeChartFromJSONFile(const fs::path& file_name)
+{
+    Json::Value chart_data = ReadAndParseJSONFile(file_name);
+    PF_Chart chart_from_file{chart_data};
+    return chart_from_file;
+}  // -----  end of method PF_Chart::MakeChartFromJSONFile  (constructor)  -----
 
 PF_Chart &PF_Chart::operator=(const PF_Chart &rhs)
 {
@@ -430,7 +443,7 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns)
                       auto col_nbr = col.GetColumnNumber();
                       rng::for_each(col.GetColumnBoxes(),
                                     [&result, &col, col_nbr](const auto &box) {
-                                        result.push_back(std::pair{col_nbr, box});
+                                        result.push_back(std::pair{col_nbr, dec2dbl(box)});
                                     });
                   });
 
