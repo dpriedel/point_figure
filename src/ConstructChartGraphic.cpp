@@ -61,7 +61,7 @@ void ConstructChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path
     double openning_price =
         first_col.GetDirection() == PF_Column::Direction::e_Up ? dec2dbl(first_col.GetBottom()) : dec2dbl(first_col.GetTop());
 
-    for (const auto& col : the_chart.GetColumns() | vws::drop(skipped_columns))
+    for (const auto& col : the_chart | vws::drop(skipped_columns))
     {
         lowData.push_back(dec2dbl(col.GetBottom()));
         highData.push_back(dec2dbl(col.GetTop()));
@@ -89,31 +89,31 @@ void ConstructChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path
         had_step_back.push_back(col.GetHadReversal());
     }
 
-    lowData.push_back(dec2dbl(the_chart.back().GetBottom()));
-    highData.push_back(dec2dbl(the_chart.back().GetTop()));
-
-    if (the_chart.back().GetDirection() == PF_Column::Direction::e_Up)
-    {
-        openData.push_back(dec2dbl(the_chart.back().GetBottom()));
-        closeData.push_back(dec2dbl(the_chart.back().GetTop()));
-        direction_is_up.push_back(true);
-    }
-    else
-    {
-        openData.push_back(dec2dbl(the_chart.back().GetTop()));
-        closeData.push_back(dec2dbl(the_chart.back().GetBottom()));
-        direction_is_up.push_back(false);
-    }
-    if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
-    {
-        x_axis_labels.push_back(std::format("{:%F}", the_chart.back().GetTimeSpan().first));
-    }
-    else
-    {
-        x_axis_labels.push_back(UTCTimePointToLocalTZHMSString(the_chart.back().GetTimeSpan().first));
-    }
-
-    had_step_back.push_back(the_chart.back().GetHadReversal());
+    // lowData.push_back(dec2dbl(the_chart.back().GetBottom()));
+    // highData.push_back(dec2dbl(the_chart.back().GetTop()));
+    //
+    // if (the_chart.back().GetDirection() == PF_Column::Direction::e_Up)
+    // {
+    //     openData.push_back(dec2dbl(the_chart.back().GetBottom()));
+    //     closeData.push_back(dec2dbl(the_chart.back().GetTop()));
+    //     direction_is_up.push_back(true);
+    // }
+    // else
+    // {
+    //     openData.push_back(dec2dbl(the_chart.back().GetTop()));
+    //     closeData.push_back(dec2dbl(the_chart.back().GetBottom()));
+    //     direction_is_up.push_back(false);
+    // }
+    // if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
+    // {
+    //     x_axis_labels.push_back(std::format("{:%F}", the_chart.back().GetTimeSpan().first));
+    // }
+    // else
+    // {
+    //     x_axis_labels.push_back(UTCTimePointToLocalTZHMSString(the_chart.back().GetTimeSpan().first));
+    // }
+    //
+    // had_step_back.push_back(the_chart.back().GetHadReversal());
 
     // extract and format the Signals, if any, from the chart. The drawing code can plot
     // them or not.
