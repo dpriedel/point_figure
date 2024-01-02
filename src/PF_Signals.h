@@ -91,6 +91,10 @@ struct PF_Signal
     decimal::Decimal box_ = -1;
 };
 
+// for Python
+
+inline int32_t CmpSignalsByPriority(const PF_Signal& lhs, const PF_Signal& rhs) { return CmpSigPriority(lhs.priority_, rhs.priority_); };
+
 using PF_SignalList = std::vector<PF_Signal>;
 
 [[nodiscard]] Json::Value PF_SignalToJSON(const PF_Signal &signal);
