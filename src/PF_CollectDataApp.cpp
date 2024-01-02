@@ -1292,6 +1292,7 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
             if (tickers_in_update.size() > 1)
             {
                 std::vector<std::future<void>> tasks;
+                tasks.reserve(tickers_in_update.size());
                 for (const auto &ticker : tickers_in_update)
                 {
                     tasks.emplace_back(std::async(std::launch::async, &PF_CollectDataApp::ProcessUpdatesForSymbol, this,
