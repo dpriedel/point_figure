@@ -63,7 +63,7 @@
 
 // helpers for building chart graphics
 
-enum class ColumnFilter { e_up_column, e_down_column, e_reversed_to_up, e_reversed_to_down };
+enum class PF_ColumnFilter { e_up_column, e_down_column, e_reversed_to_up, e_reversed_to_down };
 
 class PF_Chart
 {
@@ -142,7 +142,11 @@ class PF_Chart
     [[nodiscard]] BoxType GetBoxType() const { return boxes_.GetBoxType(); }
     [[nodiscard]] std::string GetSymbol() const { return symbol_; }
     [[nodiscard]] std::string GetChartBaseName() const { return chart_base_name_; }
+    [[nodiscard]] bool HasReversedColumns() const;
 
+    // for Python
+
+    [[nodiscard]] const PF_Column &GetColumn(size_t which) const { return (*this)[which]; }
     [[nodiscard]] PF_Column::Direction GetCurrentDirection() const { return current_direction_; }
 
     // if you know that a signal was just triggered, then this routine
@@ -218,7 +222,16 @@ class PF_Chart
 
     // collect list of boxes and column numbers for all columns with the specified direction
 
-    [[nodiscard]] ColumnBoxList GetBoxesForColumns(ColumnFilter which_columns) const;
+    [[nodiscard]] ColumnBoxList GetBoxesForColumns(PF_ColumnFilter which_columns) const;
+
+    // this routine supports drawing graphics using box-type charts.  To support this,
+    // the value of column top is actually 1 box higher so that the graphic will be a
+    // better representation of the column.
+    // Returned values are also floats since that is what the graphic software wants.
+
+    using ColumnTopBottomList = std::vector<std::tuple<int, double, double>>;
+
+    [[nodiscard]] ColumnTopBottomList GetTopBottomForColumns(PF_ColumnFilter which_columns) const;
 
     // ====================  MUTATORS =======================================
 

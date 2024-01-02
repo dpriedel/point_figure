@@ -185,7 +185,7 @@ PF_Chart PF_Chart::MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, s
 //      Method:  PF_Chart
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Chart PF_Chart::MakeChartFromJSONFile(const fs::path& file_name)
+PF_Chart PF_Chart::MakeChartFromJSONFile(const fs::path &file_name)
 {
     Json::Value chart_data = ReadAndParseJSONFile(file_name);
     PF_Chart chart_from_file{chart_data};
@@ -308,6 +308,11 @@ bool PF_Chart::operator==(const PF_Chart &rhs) const
     return true;
 }  // -----  end of method PF_Chart::operator==  -----
 
+bool PF_Chart::HasReversedColumns() const
+{
+    return rng::find_if(*this, [](const auto &col) { return col.GetHadReversal(); }) != this->end();
+}  // -----  end of method PF_Chart::HasReversedColumns  -----
+
 PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Column::TmPt the_time)
 {
     // when extending the chart, don't add 'old' data.
@@ -406,14 +411,14 @@ void PF_Chart::LoadDataFromFile(const std::string &file_name, std::string_view d
     data_file.close();
 }  // -----  end of method PF_Chart::LoadDataFromFile  -----
 
-PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns) const
+PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(PF_ColumnFilter which_columns) const
 {
     ColumnBoxList result;
 
     const auto column_filter = rng::views::filter(
         [&which_columns, this](const auto &col)
         {
-            using enum ColumnFilter;
+            using enum PF_ColumnFilter;
             if (which_columns == e_up_column && col.GetDirection() == PF_Column::Direction::e_Up &&
                 !col.GetHadReversal())
             {
@@ -450,6 +455,51 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(ColumnFilter which_columns)
     return result;
 }  // -----  end of method PF_Chart::GetBoxesForColumns  -----
 //
+
+PF_Chart::ColumnTopBottomList PF_Chart::GetTopBottomForColumns(PF_ColumnFilter which_columns) const
+{
+    ColumnTopBottomList result;
+
+    const auto column_filter = rng::views::filter(
+        [&which_columns, this](const auto &col)
+        {
+            using enum PF_ColumnFilter;
+            if (which_columns == e_up_column && col.GetDirection() == PF_Column::Direction::e_Up &&
+                !col.GetHadReversal())
+            {
+                return true;
+            }
+            if (which_columns == e_down_column && col.GetDirection() == PF_Column::Direction::e_Down &&
+                !col.GetHadReversal())
+            {
+                return true;
+            }
+            if (which_columns == e_reversed_to_up && col.GetReversalboxes() == 1 &&
+                col.GetDirection() == PF_Column::Direction::e_Up && col.GetHadReversal())
+            {
+                return true;
+            }
+            if (which_columns == e_reversed_to_down && col.GetReversalboxes() == 1 &&
+                col.GetDirection() == PF_Column::Direction::e_Down && col.GetHadReversal())
+            {
+                return true;
+            }
+            return false;
+        });
+
+    rng::for_each(*this | column_filter,
+                  [&result, this](const auto &col)
+                  {
+                      auto col_nbr = col.GetColumnNumber();
+                      auto bottom = dec2dbl(col.GetBottom());
+                      auto top = col.GetTop();
+                      auto top_for_chart = dec2dbl(boxes_.FindNextBox(top));
+                      result.push_back(std::tuple{col_nbr, bottom, top_for_chart});
+                  });
+
+    return result;
+}  // -----  end of method PF_Chart::GetTopBottomForColumns  -----
+
 std::string PF_Chart::MakeChartBaseName() const
 {
     std::string chart_name =
