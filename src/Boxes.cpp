@@ -272,6 +272,15 @@ Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value)
         {
             Box new_box = boxes_.back() + runtime_box_size_;
             PushBack(new_box);
+
+            // this is a little weird.  Add an extra box so that
+            // it is available for possible read-only searching used
+            // by graphics logic.
+
+            Box extra_box = boxes_.back() + runtime_box_size_;
+            PushBack(extra_box);
+
+            // return the first box we added.
             return new_box;
         }
     }
@@ -299,7 +308,7 @@ Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value) const
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     BOOST_ASSERT_MSG(found_it != boxes_.end(),
-                     std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
+                     std::format("Lookup-only box search failed for: {}", current_value.format("f")).c_str());
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
@@ -326,6 +335,20 @@ Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal& current_value)
                 new_box = boxes_.back() + sv2dec(".01");
             }
             PushBack(new_box);
+
+            // this is a little weird.  Add an extra box so that
+            // it is available for possible read-only searching used
+            // by graphics logic.
+
+            Box extra_box = (boxes_.back() * percent_box_factor_up_).rescale(percent_exponent_);
+            // stocks trade in pennies, so minimum difference is $0.01
+            if (extra_box - boxes_.back() < sv2dec(".01"))
+            {
+                extra_box = boxes_.back() + sv2dec(".01");
+            }
+            PushBack(extra_box);
+
+            // return the first box we added.
             return new_box;
         }
     }
@@ -345,7 +368,7 @@ Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal& current_value) cons
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     BOOST_ASSERT_MSG(found_it != boxes_.end(),
-                     std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
+                     std::format("Lookup-only box search failed for: {}", current_value.format("f")).c_str());
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
@@ -419,7 +442,7 @@ Boxes::Box Boxes::FindPrevBox(const decimal::Decimal& current_value) const
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     BOOST_ASSERT_MSG(box_index > 0,
-                     std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
+                     std::format("Lookup-only box search failed for: {}", current_value.format("f")).c_str());
     return boxes_.at(box_index - 1);
 }  // -----  end of method Boxes::FindPrevBox  -----
 
@@ -484,7 +507,7 @@ Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal& current_value) cons
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     BOOST_ASSERT_MSG(box_index > 0,
-                     std::format("Lookup-only box search failed for: ", current_value.format("f")).c_str());
+                     std::format("Lookup-only box search failed for: {}", current_value.format("f")).c_str());
     return boxes_.at(box_index - 1);
 }  // -----  end of method Boxes::FindNextBoxPercent  -----
 
