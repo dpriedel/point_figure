@@ -229,7 +229,12 @@ class PF_Chart
     // better representation of the column.
     // Returned values are also floats since that is what the graphic software wants.
 
-    using ColumnTopBottomInfo = std::tuple<int, double, double>;
+    struct ColumnTopBottomInfo
+    {
+        int col_nbr_ = {};
+        double col_top_ = {};
+        double col_bot_ = {};
+    };
     using ColumnTopBottomList = std::vector<ColumnTopBottomInfo>;
 
     [[nodiscard]] ColumnTopBottomList GetTopBottomForColumns(PF_ColumnFilter which_columns) const;

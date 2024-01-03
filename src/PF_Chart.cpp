@@ -494,7 +494,7 @@ PF_Chart::ColumnTopBottomList PF_Chart::GetTopBottomForColumns(PF_ColumnFilter w
                       auto bottom = dec2dbl(col.GetBottom());
                       auto top = col.GetTop();
                       auto top_for_chart = dec2dbl(boxes_.FindNextBox(top));
-                      result.emplace_back(ColumnTopBottomInfo{col_nbr, bottom, top_for_chart});
+                      result.emplace_back(ColumnTopBottomInfo{.col_nbr_ = col_nbr, .col_top_ = top_for_chart, .col_bot_ = bottom});
                   });
 
     return result;
