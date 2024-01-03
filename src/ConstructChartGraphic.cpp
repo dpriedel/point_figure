@@ -285,7 +285,7 @@ namespace vws = std::ranges::views;
 // }
 
 
-void ConstructCDChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename, const streamed_prices& streamed_prices,
+void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename, const streamed_prices& streamed_prices,
                                        const std::string& show_trend_lines, PF_Chart::X_AxisFormat date_or_time)
 {
     BOOST_ASSERT_MSG(!the_chart.empty(),
@@ -293,13 +293,46 @@ void ConstructCDChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::pa
 
     const auto columns_in_PF_Chart = the_chart.size();
 
-    // basic data we need to pass to CharDirector.  Each of the below will 
-    // be a separate graphic layer.
+    // for our chart graphic there are 4 types of columns: up, down, reversed-to-up and reversed-to-down.
+    // there will be a separate layer for each of these types so a different color can be assigned to each.
+    // in order for eveything to line up correctly each layer must contain all the points whether they are
+    // used in that layor or not.  'NoValue' values are used. So, fill each layer with 'NoValue' then
+    // over-write the values that are used in that layer.
 
-    PF_Chart::ColumnTopBottomList up_layer{columns_in_PF_Chart};
-    PF_Chart::ColumnTopBottomList down_layer(columns_in_PF_Chart);
-    PF_Chart::ColumnTopBottomList reversed_to_up_layer(columns_in_PF_Chart);
-    PF_Chart::ColumnTopBottomList reversed_to_down_layer(columns_in_PF_Chart);
+    PF_Chart::ColumnTopBottomList up_layer{columns_in_PF_Chart, PF_Chart::ColumnTopBottomInfo{.col_top_ = Chart::NoValue, .col_bot_ = Chart::NoValue}};
+    PF_Chart::ColumnTopBottomList down_layer{columns_in_PF_Chart, PF_Chart::ColumnTopBottomInfo{.col_top_ = Chart::NoValue, .col_bot_ = Chart::NoValue}};
+    PF_Chart::ColumnTopBottomList reversed_to_up_layer{columns_in_PF_Chart, PF_Chart::ColumnTopBottomInfo{.col_top_ = Chart::NoValue, .col_bot_ = Chart::NoValue}};
+    PF_Chart::ColumnTopBottomList reversed_to_down_layer{columns_in_PF_Chart, PF_Chart::ColumnTopBottomInfo{.col_top_ = Chart::NoValue, .col_bot_ = Chart::NoValue}};
+
+    // collect data for each graphic layer.
+
+    auto up_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_up_column);
+    auto down_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_down_column);
+    PF_Chart::ColumnTopBottomList rev_to_up_cols;
+    PF_Chart::ColumnTopBottomList rev_to_down_cols;
+    if (the_chart.GetReversalboxes() == 1 && the_chart.HasReversedColumns())
+    {
+        rev_to_up_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_reversed_to_up);
+        rev_to_down_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_reversed_to_down);
+    }
+    // next, merge to data for each column type into the layer list
+   
+    rng::for_each(up_cols, [&up_layer](const auto& col) { up_layer[col.col_nbr_] = col; });
+    rng::for_each(down_cols, [&down_layer](const auto& col) { down_layer[col.col_nbr_] = col; });
+    if (! rev_to_up_cols.empty())
+    {
+        rng::for_each(rev_to_up_cols, [&reversed_to_up_layer](const auto& col) {reversed_to_up_layer[col.col_nbr_] = col; });
+    }
+    if (! rev_to_down_cols.empty())
+    {
+        rng::for_each(rev_to_down_cols, [&reversed_to_down_layer](const auto& col) { reversed_to_down_layer[col.col_nbr_] = col; });
+    }
+
+    // we want to mark the openning value on the chart so change can be seen when drawing only most recent columns.
+
+    const auto& first_col = the_chart[0];
+    double openning_price =
+        first_col.GetDirection() == PF_Column::Direction::e_Up ? dec2dbl(first_col.GetBottom()) : dec2dbl(first_col.GetTop());
 
     // for x-axis label, we use the begin date for each column
     // the chart software wants an array of const char*.
@@ -307,32 +340,6 @@ void ConstructCDChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::pa
 
     std::vector<std::string> x_axis_labels;
     x_axis_labels.reserve(columns_in_PF_Chart);
-
-    // collect data for each graphic layer.
-
-    auto up_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_up_column);
-    auto down_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_down_column);
-    auto rev_to_up_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_reversed_to_up);
-    auto rev_to_down_cols = the_chart.GetTopBottomForColumns(PF_ColumnFilter::e_reversed_to_down);
-
-    // next, merge to data for each column type into the layer list
-   
-    rng::for_each(up_cols, [&up_layer](const auto& col) { up_layer[std::get<0>(col)] = col; });
-    rng::for_each(down_cols, [&down_layer](const auto& col) { down_layer[std::get<0>(col)] = col; });
-    rng::for_each(rev_to_up_cols, [&reversed_to_up_layer](const auto& col) {reversed_to_up_layer[std::get<0>(col)] = col; });
-    rng::for_each(rev_to_down_cols, [&reversed_to_down_layer](const auto& col) { reversed_to_down_layer[std::get<0>(col)] = col; });
-
-    // limit the number of columns shown on graphic if requested
-
-    const auto max_columns_for_graph = the_chart.GetMaxGraphicColumns();
-    size_t skipped_columns =
-        max_columns_for_graph < 1 || the_chart.size() <= max_columns_for_graph ? 0 : the_chart.size() - max_columns_for_graph;
-
-    // we want to mark the openning value on the chart so change can be seen when drawing only most recent columns.
-
-    const auto& first_col = the_chart[0];
-    double openning_price =
-        first_col.GetDirection() == PF_Column::Direction::e_Up ? dec2dbl(first_col.GetBottom()) : dec2dbl(first_col.GetTop());
 
     for (const auto& col : the_chart)
     {
@@ -347,26 +354,62 @@ void ConstructCDChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::pa
     }
 
     // now, make our data arrays for the graphic software
+    // but first, limit the number of columns shown on graphic if requested
+
+    const auto max_columns_for_graph = the_chart.GetMaxGraphicColumns();
+    size_t skipped_columns =
+        max_columns_for_graph < 1 || the_chart.size() <= max_columns_for_graph ? 0 : the_chart.size() - max_columns_for_graph;
 
     std::vector<double> up_data_top;
-    up_data_top.reserve(columns_in_PF_Chart);
+    up_data_top.reserve(columns_in_PF_Chart - skipped_columns);
     std::vector<double> up_data_bot;
-    up_data_bot.reserve(columns_in_PF_Chart);
+    up_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
     for (const auto& col : up_layer | vws::drop(skipped_columns))
     {
-        up_data_top.push_back(std::get<1>(col));
-        up_data_bot.push_back(std::get<2>(col));
+        up_data_top.push_back(col.col_top_);
+        up_data_bot.push_back(col.col_bot_);
     }
 
     std::vector<double> down_data_top;
-    down_data_top.reserve(columns_in_PF_Chart);
+    down_data_top.reserve(columns_in_PF_Chart - skipped_columns);
     std::vector<double> down_data_bot;
-    down_data_bot.reserve(columns_in_PF_Chart);
+    down_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
     for (const auto& col : down_layer | vws::drop(skipped_columns))
     {
-        down_data_top.push_back(std::get<1>(col));
-        down_data_bot.push_back(std::get<2>(col));
+        down_data_top.push_back(col.col_top_);
+        down_data_bot.push_back(col.col_bot_);
     }
+
+    std::vector<double> reversed_to_up_data_top;
+    std::vector<double> reversed_to_up_data_bot;
+    if (! rev_to_up_cols.empty())
+    {
+        reversed_to_up_data_top.reserve(columns_in_PF_Chart - skipped_columns);
+        reversed_to_up_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
+        for (const auto& col : reversed_to_up_layer | vws::drop(skipped_columns))
+        {
+            reversed_to_up_data_top.push_back(col.col_top_);
+            reversed_to_up_data_bot.push_back(col.col_bot_);
+        }
+    }
+
+    std::vector<double> reversed_to_down_data_top;
+    std::vector<double> reversed_to_down_data_bot;
+    if (! rev_to_down_cols.empty())
+    {
+        reversed_to_down_data_top.reserve(columns_in_PF_Chart - skipped_columns);
+        reversed_to_down_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
+        for (const auto& col : reversed_to_down_layer | vws::drop(skipped_columns))
+        {
+            reversed_to_down_data_top.push_back(col.col_top_);
+            reversed_to_down_data_bot.push_back(col.col_bot_);
+        }
+    }
+
+ uint32_t RED = 0xFF0000; // for down columns
+ uint32_t GREEN = 0x00FF00; // for up columns
+ uint32_t BLUE = 0x0000FF; // for reversed to up columns
+ uint32_t ORANGE = 0xFFA500; // for reversed to down columns
 
     XYChart* c = new XYChart(550, 275);
 
@@ -385,10 +428,19 @@ void ConstructCDChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::pa
 
     // Add a Box Whisker layer using light blue 0x9999ff as the fill color and blue (0xcc) as the
     // line color. Set the line width to 2 pixels
-    c->addBoxLayer(DoubleArray(up_data_top.data(), up_data_top.size()), DoubleArray(up_data_bot.data(), up_data_bot.size()), 0x00ff00,
-        "Top 25%");
-    c->addBoxLayer(DoubleArray(down_data_top.data(), down_data_top.size()), DoubleArray(down_data_bot.data(), down_data_bot.size()), 0x9999ff,
-        "25% - 50%");
+    c->addBoxLayer(DoubleArray(up_data_top.data(), up_data_top.size()), DoubleArray(up_data_bot.data(), up_data_bot.size()), GREEN);
+    c->addBoxLayer(DoubleArray(down_data_top.data(), down_data_top.size()), DoubleArray(down_data_bot.data(), down_data_bot.size()), RED);
+
+    // reversal layes do not always occur
+
+    if (! reversed_to_up_data_top.empty())
+    {
+        c->addBoxLayer(DoubleArray(reversed_to_up_data_top.data(), reversed_to_up_data_top.size()), DoubleArray(reversed_to_up_data_bot.data(), reversed_to_up_data_bot.size()), BLUE);
+    }
+    if (! reversed_to_down_data_top.empty())
+    {
+        c->addBoxLayer(DoubleArray(reversed_to_down_data_top.data(), reversed_to_down_data_top.size()), DoubleArray(reversed_to_down_data_bot.data(), reversed_to_down_data_bot.size()), ORANGE);
+    }
     // c->addBoxLayer(DoubleArray(Q2Data, Q2Data_size), DoubleArray(Q1Data, Q1Data_size), 0xffff00,
     //     "50% - 75%");
     // c->addBoxLayer(DoubleArray(Q1Data, Q1Data_size), DoubleArray(Q0Data, Q0Data_size), 0xff0000,
