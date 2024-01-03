@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <memory>
 #include <ranges>
 
 namespace rng = std::ranges;
@@ -137,7 +138,7 @@ namespace vws = std::ranges::views;
 //     std::vector<double> cat_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
 //     std::vector<double> cat_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
 //     std::vector<double> tt_cat_buys(openData.size(), std::numeric_limits<double>::quiet_NaN());
-//     std::vector<double> tb_cat_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());
+//     std::vector<double> tb_cat_sells(openData.size(), std::numeric_limits<double>::quiet_NaN());->
 //
 //     int had_dt_buy = 0;
 //     int had_tt_buy = 0;
@@ -328,12 +329,6 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
         rng::for_each(rev_to_down_cols, [&reversed_to_down_layer](const auto& col) { reversed_to_down_layer[col.col_nbr_] = col; });
     }
 
-    // we want to mark the openning value on the chart so change can be seen when drawing only most recent columns.
-
-    const auto& first_col = the_chart[0];
-    double openning_price =
-        first_col.GetDirection() == PF_Column::Direction::e_Up ? dec2dbl(first_col.GetBottom()) : dec2dbl(first_col.GetTop());
-
     // for x-axis label, we use the begin date for each column
     // the chart software wants an array of const char*.
     // this will take several steps.
@@ -406,56 +401,101 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
         }
     }
 
- uint32_t RED = 0xFF0000; // for down columns
- uint32_t GREEN = 0x00FF00; // for up columns
- uint32_t BLUE = 0x0000FF; // for reversed to up columns
- uint32_t ORANGE = 0xFFA500; // for reversed to down columns
+    std::vector<const char*> x_axis_label_data;
+    x_axis_label_data.reserve(columns_in_PF_Chart - skipped_columns);
+    rng::for_each(x_axis_labels | vws::drop(skipped_columns), [&x_axis_label_data](const auto& label) { x_axis_label_data.push_back(label.c_str()); });
 
-    XYChart* c = new XYChart(550, 275);
+    // NOLINTBEGIN
+    uint32_t RED = 0xFF0000; // for down columns
+    uint32_t GREEN = 0x00FF00; // for up columns
+    uint32_t BLUE = 0x0000FF; // for reversed to up columns
+    uint32_t ORANGE = 0xFFA500; // for reversed to down columns
+    // NOLINTEND
 
-    // Set the plotarea at (50, 25) and of size 450 x 200 pixels. Enable both horizontal and
-    // vertical grids by setting their colors to grey (0xc0c0c0)
-    c->setPlotArea(50, 50, 450, 200)->setGridColor(0xc0c0c0, 0xc0c0c0);
+    // want to show approximate overall change in value (computed from boxes, not actual prices)
+
+    decimal::Decimal first_value = 0;
+    decimal::Decimal last_value = 0;
+
+    const auto& first_col = the_chart[0];
+    first_value = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom() : first_col.GetTop();
+    // apparently, this can happen
+
+    if (first_value == sv2dec("0.0"))
+    {
+        first_value = sv2dec("0.01");
+    }
+    last_value = the_chart.back().GetDirection() == PF_Column::Direction::e_Up ? the_chart.back().GetTop() : the_chart.back().GetBottom();
+
+    decimal::Decimal overall_pct_chg = ((last_value - first_value) / first_value * 100).rescale(-2);
+
+    std::string skipped_columns_text;
+    if (skipped_columns > 0)
+    {
+        skipped_columns_text = std::format(" (last {} cols)", max_columns_for_graph);
+    }
+    // some explanation for custom box colors.
+
+    std::string explanation_text;
+    // if (the_chart.GetReversalboxes() == 1 && the_chart.HasReversedColumns())
+    // {
+    //     explanation_text = "Orange: 1-step Up then reversal Down. Blue: 1-step Down then reversal Up.";
+    // }
+    auto chart_title =
+        std::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}",
+                    the_chart.GetChartBoxSize().format("f"), (the_chart.IsPercent() ? "%" : ""), the_chart.GetReversalboxes(),
+                    the_chart.GetSymbol(), (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg.format("f"), skipped_columns_text,
+                    std::chrono::zoned_time(std::chrono::current_zone(),
+                                            std::chrono::clock_cast<std::chrono::system_clock>(the_chart.GetLastChangeTime())),
+                    explanation_text);
+
+    std::unique_ptr<XYChart> c;
+    if (streamed_prices.price_.empty())
+    {
+        c.reset(new XYChart((14 * 72), (14 * 72)));
+        c->setPlotArea(50, 100, (14 * 72 - 50), (14 * 72 - 200))->setGridColor(0xc0c0c0, 0xc0c0c0);
+    }
+    else
+    {
+        c.reset(new XYChart((14 * 72), (11 * 72)));
+        c->setPlotArea(50, 100, (14 * 72 - 50), (11 * 72 - 200))->setGridColor(0xc0c0c0, 0xc0c0c0);
+
+    }
 
     // Add a title to the chart
-    c->addTitle("Computer Vision Test Scores");
+    c->addTitle(chart_title.c_str());
 
+    c->addLegend(50, 90, false, "Times New Roman Bold Italic", 12)->setBackground(Chart::Transparent);
     // Set the labels on the x axis and the font to Arial Bold
-    // c->xAxis()->setLabels(StringArray(labels, labels_size))->setFontStyle("Arial Bold");
-
+    c->xAxis()->setLabels(StringArray(x_axis_label_data.data(), x_axis_label_data.size()))->setFontAngle(45.);
+    c->xAxis()->setLabelStep(int32_t((columns_in_PF_Chart - skipped_columns) / 40), 0);
     // Set the font for the y axis labels to Arial Bold
     c->yAxis()->setLabelStyle("Arial Bold");
 
-    // Add a Box Whisker layer using light blue 0x9999ff as the fill color and blue (0xcc) as the
-    // line color. Set the line width to 2 pixels
-    c->addBoxLayer(DoubleArray(up_data_top.data(), up_data_top.size()), DoubleArray(up_data_bot.data(), up_data_bot.size()), GREEN);
-    c->addBoxLayer(DoubleArray(down_data_top.data(), down_data_top.size()), DoubleArray(down_data_bot.data(), down_data_bot.size()), RED);
+    c->addBoxLayer(DoubleArray(up_data_top.data(), up_data_top.size()), DoubleArray(up_data_bot.data(), up_data_bot.size()), GREEN, "Up");
+    c->addBoxLayer(DoubleArray(down_data_top.data(), down_data_top.size()), DoubleArray(down_data_bot.data(), down_data_bot.size()), RED, "Down");
 
     // reversal layes do not always occur
 
     if (! reversed_to_up_data_top.empty())
     {
-        c->addBoxLayer(DoubleArray(reversed_to_up_data_top.data(), reversed_to_up_data_top.size()), DoubleArray(reversed_to_up_data_bot.data(), reversed_to_up_data_bot.size()), BLUE);
+        c->addBoxLayer(DoubleArray(reversed_to_up_data_top.data(), reversed_to_up_data_top.size()), DoubleArray(reversed_to_up_data_bot.data(), reversed_to_up_data_bot.size()), BLUE, "Revse2Up");
     }
     if (! reversed_to_down_data_top.empty())
     {
-        c->addBoxLayer(DoubleArray(reversed_to_down_data_top.data(), reversed_to_down_data_top.size()), DoubleArray(reversed_to_down_data_bot.data(), reversed_to_down_data_bot.size()), ORANGE);
+        c->addBoxLayer(DoubleArray(reversed_to_down_data_top.data(), reversed_to_down_data_top.size()), DoubleArray(reversed_to_down_data_bot.data(), reversed_to_down_data_bot.size()), ORANGE, "Revse2Down");
     }
-    // c->addBoxLayer(DoubleArray(Q2Data, Q2Data_size), DoubleArray(Q1Data, Q1Data_size), 0xffff00,
-    //     "50% - 75%");
-    // c->addBoxLayer(DoubleArray(Q1Data, Q1Data_size), DoubleArray(Q0Data, Q0Data_size), 0xff0000,
-    //     "Bottom 25%");
 
-    // Add legend box at top center above the plot area using 10pt Arial Bold Font
-    LegendBox* b = c->addLegend(50 + 225, 22, false, "Arial Bold", 10);
-    b->setAlignment(Chart::TopCenter);
-    b->setBackground(Chart::Transparent);
+    // let's show where we started from
+
+    const auto dash_color = c->dashLineColor(RED, Chart::DotLine);
+    c->yAxis()->addMark(dec2dbl(first_value), dash_color)->setLineWidth(3);
 
     // Output the chart
-    c->makeChart("floatingbox.svg");
+    c->makeChart(output_filename.c_str());
 
     //free up resources
-    delete c;
+    // delete c;
     // extract and format the Signals, if any, from the chart. The drawing code can plot
     // them or not.
     // NOTE: we need to zap the column number with the skipped columns offset
@@ -539,50 +579,5 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
     //             break;
     //     }
     // }
-
-    // want to show approximate overall change in value (computed from boxes, not actual prices)
-
-    decimal::Decimal first_value = 0;
-    decimal::Decimal last_value = 0;
-
-    if (the_chart.size() > 1)
-    {
-        const auto& first_col = the_chart[0];
-        first_value = first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom() : first_col.GetTop();
-        // apparently, this can happen
-
-        if (first_value == sv2dec("0.0"))
-        {
-            first_value = sv2dec("0.01");
-        }
-    }
-    else
-    {
-        first_value =
-            the_chart.back().GetDirection() == PF_Column::Direction::e_Up ? the_chart.back().GetBottom() : the_chart.back().GetTop();
-    }
-    last_value = the_chart.back().GetDirection() == PF_Column::Direction::e_Up ? the_chart.back().GetTop() : the_chart.back().GetBottom();
-
-    decimal::Decimal overall_pct_chg = ((last_value - first_value) / first_value * 100).rescale(-2);
-
-    std::string skipped_columns_text;
-    if (skipped_columns > 0)
-    {
-        skipped_columns_text = std::format(" (last {} cols)", max_columns_for_graph);
-    }
-    // some explanation for custom box colors.
-
-    std::string explanation_text;
-    if (the_chart.GetReversalboxes() == 1)
-    {
-        explanation_text = "Orange: 1-step Up then reversal Down. Green: 1-step Down then reversal Up.";
-    }
-    auto chart_title =
-        std::format("\n{}{} X {} for {} {}. Overall % change: {}{}\nLast change: {:%a, %b %d, %Y at %I:%M:%S %p %Z}\n{}",
-                    the_chart.GetChartBoxSize().format("f"), (the_chart.IsPercent() ? "%" : ""), the_chart.GetReversalboxes(),
-                    the_chart.GetSymbol(), (the_chart.IsPercent() ? "percent" : ""), overall_pct_chg.format("f"), skipped_columns_text,
-                    std::chrono::zoned_time(std::chrono::current_zone(),
-                                            std::chrono::clock_cast<std::chrono::system_clock>(the_chart.GetLastChangeTime())),
-                    explanation_text);
 
 }
