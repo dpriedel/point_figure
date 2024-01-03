@@ -19,7 +19,10 @@
 
 #include "PF_Chart.h"
 
-void ConstructChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename, const streamed_prices& streamed_prices,
+// void ConstructChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename, const streamed_prices& streamed_prices,
+//                                        const std::string& show_trend_lines, PF_Chart::X_AxisFormat date_or_time=PF_Chart::X_AxisFormat::e_show_date);
+
+void ConstructCDChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename, const streamed_prices& streamed_prices,
                                        const std::string& show_trend_lines, PF_Chart::X_AxisFormat date_or_time=PF_Chart::X_AxisFormat::e_show_date);
 
 #endif   // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  ----- 
