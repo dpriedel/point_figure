@@ -17,6 +17,10 @@
 #ifndef _CONSTRUCTCHARTGRAPHIC_INC_
 #define _CONSTRUCTCHARTGRAPHIC_INC_
 
+#include <memory>
+
+class XYChart;
+
 #include "PF_Chart.h"
 
 // void ConstructChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename, const
@@ -25,7 +29,11 @@
 //                                        date_or_time=PF_Chart::X_AxisFormat::e_show_date);
 
 void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
-                                           const streamed_prices& streamed_prices, const std::string& show_trend_lines,
+                                           const StreamedPrices& streamed_prices, const std::string& show_trend_lines,
                                            PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
+
+std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(
+    const PF_Chart& the_chart, const StreamedPrices& streamed_prices,
+    PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
 
 #endif  // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  -----
