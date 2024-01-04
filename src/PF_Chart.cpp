@@ -399,7 +399,51 @@ void PF_Chart::LoadData(std::istream *input_data, std::string_view date_format, 
         y_min_ = current_column_.GetBottom();
     }
     current_direction_ = current_column_.GetDirection();
-}
+}  // -----  end of method PF_Chart::LoadData  -----
+
+
+StreamedPrices PF_Chart::LoadDataCollectPricesAndSignals(std::istream *input_data, std::string_view date_format, std::string_view delim)
+{
+    StreamedPrices streamed_prices;
+
+    std::string buffer;
+    while (!input_data->eof())
+    {
+        buffer.clear();
+        std::getline(*input_data, buffer);
+        if (input_data->fail())
+        {
+            continue;
+        }
+        auto fields = split_string<std::string_view>(buffer, delim);
+        decimal::Decimal new_value{std::string{fields[1]}};
+        auto timept = StringToUTCTimePoint(date_format, fields[0]);
+
+        auto chart_changed = AddValue(new_value, timept);
+        
+        streamed_prices.timestamp_.push_back(std::chrono::duration_cast<std::chrono::nanoseconds>(timept.time_since_epoch()).count());
+        streamed_prices.price_.push_back(dec2dbl(new_value));
+        streamed_prices.signal_type_.push_back(
+            chart_changed == PF_Column::Status::e_AcceptedWithSignal
+                ? std::to_underlying(GetSignals().back().signal_type_)
+                : 0);
+    }
+
+    // make sure we keep the last column we were working on
+
+    if (current_column_.GetTop() > y_max_)
+    {
+        y_max_ = current_column_.GetTop();
+    }
+    if (current_column_.GetBottom() < y_min_)
+    {
+        y_min_ = current_column_.GetBottom();
+    }
+    current_direction_ = current_column_.GetDirection();
+
+    return streamed_prices;
+
+}  // -----  end of method PF_Chart::LoadDataCollectPricesAndSignals  -----
 
 void PF_Chart::LoadDataFromFile(const std::string &file_name, std::string_view date_format, std::string_view delim)
 {
