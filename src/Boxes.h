@@ -43,12 +43,12 @@
 
 #include "utilities.h"
 
-enum class BoxType
+enum class BoxType : char
 {
     e_Integral,
     e_Fractional
 };
-enum class BoxScale
+enum class BoxScale : char
 {
     e_Linear,
     e_Percent
