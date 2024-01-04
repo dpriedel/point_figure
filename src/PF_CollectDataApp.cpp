@@ -1561,7 +1561,7 @@ void PF_CollectDataApp::Shutdown()
                     ConstructChartGraphAndWriteToFile(
                         chart, graph_file_path,
                         (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
-                                                                 : streamed_prices{}),
+                                                                 : StreamedPrices{}),
                         trend_lines_,
                         interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
                                                      : PF_Chart::X_AxisFormat::e_show_date);
@@ -1601,7 +1601,7 @@ void PF_CollectDataApp::Shutdown()
                     ConstructChartGraphAndWriteToFile(
                         chart, graph_file_path,
                         (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
-                                                                 : streamed_prices{}),
+                                                                 : StreamedPrices{}),
                         trend_lines_,
                         interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
                                                      : PF_Chart::X_AxisFormat::e_show_date);
