@@ -34,9 +34,9 @@
 #include <exception>
 #include <iostream>
  
-#include <pybind11/embed.h> // everything needed for embedding
-namespace py = pybind11;
-using namespace py::literals;
+// #include <pybind11/embed.h> // everything needed for embedding
+// namespace py = pybind11;
+// using namespace py::literals;
 
 #include <decimal.hh>
 
@@ -58,12 +58,12 @@ int main(int argc, char** argv)
 
 	    std::ios_base::sync_with_stdio(false);
 
-        py::scoped_interpreter guard{false}; // start the interpreter and keep it alive
-
-        py::exec(R"(
-            import PF_DrawChart
-            )"
-        );
+        // py::scoped_interpreter guard{false}; // start the interpreter and keep it alive
+        //
+        // py::exec(R"(
+        //     import PF_DrawChart
+        //     )"
+        // );
 		PF_CollectDataApp  myApp(argc, argv);
 		bool startup_ok = myApp.Startup();
         if (startup_ok)

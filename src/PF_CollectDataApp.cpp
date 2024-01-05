@@ -55,15 +55,15 @@ namespace vws = std::ranges::views;
 #include <date/chrono_io.h>
 #include <date/tz.h>
 #include <fmt/ranges.h>
-#include <pybind11/embed.h>
-#include <pybind11/gil.h>
+// #include <pybind11/embed.h>
+// #include <pybind11/gil.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include <range/v3/range/conversion.hpp>
 
-namespace py = pybind11;
-using namespace py::literals;
+// namespace py = pybind11;
+// using namespace py::literals;
 
 // #include "DDecQuad.h"
 #include "ConstructChartGraphic.h"
@@ -1240,7 +1240,7 @@ void PF_CollectDataApp::CollectStreamingData()
     std::mutex data_mutex;
     std::queue<std::string> streamed_data;
 
-    py::gil_scoped_release gil{};
+    // py::gil_scoped_release gil{};
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
     auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_,
@@ -1421,9 +1421,9 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
 
     for (const PF_Chart *chart : need_to_update_graph)
     {
-        py::gil_scoped_acquire gil{};
+        // py::gil_scoped_acquire gil{};
         fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-        ConstructChartGraphAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
+        ConstructCDChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
                                           trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
         fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
@@ -1540,7 +1540,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
 void PF_CollectDataApp::Shutdown()
 {
-    py::gil_scoped_acquire gil{};
+    // py::gil_scoped_acquire gil{};
 
     if (destination_ == Destination::e_file)
     {
@@ -1558,7 +1558,7 @@ void PF_CollectDataApp::Shutdown()
                     fs::path graph_file_path =
                         output_graphs_directory_ /
                         (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-                    ConstructChartGraphAndWriteToFile(
+                        ConstructCDChartGraphicAndWriteToFile(
                         chart, graph_file_path,
                         (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
                                                                  : StreamedPrices{}),
@@ -1598,7 +1598,7 @@ void PF_CollectDataApp::Shutdown()
                 if (graphics_format_ == GraphicsFormat::e_svg)
                 {
                     fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
-                    ConstructChartGraphAndWriteToFile(
+                    ConstructCDChartGraphicAndWriteToFile(
                         chart, graph_file_path,
                         (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
                                                                  : StreamedPrices{}),
