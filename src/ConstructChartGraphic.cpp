@@ -37,10 +37,11 @@ namespace vws = std::ranges::views;
 #include "PF_Signals.h"
 
 // NOLINTBEGIN
-uint32_t RED = 0xFF0000;     // for down columns
-uint32_t GREEN = 0x00FF00;   // for up columns
-uint32_t BLUE = 0x0000FF;    // for reversed to up columns
-uint32_t ORANGE = 0xFFA500;  // for reversed to down columns
+constexpr auto RED = 0xFF0000;     // for down columns
+constexpr auto GREEN = 0x00FF00;   // for up columns
+constexpr auto BLUE = 0x0000FF;    // for reversed to up columns
+constexpr auto ORANGE = 0xFFA500;  // for reversed to down columns
+constexpr auto LITEGRAY = 0xc0c0c0;
 // NOLINTEND
 
 constexpr uint32_t kDpi{72};
@@ -50,9 +51,19 @@ constexpr uint32_t kChartHeight2{11};
 constexpr uint32_t kChartHeight3{8};
 constexpr uint32_t kChartHeight4{19};
 
+// more misc constants to clear up some clang-tidy warnings
+
+constexpr auto k13 = 13;
+constexpr auto k40 = 40;
+constexpr auto k50 = 50;
+constexpr auto k80 = 80;
+constexpr auto k100 = 100;
+constexpr auto k120 = 120;
+constexpr auto k200 = 200;
+
 
 void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
-                                           const StreamedPrices& streamed_prices, const std::string& show_trend_lines,
+                                           const StreamedPrices& streamed_prices, const std::string&  /*show_trend_lines*/,
                                            PF_Chart::X_AxisFormat date_or_time)
 {
     BOOST_ASSERT_MSG(
@@ -172,7 +183,7 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
     last_value = the_chart.back().GetDirection() == PF_Column::Direction::e_Up ? the_chart.back().GetTop()
                                                                                : the_chart.back().GetBottom();
 
-    decimal::Decimal overall_pct_chg = ((last_value - first_value) / first_value * 100).rescale(-2);
+    decimal::Decimal overall_pct_chg = ((last_value - first_value) / first_value * k100).rescale(-2);
 
     std::string skipped_columns_text;
     if (skipped_columns > 0)
@@ -223,22 +234,22 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
     if (streamed_prices.price_.empty())
     {
         c = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight1 * kDpi));
-        c->setPlotArea(50, 100, (kChartWidth * kDpi - 120), (kChartHeight1 * kDpi - 200))
-            ->setGridColor(0xc0c0c0, 0xc0c0c0);
+        c->setPlotArea(k50, k100, (kChartWidth * kDpi - k120), (kChartHeight1 * kDpi - k200))
+            ->setGridColor(LITEGRAY, LITEGRAY);
     }
     else
     {
         c = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight2 * kDpi));
-        c->setPlotArea(50, 100, (kChartWidth * kDpi - 120), (kChartHeight2 * kDpi - 200))
-            ->setGridColor(0xc0c0c0, 0xc0c0c0);
+        c->setPlotArea(k50, k100, (kChartWidth * kDpi - k120), (kChartHeight2 * kDpi - k200))
+            ->setGridColor(LITEGRAY, LITEGRAY);
     }
 
     c->addTitle(chart_title.c_str());
 
-    c->addLegend(50, 90, false, "Times New Roman Bold Italic", 12)->setBackground(Chart::Transparent);
+    c->addLegend(k50, 90, false, "Times New Roman Bold Italic", 12)->setBackground(Chart::Transparent);
 
     c->xAxis()->setLabels(StringArray(x_axis_label_data.data(), x_axis_label_data.size()))->setFontAngle(45.);
-    c->xAxis()->setLabelStep(static_cast<int32_t>((columns_in_PF_Chart - skipped_columns) / 40), 0);
+    c->xAxis()->setLabelStep(static_cast<int32_t>((columns_in_PF_Chart - skipped_columns) / k40), 0);
     c->yAxis()->setLabelStyle("Arial Bold");
     if (the_chart.IsPercent())
     {
@@ -327,11 +338,11 @@ std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(const PF_Chart& the_
                   [&x_axis_label_data](const auto& label) { x_axis_label_data.push_back(label.c_str()); });
 
     std::unique_ptr<XYChart> p = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight3 * kDpi));
-    p->setPlotArea(50, 50, (kChartWidth * kDpi - 80), (kChartHeight3 * kDpi - 200))->setGridColor(0xc0c0c0, 0xc0c0c0);
+    p->setPlotArea(k50, k50, (kChartWidth * kDpi - k80), (kChartHeight3 * kDpi - k200))->setGridColor(LITEGRAY, LITEGRAY);
 
     p->addTitle("Price data for PF_Chart");
 
-    p->addLegend(50, 40, false, "Times New Roman Bold Italic", 12)->setBackground(Chart::Transparent);
+    p->addLegend(k50, 40, false, "Times New Roman Bold Italic", 12)->setBackground(Chart::Transparent);
 
     p->addLineLayer(DoubleArray(streamed_prices.price_.data(), streamed_prices.price_.size()), RED);
 
@@ -437,52 +448,52 @@ std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(const PF_Chart& the_
     if (!dt_buys_price.empty())
     {
         p->addScatterLayer(DoubleArray(dt_buys_x.data(), dt_buys_x.size()),
-                           DoubleArray(dt_buys_price.data(), dt_buys_price.size()), "dt buy", dt_buy_sym, 13, GREEN);
+                           DoubleArray(dt_buys_price.data(), dt_buys_price.size()), "dt buy", dt_buy_sym, k13, GREEN);
     }
 
     if (!tt_buys_price.empty())
     {
         p->addScatterLayer(DoubleArray(tt_buys_x.data(), tt_buys_x.size()),
-                           DoubleArray(tt_buys_price.data(), tt_buys_price.size()), "tt buy", tt_buy_sym, 13, GREEN);
+                           DoubleArray(tt_buys_price.data(), tt_buys_price.size()), "tt buy", tt_buy_sym, k13, GREEN);
     }
 
     if (!db_sells_price.empty())
     {
         p->addScatterLayer(DoubleArray(db_sells_x.data(), db_sells_x.size()),
-                           DoubleArray(db_sells_price.data(), db_sells_price.size()), "db sell", db_sell_sym, 13, RED);
+                           DoubleArray(db_sells_price.data(), db_sells_price.size()), "db sell", db_sell_sym, k13, RED);
     }
 
     if (!tb_sells_price.empty())
     {
         p->addScatterLayer(DoubleArray(tb_sells_x.data(), tb_sells_x.size()),
-                           DoubleArray(tb_sells_price.data(), dt_buys_price.size()), "tb sell", tb_sell_sym, 13, RED);
+                           DoubleArray(tb_sells_price.data(), dt_buys_price.size()), "tb sell", tb_sell_sym, k13, RED);
     }
 
     if (!bullish_tt_buys_price.empty())
     {
         p->addScatterLayer(DoubleArray(bullish_tt_buys_x.data(), bullish_tt_buys_x.size()),
                            DoubleArray(bullish_tt_buys_price.data(), bullish_tt_buys_price.size()), "bullish tt buy",
-                           bullish_tt_buy_sym, 13, GREEN);
+                           bullish_tt_buy_sym, k13, GREEN);
     }
 
     if (!bearish_tb_sells_price.empty())
     {
         p->addScatterLayer(DoubleArray(bearish_tb_sells_x.data(), bearish_tb_sells_x.size()),
                            DoubleArray(bearish_tb_sells_price.data(), bearish_tb_sells_price.size()), "bearish tb sell",
-                           bearish_tb_sell_sym, 13, RED);
+                           bearish_tb_sell_sym, k13, RED);
     }
 
     if (!cat_buys_price.empty())
     {
         p->addScatterLayer(DoubleArray(cat_buys_x.data(), cat_buys_x.size()),
-                           DoubleArray(cat_buys_price.data(), cat_buys_price.size()), "cat buy", cat_buy_sym, 13,
+                           DoubleArray(cat_buys_price.data(), cat_buys_price.size()), "cat buy", cat_buy_sym, k13,
                            GREEN);
     }
 
     if (!cat_sells_price.empty())
     {
         p->addScatterLayer(DoubleArray(cat_sells_x.data(), cat_sells_x.size()),
-                           DoubleArray(cat_sells_price.data(), cat_sells_price.size()), "cat sell", cat_sell_sym, 13,
+                           DoubleArray(cat_sells_price.data(), cat_sells_price.size()), "cat sell", cat_sell_sym, k13,
                            RED);
     }
 
@@ -490,14 +501,14 @@ std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(const PF_Chart& the_
     {
         p->addScatterLayer(DoubleArray(tt_cat_buys_x.data(), tt_cat_buys_x.size()),
                            DoubleArray(tt_cat_buys_price.data(), tt_cat_buys_price.size()), "tt cat buy",
-                           tt_cat_buy_sym, 13, GREEN);
+                           tt_cat_buy_sym, k13, GREEN);
     }
 
     if (!tb_cat_sells_price.empty())
     {
         p->addScatterLayer(DoubleArray(tb_cat_sells_x.data(), tb_cat_sells_x.size()),
                            DoubleArray(tb_cat_sells_price.data(), tb_cat_sells_price.size()), "tb cat sell",
-                           tb_cat_sell_sym, 13, RED);
+                           tb_cat_sell_sym, k13, RED);
     }
 
     return p;
@@ -505,7 +516,7 @@ std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(const PF_Chart& the_
 /*
         d = XYChart((14 * 72), (8 * 72))
         d.setPlotArea(
-            50, 50, (14 * 72 - 50), (8 * 72 - 200), -1, -1, 0xC0C0C0, 0xC0C0C0, -1
+            50, 50, (14 * 72 - 50), (8 * 72 - 200), -1, -1, LITEGRAY, LITEGRAY, -1
         )
         d.addTitle("Closing prices", "Times New Roman Bold Italic", 18)
         p_layer1 = d.addLineLayer(prices.close.to_list())
