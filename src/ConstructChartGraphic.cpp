@@ -240,6 +240,10 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
     c->xAxis()->setLabels(StringArray(x_axis_label_data.data(), x_axis_label_data.size()))->setFontAngle(45.);
     c->xAxis()->setLabelStep(static_cast<int32_t>((columns_in_PF_Chart - skipped_columns) / 40), 0);
     c->yAxis()->setLabelStyle("Arial Bold");
+    if (the_chart.IsPercent())
+    {
+        c->yAxis()->setLogScale(dec2dbl(the_chart.GetYLimits().first - 10), dec2dbl(the_chart.GetYLimits().second + 10));
+    }
     c->yAxis2()->copyAxis(c->yAxis());
     // now we can add our data for the columns.  Each column type in its own layer.
 
