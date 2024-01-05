@@ -32,8 +32,11 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
                                            const StreamedPrices& streamed_prices, const std::string& show_trend_lines,
                                            PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
 
+std::unique_ptr<XYChart> ConstructCDChartGraphicAddPFSignals(const PF_Chart& the_chart, size_t skipped_columns,
+                                                           std::unique_ptr<XYChart> the_graphic);
+
 std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(
-    const PF_Chart& the_chart, const StreamedPrices& streamed_prices,
-    PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
+                            const PF_Chart& the_chart, const StreamedPrices& streamed_prices,
+                            PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
 
 #endif  // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  -----
