@@ -558,6 +558,11 @@ Boxes::Box Boxes::FirstBox(const decimal::Decimal& start_at)
     //    auto new_box = RoundDownToNearestBox(start_at);
     Box new_box{price_as_int_or_not};
     PushBack(new_box);
+
+    // add an extra box as described elsewhere
+    //
+    auto extra_box = FindNextBox(new_box);
+
     return new_box;
 
 }  // -----  end of method Boxes::NewBox  -----
