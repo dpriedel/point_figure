@@ -33,20 +33,20 @@
 
 class PF_Chart;
 
-enum class PF_SignalCategory
+enum class PF_SignalCategory : int32_t
 {
     e_unknown,
     e_PF_Buy,
     e_PF_Sell
 };    // NOLINT
-enum class PF_CanUse1BoxReversal
+enum class PF_CanUse1BoxReversal : int32_t
 {
     e_Yes,
     e_No
 };    // NOLINT
 
 // NOLINTBEGIN(readability-identifier-naming.*)
-enum class PF_SignalType
+enum class PF_SignalType : int32_t
 {
     e_unknown,
     e_double_top_buy,

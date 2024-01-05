@@ -63,7 +63,7 @@
 
 // helpers for building chart graphics
 
-enum class PF_ColumnFilter : char { e_up_column, e_down_column, e_reversed_to_up, e_reversed_to_down };
+enum class PF_ColumnFilter : int32_t { e_up_column, e_down_column, e_reversed_to_up, e_reversed_to_down };
 
 class PF_Chart
 {
@@ -80,7 +80,7 @@ class PF_Chart
     using Y_Limits = std::pair<decimal::Decimal, decimal::Decimal>;
     using PF_ChartParams = std::tuple<std::string, decimal::Decimal, int32_t, BoxScale>;
 
-    enum class X_AxisFormat : char
+    enum class X_AxisFormat : int32_t
     {
         e_show_date,
         e_show_time

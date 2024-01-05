@@ -181,13 +181,13 @@ class PF_CollectDataApp
 
     std::shared_ptr<spdlog::logger> logger_;
 
-    enum class Destination : char
+    enum class Destination : int32_t
     {
         e_unknown,
         e_DB,
         e_file
     };
-    enum class Interval : char
+    enum class Interval : int32_t
     {
         e_unknown,
         e_eod,
@@ -197,33 +197,33 @@ class PF_CollectDataApp
         e_min5,
         e_live
     };
-    enum class Mode : char
+    enum class Mode : int32_t
     {
         e_unknown,
         e_load,
         e_update,
         e_daily_scan
     };
-    enum class Source : char
+    enum class Source : int32_t
     {
         e_unknown,
         e_file,
         e_streaming,
         e_DB
     };
-    enum class SourceFormat : char
+    enum class SourceFormat : int32_t
     {
         e_unknown,
         e_csv,
         e_json
     };
-    enum class GraphicsFormat : char
+    enum class GraphicsFormat : int32_t
     {
         e_unknown,
         e_svg,
         e_csv
     };
-    enum class BoxsizeSource : char
+    enum class BoxsizeSource : int32_t
     {
         e_unknown,
         e_from_args,

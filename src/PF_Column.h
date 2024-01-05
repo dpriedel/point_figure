@@ -59,8 +59,8 @@ class PF_Column
 
 public:
 
-    enum class Direction : char {e_Unknown, e_Up, e_Down};
-    enum class Status : char { e_Accepted, e_Ignored, e_Reversal, e_AcceptedWithSignal };
+    enum class Direction : int32_t {e_Unknown, e_Up, e_Down};
+    enum class Status : int32_t { e_Accepted, e_Ignored, e_Reversal, e_AcceptedWithSignal };
 
     using TmPt = std::chrono::utc_time<std::chrono::utc_clock::duration>;
     using TimeSpan = std::pair<TmPt, TmPt>;
