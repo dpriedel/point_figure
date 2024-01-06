@@ -1423,7 +1423,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
     {
         // py::gil_scoped_acquire gil{};
         fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-        ConstructCDChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
+        ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
                                           trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
         fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
@@ -1558,7 +1558,7 @@ void PF_CollectDataApp::Shutdown()
                     fs::path graph_file_path =
                         output_graphs_directory_ /
                         (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-                        ConstructCDChartGraphicAndWriteToFile(
+                        ConstructCDPFChartGraphicAndWriteToFile(
                         chart, graph_file_path,
                         (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
                                                                  : StreamedPrices{}),
@@ -1598,7 +1598,7 @@ void PF_CollectDataApp::Shutdown()
                 if (graphics_format_ == GraphicsFormat::e_svg)
                 {
                     fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
-                    ConstructCDChartGraphicAndWriteToFile(
+                    ConstructCDPFChartGraphicAndWriteToFile(
                         chart, graph_file_path,
                         (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
                                                                  : StreamedPrices{}),

@@ -67,19 +67,19 @@ constexpr auto k200 = 200;
 
 // NOLINTBEGIN
 const auto dt_buy_sym = Chart::SquareShape;
-const auto tt_buy_sym = Chart::DiamondShape;
-const auto db_sell_sym = Chart::CircleShape;
-const auto tb_sell_sym = Chart::RightTriangleShape;
+const auto tt_buy_sym = Chart::CircleShape;
+const auto db_sell_sym = Chart::SquareShape;
+const auto tb_sell_sym = Chart::CircleShape;
 const auto bullish_tt_buy_sym = Chart::TriangleShape;
 const auto bearish_tb_sell_sym = Chart::InvertedTriangleShape;
-const auto cat_buy_sym = Chart::StarShape(3);
+const auto cat_buy_sym = Chart::CrossShape(0.3);
 const auto cat_sell_sym = Chart::CrossShape(0.3);
 const auto tt_cat_buy_sym = Chart::ArrowShape();
 const auto tb_cat_sell_sym = Chart::ArrowShape(180);
 // NOLINTEND
 
 
-void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
+void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
                                            const StreamedPrices& streamed_prices, const std::string&  /*show_trend_lines*/,
                                            PF_Chart::X_AxisFormat date_or_time)
 {
@@ -294,13 +294,13 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
                        "Revse2Down");
     }
     
-    c = ConstructCDChartGraphicAddPFSignals(the_chart, skipped_columns, std::move(c));
+    c = ConstructCDPFChartGraphicAddPFSignals(the_chart, skipped_columns, std::move(c));
     // let's show where we started from
 
     const auto dash_color = c->dashLineColor(RED, Chart::DashLine);
     c->yAxis()->addMark(dec2dbl(first_value), dash_color)->setLineWidth(3);
 
-    const auto prices_graphic = ConstructCDChartGraphicPricesChart(the_chart, streamed_prices, date_or_time);
+    const auto prices_graphic = ConstructCDPFChartPricesGraphic(the_chart, streamed_prices, date_or_time);
 
     if (!prices_graphic)
     {
@@ -318,7 +318,7 @@ void ConstructCDChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::
     m->makeChart(output_filename.c_str());
 }
 
-std::unique_ptr<XYChart> ConstructCDChartGraphicAddPFSignals(const PF_Chart& the_chart, size_t skipped_columns,
+std::unique_ptr<XYChart> ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, size_t skipped_columns,
                                                            std::unique_ptr<XYChart> the_graphic)
 {
     std::vector<double> dt_buys_price;
@@ -465,7 +465,7 @@ std::unique_ptr<XYChart> ConstructCDChartGraphicAddPFSignals(const PF_Chart& the
     return the_graphic;
 }
 
-std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(const PF_Chart& the_chart,
+std::unique_ptr<XYChart> ConstructCDPFChartPricesGraphic(const PF_Chart& the_chart,
                                                             const StreamedPrices& streamed_prices,
                                                             PF_Chart::X_AxisFormat date_or_time)
 {
@@ -517,6 +517,14 @@ std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(const PF_Chart& the_
 
     // next, add our signals to this graphic.
     // Each signal type will be a separate layer so it can have its own glyph and color.
+
+    p = ConstructCDPricesGraphicAddSignals(the_chart, streamed_prices, std::move(p));
+
+    return p;
+}
+
+std::unique_ptr<XYChart> ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, const StreamedPrices& streamed_prices, std::unique_ptr<XYChart> the_graphic)
+{
 
     // signal types currently implemented
     // for each signal we want to show, we need x,y coordinates
@@ -598,71 +606,71 @@ std::unique_ptr<XYChart> ConstructCDChartGraphicPricesChart(const PF_Chart& the_
 
     if (!dt_buys_price.empty())
     {
-        p->addScatterLayer(DoubleArray(dt_buys_x.data(), dt_buys_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(dt_buys_x.data(), dt_buys_x.size()),
                            DoubleArray(dt_buys_price.data(), dt_buys_price.size()), "dt buy", dt_buy_sym, k13, GREEN);
     }
 
     if (!tt_buys_price.empty())
     {
-        p->addScatterLayer(DoubleArray(tt_buys_x.data(), tt_buys_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(tt_buys_x.data(), tt_buys_x.size()),
                            DoubleArray(tt_buys_price.data(), tt_buys_price.size()), "tt buy", tt_buy_sym, k13, GREEN);
     }
 
     if (!db_sells_price.empty())
     {
-        p->addScatterLayer(DoubleArray(db_sells_x.data(), db_sells_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(db_sells_x.data(), db_sells_x.size()),
                            DoubleArray(db_sells_price.data(), db_sells_price.size()), "db sell", db_sell_sym, k13, RED);
     }
 
     if (!tb_sells_price.empty())
     {
-        p->addScatterLayer(DoubleArray(tb_sells_x.data(), tb_sells_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(tb_sells_x.data(), tb_sells_x.size()),
                            DoubleArray(tb_sells_price.data(), dt_buys_price.size()), "tb sell", tb_sell_sym, k13, RED);
     }
 
     if (!bullish_tt_buys_price.empty())
     {
-        p->addScatterLayer(DoubleArray(bullish_tt_buys_x.data(), bullish_tt_buys_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(bullish_tt_buys_x.data(), bullish_tt_buys_x.size()),
                            DoubleArray(bullish_tt_buys_price.data(), bullish_tt_buys_price.size()), "bullish tt buy",
                            bullish_tt_buy_sym, k13, GREEN);
     }
 
     if (!bearish_tb_sells_price.empty())
     {
-        p->addScatterLayer(DoubleArray(bearish_tb_sells_x.data(), bearish_tb_sells_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(bearish_tb_sells_x.data(), bearish_tb_sells_x.size()),
                            DoubleArray(bearish_tb_sells_price.data(), bearish_tb_sells_price.size()), "bearish tb sell",
                            bearish_tb_sell_sym, k13, RED);
     }
 
     if (!cat_buys_price.empty())
     {
-        p->addScatterLayer(DoubleArray(cat_buys_x.data(), cat_buys_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(cat_buys_x.data(), cat_buys_x.size()),
                            DoubleArray(cat_buys_price.data(), cat_buys_price.size()), "cat buy", cat_buy_sym, k13,
                            GREEN);
     }
 
     if (!cat_sells_price.empty())
     {
-        p->addScatterLayer(DoubleArray(cat_sells_x.data(), cat_sells_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(cat_sells_x.data(), cat_sells_x.size()),
                            DoubleArray(cat_sells_price.data(), cat_sells_price.size()), "cat sell", cat_sell_sym, k13,
                            RED);
     }
 
     if (!tt_cat_buys_price.empty())
     {
-        p->addScatterLayer(DoubleArray(tt_cat_buys_x.data(), tt_cat_buys_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(tt_cat_buys_x.data(), tt_cat_buys_x.size()),
                            DoubleArray(tt_cat_buys_price.data(), tt_cat_buys_price.size()), "tt cat buy",
                            tt_cat_buy_sym, k13, GREEN);
     }
 
     if (!tb_cat_sells_price.empty())
     {
-        p->addScatterLayer(DoubleArray(tb_cat_sells_x.data(), tb_cat_sells_x.size()),
+        the_graphic->addScatterLayer(DoubleArray(tb_cat_sells_x.data(), tb_cat_sells_x.size()),
                            DoubleArray(tb_cat_sells_price.data(), tb_cat_sells_price.size()), "tb cat sell",
                            tb_cat_sell_sym, k13, RED);
     }
 
-    return p;
+    return the_graphic;
 }
 /*
         d = XYChart((14 * 72), (8 * 72))
