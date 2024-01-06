@@ -468,11 +468,8 @@ bool PF_CollectDataApp::CheckArgs()
                       BOOST_ASSERT_MSG(scale == "linear" || scale == "percent",
                                        std::format("\nChart scale must be: 'linear' or 'percent': {}", scale).c_str());
                   });
-    rng::for_each(scale_i_list_,
-                  [this](const auto &scale_i) {
-                      this->scale_list_.emplace_back(scale_i == "linear" ? BoxScale::e_Linear
-                                                                         : BoxScale::e_Percent);
-                  });
+    rng::for_each(scale_i_list_, [this](const auto &scale_i)
+                  { this->scale_list_.emplace_back(scale_i == "linear" ? BoxScale::e_Linear : BoxScale::e_Percent); });
 
     // we can compute whether boxes are fractions or intergers from input. This
     // may be changed by the Boxes code later.
@@ -1424,7 +1421,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
         // py::gil_scoped_acquire gil{};
         fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
         ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
-                                          trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+                                                trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
         fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
         chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
@@ -1558,7 +1555,7 @@ void PF_CollectDataApp::Shutdown()
                     fs::path graph_file_path =
                         output_graphs_directory_ /
                         (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-                        ConstructCDPFChartGraphicAndWriteToFile(
+                    ConstructCDPFChartGraphicAndWriteToFile(
                         chart, graph_file_path,
                         (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
                                                                  : StreamedPrices{}),
