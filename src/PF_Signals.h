@@ -38,12 +38,12 @@ enum class PF_SignalCategory : int32_t
     e_unknown,
     e_PF_Buy,
     e_PF_Sell
-};    // NOLINT
+};  // NOLINT
 enum class PF_CanUse1BoxReversal : int32_t
 {
     e_Yes,
     e_No
-};    // NOLINT
+};  // NOLINT
 
 // NOLINTBEGIN(readability-identifier-naming.*)
 enum class PF_SignalType : int32_t
@@ -78,7 +78,10 @@ enum class PF_SignalPriority
     e_tbottom_catapult_sell = 15
 };
 
-inline int32_t CmpSigPriority(const PF_SignalPriority lhs, const PF_SignalPriority rhs) { return (lhs < rhs ? -1 : lhs > rhs ? 1 : 0); };
+inline int32_t CmpSigPriority(const PF_SignalPriority lhs, const PF_SignalPriority rhs)
+{
+    return (lhs < rhs ? -1 : lhs > rhs ? 1 : 0);
+};
 
 struct PF_Signal
 {
@@ -93,7 +96,10 @@ struct PF_Signal
 
 // for Python
 
-inline int32_t CmpSignalsByPriority(const PF_Signal& lhs, const PF_Signal& rhs) { return CmpSigPriority(lhs.priority_, rhs.priority_); };
+inline int32_t CmpSignalsByPriority(const PF_Signal &lhs, const PF_Signal &rhs)
+{
+    return CmpSigPriority(lhs.priority_, rhs.priority_);
+};
 
 using PF_SignalList = std::vector<PF_Signal>;
 
@@ -235,7 +241,8 @@ struct PF_TBottom_Catapult_Sell
 // this code will update the chart with any signals found for the current inputs
 // and report if any were found
 
-bool AddSignalsToChart(PF_Chart &the_chart, const decimal::Decimal &new_value, PF_Column::TmPt the_time);
+std::optional<PF_Signal> LookForNewSignal(PF_Chart &the_chart, const decimal::Decimal &new_value,
+                                          PF_Column::TmPt the_time);
 
 // custom formatter
 
@@ -314,4 +321,4 @@ struct std::formatter<PF_Signal> : std::formatter<std::string>
 };
 // NOLINTEND(readability-identifier-naming.*)
 
-#endif    // ----- #ifndef PF_SIGNALS_INC  -----
+#endif  // ----- #ifndef PF_SIGNALS_INC  -----

@@ -63,7 +63,19 @@
 
 // helpers for building chart graphics
 
-enum class PF_ColumnFilter : int32_t { e_up_column, e_down_column, e_reversed_to_up, e_reversed_to_down };
+enum class PF_ColumnFilter : int32_t
+{
+    e_up_column,
+    e_down_column,
+    e_reversed_to_up,
+    e_reversed_to_down
+};
+
+enum class PF_CollectAndReturnStreamedPrices : int32_t
+{
+    e_yes,
+    e_no
+};
 
 class PF_Chart
 {
@@ -117,7 +129,7 @@ class PF_Chart
     static PF_Chart MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval);
 
     // mainly for Python wrapper
-    static PF_Chart MakeChartFromJSONFile(const fs::path& file_name);
+    static PF_Chart MakeChartFromJSONFile(const fs::path &file_name);
 
     // ====================  ACCESSORS =======================================
 
@@ -251,9 +263,12 @@ class PF_Chart
     {
         return AddValue(dbl2dec(new_value), PF_Column::TmPt{std::chrono::seconds(the_time)});
     }
-    void LoadData(std::istream *input_data, std::string_view date_format, std::string_view delim);
-    StreamedPrices LoadDataCollectPricesAndSignals(std::istream *input_data, std::string_view date_format, std::string_view delim);
-    void LoadDataFromFile(const std::string &file_name, std::string_view date_format, std::string_view delim);
+    std::optional<StreamedPrices> LoadData(
+        std::istream *input_data, std::string_view date_format, std::string_view delim,
+        PF_CollectAndReturnStreamedPrices return_streamed_data = PF_CollectAndReturnStreamedPrices::e_no);
+    std::optional<StreamedPrices> LoadDataFromFile(
+        const std::string &file_name, std::string_view date_format, std::string_view delim,
+        PF_CollectAndReturnStreamedPrices return_streamed_data = PF_CollectAndReturnStreamedPrices::e_no);
 
     [[nodiscard]] int64_t GetMaxGraphicColumns() const { return max_columns_for_graph_; }
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }

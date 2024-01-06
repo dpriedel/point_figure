@@ -95,26 +95,23 @@ bool CanApplySignal(const PF_Chart &the_chart, const auto &signal)
 //         Name:  AddSignalsToChart
 //  Description:
 // =====================================================================================
-bool AddSignalsToChart(PF_Chart &the_chart, const decimal::Decimal &new_value, PF_Column::TmPt the_time)
+std::optional<PF_Signal> LookForNewSignal(PF_Chart &the_chart, const decimal::Decimal &new_value,
+                                          PF_Column::TmPt the_time)
 {
-    bool found_signal{false};
-
     for (const auto &sig : sig_funcs)
     {
         if (auto new_sig = sig(the_chart, new_value, the_time); new_sig)
         {
-            found_signal = true;
             spdlog::debug(std::format("Found signal: {}", new_sig.value()));
-            the_chart.AddSignal(new_sig.value());
 
             // since signal checks are ordered in decreasing priority,
             // stop after the first match since it will be the highest priorit
             // signal at this point
 
-            break;
+            return {new_sig};
         }
     }
-    return found_signal;
+    return {};
 }  // -----  end of function AddSignalsToChart  -----
 
 Json::Value PF_SignalToJSON(const PF_Signal &signal)

@@ -345,8 +345,9 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
 
         // if (auto had_signal = PF_Chart::LookForSignals(*this, new_value,
         // the_time); had_signal)
-        if (auto had_signal = AddSignalsToChart(*this, new_value, the_time); had_signal)
+        if (auto found_signal = LookForNewSignal(*this, new_value, the_time); found_signal)
         {
+            AddSignal(found_signal.value());
             status = PF_Column::Status::e_AcceptedWithSignal;
         }
     }
@@ -360,10 +361,11 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
         status = current_column_.AddValue(new_value, the_time).first;
         last_change_date_ = the_time;
 
-        // if (auto had_signal = PF_Chart::LookForSignals(*this, new_value,
-        // the_time); had_signal)
-        if (auto had_signal = AddSignalsToChart(*this, new_value, the_time); had_signal)
+        // if (auto found_signal = PF_Chart::LookForSignals(*this, new_value,
+        // the_time); found_signal)
+        if (auto found_signal = LookForNewSignal(*this, new_value, the_time); found_signal)
         {
+            AddSignal(found_signal.value());
             status = PF_Column::Status::e_AcceptedWithSignal;
         }
     }
@@ -372,37 +374,9 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
     return status;
 }  // -----  end of method PF_Chart::AddValue  -----
 
-void PF_Chart::LoadData(std::istream *input_data, std::string_view date_format, std::string_view delim)
-{
-    std::string buffer;
-    while (!input_data->eof())
-    {
-        buffer.clear();
-        std::getline(*input_data, buffer);
-        if (input_data->fail())
-        {
-            continue;
-        }
-        auto fields = split_string<std::string_view>(buffer, delim);
-
-        AddValue(decimal::Decimal{std::string{fields[1]}}, StringToUTCTimePoint(date_format, fields[0]));
-    }
-
-    // make sure we keep the last column we were working on
-
-    if (current_column_.GetTop() > y_max_)
-    {
-        y_max_ = current_column_.GetTop();
-    }
-    if (current_column_.GetBottom() < y_min_)
-    {
-        y_min_ = current_column_.GetBottom();
-    }
-    current_direction_ = current_column_.GetDirection();
-}  // -----  end of method PF_Chart::LoadData  -----
-
-
-StreamedPrices PF_Chart::LoadDataCollectPricesAndSignals(std::istream *input_data, std::string_view date_format, std::string_view delim)
+std::optional<StreamedPrices> PF_Chart::LoadData(std::istream *input_data, std::string_view date_format,
+                                                 std::string_view delim,
+                                                 PF_CollectAndReturnStreamedPrices return_streamed_data)
 {
     StreamedPrices streamed_prices;
 
@@ -420,13 +394,16 @@ StreamedPrices PF_Chart::LoadDataCollectPricesAndSignals(std::istream *input_dat
         auto timept = StringToUTCTimePoint(date_format, fields[0]);
 
         auto chart_changed = AddValue(new_value, timept);
-        
-        streamed_prices.timestamp_.push_back(std::chrono::duration_cast<std::chrono::nanoseconds>(timept.time_since_epoch()).count());
-        streamed_prices.price_.push_back(dec2dbl(new_value));
-        streamed_prices.signal_type_.push_back(
-            chart_changed == PF_Column::Status::e_AcceptedWithSignal
-                ? std::to_underlying(GetSignals().back().signal_type_)
-                : 0);
+
+        if (return_streamed_data == PF_CollectAndReturnStreamedPrices::e_yes)
+        {
+            streamed_prices.timestamp_.push_back(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(timept.time_since_epoch()).count());
+            streamed_prices.price_.push_back(dec2dbl(new_value));
+            streamed_prices.signal_type_.push_back(chart_changed == PF_Column::Status::e_AcceptedWithSignal
+                                                       ? std::to_underlying(GetSignals().back().signal_type_)
+                                                       : 0);
+        }
     }
 
     // make sure we keep the last column we were working on
@@ -441,18 +418,25 @@ StreamedPrices PF_Chart::LoadDataCollectPricesAndSignals(std::istream *input_dat
     }
     current_direction_ = current_column_.GetDirection();
 
-    return streamed_prices;
+    if (return_streamed_data == PF_CollectAndReturnStreamedPrices::e_yes)
+    {
+        return streamed_prices;
+    }
+    return {};
+}  // -----  end of method PF_Chart::LoadData  -----
 
-}  // -----  end of method PF_Chart::LoadDataCollectPricesAndSignals  -----
-
-void PF_Chart::LoadDataFromFile(const std::string &file_name, std::string_view date_format, std::string_view delim)
+std::optional<StreamedPrices> PF_Chart::LoadDataFromFile(const std::string &file_name, std::string_view date_format,
+                                                         std::string_view delim,
+                                                         PF_CollectAndReturnStreamedPrices return_streamed_data)
 {
     std::ifstream data_file{fs::path{file_name}, std::ios::in | std::ios::binary};
     BOOST_ASSERT_MSG(data_file.is_open(), std::format("Unable to open data file: {}", file_name).c_str());
 
-    LoadData(&data_file, date_format, delim);
+    const auto streamed_prices = LoadData(&data_file, date_format, delim, return_streamed_data);
 
     data_file.close();
+
+    return streamed_prices;
 }  // -----  end of method PF_Chart::LoadDataFromFile  -----
 
 PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(PF_ColumnFilter which_columns) const
@@ -538,7 +522,8 @@ PF_Chart::ColumnTopBottomList PF_Chart::GetTopBottomForColumns(PF_ColumnFilter w
                       auto bottom = dec2dbl(col.GetBottom());
                       auto top = col.GetTop();
                       auto top_for_chart = dec2dbl(boxes_.FindNextBox(top));
-                      result.emplace_back(ColumnTopBottomInfo{.col_nbr_ = col_nbr, .col_top_ = top_for_chart, .col_bot_ = bottom});
+                      result.emplace_back(
+                          ColumnTopBottomInfo{.col_nbr_ = col_nbr, .col_top_ = top_for_chart, .col_bot_ = bottom});
                   });
 
     return result;
