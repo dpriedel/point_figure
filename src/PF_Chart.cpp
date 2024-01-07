@@ -605,7 +605,7 @@ void PF_Chart::ConvertChartToTableAndWriteToStream(std::ostream &stream, X_AxisF
     std::string header_record{"date\topen\tlow\thigh\tclose\tcolor\tindex\n"};
     stream.write(header_record.data(), header_record.size());
 
-    for (const auto &col : columns_ | vws::drop(skipped_columns))
+    for (const auto &col : *this | vws::drop(skipped_columns))
     {
         auto next_row = std::format(
             row_template,
@@ -618,17 +618,6 @@ void PF_Chart::ConvertChartToTableAndWriteToStream(std::ostream &stream, X_AxisF
         stream.write(next_row.data(), next_row.size());
     }
 
-    auto last_row = std::format(
-        row_template,
-        date_or_time == X_AxisFormat::e_show_date ? std::format("{:%F}", current_column_.GetTimeSpan().first)
-                                                  : UTCTimePointToLocalTZHMSString(current_column_.GetTimeSpan().first),
-        current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetBottom().format("f")
-                                                                     : current_column_.GetTop().format("f"),
-        current_column_.GetBottom().format("f"), current_column_.GetTop().format("f"),
-        current_column_.GetDirection() == PF_Column::Direction::e_Up ? current_column_.GetTop().format("f")
-                                                                     : current_column_.GetBottom().format("f"),
-        compute_color(current_column_));
-    stream.write(last_row.data(), last_row.size());
 }  // -----  end of method PF_Chart::ConvertChartToTableAndWriteToStream -----
 
 void PF_Chart::StoreChartInChartsDB(const PF_DB &chart_db, std::string_view interval, X_AxisFormat date_or_time,
