@@ -100,9 +100,9 @@ class PF_Chart
     enum
     {
         e_symbol = 0,
-        e_box_size,
-        e_reversal,
-        e_box_scale
+        e_box_size = 1,
+        e_reversal = 2,
+        e_box_scale = 3
     };
     //
     //    using const_iterator = std::vector<PF_Column>::const_iterator;
@@ -116,8 +116,18 @@ class PF_Chart
              decimal::Decimal box_size_modifier = 0, BoxScale box_scale = BoxScale::e_Linear,
              int64_t max_columns_for_graph = 0);
 
-    PF_Chart(const PF_ChartParams &vals, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph)
+    PF_Chart(const PF_ChartParams &vals, decimal::Decimal box_size_modifier, int64_t max_columns_for_graph = 0)
         : PF_Chart(std::get<e_symbol>(vals), std::get<e_box_size>(vals), std::get<e_reversal>(vals), box_size_modifier,
+                   std::get<e_box_scale>(vals), max_columns_for_graph)
+    {
+    }
+
+    // use this form for charts with computed box size. In this case, the specified box size arguments are
+    // to be interpreted as box_size_modifier values.
+    // TODO(dpriedel): make this clear to users somehow
+
+    PF_Chart(decimal::Decimal box_size, const PF_ChartParams &vals, int64_t max_columns_for_graph = 0)
+        : PF_Chart(std::get<e_symbol>(vals), box_size, std::get<e_reversal>(vals), std::get<e_box_size>(vals),
                    std::get<e_box_scale>(vals), max_columns_for_graph)
     {
     }
@@ -505,6 +515,18 @@ class PF_Chart::PF_Chart_ReverseIterator
     int32_t index_ = -1;
 
 };  // -----  end of class PF_Chart_ReverseIterator  -----
+
+template <>
+struct std::formatter<PF_Chart::ColumnTopBottomInfo> : std::formatter<std::string>
+{
+    auto format(const PF_Chart::ColumnTopBottomInfo &col_info, std::format_context &ctx) const
+    {
+        std::string s;
+        std::format_to(std::back_inserter(s), "col_nbr: {}, top: {}, bot: {}\n", col_info.col_nbr_, col_info.col_top_,
+                       col_info.col_bot_);
+        return formatter<std::string>::format(s, ctx);
+    }
+};
 
 template <>
 struct std::formatter<PF_Chart> : std::formatter<std::string>

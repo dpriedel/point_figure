@@ -129,7 +129,7 @@ PF_Chart::PF_Chart(std::string symbol, decimal::Decimal base_box_size, int32_t r
                    decimal::Decimal box_size_modifier, BoxScale box_scale, int64_t max_columns_for_graph)
     : symbol_{std::move(symbol)},
       base_box_size_{std::move(base_box_size)},
-      fname_box_size_{base_box_size_},
+      fname_box_size_{box_size_modifier == decimal::Decimal{0} ? base_box_size_ : box_size_modifier},
       box_size_modifier_{std::move(box_size_modifier)},
       max_columns_for_graph_{max_columns_for_graph}
 
