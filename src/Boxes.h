@@ -62,7 +62,7 @@ class Boxes
 {
    public:
     static constexpr std::size_t kMaxBoxes = 1000;  // too many boxes and everything becomes too slow
-    static constexpr int32_t kMinExponent = -5;
+    static constexpr int64_t kMinExponent = -5;
 
     using Box = decimal::Decimal;
     using BoxList = std::deque<Box>;  // use a deque so we can add at either end
