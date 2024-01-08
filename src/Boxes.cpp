@@ -45,12 +45,21 @@ namespace rng = std::ranges;
 //      Method:  Boxes
 // Description:  constructor
 //--------------------------------------------------------------------------------------
+//
+// Boxes must always have a 'base_box_size'. They may have a modifier to alter that base size.
+// For example, if the base is computed as ATR, then the modifier would be applied to that to,
+// for example, make each box a fraction of that computed base.
+// For percent scale, the base must also be given. The incremental percent will then be applied
+// to that base.
+//
 Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier, BoxScale box_scale)
     : base_box_size_{std::move(base_box_size)},
       box_size_modifier_{std::move(box_size_modifier)},
       box_type_{BoxType::e_Fractional},
       box_scale_{box_scale}
 {
+    BOOST_ASSERT_MSG(base_box_size_ != decimal::Decimal{0}, "Base box size can not be zero.");
+
     if (base_box_size_.exponent() < kMinExponent)
     {
         base_box_size_ = base_box_size_.rescale(kMinExponent);
@@ -61,8 +70,15 @@ Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier,
 
     if (box_size_modifier_ != decimal::Decimal(0))
     {
-        runtime_box_size_ = (base_box_size_ * box_size_modifier_)
-                                .rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
+        if (box_size_modifier_.exponent() < kMinExponent)
+        {
+            box_size_modifier_ = box_size_modifier_.rescale(kMinExponent);
+        }
+        runtime_box_size_ = base_box_size_ * box_size_modifier_;
+        if (runtime_box_size_.exponent() < kMinExponent)
+        {
+            runtime_box_size_ = runtime_box_size_.rescale(kMinExponent);
+        }
 
         // it seems that the rescaled box size value can turn out to be zero. If that
         // is the case, then go with the unscaled box size.
@@ -72,26 +88,28 @@ Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier,
             runtime_box_size_ = (base_box_size_ * box_size_modifier_).rescale(kMinExponent);
         }
 
-        else  // percent box size
-        {
-            percent_box_factor_up_ =
-                (decimal::Decimal{1} + box_size_modifier_)
-                    .rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
-            percent_box_factor_down_ =
-                (decimal::Decimal{1} - box_size_modifier_)
-                    .rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
-            percent_exponent_ = percent_box_factor_up_.exponent();
-        }
+        // else  // percent box siz
+        // {
+        //     percent_box_factor_up_ =
+        //         (decimal::Decimal{1} + box_size_modifier_)
+        //             .rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
+        //     percent_box_factor_down_ =
+        //         (decimal::Decimal{1} - box_size_modifier_)
+        //             .rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
+        //     percent_exponent_ = percent_box_factor_up_.exponent();
+        // }
     }
-    else
+    // else
+    // {
+    if (box_scale_ == BoxScale::e_Percent)
     {
-        if (box_scale_ == BoxScale::e_Percent)
-        {
-            percent_box_factor_up_ = (decimal::Decimal{1} + base_box_size_);
-            percent_box_factor_down_ = (decimal::Decimal{1} - base_box_size_);
-            percent_exponent_ = base_box_size_.exponent() - 1;
-        }
+        BOOST_ASSERT_MSG(base_box_size_ != decimal::Decimal{0} && box_size_modifier_ != decimal::Decimal{0},
+                         "For Percent Scale, neither base box size not modifier size can be zero.");
+        percent_box_factor_up_ = (decimal::Decimal{1} + box_size_modifier_);
+        percent_box_factor_down_ = (decimal::Decimal{1} - box_size_modifier_);
+        percent_exponent_ = std::max(kMinExponent, (box_size_modifier_.exponent()) - 1);
     }
+    // }
 
     // try to keep box size from being too small
 
