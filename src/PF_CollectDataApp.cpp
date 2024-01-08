@@ -649,7 +649,15 @@ void PF_CollectDataApp::Run_Load()
             BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv,
                              "\nJSON files are not yet supported for loading symbol data.");
             auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
-            PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+            PF_Chart new_chart;
+            if (use_ATR_)
+            {
+                new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            }
+            else
+            {
+                new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            }
             AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
             charts_.emplace_back(std::make_pair(symbol, new_chart));
         }
@@ -778,7 +786,15 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
 
             for (const auto &val : params)
             {
-                PF_Chart new_chart(val, atr_or_range, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+                PF_Chart new_chart;
+                if (use_ATR_ || use_min_max_)
+                {
+                    new_chart = {atr_or_range, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                }
+                else
+                {
+                    new_chart = {val, atr_or_range, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                }
                 try
                 {
                     for (const auto &[new_date, new_price] : closing_prices)
@@ -835,7 +851,14 @@ void PF_CollectDataApp::Run_Update()
                 // no existing data to update, so make a new chart
 
                 auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
-                new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+                if (use_ATR_)
+                {
+                    new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                }
+                else
+                {
+                    new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                }
             }
             fs::path update_file_name =
                 new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
@@ -916,7 +939,14 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                     // no existing data to update, so make a new chart
 
                     auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0;
-                    new_chart = PF_Chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+                    if (use_ATR_)
+                    {
+                        new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    }
+                    else
+                    {
+                        new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    }
                 }
 
                 // apply new data to chart (which may be empty)
@@ -958,7 +988,15 @@ void PF_CollectDataApp::Run_Streaming()
     {
         const auto &symbol = std::get<PF_Chart::e_symbol>(val);
         auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
-        PF_Chart new_chart(val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_);
+        PF_Chart new_chart;
+        if (use_ATR_)
+        {
+            new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+        }
+        else
+        {
+            new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+        }
         charts_.emplace_back(std::make_pair(symbol, new_chart));
     }
 
