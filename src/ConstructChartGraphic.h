@@ -18,8 +18,59 @@
 #define _CONSTRUCTCHARTGRAPHIC_INC_
 
 #include <memory>
+#include <vector>
 
 class XYChart;
+
+struct Signals_1
+{
+    std::vector<double> dt_buys_price_;
+    std::vector<double> tt_buys_price_;
+    std::vector<double> db_sells_price_;
+    std::vector<double> tb_sells_price_;
+    std::vector<double> bullish_tt_buys_price_;
+    std::vector<double> bearish_tb_sells_price_;
+    std::vector<double> cat_buys_price_;
+    std::vector<double> cat_sells_price_;
+    std::vector<double> tt_cat_buys_price_;
+    std::vector<double> tb_cat_sells_price_;
+
+    std::vector<double> dt_buys_x_;
+    std::vector<double> tt_buys_x_;
+    std::vector<double> db_sells_x_;
+    std::vector<double> tb_sells_x_;
+    std::vector<double> bullish_tt_buys_x_;
+    std::vector<double> bearish_tb_sells_x_;
+    std::vector<double> cat_buys_x_;
+    std::vector<double> cat_sells_x_;
+    std::vector<double> tt_cat_buys_x_;
+    std::vector<double> tb_cat_sells_x_;
+};
+
+struct Signals_2
+{
+    std::vector<double> dt_buys_price_;
+    std::vector<double> tt_buys_price_;
+    std::vector<double> db_sells_price_;
+    std::vector<double> tb_sells_price_;
+    std::vector<double> bullish_tt_buys_price_;
+    std::vector<double> bearish_tb_sells_price_;
+    std::vector<double> cat_buys_price_;
+    std::vector<double> cat_sells_price_;
+    std::vector<double> tt_cat_buys_price_;
+    std::vector<double> tb_cat_sells_price_;
+
+    std::vector<double> dt_buys_x_;
+    std::vector<double> tt_buys_x_;
+    std::vector<double> db_sells_x_;
+    std::vector<double> tb_sells_x_;
+    std::vector<double> bullish_tt_buys_x_;
+    std::vector<double> bearish_tb_sells_x_;
+    std::vector<double> cat_buys_x_;
+    std::vector<double> cat_sells_x_;
+    std::vector<double> tt_cat_buys_x_;
+    std::vector<double> tb_cat_sells_x_;
+};
 
 #include "PF_Chart.h"
 
@@ -32,15 +83,10 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
                                              const StreamedPrices& streamed_prices, const std::string& show_trend_lines,
                                              PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
 
-std::unique_ptr<XYChart> ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, size_t skipped_columns,
-                                                               std::unique_ptr<XYChart> the_graphic);
+void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1& data_arrays, size_t skipped_columns,
+                                           std::unique_ptr<XYChart>& the_graphic);
 
-std::unique_ptr<XYChart> ConstructCDPFChartPricesGraphic(
-    const PF_Chart& the_chart, const StreamedPrices& streamed_prices,
-    PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
-
-std::unique_ptr<XYChart> ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart,
-                                                            const StreamedPrices& streamed_prices,
-                                                            std::unique_ptr<XYChart> the_graphic);
+void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& data_arrays,
+                                        const StreamedPrices& streamed_prices, std::unique_ptr<XYChart>& the_graphic);
 
 #endif  // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  -----
