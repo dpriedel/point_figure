@@ -1579,88 +1579,99 @@ void PF_CollectDataApp::Shutdown()
 
     if (destination_ == Destination::e_file)
     {
-        for (const auto &[symbol, chart] : charts_)
-        {
-            try
-            {
-                fs::path output_file_name =
-                    output_chart_directory_ /
-                    chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "json");
-                chart.ConvertChartToJsonAndWriteToFile(output_file_name);
-
-                if (graphics_format_ == GraphicsFormat::e_svg)
-                {
-                    fs::path graph_file_path =
-                        output_graphs_directory_ /
-                        (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
-                    ConstructCDPFChartGraphicAndWriteToFile(
-                        chart, graph_file_path,
-                        (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
-                                                                 : StreamedPrices{}),
-                        trend_lines_,
-                        interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
-                                                     : PF_Chart::X_AxisFormat::e_show_date);
-                }
-                else
-                {
-                    fs::path graph_file_path =
-                        output_graphs_directory_ /
-                        (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "csv"));
-                    chart.ConvertChartToTableAndWriteToFile(graph_file_path, interval_ != Interval::e_eod
-                                                                                 ? PF_Chart::X_AxisFormat::e_show_time
-                                                                                 : PF_Chart::X_AxisFormat::e_show_date);
-                }
-            }
-            catch (const std::exception &e)
-            {
-                spdlog::error(std::format(
-                    "Problem in shutdown: {} for chart: {}.\nTrying to "
-                    "complete "
-                    "shutdown.",
-                    e.what(),
-                    chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
-            }
-        }
+        ShutdownStoreOutputInFiles();
     }
     else
     {
-        int32_t chart_count = 0;
-        PF_DB pf_db{db_params_};
-        for (const auto &[symbol, chart] : charts_)
-        {
-            try
-            {
-                if (graphics_format_ == GraphicsFormat::e_svg)
-                {
-                    fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
-                    ConstructCDPFChartGraphicAndWriteToFile(
-                        chart, graph_file_path,
-                        (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
-                                                                 : StreamedPrices{}),
-                        trend_lines_,
-                        interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
-                                                     : PF_Chart::X_AxisFormat::e_show_date);
-                }
-                chart.StoreChartInChartsDB(pf_db, interval_i,
-                                           interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
-                                                                        : PF_Chart::X_AxisFormat::e_show_date,
-                                           graphics_format_ == GraphicsFormat::e_csv);
-                ++chart_count;
-            }
-            catch (const std::exception &e)
-            {
-                spdlog::error(
-                    std::format("Problem storing data in DB in shutdown: {} for chart: "
-                                "{}.\nTrying to complete shutdown.",
-                                e.what(), chart.MakeChartFileName(interval_i, "")));
-            }
-        }
-        spdlog::info(std::format("Stored {} charts in DB.", chart_count));
+        ShutdownStoreOutputInDB();
     }
 
     spdlog::info(std::format("\n\n*** End run {}  ***\n",
                              std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
 }  // -----  end of method PF_CollectDataApp::Shutdown  -----
+
+void PF_CollectDataApp::ShutdownStoreOutputInFiles()
+{
+    for (const auto &[symbol, chart] : charts_)
+    {
+        try
+        {
+            fs::path output_file_name =
+                output_chart_directory_ /
+                chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "json");
+            chart.ConvertChartToJsonAndWriteToFile(output_file_name);
+
+            if (graphics_format_ == GraphicsFormat::e_svg)
+            {
+                fs::path graph_file_path =
+                    output_graphs_directory_ /
+                    (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
+                ConstructCDPFChartGraphicAndWriteToFile(
+                    chart, graph_file_path,
+                    (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
+                                                             : StreamedPrices{}),
+                    trend_lines_,
+                    interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
+                                                 : PF_Chart::X_AxisFormat::e_show_date);
+            }
+            else
+            {
+                fs::path graph_file_path =
+                    output_graphs_directory_ /
+                    (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "csv"));
+                chart.ConvertChartToTableAndWriteToFile(graph_file_path, interval_ != Interval::e_eod
+                                                                             ? PF_Chart::X_AxisFormat::e_show_time
+                                                                             : PF_Chart::X_AxisFormat::e_show_date);
+            }
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error(std::format(
+                "Problem in shutdown: {} for chart: {}.\nTrying to "
+                "complete "
+                "shutdown.",
+                e.what(),
+                chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
+        }
+    }
+}  // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInFiles  -----
+
+void PF_CollectDataApp::ShutdownStoreOutputInDB()
+{
+    int32_t chart_count = 0;
+    PF_DB pf_db{db_params_};
+    for (const auto &[symbol, chart] : charts_)
+    {
+        try
+        {
+            if (graphics_format_ == GraphicsFormat::e_svg)
+            {
+                fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
+                ConstructCDPFChartGraphicAndWriteToFile(
+                    chart, graph_file_path,
+                    (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
+                                                             : StreamedPrices{}),
+                    trend_lines_,
+                    interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
+                                                 : PF_Chart::X_AxisFormat::e_show_date);
+            }
+            chart.StoreChartInChartsDB(pf_db, interval_i,
+                                       interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
+                                                                    : PF_Chart::X_AxisFormat::e_show_date,
+                                       graphics_format_ == GraphicsFormat::e_csv);
+            ++chart_count;
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error(
+                std::format("Problem storing data in DB in shutdown: {} for chart: "
+                            "{}.\nTrying to complete shutdown.",
+                            e.what(), chart.MakeChartFileName(interval_i, "")));
+        }
+    }
+    spdlog::info(std::format("Stored {} charts in DB.", chart_count));
+
+}  // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInDB  -----
 
 void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
 {

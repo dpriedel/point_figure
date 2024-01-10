@@ -140,6 +140,9 @@ class PF_CollectDataApp
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeRangeForChartFromDB(const std::string &symbol) const;
 
+    void ShutdownStoreOutputInFiles();
+    void ShutdownStoreOutputInDB();
+
     // ====================  DATA MEMBERS
     // =======================================
 
