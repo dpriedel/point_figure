@@ -73,7 +73,6 @@ CFG_LIB := -L../lib_PF_Chart \
 		-lpthread \
 		-lssl -lcrypto \
 		-ljsoncpp \
-		-ldl -lutil -lm -lm \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
 		-lboost_program_options-mt-x64 
