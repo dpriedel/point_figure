@@ -73,37 +73,37 @@ class PF_DB
 
     // ====================  LIFECYCLE     =======================================
     PF_DB() = default;  // constructor
-    explicit PF_DB(const DB_Params& db_params);
+    explicit PF_DB(DB_Params db_params);
     // ====================  ACCESSORS     =======================================
 
     [[nodiscard]] std::vector<std::string> ListExchanges() const;
     [[nodiscard]] std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange,
-                                                                 const std::string& min_closing_price,
+                                                                 std::string_view min_closing_price,
                                                                  int64_t min_closing_volume) const;
 
-    [[nodiscard]] Json::Value GetPFChartData(const std::string& file_name) const;
-    [[nodiscard]] std::vector<PF_Chart> RetrieveAllEODChartsForSymbol(const std::string& symbol) const;
+    [[nodiscard]] Json::Value GetPFChartData(std::string_view file_name) const;
+    [[nodiscard]] std::vector<PF_Chart> RetrieveAllEODChartsForSymbol(std::string_view symbol) const;
 
     void StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval,
-                                const std::string& cvs_graphics_data) const;
+                                std::string_view cvs_graphics_data) const;
     void UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval,
-                               const std::string& cvs_graphics_data) const;
+                               std::string_view cvs_graphics_data) const;
 
     [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB(
         std::string_view symbol, std::chrono::year_month_day date, int how_many) const;
 
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsInList(
-        const std::vector<std::string>& symbol_list, const std::string& begin_date, const std::string& price_fld_name,
+        const std::vector<std::string>& symbol_list, std::string_view begin_date, std::string_view price_fld_name,
         const char* date_format) const;
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange(
-        const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name,
-        const char* date_format, const std::string& min_closing_price, int64_t min_closing_volume) const;
+        std::string_view exchange, std::string_view begin_date, std::string_view price_fld_name,
+        const char* date_format, std::string_view min_closing_price, int64_t min_closing_volume) const;
 
     template <typename T>
-    [[nodiscard]] std::vector<T> RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const;
+    [[nodiscard]] std::vector<T> RunSQLQueryUsingRows(std::string_view query_cmd, const auto& converter) const;
 
     template <typename T, typename... Vals>
-    [[nodiscard]] std::vector<T> RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const;
+    [[nodiscard]] std::vector<T> RunSQLQueryUsingStream(std::string_view query_cmd, const auto& converter) const;
 
     // ====================  MUTATORS      =======================================
 
@@ -128,7 +128,7 @@ class PF_DB
 // to properly handle possible user data in the query.
 
 template <typename T>
-std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const auto& converter) const
+std::vector<T> PF_DB::RunSQLQueryUsingRows(std::string_view query_cmd, const auto& converter) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};  // we are read-only for this work
@@ -149,7 +149,7 @@ std::vector<T> PF_DB::RunSQLQueryUsingRows(const std::string& query_cmd, const a
 }
 
 template <typename T, typename... Vals>
-std::vector<T> PF_DB::RunSQLQueryUsingStream(const std::string& query_cmd, const auto& converter) const
+std::vector<T> PF_DB::RunSQLQueryUsingStream(std::string_view query_cmd, const auto& converter) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};  // we are read-only for this work

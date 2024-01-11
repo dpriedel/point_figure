@@ -51,7 +51,7 @@
 //      Method:  PF_DB
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_DB::PF_DB(const DB_Params& db_params) : db_params_{db_params}
+PF_DB::PF_DB(DB_Params db_params) : db_params_{std::move(db_params)}
 
 {
     BOOST_ASSERT_MSG(!db_params_.host_name_.empty(), "Must provide 'db-host' to access PointAndFigure database.");
@@ -85,7 +85,7 @@ std::vector<std::string> PF_DB::ListExchanges() const
     return exchanges;
 }  // -----  end of method PF_DB::ListExchanges  -----
 
-std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange, const std::string& min_closing_price,
+std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange, std::string_view min_closing_price,
                                                       int64_t min_closing_volume) const
 {
     std::vector<std::string> symbols;
@@ -108,7 +108,7 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange,
     return symbols;
 }  // -----  end of method PF_DB::ListSymbolsOnExchange  -----
 
-Json::Value PF_DB::GetPFChartData(const std::string& file_name) const
+Json::Value PF_DB::GetPFChartData(std::string_view file_name) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::transaction trxn{c};
@@ -141,7 +141,7 @@ Json::Value PF_DB::GetPFChartData(const std::string& file_name) const
     return chart_data;
 }  // -----  end of method PF_DB::GetPFChartData  -----
 
-std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol(const std::string& symbol) const
+std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol(std::string_view symbol) const
 {
     std::vector<PF_Chart> charts;
 
@@ -181,7 +181,7 @@ std::vector<PF_Chart> PF_DB::RetrieveAllEODChartsForSymbol(const std::string& sy
 }  // -----  end of method PF_DB::RetrieveAllEODChartsForSymbol  -----
 
 void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view interval,
-                                   const std::string& cvs_graphics_data) const
+                                   std::string_view cvs_graphics_data) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
@@ -220,7 +220,7 @@ void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view i
 }  // -----  end of method PF_DB::StorePFChartDataIntoDB  -----
 
 void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval,
-                                  const std::string& cvs_graphics_data) const
+                                  std::string_view cvs_graphics_data) const
 {
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
     pqxx::work trxn{c};
@@ -291,8 +291,8 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std
 }  // -----  end of function PF_DB::RetrieveMostRecentStockDataRecordsFromDB   -----
 
 std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(const std::vector<std::string>& symbol_list,
-                                                                            const std::string& begin_date,
-                                                                            const std::string& price_fld_name,
+                                                                            std::string_view begin_date,
+                                                                            std::string_view price_fld_name,
                                                                             const char* date_format) const
 {
     // we need to convert our list of symbols into a format that can be used in a SQL query.
@@ -356,8 +356,8 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
 }  // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----
 
 std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
-    const std::string& exchange, const std::string& begin_date, const std::string& price_fld_name,
-    const char* date_format, const std::string& min_closing_price, int64_t min_closing_volume) const
+    std::string_view exchange, std::string_view begin_date, std::string_view price_fld_name,
+    const char* date_format, std::string_view min_closing_price, int64_t min_closing_volume) const
 {
     PF_DB pf_db{db_params_};
 
