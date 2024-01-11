@@ -274,9 +274,9 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     }
     else
     {
-        c->yAxis()->setLinearScale(
-            std::max(0.0, dec2dbl(the_chart.GetYLimits().first - k10)),
-            std::min(dec2dbl(the_chart.GetYLimits().second + the_chart.GetChartBoxSize()) + k10, 10000.0));
+        // c->yAxis()->setLinearScale(
+        //     std::max(0.0, dec2dbl(the_chart.GetYLimits().first - k10)),
+        //     std::min(dec2dbl(the_chart.GetYLimits().second + the_chart.GetChartBoxSize()) + k10, 10000.0));
     }
 
     c->yAxis2()->copyAxis(c->yAxis());
