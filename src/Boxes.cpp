@@ -104,7 +104,7 @@ Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier,
     if (box_scale_ == BoxScale::e_Percent)
     {
         BOOST_ASSERT_MSG(base_box_size_ != decimal::Decimal{0} && box_size_modifier_ != decimal::Decimal{0},
-                         "For Percent Scale, neither base box size not modifier size can be zero.");
+                         "For Percent Scale, neither base box size nor modifier size can be zero.");
         percent_box_factor_up_ = (decimal::Decimal{1} + box_size_modifier_);
         percent_box_factor_down_ = (decimal::Decimal{1} - box_size_modifier_);
         percent_exponent_ = std::max(kMinExponent, (box_size_modifier_.exponent()) - 1);
