@@ -241,7 +241,7 @@ struct PF_TBottom_Catapult_Sell
 // this code will update the chart with any signals found for the current inputs
 // and report if any were found
 
-std::optional<PF_Signal> LookForNewSignal(PF_Chart &the_chart, const decimal::Decimal &new_value,
+std::optional<PF_Signal> LookForNewSignal(const PF_Chart &the_chart, const decimal::Decimal &new_value,
                                           PF_Column::TmPt the_time);
 
 // custom formatter

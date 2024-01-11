@@ -95,7 +95,7 @@ bool CanApplySignal(const PF_Chart &the_chart, const auto &signal)
 //         Name:  AddSignalsToChart
 //  Description:
 // =====================================================================================
-std::optional<PF_Signal> LookForNewSignal(PF_Chart &the_chart, const decimal::Decimal &new_value,
+std::optional<PF_Signal> LookForNewSignal(const PF_Chart &the_chart, const decimal::Decimal &new_value,
                                           PF_Column::TmPt the_time)
 {
     for (const auto &sig : sig_funcs)
@@ -105,7 +105,7 @@ std::optional<PF_Signal> LookForNewSignal(PF_Chart &the_chart, const decimal::De
             spdlog::debug(std::format("Found signal: {}", new_sig.value()));
 
             // since signal checks are ordered in decreasing priority,
-            // stop after the first match since it will be the highest priorit
+            // stop after the first match since it will be the highest priority
             // signal at this point
 
             return {new_sig};
