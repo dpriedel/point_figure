@@ -46,6 +46,8 @@
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
+#include <date/chrono_io.h>
+#include <date/tz.h>
 #include <spdlog/spdlog.h>
 
 using namespace std::string_literals;
@@ -173,7 +175,7 @@ PF_Chart::PF_Chart(const Json::Value &new_data)
 //      Method:  PF_Chart
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Chart PF_Chart::MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval)
+PF_Chart PF_Chart::LoadChartFromChartsDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval)
 {
     Json::Value chart_data = chart_db.GetPFChartData(MakeChartNameFromParams(vals, interval, "json"));
     PF_Chart chart_from_db{chart_data};
@@ -185,7 +187,7 @@ PF_Chart PF_Chart::MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, s
 //      Method:  PF_Chart
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Chart PF_Chart::MakeChartFromJSONFile(const fs::path &file_name)
+PF_Chart PF_Chart::LoadChartFromJSONChartFile(const fs::path &file_name)
 {
     Json::Value chart_data = ReadAndParseJSONFile(file_name);
     PF_Chart chart_from_file{chart_data};
@@ -374,9 +376,9 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
     return status;
 }  // -----  end of method PF_Chart::AddValue  -----
 
-std::optional<StreamedPrices> PF_Chart::LoadData(std::istream *input_data, std::string_view date_format,
-                                                 std::string_view delim,
-                                                 PF_CollectAndReturnStreamedPrices return_streamed_data)
+std::optional<StreamedPrices> PF_Chart::BuildChartFromCSVStream(std::istream *input_data, std::string_view date_format,
+                                                                std::string_view delim,
+                                                                PF_CollectAndReturnStreamedPrices return_streamed_data)
 {
     StreamedPrices streamed_prices;
 
@@ -406,38 +408,107 @@ std::optional<StreamedPrices> PF_Chart::LoadData(std::istream *input_data, std::
         }
     }
 
-    // make sure we keep the last column we were working on
-
-    if (current_column_.GetTop() > y_max_)
-    {
-        y_max_ = current_column_.GetTop();
-    }
-    if (current_column_.GetBottom() < y_min_)
-    {
-        y_min_ = current_column_.GetBottom();
-    }
-    current_direction_ = current_column_.GetDirection();
+    // ??? redundant ??
+    // // make sure we keep the last column we were working on
+    //
+    // if (current_column_.GetTop() > y_max_)
+    // {
+    //     y_max_ = current_column_.GetTop();
+    // }
+    // if (current_column_.GetBottom() < y_min_)
+    // {
+    //     y_min_ = current_column_.GetBottom();
+    // }
+    // current_direction_ = current_column_.GetDirection();
 
     if (return_streamed_data == PF_CollectAndReturnStreamedPrices::e_yes)
     {
         return streamed_prices;
     }
     return {};
-}  // -----  end of method PF_Chart::LoadData  -----
+}  // -----  end of method PF_Chart::BuildChartFromCSVStream  -----
 
-std::optional<StreamedPrices> PF_Chart::LoadDataFromFile(const std::string &file_name, std::string_view date_format,
-                                                         std::string_view delim,
-                                                         PF_CollectAndReturnStreamedPrices return_streamed_data)
+std::optional<StreamedPrices> PF_Chart::BuildChartFromCSVFile(const std::string &file_name,
+                                                              std::string_view date_format, std::string_view delim,
+                                                              PF_CollectAndReturnStreamedPrices return_streamed_data)
 {
     std::ifstream data_file{fs::path{file_name}, std::ios::in | std::ios::binary};
     BOOST_ASSERT_MSG(data_file.is_open(), std::format("Unable to open data file: {}", file_name).c_str());
 
-    const auto streamed_prices = LoadData(&data_file, date_format, delim, return_streamed_data);
+    const auto streamed_prices = BuildChartFromCSVStream(&data_file, date_format, delim, return_streamed_data);
 
     data_file.close();
 
     return streamed_prices;
-}  // -----  end of method PF_Chart::LoadDataFromFile  -----
+}  // -----  end of method PF_Chart::BuildChartFromCSVFile  -----
+
+std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
+    const PF_DB::DB_Params &db_params, std::string_view symbol, std::string_view begin_date,
+    std::string_view price_fld_name,
+    PF_CollectAndReturnStreamedPrices return_streamed_data)
+{
+    StreamedPrices streamed_prices;
+
+    // first, get ready to retrieve our data from DB.
+
+    PF_DB prices_db{db_params};
+    pqxx::connection c{std::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
+
+    std::string get_symbol_prices_cmd = std::format(
+        "SELECT date, {} FROM {} WHERE symbol = {} AND date >= "
+        "{} ORDER BY date ASC",
+        price_fld_name, db_params.stock_db_data_source_, c.quote(symbol), c.quote(begin_date));
+
+    // right now, DB only has eod data.
+
+    const auto *dt_format = "%F";
+
+    std::istringstream time_stream;
+    date::utc_time<std::chrono::utc_clock::duration> tp;
+
+    // we know our database contains 'date's, but we need timepoints.
+    // we'll handle that in the conversion routine below.
+
+    auto Row2Closing = [dt_format, &time_stream, &tp](const auto &r)
+        {
+            time_stream.clear();
+            time_stream.str(std::string{std::get<0>(r)});
+            date::from_stream(time_stream, dt_format, tp);
+            std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
+            DateCloseRecord new_data{.date_ = tp1, .close_ = decimal::Decimal{std::get<1>(r)}};
+            return new_data;
+        };
+
+    try
+    {
+        const auto closing_prices = prices_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, const char *>(
+            get_symbol_prices_cmd, Row2Closing);
+
+        for (const auto &[new_date, new_price] : closing_prices)
+        {
+            // std::cout << "new value: " << new_price << "\t" <<
+            // new_date << std::endl;
+            auto chart_changed = AddValue(new_price, std::chrono::clock_cast<std::chrono::utc_clock>(new_date));
+            if (return_streamed_data == PF_CollectAndReturnStreamedPrices::e_yes)
+            {
+                streamed_prices.timestamp_.push_back(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count());
+                streamed_prices.price_.push_back(dec2dbl(new_price));
+                streamed_prices.signal_type_.push_back(chart_changed == PF_Column::Status::e_AcceptedWithSignal
+                                                       ? std::to_underlying(GetSignals().back().signal_type_)
+                                                       : 0);
+            }
+        }
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error(
+            std::format("Unable to load data for symbol chart: {} from DB "
+                        "because: {}.",
+                        MakeChartFileName("eod", ""), e.what()));
+    }
+    return {};
+}  // -----  end of method PF_Chart::BuildChartFromPricesDB  -----
 
 PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(PF_ColumnFilter which_columns) const
 {

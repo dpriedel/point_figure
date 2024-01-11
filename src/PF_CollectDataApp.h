@@ -138,7 +138,6 @@ class PF_CollectDataApp
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
-    [[nodiscard]] decimal::Decimal ComputeRangeForChartFromDB(const std::string &symbol) const;
 
     void ShutdownStoreOutputInFiles();
     void ShutdownStoreOutputInDB();
@@ -267,6 +266,7 @@ class PF_CollectDataApp
     std::string price_fld_name_;
     std::string trend_lines_;
     std::string begin_date_;
+    std::string end_date_;
     std::string min_close_price_;
 
     int64_t min_close_volume_ = 100'000;

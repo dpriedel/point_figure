@@ -37,6 +37,7 @@
 #include <json/json.h>
 
 #include <chrono>
+#include <decimal.hh>
 #include <pqxx/pqxx>
 #include <pqxx/stream_from>
 #include <string>
@@ -89,15 +90,21 @@ class PF_DB
     void UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval,
                                std::string_view cvs_graphics_data) const;
 
-    [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB(
-        std::string_view symbol, std::chrono::year_month_day date, int how_many) const;
+    [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB(std::string_view symbol,
+                                                                                        std::string_view begin_date,
+                                                                                        int32_t how_many) const;
 
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsInList(
-        const std::vector<std::string>& symbol_list, std::string_view begin_date, std::string_view price_fld_name,
-        const char* date_format) const;
+        const std::vector<std::string>& symbol_list, std::string_view begin_date, std::string_view end_date,
+        std::string_view price_fld_name, const char* date_format) const;
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange(
-        std::string_view exchange, std::string_view begin_date, std::string_view price_fld_name,
-        const char* date_format, std::string_view min_closing_price, int64_t min_closing_volume) const;
+        std::string_view exchange, std::string_view begin_date, std::string_view end_date,
+        std::string_view price_fld_name, const char* date_format, std::string_view min_closing_price,
+        int64_t min_closing_volume) const;
+
+    [[nodiscard]] decimal::Decimal ComputePriceRangeForSymbolFromDB(std::string_view symbol,
+                                                                    std::string_view begin_date,
+                                                                    std::string_view end_date) const;
 
     template <typename T>
     [[nodiscard]] std::vector<T> RunSQLQueryUsingRows(std::string_view query_cmd, const auto& converter) const;

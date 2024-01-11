@@ -263,6 +263,24 @@ bool PF_CollectDataApp::CheckArgs()
             spdlog::debug(fmt::format("exchanges for scan and bulk load: {}\n", exchange_list_));
         }
     }
+
+    // validate our dates, if any
+
+    if (! begin_date_.empty())
+    {
+        auto ymd = StringToDateYMD("%F", begin_date_);
+    }
+    if (! end_date_.empty())
+    {
+        auto ymd = StringToDateYMD("%F", end_date_);
+    }
+    else
+    {
+        // default to 'today'
+        std::chrono::year_month_day today{--floor<std::chrono::days>(std::chrono::system_clock::now())};
+        end_date_ = std::format("{:%Y-%m-%d}", today);
+    }
+
     // do daily-scan edits upfront because we only need a couple
 
     if (mode_ == Mode::e_daily_scan)
@@ -515,6 +533,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("min-close-volume",    po::value<int64_t>(&this->min_close_volume_)->default_value(100'000),	"Minimum closing volume for a symbol to filter small stocks from daily-scan and bulk loads. Default is 100'000")
 
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
+		("end-date",			po::value<std::string>(&this->end_date_),	"Stop date for extracting data from database source. Default is 'today'.")
 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
 		("boxsize,b",			po::value<std::vector<std::string>>(&this->box_size_i_list_),   	"box step size. 'n', 'm.n'")
@@ -652,11 +671,11 @@ void PF_CollectDataApp::Run_Load()
             PF_Chart new_chart;
             if (use_ATR_)
             {
-                new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
             }
             else
             {
-                new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
             }
             AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
             charts_.emplace_back(std::make_pair(symbol, new_chart));
@@ -771,7 +790,7 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
 
             // only need to compute this once per symbol also
             auto atr_or_range = use_ATR_       ? ComputeATRForChartFromDB(symbol)
-                                : use_min_max_ ? ComputeRangeForChartFromDB(symbol)
+                                : use_min_max_ ? pf_db.ComputePriceRangeForSymbolFromDB(symbol, begin_date_, end_date_)
                                                : 0;
 
             // There could be thousands of symbols in the database so we don't
@@ -789,11 +808,11 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
                 PF_Chart new_chart;
                 if (use_ATR_ || use_min_max_)
                 {
-                    new_chart = {atr_or_range, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    new_chart = PF_Chart{atr_or_range, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                 }
                 else
                 {
-                    new_chart = {val, atr_or_range, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    new_chart = PF_Chart{val, atr_or_range, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                 }
                 try
                 {
@@ -853,11 +872,11 @@ void PF_CollectDataApp::Run_Update()
                 auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
                 if (use_ATR_)
                 {
-                    new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                 }
                 else
                 {
-                    new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                 }
             }
             fs::path update_file_name =
@@ -892,7 +911,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
     PF_DB pf_db{db_params_};
 
     const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
-    auto db_data = pf_db.GetPriceDataForSymbolsInList(symbol_list_, begin_date_, price_fld_name_, dt_format);
+    auto db_data = pf_db.GetPriceDataForSymbolsInList(symbol_list_, begin_date_, end_date_, price_fld_name_, dt_format);
     // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {}, {}\n",
     // xx.symbol, xx.tp, xx.price); });
 
@@ -932,7 +951,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                 }
                 else  // should only be database here
                 {
-                    new_chart = PF_Chart::MakeChartFromDB(PF_DB{db_params_}, val, interval_i);
+                    new_chart = PF_Chart::LoadChartFromChartsDB(PF_DB{db_params_}, val, interval_i);
                 }
                 if (new_chart.empty())
                 {
@@ -941,11 +960,11 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                     auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0;
                     if (use_ATR_)
                     {
-                        new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                        new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                     }
                     else
                     {
-                        new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                        new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                     }
                 }
 
@@ -991,11 +1010,11 @@ void PF_CollectDataApp::Run_Streaming()
         PF_Chart new_chart;
         if (use_ATR_)
         {
-            new_chart = {atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
         }
         else
         {
-            new_chart = {val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
         }
         charts_.emplace_back(std::make_pair(symbol, new_chart));
     }
@@ -1041,7 +1060,7 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, cons
 
 PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
 {
-    PF_Chart new_chart = PF_Chart::MakeChartFromJSONFile(symbol_file_name);
+    PF_Chart new_chart = PF_Chart::LoadChartFromJSONChartFile(symbol_file_name);
     return new_chart;
 }  // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
 
@@ -1098,26 +1117,13 @@ Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
 
 Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) const
 {
-    auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
-    //    std::chrono::year which_year = today.year();
-    //    auto holidays = MakeHolidayList(which_year);
-    //    ranges::copy(MakeHolidayList(--which_year),
-    //    std::back_inserter(holidays));
-    //
-    //    auto business_days = ConstructeBusinessDayRange(today, 2,
-    //    UpOrDown::e_Down, &holidays);
-
-    // 'business_days.second' will be the prior business day for DB search.
-    // BUT, I expect the DB will only have data for trading days, so it will
-    // automatically skip weekends for me.
-
     PF_DB the_db{db_params_};
 
     Decimal atr{};
     try
     {
         auto price_data =
-            the_db.RetrieveMostRecentStockDataRecordsFromDB(symbol, today, number_of_days_history_for_ATR_ + 1);
+            the_db.RetrieveMostRecentStockDataRecordsFromDB(symbol, end_date_, number_of_days_history_for_ATR_ + 1);
         atr = ComputeATR(symbol, price_data, number_of_days_history_for_ATR_);
     }
     catch (const std::exception &e)
@@ -1128,43 +1134,6 @@ Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) c
     return atr;
 }  // -----  end of method PF_CollectDataApp::ComputeATRUsingDB  -----
 
-Decimal PF_CollectDataApp::ComputeRangeForChartFromDB(const std::string &symbol) const
-{
-    auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
-
-    // BUT, I expect the DB will only have data for trading days, so it will
-    // automatically skip weekends for me.
-
-    // set up a DB connection so query arguments can be properly quoted.
-    PF_DB the_db{db_params_};
-    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-
-    std::string get_price_range_cmd = std::format(
-        "SELECT (MAX(split_adj_close) - MIN(split_adj_close)) AS range FROM {} "
-        "WHERE date BETWEEN {} AND '{}' AND symbol = {}",
-        db_params_.stock_db_data_source_, c.quote(begin_date_), today, c.quote(symbol));
-
-    c.close();
-
-    Decimal price_range;
-
-    auto Row2Range = [](const auto &r) { return Decimal{r[0].template as<const char *>()}; };
-
-    try
-    {
-        price_range = the_db.RunSQLQueryUsingRows<Decimal>(get_price_range_cmd, Row2Range)[0];
-        spdlog::debug(std::format("Price range query: {}. Result: {}\n", get_price_range_cmd, price_range.format("f")));
-    }
-    catch (const std::exception &e)
-    {
-        spdlog::error(
-            std::format("Unable to compute closing price range from DB "
-                        "for: '{}' because: {}.\n",
-                        symbol, e.what()));
-    }
-
-    return price_range;
-}  // -----  end of method PF_CollectDataApp::ComputeRangeForChartFromDB -----
 
 void PF_CollectDataApp::PrimeChartsForStreaming()
 {
@@ -1506,7 +1475,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
         int32_t exchange_charts_processed = 0;
         int32_t exchange_charts_updated = 0;
 
-        auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, price_fld_name_, dt_format,
+        auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, end_date_, price_fld_name_, dt_format,
                                                               min_close_price_, min_close_volume_);
         // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
         // {}\n", xx.symbol, xx.tp, xx.price); });

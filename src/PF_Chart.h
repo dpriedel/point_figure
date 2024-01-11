@@ -136,10 +136,10 @@ class PF_Chart
 
     ~PF_Chart() = default;
 
-    static PF_Chart MakeChartFromDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval);
+    static PF_Chart LoadChartFromChartsDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval);
 
     // mainly for Python wrapper
-    static PF_Chart MakeChartFromJSONFile(const fs::path &file_name);
+    static PF_Chart LoadChartFromJSONChartFile(const fs::path &file_name);
 
     // ====================  ACCESSORS =======================================
 
@@ -261,6 +261,8 @@ class PF_Chart
 
     [[nodiscard]] ColumnTopBottomList GetTopBottomForColumns(PF_ColumnFilter which_columns) const;
 
+    [[nodiscard]] int64_t GetMaxGraphicColumns() const { return max_columns_for_graph_; }
+
     // ====================  MUTATORS =======================================
 
     PF_Column::Status AddValue(const decimal::Decimal &new_value, PF_Column::TmPt the_time);
@@ -273,14 +275,19 @@ class PF_Chart
     {
         return AddValue(dbl2dec(new_value), PF_Column::TmPt{std::chrono::seconds(the_time)});
     }
-    std::optional<StreamedPrices> LoadData(
+    std::optional<StreamedPrices> BuildChartFromCSVStream(
         std::istream *input_data, std::string_view date_format, std::string_view delim,
         PF_CollectAndReturnStreamedPrices return_streamed_data = PF_CollectAndReturnStreamedPrices::e_no);
-    std::optional<StreamedPrices> LoadDataFromFile(
+
+    std::optional<StreamedPrices> BuildChartFromCSVFile(
         const std::string &file_name, std::string_view date_format, std::string_view delim,
         PF_CollectAndReturnStreamedPrices return_streamed_data = PF_CollectAndReturnStreamedPrices::e_no);
 
-    [[nodiscard]] int64_t GetMaxGraphicColumns() const { return max_columns_for_graph_; }
+    std::optional<StreamedPrices> BuildChartFromPricesDB(
+    const PF_DB::DB_Params &db_params, std::string_view symbol, std::string_view begin_date,
+    std::string_view price_fld_name,
+    PF_CollectAndReturnStreamedPrices return_streamed_data);
+
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
 
     void AddSignal(const PF_Signal &new_sig) { signals_.push_back(new_sig); }

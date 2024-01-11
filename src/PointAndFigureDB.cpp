@@ -254,8 +254,8 @@ void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view in
 // =====================================================================================
 
 std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std::string_view symbol,
-                                                                             std::chrono::year_month_day date,
-                                                                             int how_many) const
+                                                                             std::string_view begin_date,
+                                                                             int32_t how_many) const
 {
     auto Row2StockDataRecord = [](const auto& r)
     {
@@ -271,8 +271,8 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std
 
     std::string get_records_cmd = std::format(
         "SELECT date, symbol, split_adj_open, split_adj_high, split_adj_low, split_adj_close FROM {} WHERE symbol = {} "
-        "AND date <= '{}' ORDER BY date DESC LIMIT {}",
-        db_params_.stock_db_data_source_, c.quote(symbol), date,
+        "AND date <= {} ORDER BY date DESC LIMIT {}",
+        db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date),
         how_many  // need an extra row for the algorithm
     );
     std::vector<StockDataRecord> records;
@@ -292,6 +292,7 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std
 
 std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(const std::vector<std::string>& symbol_list,
                                                                             std::string_view begin_date,
+                                                                            std::string_view end_date,
                                                                             std::string_view price_fld_name,
                                                                             const char* date_format) const
 {
@@ -337,9 +338,13 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
     {
         // first, get ready to retrieve our data from DB.  Do this for all our symbols here.
 
+        std::string date_range = end_date.empty()
+                                     ? std::format("date >= {}", c.quote(begin_date))
+                                     : std::format("date BETWEEN {} and {}", c.quote(begin_date), c.quote(end_date));
+
         std::string get_symbol_prices_cmd =
-            std::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND date >= {} ORDER BY symbol, date ASC",
-                        price_fld_name, db_params_.stock_db_data_source_, query_list, c.quote(begin_date));
+            std::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND {} ORDER BY symbol, date ASC",
+                        price_fld_name, db_params_.stock_db_data_source_, query_list, date_range);
 
         db_data =
             pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
@@ -356,7 +361,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
 }  // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----
 
 std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
-    std::string_view exchange, std::string_view begin_date, std::string_view price_fld_name,
+    std::string_view exchange, std::string_view begin_date, std::string_view end_date, std::string_view price_fld_name,
     const char* date_format, std::string_view min_closing_price, int64_t min_closing_volume) const
 {
     PF_DB pf_db{db_params_};
@@ -386,12 +391,17 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
 
     try
     {
+        std::string date_range = end_date.empty()
+                                     ? std::format("date >= {}", c.quote(begin_date))
+                                     : std::format("date BETWEEN {} and {}", c.quote(begin_date), c.quote(end_date));
+
         // first, get ready to retrieve our data from DB.  Do this for all our symbols here.
+        //
         std::string get_symbol_prices_cmd = std::format(
-            "SELECT symbol, date, {} FROM {} WHERE date >= {} AND symbol IN (SELECT * FROM "
+            "SELECT symbol, date, {} FROM {} WHERE {} AND symbol IN (SELECT * FROM "
             "new_stock_data.find_symbols_gte_min_close_volume({}, {}, {})) ORDER BY symbol ASC, date ASC",
-            price_fld_name, db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(exchange),
-            c.quote(min_closing_price), min_closing_volume);
+            price_fld_name, db_params_.stock_db_data_source_, date_range, c.quote(exchange), c.quote(min_closing_price),
+            min_closing_volume);
 
         db_data =
             pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
@@ -407,3 +417,40 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
 
     return db_data;
 }  // -----  end of method PF_DB::GetPriceDataForSymbolsInList  -----
+
+decimal::Decimal PF_DB::ComputePriceRangeForSymbolFromDB(std::string_view symbol, std::string_view begin_date,
+                                                         std::string_view end_date) const
+{
+    // BUT, I expect the DB will only have data for trading days, so it will
+    // automatically skip weekends for me.
+
+    // set up a DB connection so query arguments can be properly quoted.
+    PF_DB the_db{db_params_};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+
+    std::string get_price_range_cmd = std::format(
+        "SELECT (MAX(split_adj_close) - MIN(split_adj_close)) AS range FROM {} "
+        "WHERE date BETWEEN {} AND {} AND symbol = {}",
+        db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(end_date), c.quote(symbol));
+
+    c.close();
+
+    decimal::Decimal price_range;
+
+    auto Row2Range = [](const auto& r) { return decimal::Decimal{r[0].template as<const char*>()}; };
+
+    try
+    {
+        price_range = the_db.RunSQLQueryUsingRows<decimal::Decimal>(get_price_range_cmd, Row2Range)[0];
+        spdlog::debug(std::format("Price range query: {}. Result: {}\n", get_price_range_cmd, price_range.format("f")));
+    }
+    catch (const std::exception& e)
+    {
+        spdlog::error(
+            std::format("Unable to compute closing price range from DB "
+                        "for: '{}' because: {}.\n",
+                        symbol, e.what()));
+    }
+
+    return price_range;
+}  // -----  end of method PF_DB::ComputeRangeForChartFromDB -----
