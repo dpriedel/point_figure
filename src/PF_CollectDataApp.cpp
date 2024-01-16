@@ -1282,6 +1282,11 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
                 streamed_data->pop();
             }
             const auto pf_data = quotes->ExtractData(new_data);
+            if (pf_data.empty())
+            {
+                // non-trade responses here.
+                continue;
+            }
 
             // our pf_data may contain 1 or more updates for 1 or more symbols.
             // so we'll process it a symbol at a time.
@@ -1293,7 +1298,7 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
             rng::sort(tickers_in_update);
             const auto [first, last] = rng::unique(tickers_in_update);
             tickers_in_update.erase(first, last);
-
+            
             if (tickers_in_update.size() > 1)
             {
                 std::vector<std::future<void>> tasks;

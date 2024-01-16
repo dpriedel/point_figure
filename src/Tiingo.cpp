@@ -187,7 +187,7 @@ Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
     const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
     const std::string string_trade_price{R"***($1"$2",)***"};
     const std::string zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
-    //    std::cout << "\nzapped buffer: " << zapped_buffer << '\n';
+       // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
@@ -253,7 +253,6 @@ Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
     {
         throw std::runtime_error("unexpected message type: "s + message_type.asCString());
     }
-
     return pf_data;
 }  // -----  end of method Tiingo::ExtractData  -----
 

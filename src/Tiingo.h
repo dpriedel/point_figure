@@ -19,6 +19,7 @@
 
 #include <chrono>
 #include <deque>
+#include <format>
 #include <mutex>
 #include <queue>
 #include <vector>
@@ -124,6 +125,19 @@ private:
     tcp::resolver resolver_;
     websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
 }; // -----  end of class Tiingo  ----- 
+
+template <>
+struct std::formatter<Tiingo::PF_Data> : std::formatter<std::string>
+{
+    // parse is inherited from formatter<string>.
+    auto format(const Tiingo::PF_Data& pdata, std::format_context& ctx) const
+    {
+        std::string record;
+        std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_, pdata.last_price_.format("f"),
+                       pdata.last_size_, pdata.time_stamp_);
+        return formatter<std::string>::format(record, ctx);
+    }
+};
 
 inline std::ostream& operator<<(std::ostream& os, const Tiingo::PF_Data pf_data)
 {
