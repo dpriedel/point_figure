@@ -41,7 +41,7 @@ namespace vws = std::ranges::views;
 
 // NOLINTBEGIN
 constexpr auto RED = 0xFF0000;     // for down columns
-constexpr auto PINK = 0xFFC0CB;    // for down columns
+constexpr auto BLACK = 0x000000;    // for down columns
 constexpr auto GREEN = 0x008000;   // for up columns
 constexpr auto YELLOW = 0xFFFF00;  // for up columns
 constexpr auto BLUE = 0x0000FF;    // for reversed to up columns
@@ -485,7 +485,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.db_sells_x_.data(), data_arrays.db_sells_x_.size()),
             DoubleArray(data_arrays.db_sells_price_.data(), data_arrays.db_sells_price_.size()), "db sell", db_sell_sym,
-            k10, PINK);
+            k10, BLACK);
     }
 
     if (!data_arrays.tb_sells_price_.empty())
@@ -493,7 +493,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
             DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()), "tb sell", tb_sell_sym,
-            k10, PINK);
+            k10, BLACK);
     }
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
@@ -509,7 +509,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bearish_tb_sells_x_.data(), data_arrays.bearish_tb_sells_x_.size()),
             DoubleArray(data_arrays.bearish_tb_sells_price_.data(), data_arrays.bearish_tb_sells_price_.size()),
-            "bearish tb sell", bearish_tb_sell_sym, k10, PINK);
+            "bearish tb sell", bearish_tb_sell_sym, k10, BLACK);
     }
 
     if (!data_arrays.cat_buys_price_.empty())
@@ -525,7 +525,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_sells_x_.data(), data_arrays.cat_sells_x_.size()),
             DoubleArray(data_arrays.cat_sells_price_.data(), data_arrays.cat_sells_price_.size()), "cat sell",
-            cat_sell_sym, k10, PINK);
+            cat_sell_sym, k10, BLACK);
     }
 
     if (!data_arrays.tt_cat_buys_price_.empty())
@@ -541,7 +541,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_cat_sells_x_.data(), data_arrays.tb_cat_sells_x_.size()),
             DoubleArray(data_arrays.tb_cat_sells_price_.data(), data_arrays.tb_cat_sells_price_.size()), "tb cat sell",
-            tb_cat_sell_sym, k10, PINK);
+            tb_cat_sell_sym, k10, BLACK);
     }
 }
 
@@ -620,14 +620,14 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.db_sells_x_.data(), data_arrays.db_sells_x_.size()),
             DoubleArray(data_arrays.db_sells_price_.data(), data_arrays.db_sells_price_.size()), "db sell", db_sell_sym,
-            k13, PINK);
+            k13, BLACK);
     }
 
     if (!data_arrays.tb_sells_price_.empty())
     {
         the_graphic->addScatterLayer(DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
                                      DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.dt_buys_price_.size()),
-                                     "tb sell", tb_sell_sym, k13, PINK);
+                                     "tb sell", tb_sell_sym, k13, BLACK);
     }
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
@@ -643,7 +643,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bearish_tb_sells_x_.data(), data_arrays.bearish_tb_sells_x_.size()),
             DoubleArray(data_arrays.bearish_tb_sells_price_.data(), data_arrays.bearish_tb_sells_price_.size()),
-            "bearish tb sell", bearish_tb_sell_sym, k13, PINK);
+            "bearish tb sell", bearish_tb_sell_sym, k13, BLACK);
     }
 
     if (!data_arrays.cat_buys_price_.empty())
@@ -659,7 +659,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_sells_x_.data(), data_arrays.cat_sells_x_.size()),
             DoubleArray(data_arrays.cat_sells_price_.data(), data_arrays.cat_sells_price_.size()), "cat sell",
-            cat_sell_sym, k13, PINK);
+            cat_sell_sym, k13, BLACK);
     }
 
     if (!data_arrays.tt_cat_buys_price_.empty())
@@ -675,6 +675,6 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
         the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_cat_sells_x_.data(), data_arrays.tb_cat_sells_x_.size()),
             DoubleArray(data_arrays.tb_cat_sells_price_.data(), data_arrays.tb_cat_sells_price_.size()), "tb cat sell",
-            tb_cat_sell_sym, k13, PINK);
+            tb_cat_sell_sym, k13, BLACK);
     }
 }
