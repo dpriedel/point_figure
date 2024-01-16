@@ -27,6 +27,9 @@ namespace vws = std::ranges::views;
 // #include <pybind11/stl.h>
 #include <spdlog/spdlog.h>
 
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
 #include <chartdir.h>
 
 // namespace py = pybind11;
@@ -149,21 +152,25 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     up_data_top.reserve(columns_in_PF_Chart - skipped_columns);
     std::vector<double> up_data_bot;
     up_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
-    for (const auto& col_info : up_layer | vws::drop(skipped_columns))
-    {
-        up_data_top.push_back(col_info.col_top_);
-        up_data_bot.push_back(col_info.col_bot_);
-    }
+
+    rng::for_each(up_layer | vws::drop(skipped_columns),
+                  [&up_data_top, &up_data_bot](const auto& col_info)
+                  {
+                      up_data_top.push_back(col_info.col_top_);
+                      up_data_bot.push_back(col_info.col_bot_);
+                  });
 
     std::vector<double> down_data_top;
     down_data_top.reserve(columns_in_PF_Chart - skipped_columns);
     std::vector<double> down_data_bot;
     down_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
-    for (const auto& col_info : down_layer | vws::drop(skipped_columns))
-    {
-        down_data_top.push_back(col_info.col_top_);
-        down_data_bot.push_back(col_info.col_bot_);
-    }
+
+    rng::for_each(down_layer | vws::drop(skipped_columns),
+                  [&down_data_top, &down_data_bot](const auto& col_info)
+                  {
+                      down_data_top.push_back(col_info.col_top_);
+                      down_data_bot.push_back(col_info.col_bot_);
+                  });
 
     std::vector<double> reversed_to_up_data_top;
     std::vector<double> reversed_to_up_data_bot;
@@ -171,11 +178,12 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     {
         reversed_to_up_data_top.reserve(columns_in_PF_Chart - skipped_columns);
         reversed_to_up_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
-        for (const auto& col_info : reversed_to_up_layer | vws::drop(skipped_columns))
-        {
-            reversed_to_up_data_top.push_back(col_info.col_top_);
-            reversed_to_up_data_bot.push_back(col_info.col_bot_);
-        }
+        rng::for_each(reversed_to_up_layer | vws::drop(skipped_columns),
+                      [&reversed_to_up_data_top, &reversed_to_up_data_bot](const auto& col_info)
+                      {
+                          reversed_to_up_data_top.push_back(col_info.col_top_);
+                          reversed_to_up_data_bot.push_back(col_info.col_bot_);
+                      });
     }
 
     std::vector<double> reversed_to_down_data_top;
@@ -184,11 +192,12 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     {
         reversed_to_down_data_top.reserve(columns_in_PF_Chart - skipped_columns);
         reversed_to_down_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
-        for (const auto& col_info : reversed_to_down_layer | vws::drop(skipped_columns))
-        {
-            reversed_to_down_data_top.push_back(col_info.col_top_);
-            reversed_to_down_data_bot.push_back(col_info.col_bot_);
-        }
+        rng::for_each(reversed_to_down_layer | vws::drop(skipped_columns),
+                      [&reversed_to_down_data_top, &reversed_to_down_data_bot](const auto& col_info)
+                      {
+                          reversed_to_down_data_top.push_back(col_info.col_top_);
+                          reversed_to_down_data_bot.push_back(col_info.col_bot_);
+                      });
     }
 
     // want to show approximate overall change in value (computed from boxes, not actual prices)
@@ -229,17 +238,18 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     std::vector<std::string> x_axis_labels;
     x_axis_labels.reserve(columns_in_PF_Chart - skipped_columns);
 
-    for (const auto& col : the_chart | vws::drop(skipped_columns))
-    {
-        if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
-        {
-            x_axis_labels.push_back(std::format("{:%F}", col.GetTimeSpan().first));
-        }
-        else
-        {
-            x_axis_labels.push_back(UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first));
-        }
-    }
+    rng::for_each(the_chart | vws::drop(skipped_columns),
+                  [&x_axis_labels, &date_or_time](const auto& col)
+                  {
+                      if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
+                      {
+                          x_axis_labels.emplace_back(std::format("{:%F}", col.GetTimeSpan().first));
+                      }
+                      else
+                      {
+                          x_axis_labels.emplace_back(UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first));
+                      }
+                  });
 
     std::vector<const char*> x_axis_label_data;
     x_axis_label_data.reserve(columns_in_PF_Chart - skipped_columns);
@@ -258,6 +268,11 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
         c = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight2 * kDpi));
         c->setPlotArea(k50, k100, (kChartWidth * kDpi - k120), (kChartHeight2 * kDpi - k200))
             ->setGridColor(LITEGRAY, LITEGRAY);
+    }
+
+    if (!c)
+    {
+        throw std::runtime_error("Unable to create PF_chart graphic.");
     }
 
     c->addTitle(chart_title.c_str());
@@ -333,11 +348,11 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
         {
             if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
             {
-                p_x_axis_labels.push_back(std::format("{:%F}", PF_Column::TmPt{std::chrono::nanoseconds{nanosecs}}));
+                p_x_axis_labels.emplace_back(std::format("{:%F}", PF_Column::TmPt{std::chrono::nanoseconds{nanosecs}}));
             }
             else
             {
-                p_x_axis_labels.push_back(
+                p_x_axis_labels.emplace_back(
                     UTCTimePointToLocalTZHMSString(PF_Column::TmPt{std::chrono::nanoseconds{nanosecs}}));
             }
         }
@@ -347,6 +362,11 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
                       [&p_x_axis_label_data](const auto& label) { p_x_axis_label_data.push_back(label.c_str()); });
 
         p = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight3 * kDpi));
+        if (!p)
+        {
+            throw std::runtime_error("Unable to create streamed prices graphic.");
+        }
+
         p->setPlotArea(k50, k50, (kChartWidth * kDpi - k80), (kChartHeight3 * kDpi - k200))
             ->setGridColor(LITEGRAY, LITEGRAY);
 
@@ -389,53 +409,54 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 {
     // we may need to drop some signals.
 
-    const auto col_nbr_filter =
-        vws::filter([skipped_columns](const auto& sig) { return sig.column_number_ >= skipped_columns; });
+    auto filter_skipped_cols = the_chart.GetSignals() | vws::filter([skipped_columns](const auto& sig)
+                                                                    { return sig.column_number_ >= skipped_columns; });
 
-    for (const auto& sig : the_chart.GetSignals() | col_nbr_filter)
+    for (const auto& sig : filter_skipped_cols)
     {
         switch (sig.signal_type_)
         {
             using enum PF_SignalType;
             case e_double_top_buy:
-                data_arrays.dt_buys_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.dt_buys_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.dt_buys_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.dt_buys_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_double_bottom_sell:
-                data_arrays.db_sells_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.db_sells_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.db_sells_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.db_sells_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_triple_top_buy:
-                data_arrays.tt_buys_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.tt_buys_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.tt_buys_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.tt_buys_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_triple_bottom_sell:
-                data_arrays.tb_sells_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.tb_sells_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.tb_sells_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.tb_sells_x_.emplace_back(sig.column_number_ - skipped_columns);
+                std::cout << fmt::format("{}", data_arrays.tb_sells_price_) << '\n';
                 break;
             case e_bullish_tt_buy:
-                data_arrays.bullish_tt_buys_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.bullish_tt_buys_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.bullish_tt_buys_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.bullish_tt_buys_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_bearish_tb_sell:
-                data_arrays.bearish_tb_sells_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.bearish_tb_sells_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.bearish_tb_sells_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.bearish_tb_sells_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_catapult_buy:
-                data_arrays.cat_buys_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.cat_buys_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.cat_buys_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.cat_buys_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_catapult_sell:
-                data_arrays.cat_sells_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.cat_sells_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.cat_sells_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.cat_sells_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_ttop_catapult_buy:
-                data_arrays.tt_cat_buys_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.tt_cat_buys_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.tt_cat_buys_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.tt_cat_buys_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_tbottom_catapult_sell:
-                data_arrays.tb_cat_sells_price_.push_back(dec2dbl(sig.signal_price_));
-                data_arrays.tb_cat_sells_x_.push_back(sig.column_number_ - skipped_columns);
+                data_arrays.tb_cat_sells_price_.emplace_back(dec2dbl(sig.signal_price_));
+                data_arrays.tb_cat_sells_x_.emplace_back(sig.column_number_ - skipped_columns);
                 break;
             case e_unknown:
             default:
@@ -469,9 +490,10 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.tb_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
-                                     DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.dt_buys_price_.size()),
-                                     "tb sell", tb_sell_sym, k10, PINK);
+        the_graphic->addScatterLayer(
+            DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
+            DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()), "tb sell", tb_sell_sym,
+            k10, PINK);
     }
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
@@ -532,44 +554,44 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
         {
             using enum PF_SignalType;
             case std::to_underlying(e_double_top_buy):
-                data_arrays.dt_buys_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.dt_buys_x_.push_back(ndx);
+                data_arrays.dt_buys_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.dt_buys_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_double_bottom_sell):
-                data_arrays.db_sells_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.db_sells_x_.push_back(ndx);
+                data_arrays.db_sells_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.db_sells_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_triple_top_buy):
-                data_arrays.tt_buys_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.tt_buys_x_.push_back(ndx);
+                data_arrays.tt_buys_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.tt_buys_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_triple_bottom_sell):
-                data_arrays.tb_sells_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.tb_sells_x_.push_back(ndx);
+                data_arrays.tb_sells_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.tb_sells_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_bullish_tt_buy):
-                data_arrays.bullish_tt_buys_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.bullish_tt_buys_x_.push_back(ndx);
+                data_arrays.bullish_tt_buys_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.bullish_tt_buys_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_bearish_tb_sell):
-                data_arrays.bearish_tb_sells_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.bearish_tb_sells_x_.push_back(ndx);
+                data_arrays.bearish_tb_sells_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.bearish_tb_sells_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_catapult_buy):
-                data_arrays.cat_buys_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.cat_buys_x_.push_back(ndx);
+                data_arrays.cat_buys_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.cat_buys_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_catapult_sell):
-                data_arrays.cat_sells_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.cat_sells_x_.push_back(ndx);
+                data_arrays.cat_sells_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.cat_sells_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_ttop_catapult_buy):
-                data_arrays.tt_cat_buys_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.tt_cat_buys_x_.push_back(ndx);
+                data_arrays.tt_cat_buys_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.tt_cat_buys_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_tbottom_catapult_sell):
-                data_arrays.tb_cat_sells_price_.push_back(streamed_prices.price_[ndx]);
-                data_arrays.tb_cat_sells_x_.push_back(ndx);
+                data_arrays.tb_cat_sells_price_.emplace_back(streamed_prices.price_[ndx]);
+                data_arrays.tb_cat_sells_x_.emplace_back(ndx);
                 break;
             case std::to_underlying(e_unknown):
             default:
