@@ -2,7 +2,7 @@
 //
 //       Filename:  Tiingo.cpp
 //
-//    Description:  Live stream ticker updates 
+//    Description:  Live stream ticker updates
 //
 //        Version:  1.0
 //        Created:  08/06/2021 09:28:55 AM
@@ -33,40 +33,44 @@ namespace vws = std::ranges::views;
 
 using namespace std::string_literals;
 
-
 //--------------------------------------------------------------------------------------
 //       Class:  Tiingo
 //      Method:  Tiingo
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-Tiingo::Tiingo ()
-    : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
-{
-}  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
+Tiingo::Tiingo()
+    : ctx_{ssl::context::tlsv12_client},
+      resolver_{ioc_},
+      ws_{ioc_, ctx_} {}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
 
-Tiingo::~Tiingo ()
+Tiingo::~Tiingo()
 {
     // need to disconnect if still connected.
-    
+
     if (ws_.is_open())
     {
         Disconnect();
     }
-}		// -----  end of method Tiingo::~Tiingo  ----- 
+}  // -----  end of method Tiingo::~Tiingo  -----
 
-Tiingo::Tiingo (const std::string& host, const std::string& port, const std::string& api_key)
-    : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client},
-    resolver_{ioc_}, ws_{ioc_, ctx_}
+Tiingo::Tiingo(const std::string& host, const std::string& port, const std::string& api_key)
+    : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
 {
-}  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
+}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
 
-Tiingo::Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
-            const std::string& api_key, const std::vector<std::string>& symbols)
-    : symbol_list_{symbols}, api_key_{api_key}, host_{host}, port_{port}, websocket_prefix_{prefix},
-        ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+Tiingo::Tiingo(const std::string& host, const std::string& port, const std::string& prefix, const std::string& api_key,
+               const std::vector<std::string>& symbols)
+    : symbol_list_{symbols},
+      api_key_{api_key},
+      host_{host},
+      port_{port},
+      websocket_prefix_{prefix},
+      ctx_{ssl::context::tlsv12_client},
+      resolver_{ioc_},
+      ws_{ioc_, ctx_}
 {
-}  // -----  end of method Tiingo::Tiingo  (constructor)  ----- 
+}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
 
 void Tiingo::Connect()
 {
@@ -77,12 +81,10 @@ void Tiingo::Connect()
     auto ep = net::connect(get_lowest_layer(ws_), results);
 
     // Set SNI Hostname (many hosts need this to handshake successfully)
-    if(! SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
+    if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
     {
         throw beast::system_error(
-            beast::error_code(
-                static_cast<int>(::ERR_get_error()),
-                net::error::get_ssl_category()),
+            beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
             "Failed to set SNI Hostname");
     }
 
@@ -91,16 +93,15 @@ void Tiingo::Connect()
     // See https://tools.ietf.org/html/rfc7230#section-5.4
     auto host = host_ + ':' + std::to_string(ep.port());
 
-//    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    //    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
     // set timeout options so we don't hang forever if the
-    // exchange is closed. 
+    // exchange is closed.
 
-    beast::websocket::stream_base::timeout opt
-    {
-        std::chrono::seconds(30),   // handshake timeout
-        std::chrono::seconds(20),   // idle timeout
-        true                        // enable keep-alive pings
+    beast::websocket::stream_base::timeout opt{
+        std::chrono::seconds(30),  // handshake timeout
+        std::chrono::seconds(20),  // idle timeout
+        true                       // enable keep-alive pings
     };
 
     ws_.set_option(opt);
@@ -111,14 +112,12 @@ void Tiingo::Connect()
     // Perform the websocket handshake
     ws_.handshake(host, websocket_prefix_);
     BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
-
 }
 
 void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
-
     // put this here for now.
-    // need to manually construct to get expected formate when serialized 
+    // need to manually construct to get expected formate when serialized
 
     Json::Value connection_request;
     connection_request["eventName"] = "subscribe";
@@ -129,13 +128,13 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
     {
         tickers.append(symbol);
     }
-    
+
     connection_request["eventData"]["tickers"] = tickers;
 
     Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";        // compact printing and string formatting 
+    builder["indentation"] = "";  // compact printing and string formatting
     const std::string connection_request_str = Json::writeString(builder, connection_request);
-//    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
+    //    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
 
     // Send the message
     ws_.write(net::buffer(connection_request_str));
@@ -143,12 +142,12 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
 
-    while(ws_.is_open())
+    while (ws_.is_open())
     {
         buffer.clear();
         ws_.read(buffer);
         std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-        if (! buffer_content.empty())
+        if (!buffer_content.empty())
         {
             const std::lock_guard<std::mutex> queue_lock(*data_mutex);
             streamed_data->push(std::move(buffer_content));
@@ -156,13 +155,13 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
         if (*had_signal == true)
         {
             StopStreaming();
-            
+
             // do a last check for data
 
             buffer.clear();
             ws_.read(buffer);
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-            if (! buffer_content.empty())
+            if (!buffer_content.empty())
             {
                 const std::lock_guard<std::mutex> queue_lock(*data_mutex);
                 streamed_data->push(std::move(buffer_content));
@@ -170,25 +169,25 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
             break;
         }
     }
-    // if the websocket is closed on the server side or there is a timeout which in turn 
-    // will cause the websocket to be closed, let's set this flag so other processes which 
+    // if the websocket is closed on the server side or there is a timeout which in turn
+    // will cause the websocket to be closed, let's set this flag so other processes which
     // may be watching it can know.
 
-    if (! ws_.is_open())
+    if (!ws_.is_open())
     {
         *had_signal = true;
     }
-}		// -----  end of method Tiingo::StreamData  ----- 
+}  // -----  end of method Tiingo::StreamData  -----
 
-Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
+Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
 {
-//    std::cout << "\nraw buffer: " << buffer << '\n';
+    //    std::cout << "\nraw buffer: " << buffer << '\n';
 
-    const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"}; 
-    const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"}; 
+    const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
+    const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
     const std::string string_trade_price{R"***($1"$2",)***"};
-    auto zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
-//    std::cout << "\nzapped buffer: " << zapped_buffer << '\n';
+    const std::string zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
+    //    std::cout << "\nzapped buffer: " << zapped_buffer << '\n';
 
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
@@ -197,12 +196,12 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
 
     Json::CharReaderBuilder builder;
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-//    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
-    if (! reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
+    //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+    if (!reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
     {
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
-//    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
+    //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
     StreamedData pf_data;
 
@@ -218,7 +217,7 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
         // extract our data
 
         std::smatch m;
-        if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); ! found_it)
+        if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
         {
             std::cout << "can't find trade price in buffer: " << buffer << '\n';
         }
@@ -233,15 +232,15 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
             new_value.last_price_ = decimal::Decimal{m[1].str()};
             new_value.last_size_ = data[10].asInt();
 
-            pf_data.push_back(std::move(new_value));        
+            pf_data.push_back(std::move(new_value));
         }
 
-//        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ << '\n';
+        //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ << '\n';
     }
     else if (message_type == "I")
     {
         subscription_id_ = response["data"]["subscriptionId"].asString();
-//        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+        //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
         return pf_data;
     }
     else if (message_type == "H")
@@ -256,9 +255,9 @@ Tiingo::StreamedData Tiingo::ExtractData (const std::string& buffer)
     }
 
     return pf_data;
-}		// -----  end of method Tiingo::ExtractData  ----- 
+}  // -----  end of method Tiingo::ExtractData  -----
 
-void Tiingo::StopStreaming ()
+void Tiingo::StopStreaming()
 {
     // we need to send the unsubscribe message in a separate connection.
 
@@ -271,15 +270,15 @@ void Tiingo::StopStreaming ()
     {
         tickers.append(symbol);
     }
-    
+
     disconnect_request["eventData"]["tickers"] = tickers;
 
     Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";        // compact printing and string formatting 
+    builder["indentation"] = "";  // compact printing and string formatting
     const std::string disconnect_request_str = Json::writeString(builder, disconnect_request);
-//    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
+    //    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
 
-    // just grab the code from the example program 
+    // just grab the code from the example program
 
     net::io_context ioc;
     ssl::context ctx{ssl::context::tlsv12_client};
@@ -294,12 +293,10 @@ void Tiingo::StopStreaming ()
 
     auto ep = net::connect(get_lowest_layer(ws), results);
 
-    if(! SSL_set_tlsext_host_name(ws.next_layer().native_handle(), host.c_str()))
+    if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(), host.c_str()))
     {
         throw beast::system_error(
-            beast::error_code(
-                static_cast<int>(::ERR_get_error()),
-                net::error::get_ssl_category()),
+            beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
             "Failed to set SNI Hostname");
     }
 
@@ -309,20 +306,15 @@ void Tiingo::StopStreaming ()
 
     ws.set_option(websocket::stream_base::decorator(
         [](websocket::request_type& req)
-        {
-            req.set(http::field::user_agent,
-                std::string(BOOST_BEAST_VERSION_STRING) +
-                    " websocket-client-coro");
-        }));
+        { req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro"); }));
 
     // set timeout options so we don't hang forever if the
-    // exchange is closed. 
+    // exchange is closed.
 
-    beast::websocket::stream_base::timeout opt
-    {
-        std::chrono::seconds(30),   // handshake timeout
-        std::chrono::seconds(20),   // idle timeout
-        true                        // enable keep-alive pings
+    beast::websocket::stream_base::timeout opt{
+        std::chrono::seconds(30),  // handshake timeout
+        std::chrono::seconds(20),  // idle timeout
+        true                       // enable keep-alive pings
     };
 
     ws.set_option(opt);
@@ -338,16 +330,16 @@ void Tiingo::StopStreaming ()
     try
     {
         beast::close_socket(get_lowest_layer(ws));
-//        ws.close(websocket::close_code::normal);
+        //        ws.close(websocket::close_code::normal);
     }
     catch (std::exception& e)
     {
         std::cout << "Problem closing socket after clearing streaming symbols."s + e.what() << '\n';
     }
 
-//    std::cout << beast::make_printable(buffer.data()) << std::endl;
- 
-}		// -----  end of method Tiingo::StopStreaming  ----- 
+    //    std::cout << beast::make_printable(buffer.data()) << std::endl;
+
+}  // -----  end of method Tiingo::StopStreaming  -----
 
 void Tiingo::Disconnect()
 {
@@ -355,7 +347,7 @@ void Tiingo::Disconnect()
 
     try
     {
-//        ws_.close(websocket::close_code::normal);
+        //        ws_.close(websocket::close_code::normal);
         beast::close_socket(get_lowest_layer(ws_));
     }
     catch (std::exception& e)
@@ -364,7 +356,7 @@ void Tiingo::Disconnect()
     }
 }
 
-Json::Value Tiingo::GetTopOfBookAndLastClose ()
+Json::Value Tiingo::GetTopOfBookAndLastClose()
 {
     // using the REST API for iex.
 
@@ -373,7 +365,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
     tcp::resolver resolver(ioc_);
     beast::ssl_stream<beast::tcp_stream> stream(ioc_, ctx_);
 
-    if(! SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
+    if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
     {
         beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
         throw beast::system_error{ec};
@@ -383,8 +375,8 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
     beast::get_lowest_layer(stream).connect(results);
     stream.handshake(ssl::stream_base::client);
 
-    // we use our custom formatter for year_month_day objects because converting to sys_days 
-    // and then formatting changes the date (becomes a day earlier) for some reason (time zone 
+    // we use our custom formatter for year_month_day objects because converting to sys_days
+    // and then formatting changes the date (becomes a day earlier) for some reason (time zone
     // related maybe?? )
 
     std::string symbols;
@@ -396,7 +388,8 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
         symbols += *s;
     }
 
-    const std::string request = std::format("https://{}{}/?tickers={}&token={}", host_, websocket_prefix_, symbols, api_key_);
+    const std::string request =
+        std::format("https://{}{}/?tickers={}&token={}", host_, websocket_prefix_, symbols, api_key_);
 
     http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
     req.set(http::field::host, host_);
@@ -416,56 +409,60 @@ Json::Value Tiingo::GetTopOfBookAndLastClose ()
     beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
 
-//    std::cout << "raw data: " << result << '\n';
+    //    std::cout << "raw data: " << result << '\n';
 
     // I need to convert some numeric fields to string fields so they
     // won't be converted to floats and give me a bunch of extra decimal digits.
     // These values are nicely rounded by Tiingo.
 
-    const std::regex source{R"***("(open|prevClose|last)":([0-9]*\.[0-9]*))***"}; 
+    const std::regex source{R"***("(open|prevClose|last)":([0-9]*\.[0-9]*))***"};
     const std::string dest{R"***("$1":"$2")***"};
-    auto result1 = std::regex_replace(result, source, dest);
+    const std::string result1 = std::regex_replace(result, source, dest);
 
-//    std::cout << "modified data: " << result1 << '\n';
+    //    std::cout << "modified data: " << result1 << '\n';
 
-    // now, just convert to JSON 
+    // now, just convert to JSON
 
     JSONCPP_STRING err;
     Json::Value response;
 
     Json::CharReaderBuilder builder;
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    if (! reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
+    if (!reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
     {
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
     return response;
-}		// -----  end of method Tiingo::GetTopOfBookAndLastClose  ----- 
+}  // -----  end of method Tiingo::GetTopOfBookAndLastClose  -----
 
-std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol, std::chrono::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays)
+std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol,
+                                                             std::chrono::year_month_day start_from,
+                                                             int how_many_previous, UseAdjusted use_adjusted,
+                                                             const US_MarketHolidays* holidays)
 {
-    // we need to do some date arithmetic so we can use our basic 'GetTickerData' method. 
+    // we need to do some date arithmetic so we can use our basic 'GetTickerData' method.
 
     auto business_days = ConstructeBusinessDayRange(start_from, how_many_previous, UpOrDown::e_Down, holidays);
-//    std::cout << "business days: " << business_days.first << " : " << business_days.second << '\n';
+    //    std::cout << "business days: " << business_days.first << " : " << business_days.second << '\n';
 
-    // we reverse the dates because we worked backwards from our given starting point and 
-    // Tiingo needs the dates in ascending order. 
+    // we reverse the dates because we worked backwards from our given starting point and
+    // Tiingo needs the dates in ascending order.
 
     const auto ticker_data = GetTickerData(symbol, business_days.second, business_days.first, UpOrDown::e_Down);
 
     return ConvertJSONPriceHistory(symbol, ticker_data, how_many_previous, use_adjusted);
 
-}		// -----  end of method Tiingo::GetMostRecentTickerData  ----- 
+}  // -----  end of method Tiingo::GetMostRecentTickerData  -----
 
-Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date, std::chrono::year_month_day end_date, UpOrDown sort_asc)
+Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
+                                  std::chrono::year_month_day end_date, UpOrDown sort_asc)
 {
     // if any problems occur here, we'll just let beast throw an exception.
 
     tcp::resolver resolver(ioc_);
     beast::ssl_stream<beast::tcp_stream> stream(ioc_, ctx_);
 
-    if(! SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
+    if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
     {
         beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
         throw beast::system_error{ec};
@@ -475,12 +472,13 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     beast::get_lowest_layer(stream).connect(results);
     stream.handshake(ssl::stream_base::client);
 
-    // we use our custom formatter for year_month_day objects because converting to sys_days 
-    // and then formatting changes the date (becomes a day earlier) for some reason (time zone 
+    // we use our custom formatter for year_month_day objects because converting to sys_days
+    // and then formatting changes the date (becomes a day earlier) for some reason (time zone
     // related maybe?? )
 
-    const std::string request = std::format("https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
-            host_, symbol, start_date, end_date, api_key_, "json", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
+    const std::string request = std::format(
+        "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host_,
+        symbol, start_date, end_date, api_key_, "json", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
 
     http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
     req.set(http::field::host, host_);
@@ -500,30 +498,28 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
 
-//    std::cout << "raw data: " << result << '\n';
+    //    std::cout << "raw data: " << result << '\n';
 
     // I need to convert some numeric fields to string fields so they
     // won't be converted to floats and give me a bunch of extra decimal digits.
     // These values are nicely rounded by Tiingo.
 
-    const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":\s*([0-9]*\.[0-9]*))***"}; 
+    const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":\s*([0-9]*\.[0-9]*))***"};
     const std::string dest{R"***("$1":"$2")***"};
-    auto result1 = std::regex_replace(result, source, dest);
+    const std::string result1 = std::regex_replace(result, source, dest);
 
-   // std::cout << "modified data: " << result1 << '\n';
+    // std::cout << "modified data: " << result1 << '\n';
 
-    // now, just convert to JSON 
+    // now, just convert to JSON
 
     JSONCPP_STRING err;
     Json::Value response;
 
     Json::CharReaderBuilder builder;
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    if (! reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
+    if (!reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
     {
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
     return response;
-}		// -----  end of method Tiingo::GetTickerData  ----- 
-
-
+}  // -----  end of method Tiingo::GetTickerData  -----
