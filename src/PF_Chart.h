@@ -284,9 +284,9 @@ class PF_Chart
         PF_CollectAndReturnStreamedPrices return_streamed_data = PF_CollectAndReturnStreamedPrices::e_no);
 
     std::optional<StreamedPrices> BuildChartFromPricesDB(
-    const PF_DB::DB_Params &db_params, std::string_view symbol, std::string_view begin_date,
-    std::string_view price_fld_name,
-    PF_CollectAndReturnStreamedPrices return_streamed_data);
+        const PF_DB::DB_Params &db_params, std::string_view symbol, std::string_view begin_date,
+        std::string_view end_date, std::string_view price_fld_name,
+        PF_CollectAndReturnStreamedPrices return_streamed_data = PF_CollectAndReturnStreamedPrices::e_no);
 
     void SetMaxGraphicColumns(int64_t max_cols) { max_columns_for_graph_ = max_cols; }
 

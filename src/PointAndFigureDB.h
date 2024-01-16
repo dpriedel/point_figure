@@ -74,7 +74,12 @@ class PF_DB
 
     // ====================  LIFECYCLE     =======================================
     PF_DB() = default;  // constructor
+    PF_DB(const PF_DB& pf_db) = default;
+    PF_DB(PF_DB&& pf_db) = default;
+
     explicit PF_DB(DB_Params db_params);
+
+    ~PF_DB() = default;
     // ====================  ACCESSORS     =======================================
 
     [[nodiscard]] std::vector<std::string> ListExchanges() const;
@@ -97,6 +102,7 @@ class PF_DB
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsInList(
         const std::vector<std::string>& symbol_list, std::string_view begin_date, std::string_view end_date,
         std::string_view price_fld_name, const char* date_format) const;
+
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange(
         std::string_view exchange, std::string_view begin_date, std::string_view end_date,
         std::string_view price_fld_name, const char* date_format, std::string_view min_closing_price,
@@ -115,6 +121,9 @@ class PF_DB
     // ====================  MUTATORS      =======================================
 
     // ====================  OPERATORS     =======================================
+
+    PF_DB& operator=(const PF_DB& rhs) = default;
+    PF_DB& operator=(PF_DB&& rhs) = default;
 
    protected:
     // ====================  METHODS       =======================================

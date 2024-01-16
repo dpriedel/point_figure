@@ -444,6 +444,7 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromCSVFile(const std::string 
 
 std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
     const PF_DB::DB_Params &db_params, std::string_view symbol, std::string_view begin_date,
+    std::string_view end_date,
     std::string_view price_fld_name,
     PF_CollectAndReturnStreamedPrices return_streamed_data)
 {
@@ -454,10 +455,13 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
     PF_DB prices_db{db_params};
     pqxx::connection c{std::format("dbname={} user={}", db_params.db_name_, db_params.user_name_)};
 
+    std::string date_range = end_date.empty()
+                                 ? std::format("date >= {}", c.quote(begin_date))
+                                 : std::format("date BETWEEN {} and {}", c.quote(begin_date), c.quote(end_date));
+
     std::string get_symbol_prices_cmd = std::format(
-        "SELECT date, {} FROM {} WHERE symbol = {} AND date >= "
-        "{} ORDER BY date ASC",
-        price_fld_name, db_params.stock_db_data_source_, c.quote(symbol), c.quote(begin_date));
+        "SELECT date, {} FROM {} WHERE symbol = {} AND {} ORDER BY date ASC",
+        price_fld_name, db_params.stock_db_data_source_, c.quote(symbol), date_range);
 
     // right now, DB only has eod data.
 
@@ -514,7 +518,7 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(PF_ColumnFilter which_colum
 {
     ColumnBoxList result;
 
-    const auto column_filter = rng::views::filter(
+    auto column_filter = rng::views::filter(
         [&which_columns, this](const auto &col)
         {
             using enum PF_ColumnFilter;
@@ -559,7 +563,7 @@ PF_Chart::ColumnTopBottomList PF_Chart::GetTopBottomForColumns(PF_ColumnFilter w
 {
     ColumnTopBottomList result;
 
-    const auto column_filter = rng::views::filter(
+    auto column_filter = rng::views::filter(
         [&which_columns, this](const auto &col)
         {
             using enum PF_ColumnFilter;
@@ -676,7 +680,8 @@ void PF_Chart::ConvertChartToTableAndWriteToStream(std::ostream &stream, X_AxisF
     std::string header_record{"date\topen\tlow\thigh\tclose\tcolor\tindex\n"};
     stream.write(header_record.data(), header_record.size());
 
-    for (const auto &col : *this | vws::drop(skipped_columns))
+    auto filter_skipped_cols = *this | vws::drop(skipped_columns);
+    for (const auto &col : filter_skipped_cols)
     {
         auto next_row = std::format(
             row_template,
