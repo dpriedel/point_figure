@@ -148,7 +148,7 @@ class PF_CollectDataApp
    private:
     static void HandleSignal(int signal);
 
-    void ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, const std::string &ticker);
+    void ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, std::string ticker);
 
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
 

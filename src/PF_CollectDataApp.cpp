@@ -54,7 +54,9 @@ namespace vws = std::ranges::views;
 
 #include <date/chrono_io.h>
 #include <date/tz.h>
+#include <fmt/format.h>
 #include <fmt/ranges.h>
+
 // #include <pybind11/embed.h>
 // #include <pybind11/gil.h>
 #include <spdlog/async.h>
@@ -266,11 +268,11 @@ bool PF_CollectDataApp::CheckArgs()
 
     // validate our dates, if any
 
-    if (! begin_date_.empty())
+    if (!begin_date_.empty())
     {
         auto ymd = StringToDateYMD("%F", begin_date_);
     }
-    if (! end_date_.empty())
+    if (!end_date_.empty())
     {
         auto ymd = StringToDateYMD("%F", end_date_);
     }
@@ -1134,7 +1136,6 @@ Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) c
     return atr;
 }  // -----  end of method PF_CollectDataApp::ComputeATRUsingDB  -----
 
-
 void PF_CollectDataApp::PrimeChartsForStreaming()
 {
     // for streaming, we want to retrieve the previous day's close and, if the
@@ -1384,7 +1385,7 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
 
 }  // -----  end of method PF_CollectDataApp::ProcessStreamedData  -----
 
-void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, const std::string &ticker)
+void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, std::string ticker)
 {
     std::vector<PF_Chart *> need_to_update_graph;
 
@@ -1392,8 +1393,9 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
     // new value to all appropriate charts so we find all the charts for each
     // symbol and give each a chance at the new data.
 
-    for (const auto &new_value :
-         updates | vws::filter([&ticker](const auto &update) { return update.ticker_ == ticker; }))
+    auto filter_updates_for_ticker =
+        updates | vws::filter([&ticker](const auto &update) { return update.ticker_ == ticker; });
+    for (const auto &new_value : filter_updates_for_ticker)
     {
         rng::for_each(
             charts_ | vws::filter([&ticker](const auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
@@ -1599,8 +1601,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInFiles()
                 "Problem in shutdown: {} for chart: {}.\nTrying to "
                 "complete "
                 "shutdown.",
-                e.what(),
-                chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
+                e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
         }
     }
 }  // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInFiles  -----
