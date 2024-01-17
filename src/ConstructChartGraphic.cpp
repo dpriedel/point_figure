@@ -432,7 +432,6 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
             case e_triple_bottom_sell:
                 data_arrays.tb_sells_price_.emplace_back(dec2dbl(sig.signal_price_));
                 data_arrays.tb_sells_x_.emplace_back(sig.column_number_ - skipped_columns);
-                std::cout << fmt::format("{}", data_arrays.tb_sells_price_) << '\n';
                 break;
             case e_bullish_tt_buy:
                 data_arrays.bullish_tt_buys_price_.emplace_back(dec2dbl(sig.signal_price_));
@@ -626,7 +625,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
     if (!data_arrays.tb_sells_price_.empty())
     {
         the_graphic->addScatterLayer(DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
-                                     DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.dt_buys_price_.size()),
+                                     DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()),
                                      "tb sell", tb_sell_sym, k13, BLACK);
     }
 
