@@ -21,6 +21,7 @@
 #include <mutex>
 #include <ranges>
 #include <regex>
+#include <spdlog/spdlog.h>
 #include <string_view>
 
 namespace rng = std::ranges;
@@ -181,13 +182,13 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
 
 Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
 {
-    //    std::cout << "\nraw buffer: " << buffer << '\n';
+    // std::cout << "\nraw buffer: " << buffer << std::endl;
 
     const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
     const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
     const std::string string_trade_price{R"***($1"$2",)***"};
     const std::string zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
-       // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
+    // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
@@ -205,53 +206,108 @@ Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
 
     StreamedData pf_data;
 
-    auto message_type = response["messageType"];
-    if (message_type == "A")
+    // each response buffer can contain multiple responses each with a different response
+    // type and content.  We need to process everything we got.
+
+    if (response.isArray())
     {
-        auto data = response["data"];
-
-        if (data[0] != "T")
+        for (const auto& message : response)
         {
-            return pf_data;
+            auto message_type = message["messageType"];
+            if (message_type == "A")
+            {
+                auto data = message["data"];
+
+                if (data[0] != "T")
+                {
+                    continue;
+                }
+                // extract our data
+
+                std::smatch m;
+                if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
+                {
+                    std::cout << "can't find trade price in buffer: " << buffer << '\n';
+                }
+                else
+                {
+                    PF_Data new_value;
+                    new_value.subscription_id_ = subscription_id_;
+                    new_value.time_stamp_ = data[1].asCString();
+                    new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
+                    new_value.ticker_ = data[3].asCString();
+                    rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+                    new_value.last_price_ = decimal::Decimal{m[1].str()};
+                    new_value.last_size_ = data[10].asInt();
+
+                    pf_data.push_back(std::move(new_value));
+                }
+
+                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
+                //        << '\n';
+            }
+            else if (message_type == "I")
+            {
+                subscription_id_ = message["data"]["subscriptionId"].asString();
+                //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+            }
+            else if (message_type == "H")
+            {
+                // heartbeat , just return
+
+                continue;
+            }
+            else
+            {
+                spdlog::error("unexpected message type.");
+            }
         }
-        // extract our data
-
-        std::smatch m;
-        if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
-        {
-            std::cout << "can't find trade price in buffer: " << buffer << '\n';
-        }
-        else
-        {
-            PF_Data new_value;
-            new_value.subscription_id_ = subscription_id_;
-            new_value.time_stamp_ = data[1].asCString();
-            new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-            new_value.ticker_ = data[3].asCString();
-            rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-            new_value.last_price_ = decimal::Decimal{m[1].str()};
-            new_value.last_size_ = data[10].asInt();
-
-            pf_data.push_back(std::move(new_value));
-        }
-
-        //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ << '\n';
-    }
-    else if (message_type == "I")
-    {
-        subscription_id_ = response["data"]["subscriptionId"].asString();
-        //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-        return pf_data;
-    }
-    else if (message_type == "H")
-    {
-        // heartbeat , just return
-
-        return pf_data;
     }
     else
     {
-        throw std::runtime_error("unexpected message type: "s + message_type.asCString());
+        auto message_type = response["messageType"];
+        if (message_type == "A")
+        {
+            auto data = response["data"];
+
+            if (data[0] == "T")
+            {
+                std::smatch m;
+                if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
+                {
+                    std::cout << "can't find trade price in buffer: " << buffer << '\n';
+                }
+                else
+                {
+                    PF_Data new_value;
+                    new_value.subscription_id_ = subscription_id_;
+                    new_value.time_stamp_ = data[1].asCString();
+                    new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
+                    new_value.ticker_ = data[3].asCString();
+                    rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+                    new_value.last_price_ = decimal::Decimal{m[1].str()};
+                    new_value.last_size_ = data[10].asInt();
+
+                    pf_data.push_back(std::move(new_value));
+                }
+
+                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ <<
+                //        '\n';
+            }
+        }
+        else if (message_type == "I")
+        {
+            subscription_id_ = response["data"]["subscriptionId"].asString();
+            //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+        }
+        else if (message_type == "H")
+        {
+            // heartbeat , just return
+        }
+        else
+        {
+            spdlog::error("unexpected message type.");
+        }
     }
     return pf_data;
 }  // -----  end of method Tiingo::ExtractData  -----
