@@ -84,8 +84,7 @@ class PF_DB
 
     [[nodiscard]] std::vector<std::string> ListExchanges() const;
     [[nodiscard]] std::vector<std::string> ListSymbolsOnExchange(std::string_view exchange,
-                                                                 std::string_view min_closing_price,
-                                                                 int64_t min_closing_volume) const;
+                                                                 std::string_view min_dollar_price) const;
 
     [[nodiscard]] Json::Value GetPFChartData(std::string_view file_name) const;
     [[nodiscard]] std::vector<PF_Chart> RetrieveAllEODChartsForSymbol(std::string_view symbol) const;
@@ -105,8 +104,7 @@ class PF_DB
 
     [[nodiscard]] std::vector<MultiSymbolDateCloseRecord> GetPriceDataForSymbolsOnExchange(
         std::string_view exchange, std::string_view begin_date, std::string_view end_date,
-        std::string_view price_fld_name, const char* date_format, std::string_view min_closing_price,
-        int64_t min_closing_volume) const;
+        std::string_view price_fld_name, const char* date_format, std::string_view min_dollar_price) const;
 
     [[nodiscard]] decimal::Decimal ComputePriceRangeForSymbolFromDB(std::string_view symbol,
                                                                     std::string_view begin_date,
