@@ -16,6 +16,8 @@
 // the guts of this code comes from the examples distributed by Boost.
 
 #include <algorithm>
+#include <chrono>
+#include <exception>
 #include <format>
 #include <iostream>
 #include <mutex>
@@ -33,6 +35,7 @@ namespace vws = std::ranges::views;
 #include "utilities.h"
 
 using namespace std::string_literals;
+using namespace std::chrono_literals;
 
 //--------------------------------------------------------------------------------------
 //       Class:  Tiingo
@@ -142,31 +145,73 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
 
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
+    boost::system::error_code ec;
 
     while (ws_.is_open())
     {
-        buffer.clear();
-        ws_.read(buffer);
-        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-        if (!buffer_content.empty())
+        try
         {
-            const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-            streamed_data->push(std::move(buffer_content));
-        }
-        if (*had_signal == true)
-        {
-            StopStreaming();
-
-            // do a last check for data
-
             buffer.clear();
-            ws_.read(buffer);
+            ws_.read(buffer, ec);
+            if (ec == boost::asio::error::eof)
+            {
+                spdlog::info("EOF on websocket read. Trying again.");
+                std::this_thread::sleep_for(2ms);
+                // try reading some more
+
+                ec = {};
+                continue;
+            }
+            if (ec)
+            {
+                throw std::system_error{ec};
+            }
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
             if (!buffer_content.empty())
             {
                 const std::lock_guard<std::mutex> queue_lock(*data_mutex);
                 streamed_data->push(std::move(buffer_content));
             }
+            if (*had_signal)
+            {
+                StopStreaming(had_signal);
+
+                // do a last check for data
+
+                buffer.clear();
+                ws_.read(buffer);
+                std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+                if (!buffer_content.empty())
+                {
+                    const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+                    streamed_data->push(std::move(buffer_content));
+                }
+                break;
+            }
+        }
+        catch (std::system_error& e)
+        {
+            // any system problems, we close the socket and force our way out
+
+            auto ec = e.code();
+            spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
+                                      ec.value(), ec.message()));
+            *had_signal = true;
+            beast::close_socket(get_lowest_layer(ws_));
+            break;
+        }
+        catch (std::exception& e)
+        {
+            spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
+            *had_signal = true;
+            beast::close_socket(get_lowest_layer(ws_));
+            break;
+        }
+        catch (...)
+        {
+            spdlog::error("Unknown problem processing steamed data.");
+            *had_signal = true;
+            beast::close_socket(get_lowest_layer(ws_));
             break;
         }
     }
@@ -291,7 +336,8 @@ Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
                     pf_data.push_back(std::move(new_value));
                 }
 
-                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_ <<
+                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
+                //        <<
                 //        '\n';
             }
         }
@@ -312,7 +358,7 @@ Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
     return pf_data;
 }  // -----  end of method Tiingo::ExtractData  -----
 
-void Tiingo::StopStreaming()
+void Tiingo::StopStreaming(bool* had_signal)
 {
     // we need to send the unsubscribe message in a separate connection.
 
@@ -392,6 +438,8 @@ void Tiingo::StopStreaming()
         std::cout << "Problem closing socket after clearing streaming symbols."s + e.what() << '\n';
     }
 
+    *had_signal = true;
+
     //    std::cout << beast::make_printable(buffer.data()) << std::endl;
 
 }  // -----  end of method Tiingo::StopStreaming  -----
@@ -446,7 +494,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose()
     const std::string request =
         std::format("https://{}{}/?tickers={}&token={}", host_, websocket_prefix_, symbols, api_key_);
 
-    http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
+    http::request<http::string_body> req{http::verb::get, request, version_};
     req.set(http::field::host, host_);
     req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 

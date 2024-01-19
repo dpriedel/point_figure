@@ -93,7 +93,7 @@ public:
     void Connect();
     void Disconnect();
     void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
-    void StopStreaming();
+    void StopStreaming(bool* had_signal);
 
     // ====================  OPERATORS     ======================================= 
 
