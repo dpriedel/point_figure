@@ -1471,20 +1471,27 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
             charts_ | vws::filter([&ticker](const auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
             [this, &need_to_update_graph, &new_value, &ticker](auto &symbol_and_chart)
             {
-                auto chart_changed = symbol_and_chart.second.AddValue(
+                try
+                {
+                    auto chart_changed = symbol_and_chart.second.AddValue(
                     new_value.last_price_,
                     PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
-                if (chart_changed != PF_Column::Status::e_Ignored)
-                {
-                    need_to_update_graph.push_back(&symbol_and_chart.second);
-                }
-                const auto chart_name = symbol_and_chart.second.GetChartBaseName();
-                streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
-                streamed_prices_[chart_name].price_.push_back(dec2dbl(new_value.last_price_));
-                streamed_prices_[chart_name].signal_type_.push_back(
-                    chart_changed == PF_Column::Status::e_AcceptedWithSignal
+                    if (chart_changed != PF_Column::Status::e_Ignored)
+                    {
+                        need_to_update_graph.push_back(&symbol_and_chart.second);
+                    }
+                    const auto chart_name = symbol_and_chart.second.GetChartBaseName();
+                    streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
+                    streamed_prices_[chart_name].price_.push_back(dec2dbl(new_value.last_price_));
+                    streamed_prices_[chart_name].signal_type_.push_back(
+                        chart_changed == PF_Column::Status::e_AcceptedWithSignal
                         ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
                         : 0);
+                }
+                catch (std::exception &e)
+                {
+                    spdlog::error("Problem adding streamed value to chart for symbol: "s += ticker += " "s += e.what());
+                }
             });
     }
 
@@ -1497,13 +1504,19 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
 
     for (const PF_Chart *chart : need_to_update_graph)
     {
-        // py::gil_scoped_acquire gil{};
-        fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-        ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
-                                                trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+        try
+        {
+            fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
+            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
+                                                    trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
-        fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
-        chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
+            fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
+            chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
+         }
+        catch (std::exception &e)
+        {
+            spdlog::error("Problem creating graphic for updated streamed value: "s += chart->GetChartBaseName() += " "s += e.what());
+        }
     }
 }  // -----  end of method PF_CollectDataApp::ProcessUpdatesForSymbol  -----
 
