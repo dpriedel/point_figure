@@ -97,18 +97,18 @@ void Tiingo::Connect()
     // See https://tools.ietf.org/html/rfc7230#section-5.4
     auto host = host_ + ':' + std::to_string(ep.port());
 
-    //    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+   ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
     // set timeout options so we don't hang forever if the
     // exchange is closed.
 
-    beast::websocket::stream_base::timeout opt{
-        std::chrono::seconds(30),  // handshake timeout
-        std::chrono::seconds(20),  // idle timeout
-        true                       // enable keep-alive pings
-    };
-
-    ws_.set_option(opt);
+    // beast::websocket::stream_base::timeout opt{
+    //     std::chrono::seconds(30),  // handshake timeout
+    //     std::chrono::seconds(20),  // idle timeout
+    //     true                       // enable keep-alive pings
+    // };
+    //
+    // ws_.set_option(opt);
 
     // Perform the SSL handshake
     ws_.next_layer().handshake(ssl::stream_base::client);
@@ -145,27 +145,14 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
 
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
-    boost::system::error_code ec;
 
     while (ws_.is_open())
     {
         try
         {
             buffer.clear();
-            ws_.read(buffer, ec);
-            if (ec == boost::asio::error::eof)
-            {
-                spdlog::info("EOF on websocket read. Trying again.");
-                std::this_thread::sleep_for(2ms);
-                // try reading some more
-
-                ec = {};
-                continue;
-            }
-            if (ec)
-            {
-                throw std::system_error{ec};
-            }
+            ws_.read(buffer);
+            ws_.text(ws_.got_text());
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
             if (!buffer_content.empty())
             {
@@ -194,26 +181,37 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
             // any system problems, we close the socket and force our way out
 
             auto ec = e.code();
+            if (ec.value() == boost::asio::error::eof)
+            {
+                spdlog::info("EOF on websocket read. Trying again.");
+                std::this_thread::sleep_for(2ms);
+                // try reading some more
+                continue;
+            }
             spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
                                       ec.value(), ec.message()));
             *had_signal = true;
-            beast::close_socket(get_lowest_layer(ws_));
+            // beast::close_socket(get_lowest_layer(ws_));
+            ws_.close(websocket::close_code::going_away);
             break;
         }
         catch (std::exception& e)
         {
             spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
             *had_signal = true;
-            beast::close_socket(get_lowest_layer(ws_));
+            // beast::close_socket(get_lowest_layer(ws_));
+            ws_.close(websocket::close_code::going_away);
             break;
         }
         catch (...)
         {
             spdlog::error("Unknown problem processing steamed data.");
             *had_signal = true;
-            beast::close_socket(get_lowest_layer(ws_));
+            // beast::close_socket(get_lowest_layer(ws_));
+            ws_.close(websocket::close_code::going_away);
             break;
         }
+        buffer.consume(buffer.size());
     }
     // if the websocket is closed on the server side or there is a timeout which in turn
     // will cause the websocket to be closed, let's set this flag so other processes which
@@ -430,7 +428,8 @@ void Tiingo::StopStreaming(bool* had_signal)
 
     try
     {
-        beast::close_socket(get_lowest_layer(ws));
+        // beast::close_socket(get_lowest_layer(ws));
+        ws.close(websocket::close_code::normal);
         //        ws.close(websocket::close_code::normal);
     }
     catch (std::exception& e)
@@ -450,8 +449,8 @@ void Tiingo::Disconnect()
 
     try
     {
-        //        ws_.close(websocket::close_code::normal);
-        beast::close_socket(get_lowest_layer(ws_));
+        // beast::close_socket(get_lowest_layer(ws_));
+        ws_.close(websocket::close_code::normal);
     }
     catch (std::exception& e)
     {
