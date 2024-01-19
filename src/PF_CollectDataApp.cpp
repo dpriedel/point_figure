@@ -531,7 +531,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
 
 		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s) for daily-scan and bulk loads from database. Default is: not specified.")
-		("min-close-price",	    po::value<std::string>(&this->min_close_price_)->default_value("5.00"),	"Minimum closing price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
+		("min-dollar-price",	po::value<std::string>(&this->min_dollar_price_)->default_value("100000"),	"Minimum dollar volue price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
 		("min-close-volume",    po::value<int64_t>(&this->min_close_volume_)->default_value(100'000),	"Minimum closing volume for a symbol to filter small stocks from daily-scan and bulk loads. Default is 100'000")
 
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
@@ -713,11 +713,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 
         for (const auto &xchng : exchange_list_)
         {
-            spdlog::info(
-                std::format("Building charts for symbols on xchng: {} with adjusted close >= {} and volume >= {}.",
-                            xchng, min_close_price_, min_close_volume_));
+            spdlog::info(std::format("Building charts for symbols on xchng: {} with minimum dollar volume >= {}.",
+                                     xchng, min_dollar_price_));
 
-            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_close_price_, min_close_volume_);
+            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_dollar_price_);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
             total_symbols_processed += std::get<0>(counts);
             total_charts_processed += std::get<1>(counts);
@@ -1005,20 +1004,40 @@ void PF_CollectDataApp::Run_Streaming()
         std::cout << "Market not open for trading YET so we'll wait." << std::endl;
     }
 
+    std::map<std::string, decimal::Decimal> atrs;  // table for memoization of ATR
+
     for (const auto &val : params)
     {
         const auto &symbol = std::get<PF_Chart::e_symbol>(val);
-        auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
-        PF_Chart new_chart;
-        if (use_ATR_)
+        try
         {
-            new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            PF_Chart new_chart;
+            // compute ATR once per symbol
+            decimal::Decimal atr;
+            if (use_ATR_)
+            {
+                if (atrs.contains(symbol))
+                {
+                    atr = atrs[symbol];
+                }
+                else
+                {
+                    atr = ComputeATRForChart(symbol);
+                    atrs[symbol] = atr;
+                }
+                new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            }
+            else
+            {
+                atr = 0;
+                new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            }
+            charts_.emplace_back(std::make_pair(symbol, new_chart));
         }
-        else
+        catch (const std::exception &e)
         {
-            new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+            spdlog::error(std::format("Unable to compute ATR for: '{}' because: {}.\n", symbol, e.what()));
         }
-        charts_.emplace_back(std::make_pair(symbol, new_chart));
     }
 
     for (const auto &[symbol, chart] : charts_)
@@ -1192,8 +1211,8 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
             }
             catch (const std::exception &e)
             {
-                std::cout << "Problem initializing streaming data for symbol: " << ticker << " because: " << e.what()
-                          << std::endl;
+                spdlog::error(std::format(
+                    "Problem initializing PF_Chart with streaming data for symbol: {} because: {}", ticker, e.what()));
             }
         }
     }
@@ -1265,7 +1284,7 @@ void PF_CollectDataApp::CollectStreamingData()
 
 }  // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
 
-void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_signal, std::mutex *data_mutex,
+void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
                                             std::queue<std::string> *streamed_data)
 {
     //    py::gil_scoped_acquire gil{};
@@ -1298,7 +1317,7 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
             rng::sort(tickers_in_update);
             const auto [first, last] = rng::unique(tickers_in_update);
             tickers_in_update.erase(first, last);
-            
+
             if (tickers_in_update.size() > 1)
             {
                 std::vector<std::future<void>> tasks;
@@ -1368,7 +1387,52 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
                 // if there are updates for only 1 symbol
                 // then no need for threading overhead.
 
-                ProcessUpdatesForSymbol(pf_data, tickers_in_update[0]);
+                try
+                {
+                    ProcessUpdatesForSymbol(pf_data, tickers_in_update[0]);
+                }
+                catch (std::system_error &e)
+                {
+                    // any system problems, we eventually abort, but only
+                    // after finishing work in process.
+
+                    spdlog::error(e.what());
+                    auto ec = e.code();
+                    spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(),
+                                  ec.message());
+
+                    // OK, let's remember our first time here.
+
+                    if (!ep)
+                    {
+                        ep = std::current_exception();
+                    }
+                    continue;
+                }
+                catch (std::exception &e)
+                {
+                    // any problems, we'll document them and continue.
+
+                    spdlog::error(e.what());
+
+                    if (!ep)
+                    {
+                        ep = std::current_exception();
+                    }
+                    continue;
+                }
+                catch (...)
+                {
+                    // any problems, we'll document them and continue.
+
+                    spdlog::error("Unknown problem with an async download process");
+
+                    if (!ep)
+                    {
+                        ep = std::current_exception();
+                    }
+                    continue;
+                }
             }
         }
         else
@@ -1385,6 +1449,7 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, const bool *had_sign
         // spdlog::error(catenate("Processed: ", file_list.size(), " files.
         // Successes: ", success_counter,
         //         ". Errors: ", error_counter, "."));
+        *had_signal = true;
         std::rethrow_exception(ep);
     }
 
@@ -1475,15 +1540,15 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     for (const auto &xchng : exchange_list_)
     {
-        spdlog::info(std::format("Scanning charts for symbols on xchng: {} with adjusted close >= {} and volume >= {}.",
-                                 xchng, min_close_price_, min_close_volume_));
+        spdlog::info(std::format("Scanning charts for symbols on xchng: {} with adjusted dollar volume >= {}.", xchng,
+                                 min_dollar_price_));
 
         int32_t exchange_symbols_processed = 0;
         int32_t exchange_charts_processed = 0;
         int32_t exchange_charts_updated = 0;
 
         auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, end_date_, price_fld_name_, dt_format,
-                                                              min_close_price_, min_close_volume_);
+                                                              min_dollar_price_);
         // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
         // {}\n", xx.symbol, xx.tp, xx.price); });
 

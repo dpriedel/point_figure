@@ -133,7 +133,7 @@ class PF_CollectDataApp
 
     void PrimeChartsForStreaming();
     void CollectStreamingData();
-    void ProcessStreamedData(Tiingo *quotes, const bool *had_signal, std::mutex *data_mutex,
+    void ProcessStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
                              std::queue<std::string> *streamed_data);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
@@ -267,7 +267,7 @@ class PF_CollectDataApp
     std::string trend_lines_;
     std::string begin_date_;
     std::string end_date_;
-    std::string min_close_price_;
+    std::string min_dollar_price_;
 
     int64_t min_close_volume_ = 100'000;
 
