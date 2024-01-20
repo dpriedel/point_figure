@@ -85,7 +85,7 @@ std::vector<std::string> PF_DB::ListExchanges() const
     return exchanges;
 }  // -----  end of method PF_DB::ListExchanges  -----
 
-std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange, std::string_view min_dollar_price) const
+std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange, std::string_view min_dollar_volume) const
 {
     std::vector<std::string> symbols;
 
@@ -97,7 +97,7 @@ std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange,
     {
         std::string get_symbols_cmd =
             std::format("SELECT * FROM new_stock_data.find_symbols_gte_min_dollar_volume({}, {})", c.quote(exchange),
-                        c.quote(min_dollar_price));
+                        c.quote(min_dollar_volume));
         symbols = RunSQLQueryUsingStream<std::string, std::string_view>(get_symbols_cmd, Row2Symbol);
     }
     catch (const std::exception& e)
@@ -361,7 +361,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
 
 std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
     std::string_view exchange, std::string_view begin_date, std::string_view end_date, std::string_view price_fld_name,
-    const char* date_format, std::string_view min_dollar_price) const
+    const char* date_format, std::string_view min_dollar_volume) const
 {
     PF_DB pf_db{db_params_};
 
@@ -399,7 +399,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
         std::string get_symbol_prices_cmd = std::format(
             "SELECT symbol, date, {} FROM {} WHERE {} AND symbol IN (SELECT * FROM "
             "new_stock_data.find_symbols_gte_min_dollar_volume({}, {})) ORDER BY symbol ASC, date ASC",
-            price_fld_name, db_params_.stock_db_data_source_, date_range, c.quote(exchange), c.quote(min_dollar_price));
+            price_fld_name, db_params_.stock_db_data_source_, date_range, c.quote(exchange), c.quote(min_dollar_volume));
 
         db_data =
             pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(

@@ -166,10 +166,11 @@ void PF_CollectDataApp::ConfigureLogging()
                                                                   {"debug", spdlog::level::debug}};
 
     auto which_level = levels.find(logging_level_);
-    if (which_level != levels.end())
-    {
-        spdlog::set_level(which_level->second);
-    }
+    BOOST_ASSERT_MSG(
+        which_level != levels.end(),
+        std::format("log-level: {} must be 1 of 'none', 'error', 'information', 'debug'.", logging_level_).c_str());
+
+    spdlog::set_level(which_level->second);
 
 }  // -----  end of method PF_CollectDataApp::ConfigureLogging  -----
 
@@ -467,11 +468,13 @@ bool PF_CollectDataApp::CheckArgs()
     const std::map<std::string, Interval> possible_intervals = {{"eod", Interval::e_eod},   {"live", Interval::e_live},
                                                                 {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5},
                                                                 {"min1", Interval::e_min1}, {"min5", Interval::e_min5}};
-    BOOST_ASSERT_MSG(possible_intervals.contains(interval_i), std::format("\nInterval must be: 'eod', 'live', 'sec1', "
-                                                                          "'sec5', 'min1', 'min5': {}",
-                                                                          interval_i)
-                                                                  .c_str());
-    interval_ = possible_intervals.find(interval_i)->second;
+    auto which_interval = possible_intervals.find(interval_i);
+    BOOST_ASSERT_MSG(which_interval != possible_intervals.end(),
+                     std::format("\nInterval must be: 'eod', 'live', 'sec1', "
+                                 "'sec5', 'min1', 'min5': {}",
+                                 interval_i)
+                         .c_str());
+    interval_ = which_interval->second;
 
     // provide our default value here.
 
@@ -531,8 +534,8 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
 
 		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s) for daily-scan and bulk loads from database. Default is: not specified.")
-		("min-dollar-price",	po::value<std::string>(&this->min_dollar_price_)->default_value("100000"),	"Minimum dollar volue price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
-		("min-close-volume",    po::value<int64_t>(&this->min_close_volume_)->default_value(100'000),	"Minimum closing volume for a symbol to filter small stocks from daily-scan and bulk loads. Default is 100'000")
+		("min-dollar-volume",	po::value<std::string>(&this->min_dollar_volume_)->default_value("100000"),	"Minimum dollar volue price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
+		// ("min-close-volume",    po::value<int64_t>(&this->min_close_volume_)->default_value(100'000),	"Minimum closing volume for a symbol to filter small stocks from daily-scan and bulk loads. Default is 100'000")
 
 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
 		("end-date",			po::value<std::string>(&this->end_date_),	"Stop date for extracting data from database source. Default is 'today'.")
@@ -714,9 +717,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
         for (const auto &xchng : exchange_list_)
         {
             spdlog::info(std::format("Building charts for symbols on xchng: {} with minimum dollar volume >= {}.",
-                                     xchng, min_dollar_price_));
+                                     xchng, min_dollar_volume_));
 
-            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_dollar_price_);
+            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_dollar_volume_);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
             total_symbols_processed += std::get<0>(counts);
             total_charts_processed += std::get<1>(counts);
@@ -1474,8 +1477,8 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
                 try
                 {
                     auto chart_changed = symbol_and_chart.second.AddValue(
-                    new_value.last_price_,
-                    PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
+                        new_value.last_price_,
+                        PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
                     if (chart_changed != PF_Column::Status::e_Ignored)
                     {
                         need_to_update_graph.push_back(&symbol_and_chart.second);
@@ -1485,8 +1488,8 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
                     streamed_prices_[chart_name].price_.push_back(dec2dbl(new_value.last_price_));
                     streamed_prices_[chart_name].signal_type_.push_back(
                         chart_changed == PF_Column::Status::e_AcceptedWithSignal
-                        ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
-                        : 0);
+                            ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
+                            : 0);
                 }
                 catch (std::exception &e)
                 {
@@ -1507,15 +1510,17 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &upda
         try
         {
             fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetChartBaseName()],
-                                                    trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path,
+                                                    streamed_prices_[chart->GetChartBaseName()], trend_lines_,
+                                                    PF_Chart::X_AxisFormat::e_show_time);
 
             fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
             chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
-         }
+        }
         catch (std::exception &e)
         {
-            spdlog::error("Problem creating graphic for updated streamed value: "s += chart->GetChartBaseName() += " "s += e.what());
+            spdlog::error("Problem creating graphic for updated streamed value: "s += chart->GetChartBaseName() +=
+                          " "s += e.what());
         }
     }
 }  // -----  end of method PF_CollectDataApp::ProcessUpdatesForSymbol  -----
@@ -1554,14 +1559,14 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
     for (const auto &xchng : exchange_list_)
     {
         spdlog::info(std::format("Scanning charts for symbols on xchng: {} with adjusted dollar volume >= {}.", xchng,
-                                 min_dollar_price_));
+                                 min_dollar_volume_));
 
         int32_t exchange_symbols_processed = 0;
         int32_t exchange_charts_processed = 0;
         int32_t exchange_charts_updated = 0;
 
         auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, end_date_, price_fld_name_, dt_format,
-                                                              min_dollar_price_);
+                                                              min_dollar_volume_);
         // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
         // {}\n", xx.symbol, xx.tp, xx.price); });
 

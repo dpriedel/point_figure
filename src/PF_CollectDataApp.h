@@ -267,7 +267,7 @@ class PF_CollectDataApp
     std::string trend_lines_;
     std::string begin_date_;
     std::string end_date_;
-    std::string min_dollar_price_;
+    std::string min_dollar_volume_;
 
     int64_t min_close_volume_ = 100'000;
 
