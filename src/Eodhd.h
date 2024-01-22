@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  Tiingo.h
+//       Filename:  Eodhd.h
 //
 //    Description:  class to live stream ticker updatas 
 //
@@ -14,10 +14,11 @@
 //
 // =====================================================================================
 
-#ifndef  _TIINGO_INC_
-#define  _TIINGO_INC_
+#ifndef  _EODHD_INC_
+#define  _EODHD_INC_
 
 #include <chrono>
+#include <cstdint>
 #include <deque>
 #include <format>
 #include <mutex>
@@ -28,8 +29,8 @@
 #include <json/json.h>
 #include <decimal.hh>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+// #pragma GCC diagnostic push
+// #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
@@ -39,7 +40,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
 
-#pragma GCC diagnostic pop
+// #pragma GCC diagnostic pop
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -51,35 +52,38 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 #include "utilities.h"
 
 // =====================================================================================
-//        Class:  Tiingo
+//        Class:  Eodhd
 //  Description:  live stream ticker updates -- look like a generator 
 // =====================================================================================
 #include <vector>
-class Tiingo
+class Eodhd
 {
 public:
+
+    enum class EodMktStatus : int32_t { e_unknown, e_open, e_closed, e_extended_hours};
 
     struct PF_Data
     {
         std::string subscription_id_;
         std::string ticker_;                        // Ticker
         std::string time_stamp_;                    // Date
-        int64_t time_stamp_nanoseconds_utc_;        // time_stamp
-        decimal::Decimal last_price_;           // Last Price
+        int64_t time_stamp_milliseconds_utc_;       // time_stamp
+        decimal::Decimal last_price_;               // Last Price
         int32_t last_size_;                         // Last Size
+        bool dark_pool_;
+        EodMktStatus market_status_;
     };
     
     using StreamedData = std::vector<PF_Data>;
 
     // ====================  LIFECYCLE     ======================================= 
-    Tiingo ();                             // constructor 
-    ~Tiingo ();
-    Tiingo(const std::string& host, const std::string& port, const std::string& api_key);
-    Tiingo (const std::string& host, const std::string& port, const std::string& prefix,
-            const std::string& api_key, const std::vector<std::string>& symbols);
+    Eodhd ();                             // constructor 
+    ~Eodhd ();
+    Eodhd(const std::string& host, const std::string& port, const std::string& api_key);
+    Eodhd (const std::string& host, const std::string& port, const std::string& prefix, const std::vector<std::string>& symbols);
 
-    Tiingo(const Tiingo& rhs) = delete;
-    Tiingo(Tiingo&& rhs) = delete;
+    Eodhd(const Eodhd& rhs) = delete;
+    Eodhd(Eodhd&& rhs) = delete;
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -97,8 +101,8 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
-    Tiingo& operator = (const Tiingo& rhs) = delete;
-    Tiingo& operator = (Tiingo&& rhs) = delete;
+    Eodhd& operator = (const Eodhd& rhs) = delete;
+    Eodhd& operator = (Eodhd&& rhs) = delete;
 
 protected:
     // ====================  METHODS       ======================================= 
@@ -124,13 +128,13 @@ private:
     ssl::context ctx_;
     tcp::resolver resolver_;
     websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
-}; // -----  end of class Tiingo  ----- 
+}; // -----  end of class Eodhd  ----- 
 
 template <>
-struct std::formatter<Tiingo::PF_Data> : std::formatter<std::string>
+struct std::formatter<Eodhd::PF_Data> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Tiingo::PF_Data& pdata, std::format_context& ctx) const
+    auto format(const Eodhd::PF_Data& pdata, std::format_context& ctx) const
     {
         std::string record;
         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_, pdata.last_price_.format("f"),
@@ -139,11 +143,11 @@ struct std::formatter<Tiingo::PF_Data> : std::formatter<std::string>
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Tiingo::PF_Data pf_data)
+inline std::ostream& operator<<(std::ostream& os, const Eodhd::PF_Data pf_data)
 {
     std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_ << " time:" << pf_data.time_stamp_;
     return os;
 }
 
 
-#endif   // ----- #ifndef _TIINGO_INC_  ----- 
+#endif   // ----- #ifndef _EODHD_INC_  ----- 

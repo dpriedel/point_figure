@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  Tiingo.cpp
+//       Filename:  Eodhd.cpp
 //
 //    Description:  Live stream ticker updates
 //
@@ -16,7 +16,6 @@
 // the guts of this code comes from the examples distributed by Boost.
 
 #include <algorithm>
-#include <chrono>
 #include <exception>
 #include <format>
 #include <iostream>
@@ -29,7 +28,7 @@
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
-#include "Tiingo.h"
+#include "Eodhd.h"
 #include "boost/beast/core/buffers_to_string.hpp"
 
 #include "utilities.h"
@@ -38,17 +37,17 @@ using namespace std::string_literals;
 using namespace std::chrono_literals;
 
 //--------------------------------------------------------------------------------------
-//       Class:  Tiingo
-//      Method:  Tiingo
+//       Class:  Eodhd
+//      Method:  Eodhd
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-Tiingo::Tiingo()
+Eodhd::Eodhd()
     : ctx_{ssl::context::tlsv12_client},
       resolver_{ioc_},
-      ws_{ioc_, ctx_} {}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
+      ws_{ioc_, ctx_} {}  // -----  end of method Eodhd::Eodhd  (constructor)  -----
 
-Tiingo::~Tiingo()
+Eodhd::~Eodhd()
 {
     // need to disconnect if still connected.
 
@@ -56,17 +55,17 @@ Tiingo::~Tiingo()
     {
         Disconnect();
     }
-}  // -----  end of method Tiingo::~Tiingo  -----
+}  // -----  end of method Eodhd::~Eodhd  -----
 
-Tiingo::Tiingo(const std::string& host, const std::string& port, const std::string& api_key)
+Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& api_key)
     : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
 {
-}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
+}  // -----  end of method Eodhd::Eodhd  (constructor)  -----
 
-Tiingo::Tiingo(const std::string& host, const std::string& port, const std::string& prefix, const std::string& api_key,
+Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& prefix,
                const std::vector<std::string>& symbols)
     : symbol_list_{symbols},
-      api_key_{api_key},
+      // api_key_{api_key},
       host_{host},
       port_{port},
       websocket_prefix_{prefix},
@@ -74,9 +73,10 @@ Tiingo::Tiingo(const std::string& host, const std::string& port, const std::stri
       resolver_{ioc_},
       ws_{ioc_, ctx_}
 {
-}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
+    std::cout << host << " port: " << port << " prfx: " << prefix << std::endl;
+}  // -----  end of method Eodhd::Eodhd  (constructor)  -----
 
-void Tiingo::Connect()
+void Eodhd::Connect()
 {
     // Look up the domain name
     auto const results = resolver_.resolve(host_, port_);
@@ -118,22 +118,20 @@ void Tiingo::Connect()
     BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
 }
 
-void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
+void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
     // put this here for now.
     // need to manually construct to get expected formate when serialized
 
     Json::Value connection_request;
-    connection_request["eventName"] = "subscribe";
-    connection_request["authorization"] = api_key_;
-    connection_request["eventData"]["thresholdLevel"] = 5;
-    Json::Value tickers(Json::arrayValue);
-    for (const auto& symbol : symbol_list_)
-    {
-        tickers.append(symbol);
-    }
+    connection_request["action"] = "subscribe";
+    Json::Value tickers{"AAPL, MSFT, TSLA"};
+    // for (const auto& symbol : symbol_list_)
+    // {
+    //     tickers.append(symbol);
+    // }
 
-    connection_request["eventData"]["tickers"] = tickers;
+    connection_request["symbols"] = tickers;
 
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "";  // compact printing and string formatting
@@ -156,8 +154,10 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
             if (!buffer_content.empty())
             {
-                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-                streamed_data->push(std::move(buffer_content));
+                std::cout << buffer_content << std::endl;
+                ExtractData(buffer_content);
+                // const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+                // streamed_data->push(std::move(buffer_content));
             }
             if (*had_signal)
             {
@@ -221,156 +221,158 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
     {
         *had_signal = true;
     }
-}  // -----  end of method Tiingo::StreamData  -----
+}  // -----  end of method Eodhd::StreamData  -----
 
-Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
+Eodhd::StreamedData Eodhd::ExtractData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
 
-    const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
-    const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
+    const std::regex numeric_trade_price{R"***(("s"(?:[^,]*,"p":))([0-9]*\.[0-9]*),)***"};
+    const std::regex quoted_trade_price{R"***("s"(?:[^,]*,"p":")"([0-9]*\.[0-9]*)",)***"};
     const std::string string_trade_price{R"***($1"$2",)***"};
     const std::string zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
-    // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
+    std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
+    return {};
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
     JSONCPP_STRING err;
     Json::Value response;
 
-    Json::CharReaderBuilder builder;
-    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
-    if (!reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
-    {
-        throw std::runtime_error("Problem parsing tiingo response: "s + err);
-    }
-    //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
+    // Json::CharReaderBuilder builder;
+    // const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    // //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+    // if (!reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
+    // {
+    //     throw std::runtime_error("Problem parsing tiingo response: "s + err);
+    // }
+    // //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
     StreamedData pf_data;
 
-    // each response buffer can contain multiple responses each with a different response
-    // type and content.  We need to process everything we got.
-
-    if (response.isArray())
-    {
-        for (const auto& message : response)
-        {
-            auto message_type = message["messageType"];
-            if (message_type == "A")
-            {
-                auto data = message["data"];
-
-                if (data[0] != "T")
-                {
-                    continue;
-                }
-                // extract our data
-
-                std::smatch m;
-                if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
-                {
-                    std::cout << "can't find trade price in buffer: " << buffer << '\n';
-                }
-                else
-                {
-                    PF_Data new_value;
-                    new_value.subscription_id_ = subscription_id_;
-                    new_value.time_stamp_ = data[1].asCString();
-                    new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-                    new_value.ticker_ = data[3].asCString();
-                    rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-                    new_value.last_price_ = decimal::Decimal{m[1].str()};
-                    new_value.last_size_ = data[10].asInt();
-
-                    pf_data.push_back(std::move(new_value));
-                }
-
-                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
-                //        << '\n';
-            }
-            else if (message_type == "I")
-            {
-                subscription_id_ = message["data"]["subscriptionId"].asString();
-                //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-            }
-            else if (message_type == "H")
-            {
-                // heartbeat , just return
-
-                continue;
-            }
-            else
-            {
-                spdlog::error("unexpected message type.");
-            }
-        }
-    }
-    else
-    {
-        auto message_type = response["messageType"];
-        if (message_type == "A")
-        {
-            auto data = response["data"];
-
-            if (data[0] == "T")
-            {
-                std::smatch m;
-                if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
-                {
-                    std::cout << "can't find trade price in buffer: " << buffer << '\n';
-                }
-                else
-                {
-                    PF_Data new_value;
-                    new_value.subscription_id_ = subscription_id_;
-                    new_value.time_stamp_ = data[1].asCString();
-                    new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-                    new_value.ticker_ = data[3].asCString();
-                    rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-                    new_value.last_price_ = decimal::Decimal{m[1].str()};
-                    new_value.last_size_ = data[10].asInt();
-
-                    pf_data.push_back(std::move(new_value));
-                }
-
-                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
-                //        <<
-                //        '\n';
-            }
-        }
-        else if (message_type == "I")
-        {
-            subscription_id_ = response["data"]["subscriptionId"].asString();
-            //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-        }
-        else if (message_type == "H")
-        {
-            // heartbeat , just return
-        }
-        else
-        {
-            spdlog::error("unexpected message type.");
-        }
-    }
+    // // each response buffer can contain multiple responses each with a different response
+    // // type and content.  We need to process everything we got.
+    //
+    // if (response.isArray())
+    // {
+    //     for (const auto& message : response)
+    //     {
+    //         auto message_type = message["messageType"];
+    //         if (message_type == "A")
+    //         {
+    //             auto data = message["data"];
+    //
+    //             if (data[0] != "T")
+    //             {
+    //                 continue;
+    //             }
+    //             // extract our data
+    //
+    //             std::smatch m;
+    //             if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
+    //             {
+    //                 std::cout << "can't find trade price in buffer: " << buffer << '\n';
+    //             }
+    //             else
+    //             {
+    //                 PF_Data new_value;
+    //                 new_value.subscription_id_ = subscription_id_;
+    //                 new_value.time_stamp_ = data[1].asCString();
+    //                 new_value.tws.eodhistoricaldata.comime_stamp_milliseconds_utc_ = data[2].asInt64();
+    //                 new_value.ticker_ = data[3].asCString();
+    //                 rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+    //                 new_value.last_price_ = decimal::Decimal{m[1].str()};
+    //                 new_value.last_size_ = data[10].asInt();
+    //
+    //                 pf_data.push_back(std::move(new_value));
+    //             }
+    //
+    //             //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
+    //             //        << '\n';
+    //         }
+    //         else if (message_type == "I")
+    //         {
+    //             subscription_id_ = message["data"]["subscriptionId"].asString();
+    //             //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+    //         }
+    //         else if (message_type == "H")
+    //         {
+    //             // heartbeat , just return
+    //
+    //             continue;
+    //         }
+    //         else
+    //         {
+    //             spdlog::error("unexpected message type.");
+    //         }
+    //     }
+    // }
+    // else
+    // {
+    //     auto message_type = response["messageType"];
+    //     if (message_type == "A")
+    //     {
+    //         auto data = response["data"];
+    //
+    //         if (data[0] == "T")
+    //         {
+    //             std::smatch m;
+    //             if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
+    //             {
+    //                 std::cout << "can't find trade price in buffer: " << buffer << '\n';
+    //             }
+    //             else
+    //             {
+    //                 PF_Data new_value;
+    //                 new_value.subscription_id_ = subscription_id_;
+    //                 new_value.time_stamp_ = data[1].asCString();
+    //                 new_value.time_stamp_milliseconds_utc_ = data[2].asInt64();
+    //                 new_value.ticker_ = data[3].asCString();
+    //                 rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+    //                 new_value.last_price_ = decimal::Decimal{m[1].str()};
+    //                 new_value.last_size_ = data[10].asInt();
+    //
+    //                 pf_data.push_back(std::move(new_value));
+    //             }
+    //
+    //             //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
+    //             //        <<
+    //             //        '\n';
+    //         }
+    //     }
+    //     else if (message_type == "I")
+    //     {
+    //         subscription_id_ = response["data"]["subscriptionId"].asString();
+    //         //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+    //     }
+    //     else if (message_type == "H")
+    //     {
+    //         // heartbeat , just return
+    //     }
+    //     else
+    //     {
+    //         spdlog::error("unexpected message type.");
+    //     }
+    // }
     return pf_data;
-}  // -----  end of method Tiingo::ExtractData  -----
+}  // -----  end of method Eodhd::ExtractData  -----
 
-void Tiingo::StopStreaming(bool* had_signal)
+void Eodhd::StopStreaming(bool* had_signal)
 {
     // we need to send the unsubscribe message in a separate connection.
 
     Json::Value disconnect_request;
-    disconnect_request["eventName"] = "unsubscribe";
-    disconnect_request["authorization"] = api_key_;
-    disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
-    Json::Value tickers(Json::arrayValue);
-    for (const auto& symbol : symbol_list_)
-    {
-        tickers.append(symbol);
-    }
+    disconnect_request["action"] = "unsubscribe";
+    // disconnect_request["authorization"] = api_key_;
+    // disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
+    Json::Value tickers{"AAPL, MSFT, TSLA"};
+    // Json::Value tickers(Json::arrayValue);
+    // for (const auto& symbol : symbol_list_)
+    // {
+    //     tickers.append(symbol);
+    // }
 
-    disconnect_request["eventData"]["tickers"] = tickers;
+    disconnect_request["symbols"] = tickers;
 
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "";  // compact printing and string formatting
@@ -441,9 +443,9 @@ void Tiingo::StopStreaming(bool* had_signal)
 
     //    std::cout << beast::make_printable(buffer.data()) << std::endl;
 
-}  // -----  end of method Tiingo::StopStreaming  -----
+}  // -----  end of method Eodhd::StopStreaming  -----
 
-void Tiingo::Disconnect()
+void Eodhd::Disconnect()
 {
     beast::flat_buffer buffer;
 
@@ -458,7 +460,7 @@ void Tiingo::Disconnect()
     }
 }
 
-Json::Value Tiingo::GetTopOfBookAndLastClose()
+Json::Value Eodhd::GetTopOfBookAndLastClose()
 {
     // using the REST API for iex.
 
@@ -515,7 +517,7 @@ Json::Value Tiingo::GetTopOfBookAndLastClose()
 
     // I need to convert some numeric fields to string fields so they
     // won't be converted to floats and give me a bunch of extra decimal digits.
-    // These values are nicely rounded by Tiingo.
+    // These values are nicely rounded by Eodhd.
 
     const std::regex source{R"***("(open|prevClose|last)":([0-9]*\.[0-9]*))***"};
     const std::string dest{R"***("$1":"$2")***"};
@@ -535,9 +537,9 @@ Json::Value Tiingo::GetTopOfBookAndLastClose()
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
     return response;
-}  // -----  end of method Tiingo::GetTopOfBookAndLastClose  -----
+}  // -----  end of method Eodhd::GetTopOfBookAndLastClose  -----
 
-std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol,
+std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& symbol,
                                                              std::chrono::year_month_day start_from,
                                                              int how_many_previous, UseAdjusted use_adjusted,
                                                              const US_MarketHolidays* holidays)
@@ -548,15 +550,15 @@ std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& 
     //    std::cout << "business days: " << business_days.first << " : " << business_days.second << '\n';
 
     // we reverse the dates because we worked backwards from our given starting point and
-    // Tiingo needs the dates in ascending order.
+    // Eodhd needs the dates in ascending order.
 
     const auto ticker_data = GetTickerData(symbol, business_days.second, business_days.first, UpOrDown::e_Down);
 
     return ConvertJSONPriceHistory(symbol, ticker_data, how_many_previous, use_adjusted);
 
-}  // -----  end of method Tiingo::GetMostRecentTickerData  -----
+}  // -----  end of method Eodhd::GetMostRecentTickerData  -----
 
-Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
+Json::Value Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                                   std::chrono::year_month_day end_date, UpOrDown sort_asc)
 {
     // if any problems occur here, we'll just let beast throw an exception.
@@ -604,7 +606,7 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
 
     // I need to convert some numeric fields to string fields so they
     // won't be converted to floats and give me a bunch of extra decimal digits.
-    // These values are nicely rounded by Tiingo.
+    // These values are nicely rounded by Eodhd.
 
     const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":\s*([0-9]*\.[0-9]*))***"};
     const std::string dest{R"***("$1":"$2")***"};
@@ -624,4 +626,4 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
     return response;
-}  // -----  end of method Tiingo::GetTickerData  -----
+}  // -----  end of method Eodhd::GetTickerData  -----
