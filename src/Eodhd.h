@@ -60,6 +60,8 @@ class Eodhd
 {
 public:
 
+    using TmPt = std::chrono::utc_time<std::chrono::utc_clock::duration>;
+
     enum class EodMktStatus : int32_t { e_unknown, e_open, e_closed, e_extended_hours};
 
     struct PF_Data
@@ -67,19 +69,18 @@ public:
         std::string subscription_id_;
         std::string ticker_;                        // Ticker
         std::string time_stamp_;                    // Date
-        int64_t time_stamp_milliseconds_utc_;       // time_stamp
+        Eodhd::TmPt time_stamp_nanoseconds_utc_;   // time_stamp
         decimal::Decimal last_price_;               // Last Price
         int32_t last_size_;                         // Last Size
         bool dark_pool_;
         EodMktStatus market_status_;
     };
     
-    using StreamedData = std::vector<PF_Data>;
+    // using StreamedData = std::vector<PF_Data>;
 
     // ====================  LIFECYCLE     ======================================= 
     Eodhd ();                             // constructor 
     ~Eodhd ();
-    Eodhd(const std::string& host, const std::string& port, const std::string& api_key);
     Eodhd (const std::string& host, const std::string& port, const std::string& prefix, const std::vector<std::string>& symbols);
 
     Eodhd(const Eodhd& rhs) = delete;
@@ -90,7 +91,7 @@ public:
     Json::Value GetTopOfBookAndLastClose();
     std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol, std::chrono::year_month_day start_from, int how_many_previous, UseAdjusted use_adjusted, const US_MarketHolidays* holidays=nullptr);
 
-    StreamedData ExtractData(const std::string& buffer);
+    PF_Data ExtractData(const std::string& buffer);
 
     // ====================  MUTATORS      ======================================= 
 
@@ -137,15 +138,15 @@ struct std::formatter<Eodhd::PF_Data> : std::formatter<std::string>
     auto format(const Eodhd::PF_Data& pdata, std::format_context& ctx) const
     {
         std::string record;
-        std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_, pdata.last_price_.format("f"),
-                       pdata.last_size_, pdata.time_stamp_);
+        std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {:%F %T}", pdata.ticker_, pdata.last_price_.format("f"),
+                       pdata.last_size_, pdata.time_stamp_nanoseconds_utc_);
         return formatter<std::string>::format(record, ctx);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Eodhd::PF_Data pf_data)
 {
-    std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_ << " time:" << pf_data.time_stamp_;
+    std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_ << " time:" << pf_data.time_stamp_nanoseconds_utc_;
     return os;
 }
 

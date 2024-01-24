@@ -57,11 +57,6 @@ Eodhd::~Eodhd()
     }
 }  // -----  end of method Eodhd::~Eodhd  -----
 
-Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& api_key)
-    : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
-{
-}  // -----  end of method Eodhd::Eodhd  (constructor)  -----
-
 Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& prefix,
                const std::vector<std::string>& symbols)
     : symbol_list_{symbols},
@@ -73,7 +68,10 @@ Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string
       resolver_{ioc_},
       ws_{ioc_, ctx_}
 {
-    std::cout << host << " port: " << port << " prfx: " << prefix << std::endl;
+    // std::cout << host << " port: " << port << " prfx: " << prefix << std::endl;
+    //  need to uppercase symbols for streaming request
+
+    rng::for_each(symbol_list_, [](auto & sym) { rng::for_each(sym, [](char& c) { c = std::toupper(c); });});
 }  // -----  end of method Eodhd::Eodhd  (constructor)  -----
 
 void Eodhd::Connect()
@@ -116,30 +114,37 @@ void Eodhd::Connect()
     // Perform the websocket handshake
     ws_.handshake(host, websocket_prefix_);
     BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
+
+    // let's make sure we got a 'success' result
+
+    beast::flat_buffer buffer;
+
+    buffer.clear();
+    ws_.read(buffer);
+    ws_.text(ws_.got_text());
+    std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+    BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"), std::format("Failed to get success code. Got: {}", buffer_content).c_str());
 }
 
 void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
-    // put this here for now.
-    // need to manually construct to get expected formate when serialized
+    Json::Value subscribe_request;
+    subscribe_request["action"] = "subscribe";
 
-    Json::Value connection_request;
-    connection_request["action"] = "subscribe";
-    Json::Value tickers{"AAPL, MSFT, TSLA"};
-    // for (const auto& symbol : symbol_list_)
-    // {
-    //     tickers.append(symbol);
-    // }
+    std::string ticker_list;
+    ticker_list = symbol_list_.front();
+    rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto& sym) { ticker_list += ", "; ticker_list += sym; });
 
-    connection_request["symbols"] = tickers;
+    Json::Value tickers{ticker_list};
+    subscribe_request["symbols"] = tickers;
 
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "";  // compact printing and string formatting
-    const std::string connection_request_str = Json::writeString(builder, connection_request);
-    //    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
+    const std::string subscribe_request_str = Json::writeString(builder, subscribe_request);
+       // std::cout << "Jsoncpp subscribe_request_str: " << subscribe_request_str << '\n';
 
     // Send the message
-    ws_.write(net::buffer(connection_request_str));
+    ws_.write(net::buffer(subscribe_request_str));
 
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
@@ -154,10 +159,10 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
             if (!buffer_content.empty())
             {
-                std::cout << buffer_content << std::endl;
-                ExtractData(buffer_content);
-                // const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-                // streamed_data->push(std::move(buffer_content));
+                // std::cout << buffer_content << std::endl;
+                // ExtractData(buffer_content);
+                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+                streamed_data->push(std::move(buffer_content));
             }
             if (*had_signal)
             {
@@ -223,138 +228,71 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
     }
 }  // -----  end of method Eodhd::StreamData  -----
 
-Eodhd::StreamedData Eodhd::ExtractData(const std::string& buffer)
+Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
+    
+    static const std::regex kNumericTradePrice{R"***(("s"(?:[^,]*,"p":))([0-9]*(?:\.[0-9]*))?,)***"};
+    static const std::regex kQuotedTradePrice{R"***("s":[^,]*,"p":"[0-9]*(?:\.[0-9]*)?",)***"};
+    static const std::string kStringTradePrice{R"***($1"$2",)***"};
+    const std::string zapped_buffer = std::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
+    // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
-    const std::regex numeric_trade_price{R"***(("s"(?:[^,]*,"p":))([0-9]*\.[0-9]*),)***"};
-    const std::regex quoted_trade_price{R"***("s"(?:[^,]*,"p":")"([0-9]*\.[0-9]*)",)***"};
-    const std::string string_trade_price{R"***($1"$2",)***"};
-    const std::string zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
-    std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
-
-    return {};
     // will eventually need to use locks to access this I think.
     // for now, we just append data.
     JSONCPP_STRING err;
     Json::Value response;
 
-    // Json::CharReaderBuilder builder;
-    // const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    // //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
-    // if (!reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
-    // {
-    //     throw std::runtime_error("Problem parsing tiingo response: "s + err);
-    // }
-    // //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+    if (!reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
+    {
+        throw std::runtime_error("Problem parsing tiingo response: "s + err);
+    }
+    //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
-    StreamedData pf_data;
+    PF_Data new_value;
 
-    // // each response buffer can contain multiple responses each with a different response
-    // // type and content.  We need to process everything we got.
-    //
-    // if (response.isArray())
-    // {
-    //     for (const auto& message : response)
-    //     {
-    //         auto message_type = message["messageType"];
-    //         if (message_type == "A")
-    //         {
-    //             auto data = message["data"];
-    //
-    //             if (data[0] != "T")
-    //             {
-    //                 continue;
-    //             }
-    //             // extract our data
-    //
-    //             std::smatch m;
-    //             if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
-    //             {
-    //                 std::cout << "can't find trade price in buffer: " << buffer << '\n';
-    //             }
-    //             else
-    //             {
-    //                 PF_Data new_value;
-    //                 new_value.subscription_id_ = subscription_id_;
-    //                 new_value.time_stamp_ = data[1].asCString();
-    //                 new_value.tws.eodhistoricaldata.comime_stamp_milliseconds_utc_ = data[2].asInt64();
-    //                 new_value.ticker_ = data[3].asCString();
-    //                 rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-    //                 new_value.last_price_ = decimal::Decimal{m[1].str()};
-    //                 new_value.last_size_ = data[10].asInt();
-    //
-    //                 pf_data.push_back(std::move(new_value));
-    //             }
-    //
-    //             //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
-    //             //        << '\n';
-    //         }
-    //         else if (message_type == "I")
-    //         {
-    //             subscription_id_ = message["data"]["subscriptionId"].asString();
-    //             //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-    //         }
-    //         else if (message_type == "H")
-    //         {
-    //             // heartbeat , just return
-    //
-    //             continue;
-    //         }
-    //         else
-    //         {
-    //             spdlog::error("unexpected message type.");
-    //         }
-    //     }
-    // }
-    // else
-    // {
-    //     auto message_type = response["messageType"];
-    //     if (message_type == "A")
-    //     {
-    //         auto data = response["data"];
-    //
-    //         if (data[0] == "T")
-    //         {
-    //             std::smatch m;
-    //             if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
-    //             {
-    //                 std::cout << "can't find trade price in buffer: " << buffer << '\n';
-    //             }
-    //             else
-    //             {
-    //                 PF_Data new_value;
-    //                 new_value.subscription_id_ = subscription_id_;
-    //                 new_value.time_stamp_ = data[1].asCString();
-    //                 new_value.time_stamp_milliseconds_utc_ = data[2].asInt64();
-    //                 new_value.ticker_ = data[3].asCString();
-    //                 rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-    //                 new_value.last_price_ = decimal::Decimal{m[1].str()};
-    //                 new_value.last_size_ = data[10].asInt();
-    //
-    //                 pf_data.push_back(std::move(new_value));
-    //             }
-    //
-    //             //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
-    //             //        <<
-    //             //        '\n';
-    //         }
-    //     }
-    //     else if (message_type == "I")
-    //     {
-    //         subscription_id_ = response["data"]["subscriptionId"].asString();
-    //         //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-    //     }
-    //     else if (message_type == "H")
-    //     {
-    //         // heartbeat , just return
-    //     }
-    //     else
-    //     {
-    //         spdlog::error("unexpected message type.");
-    //     }
-    // }
-    return pf_data;
+    // each response message contains a single set of fields.
+
+    std::smatch m;
+    if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
+    {
+        std::cout << "can't find trade price in buffer: " << buffer << '\n';
+    }
+    else
+    {
+        std::chrono::milliseconds ms{response["t"].asInt64()};
+        new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
+
+        new_value.ticker_ = response["s"].asCString();
+        new_value.last_price_ = decimal::Decimal{response["p"].asCString()};
+        new_value.last_size_ = response["v"].asInt();
+
+        new_value.dark_pool_ = response["dp"].asBool();
+        
+        const char* mkt_status = response["ms"].asCString();
+        std::string_view mktstat{mkt_status};
+
+        if (mktstat == "open")
+        {
+            new_value.market_status_ = EodMktStatus::e_open;
+        }
+        else if (mktstat == "closed")
+        {
+            new_value.market_status_ = EodMktStatus::e_closed;
+        }
+        else if (mktstat == "extended hours")
+        {
+            new_value.market_status_ = EodMktStatus::e_extended_hours;
+        }
+        else
+        {
+            new_value.market_status_ = EodMktStatus::e_unknown;
+        }
+    }
+    return new_value;
 }  // -----  end of method Eodhd::ExtractData  -----
 
 void Eodhd::StopStreaming(bool* had_signal)
@@ -363,21 +301,19 @@ void Eodhd::StopStreaming(bool* had_signal)
 
     Json::Value disconnect_request;
     disconnect_request["action"] = "unsubscribe";
-    // disconnect_request["authorization"] = api_key_;
-    // disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
-    Json::Value tickers{"AAPL, MSFT, TSLA"};
-    // Json::Value tickers(Json::arrayValue);
-    // for (const auto& symbol : symbol_list_)
-    // {
-    //     tickers.append(symbol);
-    // }
+
+    std::string ticker_list;
+    ticker_list = symbol_list_.front();
+    rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto& sym) { ticker_list += ", "; ticker_list += sym; });
+
+    Json::Value tickers{ticker_list};
 
     disconnect_request["symbols"] = tickers;
 
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "";  // compact printing and string formatting
     const std::string disconnect_request_str = Json::writeString(builder, disconnect_request);
-    //    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
+       // std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
 
     // just grab the code from the example program
 
@@ -412,13 +348,14 @@ void Eodhd::StopStreaming(bool* had_signal)
     // set timeout options so we don't hang forever if the
     // exchange is closed.
 
-    beast::websocket::stream_base::timeout opt{
-        std::chrono::seconds(30),  // handshake timeout
-        std::chrono::seconds(20),  // idle timeout
-        true                       // enable keep-alive pings
-    };
-
-    ws.set_option(opt);
+    ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    // beast::websocket::stream_base::timeout opt{
+    //     std::chrono::seconds(30),  // handshake timeout
+    //     std::chrono::seconds(20),  // idle timeout
+    //     true                       // enable keep-alive pings
+    // };
+    //
+    // ws.set_option(opt);
 
     ws.handshake(host, websocket_prefix_);
 
