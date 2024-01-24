@@ -232,6 +232,8 @@ Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
     
+    //NOtE: prices can be integral values, not just decimal values
+
     static const std::regex kNumericTradePrice{R"***(("s"(?:[^,]*,"p":))([0-9]*(?:\.[0-9]*))?,)***"};
     static const std::regex kQuotedTradePrice{R"***("s":[^,]*,"p":"[0-9]*(?:\.[0-9]*)?",)***"};
     static const std::string kStringTradePrice{R"***($1"$2",)***"};
