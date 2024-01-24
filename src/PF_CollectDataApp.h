@@ -58,6 +58,7 @@ namespace po = boost::program_options;
 
 #include "Boxes.h"
 // #include "DDecQuad.h"
+#include "Eodhd.h"
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
@@ -132,9 +133,15 @@ class PF_CollectDataApp
                                                             std::string_view delim);
 
     void PrimeChartsForStreaming();
-    void CollectStreamingData();
-    void ProcessStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
-                             std::queue<std::string> *streamed_data);
+
+    void CollectTiingoStreamingData();
+    void CollectEodhdStreamingData();
+
+    void ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
+                                   std::queue<std::string> *streamed_data);
+
+    void ProcessEodhdStreamedData(Eodhd *quotes, bool *had_signal, std::mutex *data_mutex,
+                                  std::queue<std::string> *streamed_data);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
@@ -148,7 +155,8 @@ class PF_CollectDataApp
    private:
     static void HandleSignal(int signal);
 
-    void ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, std::string ticker);
+    void ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData &updates, std::string ticker);
+    void ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &update);
 
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
 
@@ -175,7 +183,9 @@ class PF_CollectDataApp
     fs::path output_chart_directory_;
     fs::path output_graphs_directory_;
     fs::path tiingo_api_key_;
+    fs::path eodhd_api_key_;
 
+    std::string streaming_host_name_;
     std::string quote_host_name_;
     std::string quote_host_port_;
 
@@ -233,20 +243,30 @@ class PF_CollectDataApp
         e_from_MinMax
     };
 
+    enum class StreamingSource : int32_t
+    {
+        e_unknown,
+        e_Eodhd,
+        e_Tiingo
+    };
+
+    std::string streaming_source_i_;
     std::string api_key_;
-    std::string destination_i;
-    std::string interval_i;
-    std::string mode_i;
-    std::string source_format_i;
-    std::string new_data_source_i;
-    std::string chart_data_source_i;
-    std::string use_adjusted_i;
+    std::string api_key_Eodhd_;
+    std::string destination_i_;
+    std::string interval_i_;
+    std::string mode_i_;
+    std::string source_format_i_;
+    std::string new_data_source_i_;
+    std::string chart_data_source_i_;
+    std::string use_adjusted_i_;
     std::string symbol_list_i_;
     std::string exchange_list_i_;
     std::string graphics_format_i_;
     std::vector<std::string> scale_i_list_;
     std::vector<std::string> box_size_i_list_;
 
+    StreamingSource streaming_data_source_ = StreamingSource::e_unknown;
     Source new_data_source_ = Source::e_unknown;
     Source chart_data_source_ = Source::e_unknown;
     SourceFormat source_format_ = SourceFormat::e_csv;

@@ -69,6 +69,7 @@ namespace vws = std::ranges::views;
 
 // #include "DDecQuad.h"
 #include "ConstructChartGraphic.h"
+#include "Eodhd.h"
 #include "PF_Chart.h"
 #include "PF_CollectDataApp.h"
 #include "PF_Column.h"
@@ -218,27 +219,27 @@ bool PF_CollectDataApp::CheckArgs()
 
     //	let's get our input and output set up
 
-    BOOST_ASSERT_MSG(mode_i == "load" || mode_i == "update" || mode_i == "daily-scan",
-                     std::format("\nMode must be: 'load', 'update' or 'daily-scan': {}", mode_i).c_str());
-    mode_ = mode_i == "load" ? Mode::e_load : mode_i == "update" ? Mode::e_update : Mode::e_daily_scan;
+    BOOST_ASSERT_MSG(mode_i_ == "load" || mode_i_ == "update" || mode_i_ == "daily-scan",
+                     std::format("\nMode must be: 'load', 'update' or 'daily-scan': {}", mode_i_).c_str());
+    mode_ = mode_i_ == "load" ? Mode::e_load : mode_i_ == "update" ? Mode::e_update : Mode::e_daily_scan;
 
     // now make sure we can find our data for input and output.
 
     BOOST_ASSERT_MSG(
-        new_data_source_i == "file" || new_data_source_i == "streaming" || new_data_source_i == "database",
-        std::format("\nNew data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i).c_str());
-    new_data_source_ = new_data_source_i == "file"       ? Source::e_file
-                       : new_data_source_i == "database" ? Source::e_DB
-                                                         : Source::e_streaming;
+        new_data_source_i_ == "file" || new_data_source_i_ == "streaming" || new_data_source_i_ == "database",
+        std::format("\nNew data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i_).c_str());
+    new_data_source_ = new_data_source_i_ == "file"       ? Source::e_file
+                       : new_data_source_i_ == "database" ? Source::e_DB
+                                                          : Source::e_streaming;
 
     BOOST_ASSERT_MSG(
-        chart_data_source_i == "file" || chart_data_source_i == "database",
-        std::format("\nExisting chart data source must be: 'file' or 'database': {}", chart_data_source_i).c_str());
-    chart_data_source_ = chart_data_source_i == "file" ? Source::e_file : Source::e_DB;
+        chart_data_source_i_ == "file" || chart_data_source_i_ == "database",
+        std::format("\nExisting chart data source must be: 'file' or 'database': {}", chart_data_source_i_).c_str());
+    chart_data_source_ = chart_data_source_i_ == "file" ? Source::e_file : Source::e_DB;
 
-    BOOST_ASSERT_MSG(destination_i == "file" || destination_i == "database",
-                     std::format("\nData destination must be: 'file' or 'database': {}", destination_i).c_str());
-    destination_ = destination_i == "file" ? Destination::e_file : Destination::e_DB;
+    BOOST_ASSERT_MSG(destination_i_ == "file" || destination_i_ == "database",
+                     std::format("\nData destination must be: 'file' or 'database': {}", destination_i_).c_str());
+    destination_ = destination_i_ == "file" ? Destination::e_file : Destination::e_DB;
 
     if (mode_ == Mode::e_daily_scan || new_data_source_ == Source::e_DB)
     {
@@ -368,9 +369,9 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_),
                          std::format("\nCan't find new data input directory: {}", new_data_input_directory_).c_str());
 
-        BOOST_ASSERT_MSG(source_format_i == "csv" || source_format_i == "json",
-                         std::format("\nNew data files must be: 'csv' or 'json': {}", source_format_i).c_str());
-        source_format_ = source_format_i == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
+        BOOST_ASSERT_MSG(source_format_i_ == "csv" || source_format_i_ == "json",
+                         std::format("\nNew data files must be: 'csv' or 'json': {}", source_format_i_).c_str());
+        source_format_ = source_format_i_ == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
 
         // if we are adding to existing data then we need to know where to find
         // that data
@@ -460,6 +461,26 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(!begin_date_.empty(), "\nMust specify 'begin-date' when data source is 'database'.");
     }
 
+    if (new_data_source_ == Source::e_streaming)
+    {
+        if (streaming_source_i_ == "Eodhd")
+        {
+            streaming_data_source_ = StreamingSource::e_Eodhd;
+            BOOST_ASSERT_MSG(!eodhd_api_key_.empty(),
+                             "\nMust specify 'eodhd-key' file when streaming data source is 'Eodhd'.");
+            BOOST_ASSERT_MSG(fs::exists(eodhd_api_key_),
+                             std::format("\nCan't find Eodhd api key file: {}", eodhd_api_key_).c_str());
+        }
+        else if (streaming_source_i_ == "Tiingo")
+        {
+            streaming_data_source_ = StreamingSource::e_Tiingo;
+            BOOST_ASSERT_MSG(!tiingo_api_key_.empty(),
+                             "\nMust specify 'tiingo-key' file when streaming data source is 'Tiingo'.");
+            BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_),
+                             std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
+        }
+    }
+
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "\nmax-graphic-cols must be >= -1.");
 
     BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle",
@@ -468,11 +489,11 @@ bool PF_CollectDataApp::CheckArgs()
     const std::map<std::string, Interval> possible_intervals = {{"eod", Interval::e_eod},   {"live", Interval::e_live},
                                                                 {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5},
                                                                 {"min1", Interval::e_min1}, {"min5", Interval::e_min5}};
-    auto which_interval = possible_intervals.find(interval_i);
+    auto which_interval = possible_intervals.find(interval_i_);
     BOOST_ASSERT_MSG(which_interval != possible_intervals.end(),
                      std::format("\nInterval must be: 'eod', 'live', 'sec1', "
                                  "'sec5', 'min1', 'min5': {}",
-                                 interval_i)
+                                 interval_i_)
                          .c_str());
     interval_ = which_interval->second;
 
@@ -523,13 +544,13 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process OR 'ALL' to use all symbols from the specified exchange.")
 		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
 		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_),	"name of directory containing existing files with data for symbols we are using.")
-		("destination",	    	po::value<std::string>(&this->destination_i)->default_value("file"),	"destination: send data to 'file' or 'database'. Default is 'file'.")
-		("new-data-source",		po::value<std::string>(&this->new_data_source_i)->default_value("file"),	"source for new data: either 'file', 'streaming' or 'database'. Default is 'file'.")
-		("chart-data-source",	po::value<std::string>(&this->chart_data_source_i)->default_value("file"),	"source for existing chart data: either 'file' or 'database'. Default is 'file'.")
-		("source-format",		po::value<std::string>(&this->source_format_i)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'.")
+		("destination",	    	po::value<std::string>(&this->destination_i_)->default_value("file"),	"destination: send data to 'file' or 'database'. Default is 'file'.")
+		("new-data-source",		po::value<std::string>(&this->new_data_source_i_)->default_value("file"),	"source for new data: either 'file', 'streaming' or 'database'. Default is 'file'.")
+		("chart-data-source",	po::value<std::string>(&this->chart_data_source_i_)->default_value("file"),	"source for existing chart data: either 'file' or 'database'. Default is 'file'.")
+		("source-format",		po::value<std::string>(&this->source_format_i_)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'.")
 		("graphics-format",		po::value<std::string>(&this->graphics_format_i_)->default_value("svg"),	"Output graphics file format: either 'svg' or 'csv'. Default is 'svg'.")
-		("mode,m",				po::value<std::string>(&this->mode_i)->default_value("load"),	"mode: either 'load' new data, 'update' existing data or 'daily-scan'. Default is 'load'.")
-		("interval,i",			po::value<std::string>(&this->interval_i)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'.")
+		("mode,m",				po::value<std::string>(&this->mode_i_)->default_value("load"),	"mode: either 'load' new data, 'update' existing data or 'daily-scan'. Default is 'load'.")
+		("interval,i",			po::value<std::string>(&this->interval_i_)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'.")
 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'.")
 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
 
@@ -549,6 +570,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
 
+        ("streaming-host",      po::value<std::string>(&this->streaming_host_name_)->default_value("ws.eodhistoricaldata.com"), "web site we stream from. Default is 'ws.eodhistoricaldata.com'.")
         ("quote-host",          po::value<std::string>(&this->quote_host_name_)->default_value("api.tiingo.com"), "web site we download from. Default is 'api.tiingo.com'.")
         ("quote-port",          po::value<std::string>(&this->quote_host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
 
@@ -558,8 +580,10 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.PF_db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
         ("stock-db-data-source",      po::value<std::string>(&this->db_params_.stock_db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
+        ("streaming-data-source",     po::value<std::string>(&this->streaming_source_i_)->default_value("Eodhd"), "Name of streaming quotes data source. Default is 'Eodhd'.")
 
-        ("key",                 po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
+        ("tiingo-key",          po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
+        ("eodhd-key",           po::value<fs::path>(&this->eodhd_api_key_)->default_value("./Eodhd_key.dat"), "Path to file containing Eodhd api key. Default is './Eodhd_key.dat'.")
 		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
 		("use-MinMax",          po::value<bool>(&use_min_max_)->default_value(false)->implicit_value(true), "compute boxsize using price range from DB then apply specified fraction.")
 		;
@@ -610,6 +634,11 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         {
             api_key_.resize(api_key_.size() - 1);
         }
+    }
+    if (streaming_data_source_ == StreamingSource::e_Eodhd)
+    {
+        std::ifstream key_file(eodhd_api_key_);
+        key_file >> api_key_Eodhd_;
     }
 
     // TODO(dpriedel): this should be a program param...
@@ -834,7 +863,7 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
                     spdlog::error(
                         std::format("Unable to load data for symbol chart: {} from DB "
                                     "because: {}.",
-                                    new_chart.MakeChartFileName(interval_i, ""), e.what()));
+                                    new_chart.MakeChartFileName(interval_i_, ""), e.what()));
                 }
             }
         }
@@ -860,7 +889,7 @@ void PF_CollectDataApp::Run_Update()
         try
         {
             fs::path existing_data_file_name =
-                input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
+                input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -897,7 +926,7 @@ void PF_CollectDataApp::Run_Update()
         catch (const std::exception &e)
         {
             spdlog::error(std::format("Unable to update data for chart: {} from file because: {}.",
-                                      new_chart.MakeChartFileName(interval_i, ""), e.what()));
+                                      new_chart.MakeChartFileName(interval_i_, ""), e.what()));
         }
     }
 }  // -----  end of method PF_CollectDataApp::Run_Update  -----
@@ -943,7 +972,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                 if (chart_data_source_ == Source::e_file)
                 {
                     fs::path existing_data_file_name =
-                        input_chart_directory_ / MakeChartNameFromParams(val, interval_i, "json");
+                        input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
                     if (fs::exists(existing_data_file_name))
                     {
                         new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -955,7 +984,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                 }
                 else  // should only be database here
                 {
-                    new_chart = PF_Chart::LoadChartFromChartsDB(PF_DB{db_params_}, val, interval_i);
+                    new_chart = PF_Chart::LoadChartFromChartsDB(PF_DB{db_params_}, val, interval_i_);
                 }
                 if (new_chart.empty())
                 {
@@ -981,7 +1010,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
             catch (const std::exception &e)
             {
                 spdlog::error(std::format("Unable to update data for chart: {} from DB because: {}.",
-                                          new_chart.MakeChartFileName(interval_i, ""), e.what()));
+                                          new_chart.MakeChartFileName(interval_i_, ""), e.what()));
             }
         }
     }
@@ -999,7 +1028,7 @@ void PF_CollectDataApp::Run_Streaming()
     if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
     {
         std::cout << "Market not open for trading now so we can't stream quotes.\n";
-        return;
+        // return;
     }
 
     if (market_status == US_MarketStatus::e_NotOpenYet)
@@ -1051,7 +1080,19 @@ void PF_CollectDataApp::Run_Streaming()
     // let's stream !
 
     PrimeChartsForStreaming();
-    CollectStreamingData();
+
+    if (streaming_data_source_ == StreamingSource::e_Eodhd)
+    {
+        CollectEodhdStreamingData();
+    }
+    else if (streaming_data_source_ == StreamingSource::e_Tiingo)
+    {
+        CollectTiingoStreamingData();
+    }
+    else
+    {
+        throw std::runtime_error("Unknown streaming data source.");
+    }
 }
 
 void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, const fs::path &update_file_name) const
@@ -1221,7 +1262,225 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     }
 }  // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
 
-void PF_CollectDataApp::CollectStreamingData()
+void PF_CollectDataApp::CollectEodhdStreamingData()
+{
+    // we're going to use 2 threads here -- a producer thread which collects
+    // streamed data from Tiingo and a consummer thread which will take that
+    // data, decode it and load it into appropriate charts. Processing continues
+    // until interrupted.
+
+    // we've added a third thread to manage a countdown timer which will
+    // interrupt our producer thread at market close.  Otherwise, the producer
+    // thread will hang forever or until interrupted.
+
+    // since this code can potentially run for hours on end
+    // it's a good idea to provide a way to break into this processing and shut
+    // it down cleanly. so, a little bit of C...(taken from "Advanced Unix
+    // Programming" by Warren W. Gay, p. 317)
+
+    // ok, get ready to handle keyboard interrupts, if any.
+
+    std::cout << "starting eodhd streaming." << std::endl;
+
+    struct sigaction sa_old
+    {
+    };
+    struct sigaction sa_new
+    {
+    };
+
+    sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
+    sigemptyset(&sa_new.sa_mask);
+    sa_new.sa_flags = 0;
+    sigaction(SIGINT, &sa_new, &sa_old);
+
+    PF_CollectDataApp::had_signal_ = false;
+
+    Eodhd quotes{streaming_host_name_, quote_host_port_, "/ws/us?api_token="s += api_key_Eodhd_, symbol_list_};
+    quotes.Connect();
+    std::cout << "eodhd connected" << std::endl;
+
+    // if we are here then we already know that the US market is open for
+    // trading.
+
+    auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
+    // add a couple minutes for padding
+    auto local_market_close =
+        std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
+
+    std::mutex data_mutex;
+    std::queue<std::string> streamed_data;
+
+    // py::gil_scoped_release gil{};
+
+    auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
+    auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes, &PF_CollectDataApp::had_signal_,
+                                     &data_mutex, &streamed_data);
+    std::cout << "eodhd steaming started." << std::endl;
+    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessEodhdStreamedData, this, &quotes,
+                                      &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+
+    streaming_task.get();
+    processing_task.get();
+    timer_task.get();
+
+    quotes.Disconnect();
+
+    // make a last check to be sure we  didn't leave any data unprocessed
+
+    ProcessEodhdStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+
+}  // -----  end of method PF_CollectDataApp::CollectEodhdStreamingData  -----
+
+void PF_CollectDataApp::ProcessEodhdStreamedData(Eodhd *quotes, bool *had_signal, std::mutex *data_mutex,
+                                                 std::queue<std::string> *streamed_data)
+{
+    //    py::gil_scoped_acquire gil{};
+    std::exception_ptr ep = nullptr;
+
+    while (true)
+    {
+        if (!streamed_data->empty())
+        {
+            std::string new_data;
+            {
+                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+                new_data = streamed_data->front();
+                streamed_data->pop();
+            }
+            const auto pf_data = quotes->ExtractData(new_data);
+
+            // our PF_Data contains data for just 1 transaction for 1 symbol
+            try
+            {
+                ProcessUpdatesForEodhdSymbol(pf_data);
+            }
+            catch (std::system_error &e)
+            {
+                // any system problems, we eventually abort, but only
+                // after finishing work in process.
+
+                spdlog::error(e.what());
+                auto ec = e.code();
+                spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(), ec.message());
+
+                // OK, let's remember our first time here.
+
+                if (!ep)
+                {
+                    ep = std::current_exception();
+                }
+                continue;
+            }
+            catch (std::exception &e)
+            {
+                // any problems, we'll document them and continue.
+
+                spdlog::error(e.what());
+
+                if (!ep)
+                {
+                    ep = std::current_exception();
+                }
+                continue;
+            }
+            catch (...)
+            {
+                // any problems, we'll document them and continue.
+
+                spdlog::error("Unknown problem with an async download process");
+
+                if (!ep)
+                {
+                    ep = std::current_exception();
+                }
+                continue;
+            }
+        }
+        else
+        {
+            std::this_thread::sleep_for(2ms);
+        }
+        if (streamed_data->empty() && *had_signal)
+        {
+            break;
+        }
+    }
+    if (ep)
+    {
+        // spdlog::error(catenate("Processed: ", file_list.size(), " files.
+        // Successes: ", success_counter,
+        //         ". Errors: ", error_counter, "."));
+        *had_signal = true;
+        std::rethrow_exception(ep);
+    }
+
+}  // -----  end of method PF_CollectDataApp::ProcessEodhdStreamedData  -----
+
+void PF_CollectDataApp::ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &update)
+{
+    std::vector<PF_Chart *> need_to_update_graph;
+
+    // since we can have multiple charts for each symbol, we need to pass the
+    // new value to all appropriate charts so we find all the charts for each
+    // symbol and give each a chance at the new data.
+
+    rng::for_each(charts_ | vws::filter([&update](const auto &symbol_and_chart)
+                                        { return symbol_and_chart.first == update.ticker_; }),
+                  [this, &need_to_update_graph, &update](auto &symbol_and_chart)
+                  {
+                      try
+                      {
+                          auto chart_changed =
+                              symbol_and_chart.second.AddValue(update.last_price_, update.time_stamp_nanoseconds_utc_);
+                          if (chart_changed != PF_Column::Status::e_Ignored)
+                          {
+                              need_to_update_graph.push_back(&symbol_and_chart.second);
+                          }
+                          const auto chart_name = symbol_and_chart.second.GetChartBaseName();
+                          streamed_prices_[chart_name].timestamp_.push_back(
+                              update.time_stamp_nanoseconds_utc_.time_since_epoch().count());
+                          streamed_prices_[chart_name].price_.push_back(dec2dbl(update.last_price_));
+                          streamed_prices_[chart_name].signal_type_.push_back(
+                              chart_changed == PF_Column::Status::e_AcceptedWithSignal
+                                  ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
+                                  : 0);
+                      }
+                      catch (std::exception &e)
+                      {
+                          spdlog::error("Problem adding streamed value to chart for symbol: "s +=
+                                        update.ticker_ + " "s += e.what());
+                      }
+                  });
+
+    // we could have multiple chart updates for any given symbol but we only
+    // want to update files and graphic once per symbol.
+
+    rng::sort(need_to_update_graph);
+    const auto [first, last] = rng::unique(need_to_update_graph);
+    need_to_update_graph.erase(first, last);
+
+    for (const PF_Chart *chart : need_to_update_graph)
+    {
+        try
+        {
+            fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
+            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path,
+                                                    streamed_prices_[chart->GetChartBaseName()], trend_lines_,
+                                                    PF_Chart::X_AxisFormat::e_show_time);
+
+            fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
+            chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
+        }
+        catch (std::exception &e)
+        {
+            spdlog::error("Problem creating graphic for updated streamed value: "s += chart->GetChartBaseName() +=
+                          " "s += e.what());
+        }
+    }
+}  // -----  end of method PF_CollectDataApp::ProcessUpdatesForEodhdSymbol  -----
+
+void PF_CollectDataApp::CollectTiingoStreamingData()
 {
     // we're going to use 2 threads here -- a producer thread which collects
     // streamed data from Tiingo and a consummer thread which will take that
@@ -1272,7 +1531,7 @@ void PF_CollectDataApp::CollectStreamingData()
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
     auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes, &PF_CollectDataApp::had_signal_,
                                      &data_mutex, &streamed_data);
-    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &quotes,
+    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessTiingoStreamedData, this, &quotes,
                                       &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
     streaming_task.get();
@@ -1283,12 +1542,12 @@ void PF_CollectDataApp::CollectStreamingData()
 
     // make a last check to be sure we  didn't leave any data unprocessed
 
-    ProcessStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    ProcessTiingoStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
-}  // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
+}  // -----  end of method PF_CollectDataApp::CollectTiingoStreamingData  -----
 
-void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
-                                            std::queue<std::string> *streamed_data)
+void PF_CollectDataApp::ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
+                                                  std::queue<std::string> *streamed_data)
 {
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
@@ -1327,8 +1586,8 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, bool *had_signal, st
                 tasks.reserve(tickers_in_update.size());
                 for (const auto &ticker : tickers_in_update)
                 {
-                    tasks.emplace_back(std::async(std::launch::async, &PF_CollectDataApp::ProcessUpdatesForSymbol, this,
-                                                  pf_data, ticker));
+                    tasks.emplace_back(std::async(std::launch::async, &PF_CollectDataApp::ProcessUpdatesForTiingoSymbol,
+                                                  this, pf_data, ticker));
                 }
                 // now, let's wait till they're all done
                 // and then we'll do the next bunch.
@@ -1392,7 +1651,7 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, bool *had_signal, st
 
                 try
                 {
-                    ProcessUpdatesForSymbol(pf_data, tickers_in_update[0]);
+                    ProcessUpdatesForTiingoSymbol(pf_data, tickers_in_update[0]);
                 }
                 catch (std::system_error &e)
                 {
@@ -1456,9 +1715,9 @@ void PF_CollectDataApp::ProcessStreamedData(Tiingo *quotes, bool *had_signal, st
         std::rethrow_exception(ep);
     }
 
-}  // -----  end of method PF_CollectDataApp::ProcessStreamedData  -----
+}  // -----  end of method PF_CollectDataApp::ProcessTiingoStreamedData  -----
 
-void PF_CollectDataApp::ProcessUpdatesForSymbol(const Tiingo::StreamedData &updates, std::string ticker)
+void PF_CollectDataApp::ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData &updates, std::string ticker)
 {
     std::vector<PF_Chart *> need_to_update_graph;
 
@@ -1599,7 +1858,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                     if (chart_needs_update)
                     {
                         // we are only doing EOD charts in this routine.
-                        chart.UpdateChartInChartsDB(pf_db, interval_i, PF_Chart::X_AxisFormat::e_show_date,
+                        chart.UpdateChartInChartsDB(pf_db, interval_i_, PF_Chart::X_AxisFormat::e_show_date,
                                                     graphics_format_ == GraphicsFormat::e_csv);
                         exchange_charts_updated += 1;
                     }
@@ -1609,7 +1868,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                     spdlog::error(
                         std::format("Unable to update data for chart: {} from DB because: "
                                     "{}.",
-                                    chart.MakeChartFileName(interval_i, ""), e.what()));
+                                    chart.MakeChartFileName(interval_i_, ""), e.what()));
                 }
             }
         }
@@ -1657,14 +1916,14 @@ void PF_CollectDataApp::ShutdownStoreOutputInFiles()
         {
             fs::path output_file_name =
                 output_chart_directory_ /
-                chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "json");
+                chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "json");
             chart.ConvertChartToJsonAndWriteToFile(output_file_name);
 
             if (graphics_format_ == GraphicsFormat::e_svg)
             {
                 fs::path graph_file_path =
                     output_graphs_directory_ /
-                    (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "svg"));
+                    (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "svg"));
                 ConstructCDPFChartGraphicAndWriteToFile(
                     chart, graph_file_path,
                     (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
@@ -1677,7 +1936,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInFiles()
             {
                 fs::path graph_file_path =
                     output_graphs_directory_ /
-                    (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "csv"));
+                    (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "csv"));
                 chart.ConvertChartToTableAndWriteToFile(graph_file_path, interval_ != Interval::e_eod
                                                                              ? PF_Chart::X_AxisFormat::e_show_time
                                                                              : PF_Chart::X_AxisFormat::e_show_date);
@@ -1689,7 +1948,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInFiles()
                 "Problem in shutdown: {} for chart: {}.\nTrying to "
                 "complete "
                 "shutdown.",
-                e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i), "")));
+                e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "")));
         }
     }
 }  // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInFiles  -----
@@ -1704,7 +1963,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInDB()
         {
             if (graphics_format_ == GraphicsFormat::e_svg)
             {
-                fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i, "svg"));
+                fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i_, "svg"));
                 ConstructCDPFChartGraphicAndWriteToFile(
                     chart, graph_file_path,
                     (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetChartBaseName()]
@@ -1713,7 +1972,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInDB()
                     interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
                                                  : PF_Chart::X_AxisFormat::e_show_date);
             }
-            chart.StoreChartInChartsDB(pf_db, interval_i,
+            chart.StoreChartInChartsDB(pf_db, interval_i_,
                                        interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
                                                                     : PF_Chart::X_AxisFormat::e_show_date,
                                        graphics_format_ == GraphicsFormat::e_csv);
@@ -1724,7 +1983,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInDB()
             spdlog::error(
                 std::format("Problem storing data in DB in shutdown: {} for chart: "
                             "{}.\nTrying to complete shutdown.",
-                            e.what(), chart.MakeChartFileName(interval_i, "")));
+                            e.what(), chart.MakeChartFileName(interval_i_, "")));
         }
     }
     spdlog::info(std::format("Stored {} charts in DB.", chart_count));
