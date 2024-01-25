@@ -97,7 +97,7 @@ void Tiingo::Connect()
     // See https://tools.ietf.org/html/rfc7230#section-5.4
     auto host = host_ + ':' + std::to_string(ep.port());
 
-   ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
     // set timeout options so we don't hang forever if the
     // exchange is closed.
