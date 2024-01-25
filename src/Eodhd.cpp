@@ -16,6 +16,7 @@
 // the guts of this code comes from the examples distributed by Boost.
 
 #include <algorithm>
+#include <charconv>
 #include <exception>
 #include <format>
 #include <iostream>
@@ -57,8 +58,13 @@ Eodhd::~Eodhd()
     }
 }  // -----  end of method Eodhd::~Eodhd  -----
 
+Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& api_key)
+    : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+{
+}  // -----  end of method Eodhd::Tiingo  (constructor)  -----
+
 Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& prefix,
-               const std::vector<std::string>& symbols)
+             const std::vector<std::string>& symbols)
     : symbol_list_{symbols},
       // api_key_{api_key},
       host_{host},
@@ -71,18 +77,17 @@ Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string
     // std::cout << host << " port: " << port << " prfx: " << prefix << std::endl;
     //  need to uppercase symbols for streaming request
 
-    rng::for_each(symbol_list_, [](auto & sym) { rng::for_each(sym, [](char& c) { c = std::toupper(c); });});
+    rng::for_each(symbol_list_, [](auto& sym) { rng::for_each(sym, [](char& c) { c = std::toupper(c); }); });
 }  // -----  end of method Eodhd::Eodhd  (constructor)  -----
 
 void Eodhd::Connect()
 {
-    // Look up the domain name
+    // the following code is taken from example in Boost documentation
+
     auto const results = resolver_.resolve(host_, port_);
 
-    // Make the connection on the IP address we get from a lookup
     auto ep = net::connect(get_lowest_layer(ws_), results);
 
-    // Set SNI Hostname (many hosts need this to handshake successfully)
     if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
     {
         throw beast::system_error(
@@ -90,23 +95,9 @@ void Eodhd::Connect()
             "Failed to set SNI Hostname");
     }
 
-    // Update the host_ string. This will provide the value of the
-    // Host HTTP header during the WebSocket handshake.
-    // See https://tools.ietf.org/html/rfc7230#section-5.4
     auto host = host_ + ':' + std::to_string(ep.port());
 
-   ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
-
-    // set timeout options so we don't hang forever if the
-    // exchange is closed.
-
-    // beast::websocket::stream_base::timeout opt{
-    //     std::chrono::seconds(30),  // handshake timeout
-    //     std::chrono::seconds(20),  // idle timeout
-    //     true                       // enable keep-alive pings
-    // };
-    //
-    // ws_.set_option(opt);
+    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
     // Perform the SSL handshake
     ws_.next_layer().handshake(ssl::stream_base::client);
@@ -115,33 +106,32 @@ void Eodhd::Connect()
     ws_.handshake(host, websocket_prefix_);
     BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
 
-    // let's make sure we got a 'success' result
-
     beast::flat_buffer buffer;
 
     buffer.clear();
     ws_.read(buffer);
     ws_.text(ws_.got_text());
     std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-    BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"), std::format("Failed to get success code. Got: {}", buffer_content).c_str());
+    BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"),
+                     std::format("Failed to get success code. Got: {}", buffer_content).c_str());
 }
 
 void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
-    Json::Value subscribe_request;
-    subscribe_request["action"] = "subscribe";
+    // message formats are 'simple' so let's just use RegExes to work with them.
 
     std::string ticker_list;
     ticker_list = symbol_list_.front();
-    rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto& sym) { ticker_list += ", "; ticker_list += sym; });
+    rng::for_each(symbol_list_ | vws::drop(1),
+                  [&ticker_list](const auto& sym)
+                  {
+                      ticker_list += ", ";
+                      ticker_list += sym;
+                  });
 
-    Json::Value tickers{ticker_list};
-    subscribe_request["symbols"] = tickers;
+    // NOTE: format requires '{{' and '}}' escaping for braces which are to be included in format output string.
 
-    Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";  // compact printing and string formatting
-    const std::string subscribe_request_str = Json::writeString(builder, subscribe_request);
-       // std::cout << "Jsoncpp subscribe_request_str: " << subscribe_request_str << '\n';
+    const auto subscribe_request_str = std::format(R"({{"action": "subscribe", "symbols": "{}"}})", ticker_list);
 
     // Send the message
     ws_.write(net::buffer(subscribe_request_str));
@@ -230,62 +220,74 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
 
 Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
 {
+    // response format is 'simple' so we'll use RegExes here too.
+
+    // {"s":"TGT","p":141,"c":[14,37,41],"v":1,"dp":false,"ms":"open","t":1706109542329}
+
     // std::cout << "\nraw buffer: " << buffer << std::endl;
-    
-    //NOtE: prices can be integral values, not just decimal values
 
-    static const std::regex kNumericTradePrice{R"***(("s"(?:[^,]*,"p":))([0-9]*(?:\.[0-9]*))?,)***"};
-    static const std::regex kQuotedTradePrice{R"***("s":[^,]*,"p":"[0-9]*(?:\.[0-9]*)?",)***"};
-    static const std::string kStringTradePrice{R"***($1"$2",)***"};
-    const std::string zapped_buffer = std::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
-    // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
+    // make referencing the submatch groups more readable
 
-    // will eventually need to use locks to access this I think.
-    // for now, we just append data.
-    JSONCPP_STRING err;
-    Json::Value response;
-
-    Json::CharReaderBuilder builder;
-    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
-    if (!reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
+    enum GroupNumber
     {
-        throw std::runtime_error("Problem parsing tiingo response: "s + err);
-    }
-    //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
+        e_all = 0,
+        e_ticker = 1,
+        e_price = 2,
+        e_conditions = 3,
+        e_volume = 4,
+        e_dark_pool = 5,
+        e_mkt_status = 6,
+        e_time = 7
+    };
+
+    static const std::string kResponseString{
+        R"***(\{"s":"(.*)","p":([.0-9]*),"c":(.*),"v":(.*),"dp":(false|true),"ms":"(open|closed|extended-hours)","t":([.0-9]*)\})***"};
+    static const std::regex kResponseRegex{kResponseString};
+
+    std::cmatch fields;
+    const char* response_text = buffer.data();
 
     PF_Data new_value;
 
-    // each response message contains a single set of fields.
-
-    std::smatch m;
-    if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
+    if (bool matched_it = std::regex_match(response_text, fields, kResponseRegex); matched_it)
     {
-        std::cout << "can't find trade price in buffer: " << buffer << '\n';
-    }
-    else
-    {
-        std::chrono::milliseconds ms{response["t"].asInt64()};
+        std::string_view tmp_fld{response_text + fields.position(e_time), static_cast<size_t>(fields.length(e_time))};
+        int64_t time_value{};
+        if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), time_value); ec != std::errc())
+        {
+            throw std::runtime_error(
+                std::format("Problem converting transaction time to int64: {}\n", std::make_error_code(ec).message()));
+        }
+        std::chrono::milliseconds ms{time_value};
         new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
 
-        new_value.ticker_ = response["s"].asCString();
-        new_value.last_price_ = decimal::Decimal{response["p"].asCString()};
-        new_value.last_size_ = response["v"].asInt();
+        new_value.ticker_ =
+            std::string_view{response_text + fields.position(e_ticker), static_cast<size_t>(fields.length(e_ticker))};
 
-        new_value.dark_pool_ = response["dp"].asBool();
-        
-        const char* mkt_status = response["ms"].asCString();
-        std::string_view mktstat{mkt_status};
+        tmp_fld = {response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
+        new_value.last_price_ = decimal::Decimal{std::string{tmp_fld}};
 
-        if (mktstat == "open")
+        tmp_fld = {response_text + fields.position(e_volume), static_cast<size_t>(fields.length(e_volume))};
+        if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), new_value.last_size_); ec != std::errc())
+        {
+            throw std::runtime_error(std::format("Problem converting transaction volume to int64: {}\n",
+                                                 std::make_error_code(ec).message()));
+        }
+
+        tmp_fld = {response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
+        new_value.dark_pool_ = tmp_fld == "true";
+
+        tmp_fld = {response_text + fields.position(e_mkt_status), static_cast<size_t>(fields.length(e_mkt_status))};
+
+        if (tmp_fld == "open")
         {
             new_value.market_status_ = EodMktStatus::e_open;
         }
-        else if (mktstat == "closed")
+        else if (tmp_fld == "closed")
         {
             new_value.market_status_ = EodMktStatus::e_closed;
         }
-        else if (mktstat == "extended hours")
+        else if (tmp_fld == "extended-hours")
         {
             new_value.market_status_ = EodMktStatus::e_extended_hours;
         }
@@ -294,6 +296,11 @@ Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
             new_value.market_status_ = EodMktStatus::e_unknown;
         }
     }
+    else
+    {
+        spdlog::error(std::format("can't parse transaction buffer: ->{}<-", buffer));
+    }
+
     return new_value;
 }  // -----  end of method Eodhd::ExtractData  -----
 
@@ -301,21 +308,17 @@ void Eodhd::StopStreaming(bool* had_signal)
 {
     // we need to send the unsubscribe message in a separate connection.
 
-    Json::Value disconnect_request;
-    disconnect_request["action"] = "unsubscribe";
-
     std::string ticker_list;
     ticker_list = symbol_list_.front();
-    rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto& sym) { ticker_list += ", "; ticker_list += sym; });
+    rng::for_each(symbol_list_ | vws::drop(1),
+                  [&ticker_list](const auto& sym)
+                  {
+                      ticker_list += ", ";
+                      ticker_list += sym;
+                  });
 
-    Json::Value tickers{ticker_list};
-
-    disconnect_request["symbols"] = tickers;
-
-    Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";  // compact printing and string formatting
-    const std::string disconnect_request_str = Json::writeString(builder, disconnect_request);
-       // std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
+    const auto unsubscribe_request_str = std::format(R"({{"action": "unsubscribe", "symbols": "{}"}})", ticker_list);
+    // std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
 
     // just grab the code from the example program
 
@@ -347,21 +350,11 @@ void Eodhd::StopStreaming(bool* had_signal)
         [](websocket::request_type& req)
         { req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro"); }));
 
-    // set timeout options so we don't hang forever if the
-    // exchange is closed.
-
     ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
-    // beast::websocket::stream_base::timeout opt{
-    //     std::chrono::seconds(30),  // handshake timeout
-    //     std::chrono::seconds(20),  // idle timeout
-    //     true                       // enable keep-alive pings
-    // };
-    //
-    // ws.set_option(opt);
 
     ws.handshake(host, websocket_prefix_);
 
-    ws.write(net::buffer(std::string(disconnect_request_str)));
+    ws.write(net::buffer(std::string(unsubscribe_request_str)));
 
     beast::flat_buffer buffer;
 
@@ -375,12 +368,10 @@ void Eodhd::StopStreaming(bool* had_signal)
     }
     catch (std::exception& e)
     {
-        std::cout << "Problem closing socket after clearing streaming symbols."s + e.what() << '\n';
+        spdlog::error("Problem closing socket after clearing streaming symbols: {}.", e.what());
     }
 
     *had_signal = true;
-
-    //    std::cout << beast::make_printable(buffer.data()) << std::endl;
 
 }  // -----  end of method Eodhd::StopStreaming  -----
 
@@ -395,7 +386,7 @@ void Eodhd::Disconnect()
     }
     catch (std::exception& e)
     {
-        std::cout << "Problem closing socket after disconnect command."s + e.what() << '\n';
+        spdlog::error("Problem closing socket during disconnect: {}.", e.what());
     }
 }
 
@@ -452,8 +443,6 @@ Json::Value Eodhd::GetTopOfBookAndLastClose()
     beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
 
-    //    std::cout << "raw data: " << result << '\n';
-
     // I need to convert some numeric fields to string fields so they
     // won't be converted to floats and give me a bunch of extra decimal digits.
     // These values are nicely rounded by Eodhd.
@@ -479,9 +468,9 @@ Json::Value Eodhd::GetTopOfBookAndLastClose()
 }  // -----  end of method Eodhd::GetTopOfBookAndLastClose  -----
 
 std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& symbol,
-                                                             std::chrono::year_month_day start_from,
-                                                             int how_many_previous, UseAdjusted use_adjusted,
-                                                             const US_MarketHolidays* holidays)
+                                                            std::chrono::year_month_day start_from,
+                                                            int how_many_previous, UseAdjusted use_adjusted,
+                                                            const US_MarketHolidays* holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method.
 
@@ -498,7 +487,7 @@ std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& s
 }  // -----  end of method Eodhd::GetMostRecentTickerData  -----
 
 Json::Value Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
-                                  std::chrono::year_month_day end_date, UpOrDown sort_asc)
+                                 std::chrono::year_month_day end_date, UpOrDown sort_asc)
 {
     // if any problems occur here, we'll just let beast throw an exception.
 
@@ -519,11 +508,15 @@ Json::Value Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_mont
     // and then formatting changes the date (becomes a day earlier) for some reason (time zone
     // related maybe?? )
 
-    const std::string request = std::format(
-        "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host_,
-        symbol, start_date, end_date, api_key_, "json", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
+    // const std::string request = std::format(
+    //     "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}",
+    //     host_, symbol, start_date, end_date, api_key_, "json", "daily", (sort_asc == UpOrDown::e_Up ? "date" :
+    //     "-date"));
 
-    http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
+    const std::string request =
+        std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=json", host_, symbol,
+                    start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key_);
+    http::request<http::string_body> req{http::verb::get, request, version_};
     req.set(http::field::host, host_);
     req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
@@ -541,17 +534,13 @@ Json::Value Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_mont
     beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
 
-    //    std::cout << "raw data: " << result << '\n';
-
     // I need to convert some numeric fields to string fields so they
     // won't be converted to floats and give me a bunch of extra decimal digits.
     // These values are nicely rounded by Eodhd.
 
-    const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":\s*([0-9]*\.[0-9]*))***"};
+    const std::regex source{R"***("(open|high|low|close|adjusted_close)":\s*([0-9]*(?:\.[0-9]*)?))***"};
     const std::string dest{R"***("$1":"$2")***"};
     const std::string result1 = std::regex_replace(result, source, dest);
-
-    // std::cout << "modified data: " << result1 << '\n';
 
     // now, just convert to JSON
 
@@ -562,7 +551,7 @@ Json::Value Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_mont
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
     if (!reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
     {
-        throw std::runtime_error("Problem parsing tiingo response: "s + err);
+        throw std::runtime_error("Problem parsing Eodhd response: "s + err);
     }
     return response;
 }  // -----  end of method Eodhd::GetTickerData  -----

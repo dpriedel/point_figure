@@ -81,6 +81,7 @@ public:
     // ====================  LIFECYCLE     ======================================= 
     Eodhd ();                             // constructor 
     ~Eodhd ();
+    Eodhd(const std::string& host, const std::string& port, const std::string& api_key);
     Eodhd (const std::string& host, const std::string& port, const std::string& prefix, const std::vector<std::string>& symbols);
 
     Eodhd(const Eodhd& rhs) = delete;
