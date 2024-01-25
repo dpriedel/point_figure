@@ -1219,17 +1219,36 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
 
     if (market_status == US_MarketStatus::e_NotOpenYet)
     {
-        for (auto &[symbol, chart] : charts_)
+        if (streaming_data_source_ == StreamingSource::e_Tiingo)
         {
-            auto history = history_getter.GetMostRecentTickerData(
-                symbol, today, 2, price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No,
-                &holidays);
-            chart.AddValue(history[0].close_,
-                           std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
+            Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
+            for (auto &[symbol, chart] : charts_)
+            {
+                auto history = history_getter.GetMostRecentTickerData(
+                    symbol, today, 2, price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No,
+                    &holidays);
+                chart.AddValue(history[0].close_,
+                               std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
+            }
+        }
+        else
+        {
+            // only Eodhd right now
+
+            Eodhd history_getter{"eodhd.com", "443", api_key_Eodhd_};
+            for (auto &[symbol, chart] : charts_)
+            {
+                auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, UseAdjusted::e_No, &holidays);
+                chart.AddValue(history[0].close_,
+                               std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
+            }
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
     {
+        // only have Tiingo option for now
+
+        Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
         auto history = history_getter.GetTopOfBookAndLastClose();
         for (const auto &e : history)
         {
@@ -1298,7 +1317,6 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
 
     Eodhd quotes{streaming_host_name_, quote_host_port_, "/ws/us?api_token="s += api_key_Eodhd_, symbol_list_};
     quotes.Connect();
-    std::cout << "eodhd connected" << std::endl;
 
     // if we are here then we already know that the US market is open for
     // trading.
@@ -1316,7 +1334,6 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
     auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes, &PF_CollectDataApp::had_signal_,
                                      &data_mutex, &streamed_data);
-    std::cout << "eodhd steaming started." << std::endl;
     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessEodhdStreamedData, this, &quotes,
                                       &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
