@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <memory>
 #include <ranges>
 
@@ -41,7 +42,7 @@ namespace vws = std::ranges::views;
 
 // NOLINTBEGIN
 constexpr auto RED = 0xFF0000;     // for down columns
-constexpr auto BLACK = 0x000000;    // for down columns
+constexpr auto BLACK = 0x000000;   // for down columns
 constexpr auto GREEN = 0x008000;   // for up columns
 constexpr auto YELLOW = 0xFFFF00;  // for up columns
 constexpr auto BLUE = 0x0000FF;    // for reversed to up columns
@@ -280,7 +281,8 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     c->addLegend(k50, 90, false, "Times New Roman Bold Italic", k12)->setBackground(Chart::Transparent);
 
     c->xAxis()->setLabels(StringArray(x_axis_label_data.data(), x_axis_label_data.size()))->setFontAngle(45.);
-    c->xAxis()->setLabelStep(static_cast<int32_t>((columns_in_PF_Chart - skipped_columns) / k40), 0);
+
+    // c->xAxis()->setLabelStep(static_cast<int32_t>((columns_in_PF_Chart - skipped_columns) / k40), 0);
     c->yAxis()->setLabelStyle("Arial Bold");
     if (the_chart.IsPercent())
     {
@@ -377,7 +379,14 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
         p->addLineLayer(DoubleArray(streamed_prices.price_.data(), streamed_prices.price_.size()), RED);
 
         p->xAxis()->setLabels(StringArray(p_x_axis_label_data.data(), p_x_axis_label_data.size()))->setFontAngle(45.);
-        p->xAxis()->setLabelStep(static_cast<int32_t>((p_x_axis_label_data.size()) / 40), 0);
+
+        int64_t step = k40;
+        if (p_x_axis_label_data.size() > 40)
+        {
+            int64_t divisor = p_x_axis_label_data.size() / 40;
+            step = p_x_axis_label_data.size() / divisor;
+        }
+        // p->xAxis()->setLabelStep(static_cast<int32_t>(step), 0);
         p->yAxis()->setLabelStyle("Arial Bold");
 
         p->yAxis2()->copyAxis(p->yAxis());
@@ -624,9 +633,10 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.tb_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
-                                     DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()),
-                                     "tb sell", tb_sell_sym, k13, BLACK);
+        the_graphic->addScatterLayer(
+            DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
+            DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()), "tb sell", tb_sell_sym,
+            k13, BLACK);
     }
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
