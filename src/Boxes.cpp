@@ -64,9 +64,8 @@ Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier,
     {
         base_box_size_ = base_box_size_.rescale(kMinExponent);
     }
-    // std::print("params at Boxes start: {}, {}\n", base_box_size_, box_size_modifier_);
+
     runtime_box_size_ = base_box_size_;
-    // std::print("params at Boxes start2: {}, {}, {}\n", base_box_size_, box_size_modifier_, runtime_box_size_);
 
     if (box_size_modifier_ != decimal::Decimal(0))
     {
@@ -81,26 +80,13 @@ Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier,
         }
 
         // it seems that the rescaled box size value can turn out to be zero. If that
-        // is the case, then go with the unscaled box size.
+        // is the case, then go with our arbitrary minimum box size.
 
         if (runtime_box_size_ == decimal::Decimal(0))
         {
-            runtime_box_size_ = (base_box_size_ * box_size_modifier_).rescale(kMinExponent);
+            runtime_box_size_ = k_min_box_size_;
         }
-
-        // else  // percent box siz
-        // {
-        //     percent_box_factor_up_ =
-        //         (decimal::Decimal{1} + box_size_modifier_)
-        //             .rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
-        //     percent_box_factor_down_ =
-        //         (decimal::Decimal{1} - box_size_modifier_)
-        //             .rescale(std::max(base_box_size_.exponent(), box_size_modifier_.exponent()) - 1);
-        //     percent_exponent_ = percent_box_factor_up_.exponent();
-        // }
     }
-    // else
-    // {
     if (box_scale_ == BoxScale::e_Percent)
     {
         BOOST_ASSERT_MSG(base_box_size_ != decimal::Decimal{0} && box_size_modifier_ != decimal::Decimal{0},
@@ -109,13 +95,12 @@ Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier,
         percent_box_factor_down_ = (decimal::Decimal{1} - box_size_modifier_);
         percent_exponent_ = std::max(kMinExponent, (box_size_modifier_.exponent()) - 1);
     }
-    // }
 
     // try to keep box size from being too small
 
-    if (runtime_box_size_.exponent() < -3)
+    if (runtime_box_size_ < k_min_box_size_)
     {
-        runtime_box_size_ = runtime_box_size_.rescale(-3);
+        runtime_box_size_ = k_min_box_size_;
     }
 
     // we rarely need integral box types.
