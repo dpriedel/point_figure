@@ -86,7 +86,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
 void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1& data_arrays, size_t skipped_columns,
                                            std::unique_ptr<XYChart>& the_graphic);
 
-void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& data_arrays,
+void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& data_arrays, size_t skipped_price_cols,
                                         const StreamedPrices& streamed_prices, std::unique_ptr<XYChart>& the_graphic);
 
 #endif  // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  -----
