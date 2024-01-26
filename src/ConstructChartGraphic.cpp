@@ -329,6 +329,12 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     const auto dash_color = c->dashLineColor(RED, Chart::DashLine);
     c->yAxis()->addMark(dec2dbl(first_value), dash_color)->setLineWidth(3);
 
+    // add a point to keep our mark line in view
+
+    double mark_marker = dec2dbl(first_value);
+    double mark_col = 0.0;
+    c->addScatterLayer(DoubleArray(&mark_col, 1), DoubleArray(&mark_marker, 1));
+
     Signals_2 data_for_prices;
 
     std::unique_ptr<XYChart> p;
@@ -345,7 +351,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
         // For now, just limit the max number of points to the most recent 'n' where
         // 'n' = the width of the chart.
 
-        const auto max_price_cols = static_cast<size_t>(kChartWidth * kDpi - k80 - k50);
+        const auto max_price_cols = static_cast<size_t>(kChartWidth * kDpi - k120 - k50);
         size_t skipped_price_cols = 0;
         if (streamed_prices.timestamp_.size() > max_price_cols)
         {
@@ -383,7 +389,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
             throw std::runtime_error("Unable to create streamed prices graphic.");
         }
 
-        p->setPlotArea(k50, k50, (kChartWidth * kDpi - k80), (kChartHeight3 * kDpi - k200))
+        p->setPlotArea(k50, k50, (kChartWidth * kDpi - k120), (kChartHeight3 * kDpi - k200))
             ->setGridColor(LITEGRAY, LITEGRAY);
 
         p->addTitle(std::format("Price data for {} {}", the_chart.GetSymbol(),
@@ -409,6 +415,12 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
 
         const auto dash_color = p->dashLineColor(RED, Chart::DashLine);
         p->yAxis()->addMark(dec2dbl(first_value), dash_color)->setLineWidth(2);
+        // add a point to keep our mark line in view
+
+        double mark_marker = dec2dbl(first_value);
+        double mark_col = 0.0;
+        p->addScatterLayer(DoubleArray(&mark_col, 1), DoubleArray(&mark_marker, 1));
+
         // next, add our signals to this graphic.
         // Each signal type will be a separate layer so it can have its own glyph and color.
 
