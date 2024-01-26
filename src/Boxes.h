@@ -61,7 +61,6 @@ enum class BoxScale : int32_t
 class Boxes
 {
    public:
-
     using Box = decimal::Decimal;
     using BoxList = std::deque<Box>;  // use a deque so we can add at either end
 
@@ -120,7 +119,6 @@ class Boxes
     Boxes& operator=(Boxes&& rhs) = default;
 
    protected:
-
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
@@ -146,8 +144,8 @@ class Boxes
 
     // ====================  DATA MEMBERS  =======================================
 
-    Box k_min_box_size_{".01"};        // This is arbitrary since stocks can trade in fractions of a penny
-    
+    Box k_min_box_size_{".01"};  // This is arbitrary since stocks can trade in fractions of a penny
+
     BoxList boxes_;
 
     decimal::Decimal base_box_size_ = -1;
