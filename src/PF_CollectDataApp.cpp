@@ -1028,7 +1028,7 @@ void PF_CollectDataApp::Run_Streaming()
     if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
     {
         std::cout << "Market not open for trading now so we can't stream quotes.\n";
-        // return;
+        return;
     }
 
     if (market_status == US_MarketStatus::e_NotOpenYet)
@@ -1036,7 +1036,7 @@ void PF_CollectDataApp::Run_Streaming()
         std::cout << "Market not open for trading YET so we'll wait." << std::endl;
     }
 
-    std::map<std::string, decimal::Decimal> atrs;  // table for memoization of ATR
+    std::map<std::string, decimal::Decimal> cache;  // table for memoization of ATR
 
     for (const auto &val : params)
     {
@@ -1048,15 +1048,7 @@ void PF_CollectDataApp::Run_Streaming()
             decimal::Decimal atr;
             if (use_ATR_)
             {
-                if (atrs.contains(symbol))
-                {
-                    atr = atrs[symbol];
-                }
-                else
-                {
-                    atr = ComputeATRForChart(symbol);
-                    atrs[symbol] = atr;
-                }
+                atr = cache.contains(symbol) ? cache[symbol] : (cache[symbol] = ComputeATRForChart(symbol));
                 new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
             }
             else
@@ -1215,18 +1207,21 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     auto market_status =
         GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
-    Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
-
     if (market_status == US_MarketStatus::e_NotOpenYet)
     {
+        std::map<std::string, std::vector<StockDataRecord>> cache;
+
         if (streaming_data_source_ == StreamingSource::e_Tiingo)
         {
             Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
             for (auto &[symbol, chart] : charts_)
             {
-                auto history = history_getter.GetMostRecentTickerData(
-                    symbol, today, 2, price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No,
-                    &holidays);
+                auto history =
+                    cache.contains(symbol)
+                        ? cache[symbol]
+                        : (cache[symbol] = history_getter.GetMostRecentTickerData(
+                               symbol, today, 2,
+                               price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No, &holidays));
                 chart.AddValue(history[0].close_,
                                std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
             }
@@ -1238,7 +1233,9 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
             Eodhd history_getter{"eodhd.com", "443", api_key_Eodhd_};
             for (auto &[symbol, chart] : charts_)
             {
-                auto history = history_getter.GetMostRecentTickerData(symbol, today, 2, UseAdjusted::e_No, &holidays);
+                auto history = cache.contains(symbol) ? cache[symbol]
+                                                      : (cache[symbol] = history_getter.GetMostRecentTickerData(
+                                                             symbol, today, 2, UseAdjusted::e_No, &holidays));
                 chart.AddValue(history[0].close_,
                                std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
             }
@@ -1436,6 +1433,18 @@ void PF_CollectDataApp::ProcessEodhdStreamedData(Eodhd *quotes, bool *had_signal
 
 void PF_CollectDataApp::ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &update)
 {
+    // it is possible that the update could be empty if there was a problem extracting
+    // the data.
+    // Also, for now, we want to skip 'dark pool' transactions.
+    // AND skip 1-share transactions -- maybe these are algo-traders probing the market.
+
+    if (update.last_price_ == -1 || update.dark_pool_ || update.last_size_ == 1)
+    {
+        // last_price_ = -1 means the field was not set
+        // during data extraction.
+        return;
+    }
+
     std::vector<PF_Chart *> need_to_update_graph;
 
     // since we can have multiple charts for each symbol, we need to pass the
