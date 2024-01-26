@@ -69,11 +69,11 @@ public:
         std::string subscription_id_;
         std::string ticker_;                        // Ticker
         std::string time_stamp_;                    // Date
-        Eodhd::TmPt time_stamp_nanoseconds_utc_;   // time_stamp
+        Eodhd::TmPt time_stamp_nanoseconds_utc_;    // time_stamp
         decimal::Decimal last_price_;               // Last Price
-        int32_t last_size_;                         // Last Size
+        int32_t last_size_{-1};                     // Last Size
         bool dark_pool_;
-        EodMktStatus market_status_;
+        EodMktStatus market_status_{EodMktStatus::e_unknown};
     };
     
     // using StreamedData = std::vector<PF_Data>;
