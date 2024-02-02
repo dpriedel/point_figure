@@ -50,6 +50,7 @@ namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 #include "utilities.h"
+#include "Uniqueifier.h"
 
 // =====================================================================================
 //        Class:  Eodhd
@@ -60,6 +61,13 @@ class Eodhd
 {
 public:
 
+    // let's remove some diagnositcs
+
+    using Host = UniqType<std::string, struct Host_Tag>;
+    using Port = UniqType<std::string, struct Port_Tag>;
+    using API_Key = UniqType<std::string, struct API_Key_Tag>;
+    using Prefix = UniqType<std::string, struct Prefix_Tag>;
+    
     using TmPt = std::chrono::utc_time<std::chrono::utc_clock::duration>;
 
     enum class EodMktStatus : int32_t { e_unknown, e_open, e_closed, e_extended_hours};
@@ -81,8 +89,8 @@ public:
     // ====================  LIFECYCLE     ======================================= 
     Eodhd ();                             // constructor 
     ~Eodhd ();
-    Eodhd(const std::string& host, const std::string& port, const std::string& api_key);
-    Eodhd (const std::string& host, const std::string& port, const std::string& prefix, const std::vector<std::string>& symbols);
+    Eodhd(const Host& host, const Port& port, const API_Key& api_key);
+    Eodhd (const Host& host, const Port& port, const Prefix& prefix, const std::vector<std::string>& symbols);
 
     Eodhd(const Eodhd& rhs) = delete;
     Eodhd(Eodhd&& rhs) = delete;
@@ -99,6 +107,7 @@ public:
     void Connect();
     void Disconnect();
     void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
+    void StartStreaming();
     void StopStreaming(bool* had_signal);
 
     // ====================  OPERATORS     ======================================= 

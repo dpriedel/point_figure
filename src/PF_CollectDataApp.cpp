@@ -1313,7 +1313,6 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
     PF_CollectDataApp::had_signal_ = false;
 
     Eodhd quotes{streaming_host_name_, quote_host_port_, "/ws/us?api_token="s += api_key_Eodhd_, symbol_list_};
-    quotes.Connect();
 
     // if we are here then we already know that the US market is open for
     // trading.
@@ -1337,8 +1336,6 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
     streaming_task.get();
     processing_task.get();
     timer_task.get();
-
-    quotes.Disconnect();
 
     // make a last check to be sure we  didn't leave any data unprocessed
 

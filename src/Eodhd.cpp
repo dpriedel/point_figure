@@ -52,24 +52,20 @@ Eodhd::~Eodhd()
 {
     // need to disconnect if still connected.
 
-    if (ws_.is_open())
-    {
-        Disconnect();
-    }
+    Disconnect();
 }  // -----  end of method Eodhd::~Eodhd  -----
 
-Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& api_key)
-    : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+Eodhd::Eodhd(const Host& host, const Port& port, const API_Key& api_key)
+    : api_key_{api_key.get()}, host_{host.get()}, port_{port.get()}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
 {
 }  // -----  end of method Eodhd::Tiingo  (constructor)  -----
 
-Eodhd::Eodhd(const std::string& host, const std::string& port, const std::string& prefix,
-             const std::vector<std::string>& symbols)
+Eodhd::Eodhd(const Host& host, const Port& port, const Prefix& prefix, const std::vector<std::string>& symbols)
     : symbol_list_{symbols},
       // api_key_{api_key},
-      host_{host},
-      port_{port},
-      websocket_prefix_{prefix},
+      host_{host.get()},
+      port_{port.get()},
+      websocket_prefix_{prefix.get()},
       ctx_{ssl::context::tlsv12_client},
       resolver_{ioc_},
       ws_{ioc_, ctx_}
@@ -118,23 +114,7 @@ void Eodhd::Connect()
 
 void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
-    // message formats are 'simple' so let's just use RegExes to work with them.
-
-    std::string ticker_list;
-    ticker_list = symbol_list_.front();
-    rng::for_each(symbol_list_ | vws::drop(1),
-                  [&ticker_list](const auto& sym)
-                  {
-                      ticker_list += ", ";
-                      ticker_list += sym;
-                  });
-
-    // NOTE: format requires '{{' and '}}' escaping for braces which are to be included in format output string.
-
-    const auto subscribe_request_str = std::format(R"({{"action": "subscribe", "symbols": "{}"}})", ticker_list);
-
-    // Send the message
-    ws_.write(net::buffer(subscribe_request_str));
+    StartStreaming();
 
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
@@ -156,7 +136,7 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
             }
             if (*had_signal)
             {
-                StopStreaming(had_signal);
+                // StopStreaming(had_signal);
 
                 // do a last check for data
 
@@ -193,6 +173,27 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
         catch (std::exception& e)
         {
             spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
+
+            if (std::string_view{e.what()}.starts_with("End of file"))
+            {
+                static bool got_here_before = false;
+                // I had expected to get a system error here. Hence the
+                // catch block above.
+                // Anyways, let's try to reconnect.
+
+                if (!got_here_before)
+                {
+                    got_here_before = true;
+                    spdlog::error("EOF on websocket read. Trying again.");
+                    std::this_thread::sleep_for(2ms);
+                    StopStreaming(had_signal);
+                    StartStreaming();
+                    continue;
+                }
+                spdlog::error(std::format("Failed to resume after EOF because: {}", e.what()));
+                *had_signal = true;
+                std::rethrow_exception(std::make_exception_ptr(e));
+            }
             *had_signal = true;
             // beast::close_socket(get_lowest_layer(ws_));
             ws_.close(websocket::close_code::going_away);
@@ -212,11 +213,39 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
     // will cause the websocket to be closed, let's set this flag so other processes which
     // may be watching it can know.
 
-    if (!ws_.is_open())
-    {
-        *had_signal = true;
-    }
+    StopStreaming(had_signal);
+    Disconnect();
+
+    *had_signal = true;
+
 }  // -----  end of method Eodhd::StreamData  -----
+
+void Eodhd::StartStreaming()
+{
+    // we need to do our own connect/disconnect so we can handle any
+    // interruptions in streaming.
+
+    Connect();
+
+    // message formats are 'simple' so let's just use RegExes to work with them.
+
+    std::string ticker_list;
+    ticker_list = symbol_list_.front();
+    rng::for_each(symbol_list_ | vws::drop(1),
+                  [&ticker_list](const auto& sym)
+                  {
+                      ticker_list += ", ";
+                      ticker_list += sym;
+                  });
+
+    // NOTE: format requires '{{' and '}}' escaping for braces which are to be included in format output string.
+
+    const auto subscribe_request_str = std::format(R"({{"action": "subscribe", "symbols": "{}"}})", ticker_list);
+
+    // Send the message
+    ws_.write(net::buffer(subscribe_request_str));
+
+}  // -----  end of method Eodhd::StartStreaming  -----
 
 Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
 {
@@ -371,12 +400,18 @@ void Eodhd::StopStreaming(bool* had_signal)
         spdlog::error("Problem closing socket after clearing streaming symbols: {}.", e.what());
     }
 
-    *had_signal = true;
+    Disconnect();
+
+    // *had_signal = true;
 
 }  // -----  end of method Eodhd::StopStreaming  -----
 
 void Eodhd::Disconnect()
 {
+    if (!ws_.is_open())
+    {
+        return;
+    }
     beast::flat_buffer buffer;
 
     try
