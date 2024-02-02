@@ -351,7 +351,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
         // For now, just limit the max number of points to the most recent 'n' where
         // 'n' = the width of the chart.
 
-        const auto max_price_cols = static_cast<size_t>(kChartWidth * kDpi - k120 - k50);
+        const auto max_price_cols = static_cast<size_t>(kChartWidth * kDpi - k120 - k50) * 2;
         size_t skipped_price_cols = 0;
         if (streamed_prices.timestamp_.size() > max_price_cols)
         {
