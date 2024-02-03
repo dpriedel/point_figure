@@ -1230,7 +1230,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
         {
             // only Eodhd right now
 
-            Eodhd history_getter{"eodhd.com", "443", api_key_Eodhd_};
+            Eodhd history_getter{Eodhd::Host{"eodhd.com"}, Eodhd::Port{"443"}, Eodhd::APIKey{api_key_Eodhd_}};
             for (auto &[symbol, chart] : charts_)
             {
                 auto history = cache.contains(symbol) ? cache[symbol]
@@ -1312,7 +1312,8 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
 
     PF_CollectDataApp::had_signal_ = false;
 
-    Eodhd quotes{streaming_host_name_, quote_host_port_, "/ws/us?api_token="s += api_key_Eodhd_, symbol_list_};
+    Eodhd quotes{Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
+                 Eodhd::Prefix{"/ws/us?api_token="s += api_key_Eodhd_}, symbol_list_};
 
     // if we are here then we already know that the US market is open for
     // trading.
@@ -1328,12 +1329,25 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
     // py::gil_scoped_release gil{};
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
-    auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes, &PF_CollectDataApp::had_signal_,
-                                     &data_mutex, &streamed_data);
     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessEodhdStreamedData, this, &quotes,
                                       &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    while (!had_signal_)
+    {
+        try
+        {
+            auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
+                                             &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+            streaming_task.get();
+        }
+        catch (Eodhd::StreamingEOF &e)
+        {
+            // if we got an EOF on the stream, just start up again
+            // unless, we had a signal.
 
-    streaming_task.get();
+            continue;
+        }
+    }
+
     processing_task.get();
     timer_task.get();
 
