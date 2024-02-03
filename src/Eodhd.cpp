@@ -55,8 +55,13 @@ Eodhd::~Eodhd()
     Disconnect();
 }  // -----  end of method Eodhd::~Eodhd  -----
 
-Eodhd::Eodhd(const Host& host, const Port& port, const API_Key& api_key)
-    : api_key_{api_key.get()}, host_{host.get()}, port_{port.get()}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+Eodhd::Eodhd(const Host& host, const Port& port, const APIKey& api_key)
+    : api_key_{api_key.get()},
+      host_{host.get()},
+      port_{port.get()},
+      ctx_{ssl::context::tlsv12_client},
+      resolver_{ioc_},
+      ws_{ioc_, ctx_}
 {
 }  // -----  end of method Eodhd::Tiingo  (constructor)  -----
 
@@ -119,11 +124,11 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
     // This buffer will hold the incoming message
     beast::flat_buffer buffer;
 
-    while (ws_.is_open())
+    while (ws_.is_open() && !*had_signal)
     {
         try
         {
-            buffer.clear();
+            buffer.consume(buffer.size());
             ws_.read(buffer);
             ws_.text(ws_.got_text());
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
@@ -134,41 +139,24 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
                 const std::lock_guard<std::mutex> queue_lock(*data_mutex);
                 streamed_data->push(std::move(buffer_content));
             }
-            if (*had_signal)
-            {
-                // StopStreaming(had_signal);
-
-                // do a last check for data
-
-                buffer.clear();
-                ws_.read(buffer);
-                std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-                if (!buffer_content.empty())
-                {
-                    const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-                    streamed_data->push(std::move(buffer_content));
-                }
-                break;
-            }
         }
         catch (std::system_error& e)
         {
-            // any system problems, we close the socket and force our way out
+            // any system problems, we close the socket and force our way out.
+            // on EOF, just cleanly shutdown. Let higher level code
+            // decide what to do then.
 
             auto ec = e.code();
             if (ec.value() == boost::asio::error::eof)
             {
-                spdlog::info("EOF on websocket read. Trying again.");
-                std::this_thread::sleep_for(2ms);
-                // try reading some more
-                continue;
+                spdlog::info("EOF on websocket read. Exiting streaming.");
+                StopStreaming();
+                throw StreamingEOF{};
             }
             spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
                                       ec.value(), ec.message()));
             *had_signal = true;
-            // beast::close_socket(get_lowest_layer(ws_));
             ws_.close(websocket::close_code::going_away);
-            break;
         }
         catch (std::exception& e)
         {
@@ -176,47 +164,47 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
 
             if (std::string_view{e.what()}.starts_with("End of file"))
             {
-                static bool got_here_before = false;
                 // I had expected to get a system error here. Hence the
                 // catch block above.
-                // Anyways, let's try to reconnect.
+                // Anyways, let's just shutdown the stream and exit.
 
-                if (!got_here_before)
-                {
-                    got_here_before = true;
-                    spdlog::error("EOF on websocket read. Trying again.");
-                    std::this_thread::sleep_for(2ms);
-                    StopStreaming(had_signal);
-                    StartStreaming();
-                    continue;
-                }
-                spdlog::error(std::format("Failed to resume after EOF because: {}", e.what()));
-                *had_signal = true;
-                std::rethrow_exception(std::make_exception_ptr(e));
+                spdlog::info("EOF on websocket read. Exiting streaming.");
+                StopStreaming();
+                throw StreamingEOF{};
             }
             *had_signal = true;
-            // beast::close_socket(get_lowest_layer(ws_));
-            ws_.close(websocket::close_code::going_away);
-            break;
+            StopStreaming();
         }
         catch (...)
         {
             spdlog::error("Unknown problem processing steamed data.");
             *had_signal = true;
-            // beast::close_socket(get_lowest_layer(ws_));
-            ws_.close(websocket::close_code::going_away);
-            break;
+            StopStreaming();
         }
-        buffer.consume(buffer.size());
+    }
+    if (*had_signal)
+    {
+        // StopStreaming(had_signal);
+
+        // do a last check for data
+
+        buffer.clear();
+        ws_.read(buffer);
+        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+        if (!buffer_content.empty())
+        {
+            const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+            streamed_data->push(std::move(buffer_content));
+        }
     }
     // if the websocket is closed on the server side or there is a timeout which in turn
     // will cause the websocket to be closed, let's set this flag so other processes which
     // may be watching it can know.
 
-    StopStreaming(had_signal);
+    StopStreaming();
     Disconnect();
 
-    *had_signal = true;
+    // *had_signal = true;
 
 }  // -----  end of method Eodhd::StreamData  -----
 
@@ -333,7 +321,7 @@ Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
     return new_value;
 }  // -----  end of method Eodhd::ExtractData  -----
 
-void Eodhd::StopStreaming(bool* had_signal)
+void Eodhd::StopStreaming()
 {
     // we need to send the unsubscribe message in a separate connection.
 
@@ -375,10 +363,6 @@ void Eodhd::StopStreaming(bool* had_signal)
 
     ws.next_layer().handshake(ssl::stream_base::client);
 
-    ws.set_option(websocket::stream_base::decorator(
-        [](websocket::request_type& req)
-        { req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro"); }));
-
     ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
     ws.handshake(host, websocket_prefix_);
@@ -412,8 +396,6 @@ void Eodhd::Disconnect()
     {
         return;
     }
-    beast::flat_buffer buffer;
-
     try
     {
         // beast::close_socket(get_lowest_layer(ws_));
