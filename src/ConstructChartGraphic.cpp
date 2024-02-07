@@ -61,6 +61,7 @@ constexpr uint32_t kChartHeight4{19};
 
 // more misc constants to clear up some clang-tidy warnings
 
+constexpr auto k4 = 4;
 constexpr auto k10 = 10;
 constexpr auto k12 = 12;
 constexpr auto k13 = 13;
@@ -283,7 +284,8 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
 
     c->xAxis()->setLabels(StringArray(x_axis_label_data.data(), x_axis_label_data.size()))->setFontAngle(45.);
 
-    c->xAxis()->setLabelStep(k40, 0);
+    c->xAxis()->setLabelStep((columns_in_PF_Chart - skipped_columns) / 40, 0);
+
     c->yAxis()->setLabelStyle("Arial Bold");
     if (the_chart.IsPercent())
     {
@@ -506,80 +508,92 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.dt_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(DoubleArray(data_arrays.dt_buys_x_.data(), data_arrays.dt_buys_x_.size()),
-                                     DoubleArray(data_arrays.dt_buys_price_.data(), data_arrays.dt_buys_price_.size()),
-                                     "dt buy", dt_buy_sym, k10, YELLOW);
+        auto* the_layer = the_graphic->addScatterLayer(
+            DoubleArray(data_arrays.dt_buys_x_.data(), data_arrays.dt_buys_x_.size()),
+            DoubleArray(data_arrays.dt_buys_price_.data(), data_arrays.dt_buys_price_.size()), "dt buy", dt_buy_sym,
+            k10, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tt_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(DoubleArray(data_arrays.tt_buys_x_.data(), data_arrays.tt_buys_x_.size()),
-                                     DoubleArray(data_arrays.tt_buys_price_.data(), data_arrays.tt_buys_price_.size()),
-                                     "tt buy", tt_buy_sym, k10, YELLOW);
+        auto* the_layer = the_graphic->addScatterLayer(
+            DoubleArray(data_arrays.tt_buys_x_.data(), data_arrays.tt_buys_x_.size()),
+            DoubleArray(data_arrays.tt_buys_price_.data(), data_arrays.tt_buys_price_.size()), "tt buy", tt_buy_sym,
+            k10, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.db_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.db_sells_x_.data(), data_arrays.db_sells_x_.size()),
             DoubleArray(data_arrays.db_sells_price_.data(), data_arrays.db_sells_price_.size()), "db sell", db_sell_sym,
             k10, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tb_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
             DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()), "tb sell", tb_sell_sym,
             k10, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bullish_tt_buys_x_.data(), data_arrays.bullish_tt_buys_x_.size()),
             DoubleArray(data_arrays.bullish_tt_buys_price_.data(), data_arrays.bullish_tt_buys_price_.size()),
             "bullish tt buy", bullish_tt_buy_sym, k10, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.bearish_tb_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bearish_tb_sells_x_.data(), data_arrays.bearish_tb_sells_x_.size()),
             DoubleArray(data_arrays.bearish_tb_sells_price_.data(), data_arrays.bearish_tb_sells_price_.size()),
             "bearish tb sell", bearish_tb_sell_sym, k10, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.cat_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_buys_x_.data(), data_arrays.cat_buys_x_.size()),
             DoubleArray(data_arrays.cat_buys_price_.data(), data_arrays.cat_buys_price_.size()), "cat buy", cat_buy_sym,
             k10, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.cat_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_sells_x_.data(), data_arrays.cat_sells_x_.size()),
             DoubleArray(data_arrays.cat_sells_price_.data(), data_arrays.cat_sells_price_.size()), "cat sell",
             cat_sell_sym, k10, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tt_cat_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tt_cat_buys_x_.data(), data_arrays.tt_cat_buys_x_.size()),
             DoubleArray(data_arrays.tt_cat_buys_price_.data(), data_arrays.tt_cat_buys_price_.size()), "tt cat buy",
             tt_cat_buy_sym, k10, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tb_cat_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_cat_sells_x_.data(), data_arrays.tb_cat_sells_x_.size()),
             DoubleArray(data_arrays.tb_cat_sells_price_.data(), data_arrays.tb_cat_sells_price_.size()), "tb cat sell",
             tb_cat_sell_sym, k10, BLACK);
+        the_layer->moveFront();
     }
 }
 
@@ -641,79 +655,91 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.dt_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(DoubleArray(data_arrays.dt_buys_x_.data(), data_arrays.dt_buys_x_.size()),
-                                     DoubleArray(data_arrays.dt_buys_price_.data(), data_arrays.dt_buys_price_.size()),
-                                     "dt buy", dt_buy_sym, k13, YELLOW);
+        auto* the_layer = the_graphic->addScatterLayer(
+            DoubleArray(data_arrays.dt_buys_x_.data(), data_arrays.dt_buys_x_.size()),
+            DoubleArray(data_arrays.dt_buys_price_.data(), data_arrays.dt_buys_price_.size()), "dt buy", dt_buy_sym,
+            k13, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tt_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(DoubleArray(data_arrays.tt_buys_x_.data(), data_arrays.tt_buys_x_.size()),
-                                     DoubleArray(data_arrays.tt_buys_price_.data(), data_arrays.tt_buys_price_.size()),
-                                     "tt buy", tt_buy_sym, k13, YELLOW);
+        auto* the_layer = the_graphic->addScatterLayer(
+            DoubleArray(data_arrays.tt_buys_x_.data(), data_arrays.tt_buys_x_.size()),
+            DoubleArray(data_arrays.tt_buys_price_.data(), data_arrays.tt_buys_price_.size()), "tt buy", tt_buy_sym,
+            k13, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.db_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.db_sells_x_.data(), data_arrays.db_sells_x_.size()),
             DoubleArray(data_arrays.db_sells_price_.data(), data_arrays.db_sells_price_.size()), "db sell", db_sell_sym,
             k13, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tb_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
             DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()), "tb sell", tb_sell_sym,
             k13, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bullish_tt_buys_x_.data(), data_arrays.bullish_tt_buys_x_.size()),
             DoubleArray(data_arrays.bullish_tt_buys_price_.data(), data_arrays.bullish_tt_buys_price_.size()),
             "bullish tt buy", bullish_tt_buy_sym, k13, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.bearish_tb_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bearish_tb_sells_x_.data(), data_arrays.bearish_tb_sells_x_.size()),
             DoubleArray(data_arrays.bearish_tb_sells_price_.data(), data_arrays.bearish_tb_sells_price_.size()),
             "bearish tb sell", bearish_tb_sell_sym, k13, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.cat_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_buys_x_.data(), data_arrays.cat_buys_x_.size()),
             DoubleArray(data_arrays.cat_buys_price_.data(), data_arrays.cat_buys_price_.size()), "cat buy", cat_buy_sym,
             k13, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.cat_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_sells_x_.data(), data_arrays.cat_sells_x_.size()),
             DoubleArray(data_arrays.cat_sells_price_.data(), data_arrays.cat_sells_price_.size()), "cat sell",
             cat_sell_sym, k13, BLACK);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tt_cat_buys_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tt_cat_buys_x_.data(), data_arrays.tt_cat_buys_x_.size()),
             DoubleArray(data_arrays.tt_cat_buys_price_.data(), data_arrays.tt_cat_buys_price_.size()), "tt cat buy",
             tt_cat_buy_sym, k13, YELLOW);
+        the_layer->moveFront();
     }
 
     if (!data_arrays.tb_cat_sells_price_.empty())
     {
-        the_graphic->addScatterLayer(
+        auto* the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_cat_sells_x_.data(), data_arrays.tb_cat_sells_x_.size()),
             DoubleArray(data_arrays.tb_cat_sells_price_.data(), data_arrays.tb_cat_sells_price_.size()), "tb cat sell",
             tb_cat_sell_sym, k13, BLACK);
+        the_layer->moveFront();
     }
 }
