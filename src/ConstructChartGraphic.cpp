@@ -355,29 +355,29 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
 
         const auto max_price_cols = static_cast<size_t>(kChartWidth * kDpi - k120 - k50) * 2;
         size_t skipped_price_cols = 0;
-        if (streamed_prices.timestamp_.size() > max_price_cols)
+        if (streamed_prices.timestamp_seconds_.size() > max_price_cols)
         {
-            skipped_price_cols = streamed_prices.timestamp_.size() - max_price_cols;
+            skipped_price_cols = streamed_prices.timestamp_seconds_.size() - max_price_cols;
         }
         // for x-axis label, we use the time in nanoseconds from the
         // streamed data.
         // the chart software wants an array of const char*.
         // this will take several steps.
 
-        p_x_axis_labels.reserve(streamed_prices.timestamp_.size() - skipped_price_cols);
+        p_x_axis_labels.reserve(streamed_prices.timestamp_seconds_.size() - skipped_price_cols);
 
-        rng::for_each(streamed_prices.timestamp_ | vws::drop(skipped_price_cols),
-                      [&p_x_axis_labels, &date_or_time](const auto& nanosecs)
+        rng::for_each(streamed_prices.timestamp_seconds_ | vws::drop(skipped_price_cols),
+                      [&p_x_axis_labels, &date_or_time](const auto& secs)
                       {
                           if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
                           {
                               p_x_axis_labels.emplace_back(
-                                  std::format("{:%F}", PF_Column::TmPt{std::chrono::nanoseconds{nanosecs}}));
+                                  std::format("{:%F}", PF_Column::TmPt{std::chrono::seconds{secs}}));
                           }
                           else
                           {
                               p_x_axis_labels.emplace_back(
-                                  UTCTimePointToLocalTZHMSString(PF_Column::TmPt{std::chrono::nanoseconds{nanosecs}}));
+                                  UTCTimePointToLocalTZHMSString(PF_Column::TmPt{std::chrono::seconds{secs}}));
                           }
                       });
 

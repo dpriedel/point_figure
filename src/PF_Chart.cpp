@@ -399,8 +399,8 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromCSVStream(std::istream *in
 
         if (return_streamed_data == PF_CollectAndReturnStreamedPrices::e_yes)
         {
-            streamed_prices.timestamp_.push_back(
-                std::chrono::duration_cast<std::chrono::nanoseconds>(timept.time_since_epoch()).count());
+            streamed_prices.timestamp_seconds_.push_back(
+                std::chrono::duration_cast<std::chrono::seconds>(timept.time_since_epoch()).count());
             streamed_prices.price_.push_back(dec2dbl(new_value));
             streamed_prices.signal_type_.push_back(chart_changed == PF_Column::Status::e_AcceptedWithSignal
                                                        ? std::to_underlying(GetSignals().back().signal_type_)
@@ -495,8 +495,8 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
             auto chart_changed = AddValue(new_price, std::chrono::clock_cast<std::chrono::utc_clock>(new_date));
             if (return_streamed_data == PF_CollectAndReturnStreamedPrices::e_yes)
             {
-                streamed_prices.timestamp_.push_back(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count());
+                streamed_prices.timestamp_seconds_.push_back(
+                    std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count());
                 streamed_prices.price_.push_back(dec2dbl(new_price));
                 streamed_prices.signal_type_.push_back(chart_changed == PF_Column::Status::e_AcceptedWithSignal
                                                        ? std::to_underlying(GetSignals().back().signal_type_)
