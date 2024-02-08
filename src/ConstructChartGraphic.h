@@ -89,4 +89,6 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& data_arrays, size_t skipped_price_cols,
                                         const StreamedPrices& streamed_prices, std::unique_ptr<XYChart>& the_graphic);
 
+void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const fs::path& output_filename);
+
 #endif  // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  -----

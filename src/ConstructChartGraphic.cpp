@@ -366,20 +366,20 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
 
         p_x_axis_labels.reserve(streamed_prices.timestamp_seconds_.size() - skipped_price_cols);
 
-        rng::for_each(streamed_prices.timestamp_seconds_ | vws::drop(skipped_price_cols),
-                      [&p_x_axis_labels, &date_or_time](const auto& secs)
-                      {
-                          if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
-                          {
-                              p_x_axis_labels.emplace_back(
-                                  std::format("{:%F}", PF_Column::TmPt{std::chrono::seconds{secs}}));
-                          }
-                          else
-                          {
-                              p_x_axis_labels.emplace_back(
-                                  UTCTimePointToLocalTZHMSString(PF_Column::TmPt{std::chrono::seconds{secs}}));
-                          }
-                      });
+        rng::for_each(
+            streamed_prices.timestamp_seconds_ | vws::drop(skipped_price_cols),
+            [&p_x_axis_labels, &date_or_time](const auto& secs)
+            {
+                if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
+                {
+                    p_x_axis_labels.emplace_back(std::format("{:%F}", PF_Column::TmPt{std::chrono::seconds{secs}}));
+                }
+                else
+                {
+                    p_x_axis_labels.emplace_back(
+                        UTCTimePointToLocalTZHMSString(PF_Column::TmPt{std::chrono::seconds{secs}}));
+                }
+            });
 
         p_x_axis_label_data.reserve(p_x_axis_labels.size());
         rng::for_each(p_x_axis_labels,
@@ -742,4 +742,62 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
             tb_cat_sell_sym, k13, BLACK);
         the_layer->moveFront();
     }
+}
+
+void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const fs::path& output_filename)
+{
+    // simple floating bar graphic which shows overall price movement for each symbol
+
+    const auto columns_in_PF_SummaryChart = streamed_summary.size();
+
+    // this chart will be a simple bar chart showing percent change for each ticker.
+    // base value is prior day's close.
+
+    std::vector<double> deltas{};
+    deltas.reserve(streamed_summary.size());
+
+    std::vector<std::string> x_axis_labels;
+    x_axis_labels.reserve(streamed_summary.size());
+
+    for (const auto& [symbol, data] : streamed_summary)
+    {
+        auto delta = (data.latest_price_ - data.opening_price_) / data.opening_price_;
+        deltas.push_back(delta);
+
+        x_axis_labels.push_back(symbol);
+    }
+
+    std::vector<const char*> x_axis_label_data;
+    x_axis_label_data.reserve(streamed_summary.size());
+
+    rng::for_each(x_axis_labels,
+                  [&x_axis_label_data](const auto& label) { x_axis_label_data.push_back(label.c_str()); });
+
+    std::unique_ptr<XYChart> c = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight1 * kDpi));
+
+    c->setPlotArea(k50, k100, (kChartWidth * kDpi - k120), (kChartHeight1 * kDpi - k200))
+        ->setGridColor(LITEGRAY, LITEGRAY);
+
+    c->addTitle("\nShowing percent change for streamed tickers.\n(relative to previous day's close)");
+
+    BarLayer* layer = c->addBarLayer(Chart::Overlay);
+
+    // Select positive data and add it as data set with green color
+    layer->addDataSet(ArrayMath(DoubleArray(deltas.data(), deltas.size())).selectGEZ(DoubleArray(), Chart::NoValue),
+                      GREEN);
+
+    // Select negative data and add it as data set with red color
+    layer->addDataSet(ArrayMath(DoubleArray(deltas.data(), deltas.size())).selectLTZ(DoubleArray(), Chart::NoValue),
+                      RED);
+
+    c->xAxis()->setLabels(StringArray(x_axis_label_data.data(), x_axis_label_data.size()))->setFontAngle(45.);
+
+    // c->xAxis()->setLabelStep((columns_in_PF_Chart - skipped_columns) / 40, 0);
+
+    c->yAxis()->setLabelStyle("Arial Bold");
+    c->yAxis()->setTickWidth(3, 1);
+    c->yAxis2()->copyAxis(c->yAxis());
+    c->yAxis2()->setTickWidth(3, 1);
+
+    c->makeChart(output_filename.c_str());
 }
