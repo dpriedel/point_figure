@@ -165,6 +165,7 @@ class PF_CollectDataApp
     // =======================================
 
     PF_StreamedPrices streamed_prices_;
+    PF_StreamedSummary streamed_summary_;
 
     PF_Data charts_;
 

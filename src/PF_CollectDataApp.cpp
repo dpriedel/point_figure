@@ -1064,7 +1064,7 @@ void PF_CollectDataApp::Run_Streaming()
         }
     }
 
-    for (const auto & symbol : symbol_list_)
+    for (const auto &symbol : symbol_list_)
     {
         streamed_prices_[symbol] = {};
     }
@@ -1207,6 +1207,8 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     auto market_status =
         GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
+    rng::for_each(symbol_list_, [this](const auto &symbol) { streamed_summary_[symbol] = {}; });
+
     if (market_status == US_MarketStatus::e_NotOpenYet)
     {
         std::map<std::string, std::vector<StockDataRecord>> cache;
@@ -1239,6 +1241,14 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
                 chart.AddValue(history[0].close_,
                                std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
             }
+
+            // initialize our streaming summary 'opening' price (really prior day's close)
+
+            for (const auto &[symbol, data] : cache)
+            {
+                streamed_summary_[symbol].opening_price_ = dec2dbl(data[0].close_);
+                streamed_summary_[symbol].latest_price_ = streamed_summary_[symbol].opening_price_;
+            }
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
@@ -1257,23 +1267,31 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
             const auto open_time_stamp =
                 std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
-            try
-            {
-                rng::for_each(
-                    charts_ |
-                        vws::filter([&ticker](auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
-                    [&](auto &symbol_and_chart)
+            rng::for_each(
+                charts_ | vws::filter([&ticker](auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+                [&](auto &symbol_and_chart)
+                {
+                    try
                     {
                         symbol_and_chart.second.AddValue(Decimal{e["prevClose"].asCString()}, close_time_stamp);
                         symbol_and_chart.second.AddValue(Decimal{e["open"].asCString()}, open_time_stamp);
                         symbol_and_chart.second.AddValue(Decimal{e["last"].asCString()}, quote_time_stamp);
-                    });
-            }
-            catch (const std::exception &e)
-            {
-                spdlog::error(std::format(
-                    "Problem initializing PF_Chart with streaming data for symbol: {} because: {}", ticker, e.what()));
-            }
+                    }
+                    catch (const std::exception &e)
+                    {
+                        spdlog::error(
+                            std::format("Problem initializing PF_Chart with streaming data for symbol: {} because: {}",
+                                        ticker, e.what()));
+                    }
+                });
+        }
+        // initialize our streaming summary 'opening' price (really prior day's close)
+
+        for (const auto &e : history)
+        {
+            const std::string ticker = e["ticker"].asString();
+            streamed_summary_[ticker].opening_price_ = dec2dbl(Decimal{e["prevClose"].asCString()});
+            streamed_summary_[ticker].latest_price_ = dec2dbl(Decimal{e["last"].asCString()});
         }
     }
 }  // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
@@ -1345,6 +1363,11 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
             // unless, we had a signal.
 
             continue;
+        }
+        catch (std::exception& e)
+        {
+            spdlog::error(std::format("Problem with Eodhd streaming. Message: {}", e.what()));
+            had_signal_ = true;
         }
     }
 
@@ -1499,9 +1522,8 @@ void PF_CollectDataApp::ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &updat
         try
         {
             fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path,
-                                                    streamed_prices_[chart->GetSymbol()], trend_lines_,
-                                                    PF_Chart::X_AxisFormat::e_show_time);
+            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetSymbol()],
+                                                    trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
             fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
             chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
@@ -1512,15 +1534,19 @@ void PF_CollectDataApp::ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &updat
                           " "s += e.what());
         }
     }
+
+    fs::path summary_graphic_path = output_graphs_directory_ / "PF_StreamingSummary.svg";
+    ConstructCDSummaryGraphic(streamed_summary_, summary_graphic_path);
 }  // -----  end of method PF_CollectDataApp::ProcessUpdatesForEodhdSymbol  -----
 
 void PF_CollectDataApp::CollectEodhdStreamedData(const Eodhd::PF_Data &update)
 {
-    // we get streamed data at the millisecond resolution.  This is too much to 
+    // we get streamed data at the millisecond resolution.  This is too much to
     // show on a graphic. So, we filter to the second and keep the last value
     // for each second.
 
-    const auto new_time_stamp = std::chrono::duration_cast<std::chrono::seconds>(update.time_stamp_nanoseconds_utc_.time_since_epoch()).count();
+    const auto new_time_stamp =
+        std::chrono::duration_cast<std::chrono::seconds>(update.time_stamp_nanoseconds_utc_.time_since_epoch()).count();
     if (!streamed_prices_[update.ticker_].timestamp_seconds_.empty())
     {
         if (new_time_stamp > streamed_prices_[update.ticker_].timestamp_seconds_.back())
@@ -1532,7 +1558,7 @@ void PF_CollectDataApp::CollectEodhdStreamedData(const Eodhd::PF_Data &update)
             //     ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
             //     : 0);
 
-            // need to figure out what to do about signals since they are 
+            // need to figure out what to do about signals since they are
             // chart specific, not symbol specific.
             streamed_prices_[update.ticker_].signal_type_.push_back(0);
         }
@@ -1552,10 +1578,15 @@ void PF_CollectDataApp::CollectEodhdStreamedData(const Eodhd::PF_Data &update)
         //     ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
         //     : 0);
 
-        // need to figure out what to do about signals since they are 
+        // need to figure out what to do about signals since they are
         // chart specific, not symbol specific.
         streamed_prices_[update.ticker_].signal_type_.push_back(0);
     }
+
+    // simple update for summary
+
+    streamed_summary_[update.ticker_].latest_price_ = dec2dbl(update.last_price_);
+
 }  // -----  end of method PF_CollectDataApp::CollectEodhdStreamedData  -----
 
 void PF_CollectDataApp::CollectTiingoStreamingData()
@@ -1847,9 +1878,8 @@ void PF_CollectDataApp::ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData
         try
         {
             fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path,
-                                                    streamed_prices_[chart->GetSymbol()], trend_lines_,
-                                                    PF_Chart::X_AxisFormat::e_show_time);
+            ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetSymbol()],
+                                                    trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
 
             fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
             chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
@@ -2004,8 +2034,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInFiles()
                     (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "svg"));
                 ConstructCDPFChartGraphicAndWriteToFile(
                     chart, graph_file_path,
-                    (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetSymbol()]
-                                                             : StreamedPrices{}),
+                    (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetSymbol()] : StreamedPrices{}),
                     trend_lines_,
                     interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
                                                  : PF_Chart::X_AxisFormat::e_show_date);
@@ -2044,8 +2073,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInDB()
                 fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i_, "svg"));
                 ConstructCDPFChartGraphicAndWriteToFile(
                     chart, graph_file_path,
-                    (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetSymbol()]
-                                                             : StreamedPrices{}),
+                    (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetSymbol()] : StreamedPrices{}),
                     trend_lines_,
                     interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
                                                  : PF_Chart::X_AxisFormat::e_show_date);
