@@ -442,11 +442,11 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromCSVFile(const std::string 
     return streamed_prices;
 }  // -----  end of method PF_Chart::BuildChartFromCSVFile  -----
 
-std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
-    const PF_DB::DB_Params &db_params, std::string_view symbol, std::string_view begin_date,
-    std::string_view end_date,
-    std::string_view price_fld_name,
-    PF_CollectAndReturnStreamedPrices return_streamed_data)
+std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(const PF_DB::DB_Params &db_params,
+                                                               std::string_view symbol, std::string_view begin_date,
+                                                               std::string_view end_date,
+                                                               std::string_view price_fld_name,
+                                                               PF_CollectAndReturnStreamedPrices return_streamed_data)
 {
     StreamedPrices streamed_prices;
 
@@ -459,9 +459,9 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
                                  ? std::format("date >= {}", c.quote(begin_date))
                                  : std::format("date BETWEEN {} and {}", c.quote(begin_date), c.quote(end_date));
 
-    std::string get_symbol_prices_cmd = std::format(
-        "SELECT date, {} FROM {} WHERE symbol = {} AND {} ORDER BY date ASC",
-        price_fld_name, db_params.stock_db_data_source_, c.quote(symbol), date_range);
+    std::string get_symbol_prices_cmd =
+        std::format("SELECT date, {} FROM {} WHERE symbol = {} AND {} ORDER BY date ASC", price_fld_name,
+                    db_params.stock_db_data_source_, c.quote(symbol), date_range);
 
     // right now, DB only has eod data.
 
@@ -474,14 +474,14 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
     // we'll handle that in the conversion routine below.
 
     auto Row2Closing = [dt_format, &time_stream, &tp](const auto &r)
-        {
-            time_stream.clear();
-            time_stream.str(std::string{std::get<0>(r)});
-            date::from_stream(time_stream, dt_format, tp);
-            std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
-            DateCloseRecord new_data{.date_ = tp1, .close_ = decimal::Decimal{std::get<1>(r)}};
-            return new_data;
-        };
+    {
+        time_stream.clear();
+        time_stream.str(std::string{std::get<0>(r)});
+        date::from_stream(time_stream, dt_format, tp);
+        std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
+        DateCloseRecord new_data{.date_ = tp1, .close_ = decimal::Decimal{std::get<1>(r)}};
+        return new_data;
+    };
 
     try
     {
@@ -499,8 +499,8 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(
                     std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count());
                 streamed_prices.price_.push_back(dec2dbl(new_price));
                 streamed_prices.signal_type_.push_back(chart_changed == PF_Column::Status::e_AcceptedWithSignal
-                                                       ? std::to_underlying(GetSignals().back().signal_type_)
-                                                       : 0);
+                                                           ? std::to_underlying(GetSignals().back().signal_type_)
+                                                           : 0);
             }
         }
     }
