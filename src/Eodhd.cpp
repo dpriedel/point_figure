@@ -162,7 +162,7 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
         {
             spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
 
-            if (std::string_view{e.what()}.starts_with("End of file"))
+            if (std::string_view{e.what()}.starts_with("End of file") || std::string_view{e.what()}.starts_with("End of stream"))
             {
                 // I had expected to get a system error here. Hence the
                 // catch block above.
