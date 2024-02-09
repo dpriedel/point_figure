@@ -1257,10 +1257,10 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
 
         Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
         auto history = history_getter.GetTopOfBookAndLastClose();
-        for (const auto &e : history)
+        for (const auto &h : history)
         {
-            const std::string ticker = e["ticker"].asString();
-            const std::string tstmp = e["timestamp"].asString();
+            const std::string ticker = h["ticker"].asString();
+            const std::string tstmp = h["timestamp"].asString();
             const auto quote_time_stamp = StringToUTCTimePoint("%FT%T%z", tstmp);
             const auto close_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(
                 GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
@@ -1273,9 +1273,9 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
                 {
                     try
                     {
-                        symbol_and_chart.second.AddValue(Decimal{e["prevClose"].asCString()}, close_time_stamp);
-                        symbol_and_chart.second.AddValue(Decimal{e["open"].asCString()}, open_time_stamp);
-                        symbol_and_chart.second.AddValue(Decimal{e["last"].asCString()}, quote_time_stamp);
+                        symbol_and_chart.second.AddValue(Decimal{h["prevClose"].asCString()}, close_time_stamp);
+                        symbol_and_chart.second.AddValue(Decimal{h["open"].asCString()}, open_time_stamp);
+                        symbol_and_chart.second.AddValue(Decimal{h["last"].asCString()}, quote_time_stamp);
                     }
                     catch (const std::exception &e)
                     {
@@ -1287,11 +1287,20 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
         }
         // initialize our streaming summary 'opening' price (really prior day's close)
 
-        for (const auto &e : history)
+        for (const auto &h : history)
         {
-            const std::string ticker = e["ticker"].asString();
-            streamed_summary_[ticker].opening_price_ = dec2dbl(Decimal{e["prevClose"].asCString()});
-            streamed_summary_[ticker].latest_price_ = dec2dbl(Decimal{e["last"].asCString()});
+            try
+            {
+                const std::string ticker = h["ticker"].asString();
+                streamed_summary_[ticker].opening_price_ = dec2dbl(Decimal{h["prevClose"].asCString()});
+                streamed_summary_[ticker].latest_price_ = dec2dbl(Decimal{h["last"].asCString()});
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::error(
+                    std::format("Problem initializing streamed summary with streaming data for symbol: {} because: {}",
+                                h["ticker"].asString(), e.what()));
+            }
         }
     }
 }  // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
@@ -1364,7 +1373,7 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
 
             continue;
         }
-        catch (std::exception& e)
+        catch (std::exception &e)
         {
             spdlog::error(std::format("Problem with Eodhd streaming. Message: {}", e.what()));
             had_signal_ = true;
@@ -1480,35 +1489,41 @@ void PF_CollectDataApp::ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &updat
     }
 
     std::vector<PF_Chart *> need_to_update_graph;
+    PF_SignalType new_signal{PF_SignalType::e_unknown};
 
     // since we can have multiple charts for each symbol, we need to pass the
     // new value to all appropriate charts so we find all the charts for each
     // symbol and give each a chance at the new data.
 
-    rng::for_each(charts_ | vws::filter([&update](const auto &symbol_and_chart)
-                                        { return symbol_and_chart.first == update.ticker_; }),
-                  [this, &need_to_update_graph, &update](auto &symbol_and_chart)
-                  {
-                      try
-                      {
-                          auto chart_changed =
-                              symbol_and_chart.second.AddValue(update.last_price_, update.time_stamp_nanoseconds_utc_);
-                          if (chart_changed != PF_Column::Status::e_Ignored)
-                          {
-                              need_to_update_graph.push_back(&symbol_and_chart.second);
-                          }
-                      }
-                      catch (std::exception &e)
-                      {
-                          spdlog::error("Problem adding streamed value to chart for symbol: "s +=
-                                        update.ticker_ + " "s += e.what());
-                      }
-                  });
+    rng::for_each(
+        charts_ |
+            vws::filter([&update](const auto &symbol_and_chart) { return symbol_and_chart.first == update.ticker_; }),
+        [this, &need_to_update_graph, &update, &new_signal](auto &symbol_and_chart)
+        {
+            try
+            {
+                auto chart_changed =
+                    symbol_and_chart.second.AddValue(update.last_price_, update.time_stamp_nanoseconds_utc_);
+                if (chart_changed != PF_Column::Status::e_Ignored)
+                {
+                    need_to_update_graph.push_back(&symbol_and_chart.second);
+                    if (chart_changed == PF_Column::Status::e_AcceptedWithSignal)
+                    {
+                        new_signal = symbol_and_chart.second.GetMostRecentSignal().value().signal_type_;
+                    }
+                }
+            }
+            catch (std::exception &e)
+            {
+                spdlog::error(std::format("Problem adding streamed value to chart for symbol: {} because: {}.",
+                                          update.ticker_, e.what()));
+            }
+        });
 
     // we only need to collect this data once per symbol.
     // we'll share it when we do graphics for each PF_Chart.
 
-    CollectEodhdStreamedData(update);
+    CollectEodhdStreamedData(update, new_signal);
 
     // we could have multiple chart updates for any given symbol but we only
     // want to update files and graphic once per symbol.
@@ -1539,7 +1554,7 @@ void PF_CollectDataApp::ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &updat
     ConstructCDSummaryGraphic(streamed_summary_, summary_graphic_path);
 }  // -----  end of method PF_CollectDataApp::ProcessUpdatesForEodhdSymbol  -----
 
-void PF_CollectDataApp::CollectEodhdStreamedData(const Eodhd::PF_Data &update)
+void PF_CollectDataApp::CollectEodhdStreamedData(const Eodhd::PF_Data &update, PF_SignalType new_signal)
 {
     // we get streamed data at the millisecond resolution.  This is too much to
     // show on a graphic. So, we filter to the second and keep the last value
@@ -1553,34 +1568,24 @@ void PF_CollectDataApp::CollectEodhdStreamedData(const Eodhd::PF_Data &update)
         {
             streamed_prices_[update.ticker_].timestamp_seconds_.push_back(new_time_stamp);
             streamed_prices_[update.ticker_].price_.push_back(dec2dbl(update.last_price_));
-            // streamed_prices_[update.ticker_].signal_type_.push_back(
-            //     chart_changed == PF_Column::Status::e_AcceptedWithSignal
-            //     ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
-            //     : 0);
-
-            // need to figure out what to do about signals since they are
-            // chart specific, not symbol specific.
-            streamed_prices_[update.ticker_].signal_type_.push_back(0);
+            streamed_prices_[update.ticker_].signal_type_.push_back(std::to_underlying(new_signal));
         }
         else
         {
             // we just update our previous value for this second
 
             streamed_prices_[update.ticker_].price_.back() = dec2dbl(update.last_price_);
+            if (new_signal != PF_SignalType::e_unknown)
+            {
+                streamed_prices_[update.ticker_].signal_type_.back() = std::to_underlying(new_signal);
+            }
         }
     }
     else
     {
         streamed_prices_[update.ticker_].timestamp_seconds_.push_back(new_time_stamp);
         streamed_prices_[update.ticker_].price_.push_back(dec2dbl(update.last_price_));
-        // streamed_prices_[update.ticker_].signal_type_.push_back(
-        //     chart_changed == PF_Column::Status::e_AcceptedWithSignal
-        //     ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
-        //     : 0);
-
-        // need to figure out what to do about signals since they are
-        // chart specific, not symbol specific.
-        streamed_prices_[update.ticker_].signal_type_.push_back(0);
+        streamed_prices_[update.ticker_].signal_type_.push_back(std::to_underlying(new_signal));
     }
 
     // simple update for summary

@@ -157,7 +157,7 @@ class PF_CollectDataApp
 
     void ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData &updates, std::string ticker);
     void ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &update);
-    void CollectEodhdStreamedData(const Eodhd::PF_Data &update);
+    void CollectEodhdStreamedData(const Eodhd::PF_Data &update, PF_SignalType new_signal);
 
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
 
