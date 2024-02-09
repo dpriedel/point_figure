@@ -48,7 +48,7 @@ enum class PF_CanUse1BoxReversal : int32_t
 // NOLINTBEGIN(readability-identifier-naming.*)
 enum class PF_SignalType : int32_t
 {
-    e_unknown,
+    e_unknown = 0,
     e_double_top_buy,
     e_double_bottom_sell,
     e_triple_top_buy,
@@ -63,7 +63,7 @@ enum class PF_SignalType : int32_t
 
 // if we have multiple signals at the same point, show highest priority signal.
 
-enum class PF_SignalPriority
+enum class PF_SignalPriority : int32_t
 {
     e_unknown = -1,
     e_double_top_buy = 1,
