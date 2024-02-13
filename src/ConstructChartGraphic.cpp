@@ -761,7 +761,7 @@ void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const
 
     for (const auto& [symbol, data] : streamed_summary)
     {
-        auto delta = (data.latest_price_ - data.opening_price_) / data.opening_price_;
+        auto delta = (data.latest_price_ - data.opening_price_) / data.opening_price_ * 100.;
         deltas.push_back(delta);
 
         x_axis_labels.push_back(symbol);
