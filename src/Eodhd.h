@@ -113,7 +113,7 @@ class Eodhd
                                                          UseAdjusted use_adjusted,
                                                          const US_MarketHolidays* holidays = nullptr);
 
-    PF_Data ExtractData(const std::string& buffer);
+    static PF_Data ExtractData(const std::string& buffer);
 
     // ====================  MUTATORS      =======================================
 

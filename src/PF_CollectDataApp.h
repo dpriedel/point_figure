@@ -140,8 +140,7 @@ class PF_CollectDataApp
     void ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
                                    std::queue<std::string> *streamed_data);
 
-    void ProcessEodhdStreamedData(Eodhd *quotes, bool *had_signal, std::mutex *data_mutex,
-                                  std::queue<std::string> *streamed_data);
+    void ProcessEodhdStreamedData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;

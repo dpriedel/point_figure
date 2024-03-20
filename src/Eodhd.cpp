@@ -151,6 +151,7 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
             {
                 spdlog::info("EOF on websocket read. Exiting streaming.");
                 StopStreaming();
+                ioc_.restart();
                 throw StreamingEOF{};
             }
             spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
@@ -162,7 +163,8 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
         {
             spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
 
-            if (std::string_view{e.what()}.starts_with("End of file") || std::string_view{e.what()}.starts_with("End of stream"))
+            if (std::string_view{e.what()}.starts_with("End of file") ||
+                std::string_view{e.what()}.starts_with("End of stream"))
             {
                 // I had expected to get a system error here. Hence the
                 // catch block above.
@@ -170,6 +172,7 @@ void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std:
 
                 spdlog::info("EOF on websocket read. Exiting streaming.");
                 StopStreaming();
+                ioc_.restart();
                 throw StreamingEOF{};
             }
             *had_signal = true;
@@ -367,14 +370,14 @@ void Eodhd::StopStreaming()
 
     ws.handshake(host, websocket_prefix_);
 
-    ws.write(net::buffer(std::string(unsubscribe_request_str)));
-
-    beast::flat_buffer buffer;
-
-    ws.read(buffer);
-
     try
     {
+        ws.write(net::buffer(unsubscribe_request_str));
+
+        beast::flat_buffer buffer;
+
+        ws.read(buffer);
+
         // beast::close_socket(get_lowest_layer(ws));
         ws.close(websocket::close_code::normal);
         //        ws.close(websocket::close_code::normal);

@@ -1308,7 +1308,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
 void PF_CollectDataApp::CollectEodhdStreamingData()
 {
     // we're going to use 2 threads here -- a producer thread which collects
-    // streamed data from Tiingo and a consummer thread which will take that
+    // streamed data from Eodhd and a consummer thread which will take that
     // data, decode it and load it into appropriate charts. Processing continues
     // until interrupted.
 
@@ -1339,9 +1339,6 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
 
     PF_CollectDataApp::had_signal_ = false;
 
-    Eodhd quotes{Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
-                 Eodhd::Prefix{"/ws/us?api_token="s += api_key_Eodhd_}, symbol_list_};
-
     // if we are here then we already know that the US market is open for
     // trading.
 
@@ -1356,12 +1353,15 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
     // py::gil_scoped_release gil{};
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
-    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessEodhdStreamedData, this, &quotes,
+    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessEodhdStreamedData, this,
                                       &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
     while (!had_signal_)
     {
         try
         {
+            Eodhd quotes{Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
+                         Eodhd::Prefix{"/ws/us?api_token="s += api_key_Eodhd_}, symbol_list_};
+
             auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
                                              &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
             streaming_task.get();
@@ -1370,6 +1370,8 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
         {
             // if we got an EOF on the stream, just start up again
             // unless, we had a signal.
+
+            spdlog::info("Caught 'StreamingEOF'. Trying to continue.");
 
             continue;
         }
@@ -1385,11 +1387,11 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
 
     // make a last check to be sure we  didn't leave any data unprocessed
 
-    ProcessEodhdStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    ProcessEodhdStreamedData(&PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
 }  // -----  end of method PF_CollectDataApp::CollectEodhdStreamingData  -----
 
-void PF_CollectDataApp::ProcessEodhdStreamedData(Eodhd *quotes, bool *had_signal, std::mutex *data_mutex,
+void PF_CollectDataApp::ProcessEodhdStreamedData(bool *had_signal, std::mutex *data_mutex,
                                                  std::queue<std::string> *streamed_data)
 {
     //    py::gil_scoped_acquire gil{};
@@ -1405,7 +1407,7 @@ void PF_CollectDataApp::ProcessEodhdStreamedData(Eodhd *quotes, bool *had_signal
                 new_data = streamed_data->front();
                 streamed_data->pop();
             }
-            const auto pf_data = quotes->ExtractData(new_data);
+            const auto pf_data = Eodhd::ExtractData(new_data);
 
             // our PF_Data contains data for just 1 transaction for 1 symbol
             try
