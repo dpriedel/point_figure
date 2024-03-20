@@ -92,7 +92,7 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug_collect
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2b -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++23 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
 
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
@@ -106,7 +106,7 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
 
-COMPILE=$(CPP) -c  -x c++  -O3 -std=c++2b -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3 -std=c++23 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O3 -flto  -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
 
 LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
