@@ -23,7 +23,6 @@
 #include <mutex>
 #include <ranges>
 #include <regex>
-#include <spdlog/spdlog.h>
 #include <string_view>
 
 namespace rng = std::ranges;
@@ -31,8 +30,6 @@ namespace vws = std::ranges::views;
 
 #include "Eodhd.h"
 #include "boost/beast/core/buffers_to_string.hpp"
-
-#include "utilities.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -42,80 +39,10 @@ using namespace std::chrono_literals;
 //      Method:  Eodhd
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-
-Eodhd::Eodhd()
-    : ctx_{ssl::context::tlsv12_client},
-      resolver_{ioc_},
-      ws_{ioc_, ctx_} {}  // -----  end of method Eodhd::Eodhd  (constructor)  -----
-
-Eodhd::~Eodhd()
+Eodhd::Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
+    : Streamer{host, port, api_key, prefix}
 {
-    // need to disconnect if still connected.
-
-    Disconnect();
-}  // -----  end of method Eodhd::~Eodhd  -----
-
-Eodhd::Eodhd(const Host& host, const Port& port, const APIKey& api_key)
-    : api_key_{api_key.get()},
-      host_{host.get()},
-      port_{port.get()},
-      ctx_{ssl::context::tlsv12_client},
-      resolver_{ioc_},
-      ws_{ioc_, ctx_}
-{
-}  // -----  end of method Eodhd::Tiingo  (constructor)  -----
-
-Eodhd::Eodhd(const Host& host, const Port& port, const Prefix& prefix, const std::vector<std::string>& symbols)
-    : symbol_list_{symbols},
-      // api_key_{api_key},
-      host_{host.get()},
-      port_{port.get()},
-      websocket_prefix_{prefix.get()},
-      ctx_{ssl::context::tlsv12_client},
-      resolver_{ioc_},
-      ws_{ioc_, ctx_}
-{
-    // std::cout << host << " port: " << port << " prfx: " << prefix << std::endl;
-    //  need to uppercase symbols for streaming request
-
-    rng::for_each(symbol_list_, [](auto& sym) { rng::for_each(sym, [](char& c) { c = std::toupper(c); }); });
 }  // -----  end of method Eodhd::Eodhd  (constructor)  -----
-
-void Eodhd::Connect()
-{
-    // the following code is taken from example in Boost documentation
-
-    auto const results = resolver_.resolve(host_, port_);
-
-    auto ep = net::connect(get_lowest_layer(ws_), results);
-
-    if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
-    {
-        throw beast::system_error(
-            beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
-            "Failed to set SNI Hostname");
-    }
-
-    auto host = host_ + ':' + std::to_string(ep.port());
-
-    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
-
-    // Perform the SSL handshake
-    ws_.next_layer().handshake(ssl::stream_base::client);
-
-    // Perform the websocket handshake
-    ws_.handshake(host, websocket_prefix_);
-    BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
-
-    beast::flat_buffer buffer;
-
-    buffer.clear();
-    ws_.read(buffer);
-    ws_.text(ws_.got_text());
-    std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-    BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"),
-                     std::format("Failed to get success code. Got: {}", buffer_content).c_str());
-}
 
 void Eodhd::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
@@ -392,23 +319,6 @@ void Eodhd::StopStreaming()
     // *had_signal = true;
 
 }  // -----  end of method Eodhd::StopStreaming  -----
-
-void Eodhd::Disconnect()
-{
-    if (!ws_.is_open())
-    {
-        return;
-    }
-    try
-    {
-        // beast::close_socket(get_lowest_layer(ws_));
-        ws_.close(websocket::close_code::normal);
-    }
-    catch (std::exception& e)
-    {
-        spdlog::error("Problem closing socket during disconnect: {}.", e.what());
-    }
-}
 
 Json::Value Eodhd::GetTopOfBookAndLastClose()
 {

@@ -17,7 +17,6 @@
 #ifndef _EODHD_INC_
 #define _EODHD_INC_
 
-#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <format>
@@ -32,48 +31,15 @@
 // #pragma GCC diagnostic push
 // #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <boost/asio/connect.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/stream.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/ssl.hpp>
-#include <boost/beast/websocket.hpp>
-#include <boost/beast/websocket/ssl.hpp>
-
-// #pragma GCC diagnostic pop
-
-namespace beast = boost::beast;          // from <boost/beast.hpp>
-namespace http = beast::http;            // from <boost/beast/http.hpp>
-namespace websocket = beast::websocket;  // from <boost/beast/websocket.hpp>
-namespace net = boost::asio;             // from <boost/asio.hpp>
-namespace ssl = boost::asio::ssl;        // from <boost/asio/ssl.hpp>
-using tcp = boost::asio::ip::tcp;        // from <boost/asio/ip/tcp.hpp>
-
-#include "Uniqueifier.h"
-#include "utilities.h"
+#include "Streamer.h"
 
 // =====================================================================================
 //        Class:  Eodhd
 //  Description:  live stream ticker updates -- look like a generator
 // =====================================================================================
-#include <vector>
-class Eodhd
+class Eodhd : public Streamer<Eodhd>
 {
    public:
-    // use this to signal to higher-level code we hit EOF on stream
-    // The higher-level code can figure out what to do.
-
-    struct StreamingEOF
-    {
-    };
-
-    using Host = UniqType<std::string, struct Host_Tag>;
-    using Port = UniqType<std::string, struct Port_Tag>;
-    using APIKey = UniqType<std::string, struct API_Key_Tag>;
-    using Prefix = UniqType<std::string, struct Prefix_Tag>;
-
-    using TmPt = std::chrono::utc_time<std::chrono::utc_clock::duration>;
-
     enum class EodMktStatus : int32_t
     {
         e_unknown,
@@ -97,13 +63,11 @@ class Eodhd
     // using StreamedData = std::vector<PF_Data>;
 
     // ====================  LIFECYCLE     =======================================
-    Eodhd();  // constructor
-    ~Eodhd();
-    Eodhd(const Host& host, const Port& port, const APIKey& api_key);
-    Eodhd(const Host& host, const Port& port, const Prefix& prefix, const std::vector<std::string>& symbols);
 
-    Eodhd(const Eodhd& rhs) = delete;
-    Eodhd(Eodhd&& rhs) = delete;
+    Eodhd() = default;
+    Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
+
+    ~Eodhd() = default;
 
     // ====================  ACCESSORS     =======================================
 
@@ -117,16 +81,11 @@ class Eodhd
 
     // ====================  MUTATORS      =======================================
 
-    void Connect();
-    void Disconnect();
     void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
     void StartStreaming();
     void StopStreaming();
 
     // ====================  OPERATORS     =======================================
-
-    Eodhd& operator=(const Eodhd& rhs) = delete;
-    Eodhd& operator=(Eodhd&& rhs) = delete;
 
    protected:
     // ====================  METHODS       =======================================
@@ -142,17 +101,9 @@ class Eodhd
     // ====================  DATA MEMBERS  =======================================
 
     std::vector<std::string> symbol_list_;
-    std::string api_key_;
-    std::string host_;
-    std::string port_;
-    std::string websocket_prefix_;
     std::string subscription_id_;
     int version_ = 11;
 
-    net::io_context ioc_;
-    ssl::context ctx_;
-    tcp::resolver resolver_;
-    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
 };  // -----  end of class Eodhd  -----
 
 template <>
