@@ -4,8 +4,8 @@
 //
 //    Description:  class to live stream ticker updatas
 //
-//        Version:  1.0
-//        Created:  08/06/2021 09:26:57 AM
+//        Version:  2.0
+//        Created:  03/23/2024 09:26:57 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -28,57 +28,39 @@
 #include <decimal.hh>
 #include <json/json.h>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+// #pragma GCC diagnostic push
+// #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <boost/asio/connect.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/stream.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/ssl.hpp>
-#include <boost/beast/websocket.hpp>
-#include <boost/beast/websocket/ssl.hpp>
-
-#pragma GCC diagnostic pop
-
-namespace beast = boost::beast;          // from <boost/beast.hpp>
-namespace http = beast::http;            // from <boost/beast/http.hpp>
-namespace websocket = beast::websocket;  // from <boost/beast/websocket.hpp>
-namespace net = boost::asio;             // from <boost/asio.hpp>
-namespace ssl = boost::asio::ssl;        // from <boost/asio/ssl.hpp>
-using tcp = boost::asio::ip::tcp;        // from <boost/asio/ip/tcp.hpp>
-
-#include "utilities.h"
+#include "Streamer.h"
 
 // =====================================================================================
 //        Class:  Tiingo
 //  Description:  live stream ticker updates -- look like a generator
 // =====================================================================================
-#include <vector>
-class Tiingo
+
+class Tiingo : public Streamer<Tiingo>
 {
    public:
     struct PF_Data
     {
-        std::string subscription_id_;
-        std::string ticker_;                  // Ticker
-        std::string time_stamp_;              // Date
-        int64_t time_stamp_nanoseconds_utc_;  // time_stamp
-        decimal::Decimal last_price_;         // Last Price
-        int32_t last_size_;                   // Last Size
+        std::string subscription_id_ = "";
+        std::string ticker_ = "";                 // Ticker
+        std::string time_stamp_ = "";             // Date
+        int64_t time_stamp_nanoseconds_utc_ = 0;  // time_stamp
+        decimal::Decimal last_price_ = 0;         // Last Price
+        int32_t last_size_ = 0;                   // Last Size
     };
 
-    using StreamedData = std::vector<PF_Data>;
+    // using StreamedData = std::vector<PF_Data>;
 
     // ====================  LIFECYCLE     =======================================
-    Tiingo();  // constructor
-    ~Tiingo();
-    Tiingo(const std::string& host, const std::string& port, const std::string& api_key);
-    Tiingo(const std::string& host, const std::string& port, const std::string& prefix, const std::string& api_key,
-           const std::vector<std::string>& symbols);
 
+    Tiingo() = default;
     Tiingo(const Tiingo& rhs) = delete;
     Tiingo(Tiingo&& rhs) = delete;
+    Tiingo(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
+
+    ~Tiingo() = default;
 
     // ====================  ACCESSORS     =======================================
 
@@ -88,14 +70,13 @@ class Tiingo
                                                          UseAdjusted use_adjusted,
                                                          const US_MarketHolidays* holidays = nullptr);
 
-    StreamedData ExtractData(const std::string& buffer);
+    PF_Data ExtractData(const std::string& buffer);
 
     // ====================  MUTATORS      =======================================
 
-    void Connect();
-    void Disconnect();
     void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
-    void StopStreaming(bool* had_signal);
+    void StartStreaming();
+    void StopStreaming();
 
     // ====================  OPERATORS     =======================================
 
@@ -115,18 +96,10 @@ class Tiingo
 
     // ====================  DATA MEMBERS  =======================================
 
-    std::vector<std::string> symbol_list_;
-    std::string api_key_;
-    std::string host_;
-    std::string port_;
-    std::string websocket_prefix_;
-    std::string subscription_id_;
     int version_ = 11;
 
-    net::io_context ioc_;
-    ssl::context ctx_;
-    tcp::resolver resolver_;
-    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
+    std::string subscription_id_;
+
 };  // -----  end of class Tiingo  -----
 
 template <>
@@ -137,7 +110,7 @@ struct std::formatter<Tiingo::PF_Data> : std::formatter<std::string>
     {
         std::string record;
         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_,
-                       pdata.last_price_.format("f"), pdata.last_size_, pdata.time_stamp_);
+                       pdata.last_price_, pdata.last_size_, pdata.time_stamp_);
         return formatter<std::string>::format(record, ctx);
     }
 };

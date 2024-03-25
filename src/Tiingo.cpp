@@ -15,6 +15,7 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
+#include "boost/static_assert.hpp"
 #include <algorithm>
 #include <chrono>
 #include <exception>
@@ -30,9 +31,6 @@ namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
 #include "Tiingo.h"
-#include "boost/beast/core/buffers_to_string.hpp"
-
-#include "utilities.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -43,85 +41,107 @@ using namespace std::chrono_literals;
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-Tiingo::Tiingo()
-    : ctx_{ssl::context::tlsv12_client},
-      resolver_{ioc_},
-      ws_{ioc_, ctx_} {}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
-
-Tiingo::~Tiingo()
-{
-    // need to disconnect if still connected.
-
-    if (ws_.is_open())
-    {
-        Disconnect();
-    }
-}  // -----  end of method Tiingo::~Tiingo  -----
-
-Tiingo::Tiingo(const std::string& host, const std::string& port, const std::string& api_key)
-    : api_key_{api_key}, host_{host}, port_{port}, ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+Tiingo::Tiingo(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
+    : Streamer{host, port, api_key, prefix}
 {
 }  // -----  end of method Tiingo::Tiingo  (constructor)  -----
-
-Tiingo::Tiingo(const std::string& host, const std::string& port, const std::string& prefix, const std::string& api_key,
-               const std::vector<std::string>& symbols)
-    : symbol_list_{symbols},
-      api_key_{api_key},
-      host_{host},
-      port_{port},
-      websocket_prefix_{prefix},
-      ctx_{ssl::context::tlsv12_client},
-      resolver_{ioc_},
-      ws_{ioc_, ctx_}
-{
-}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
-
-void Tiingo::Connect()
-{
-    // Look up the domain name
-    auto const results = resolver_.resolve(host_, port_);
-
-    // Make the connection on the IP address we get from a lookup
-    auto ep = net::connect(get_lowest_layer(ws_), results);
-
-    // Set SNI Hostname (many hosts need this to handshake successfully)
-    if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
-    {
-        throw beast::system_error(
-            beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
-            "Failed to set SNI Hostname");
-    }
-
-    // Update the host_ string. This will provide the value of the
-    // Host HTTP header during the WebSocket handshake.
-    // See https://tools.ietf.org/html/rfc7230#section-5.4
-    auto host = host_ + ':' + std::to_string(ep.port());
-
-    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
-
-    // set timeout options so we don't hang forever if the
-    // exchange is closed.
-
-    // beast::websocket::stream_base::timeout opt{
-    //     std::chrono::seconds(30),  // handshake timeout
-    //     std::chrono::seconds(20),  // idle timeout
-    //     true                       // enable keep-alive pings
-    // };
-    //
-    // ws_.set_option(opt);
-
-    // Perform the SSL handshake
-    ws_.next_layer().handshake(ssl::stream_base::client);
-
-    // Perform the websocket handshake
-    ws_.handshake(host, websocket_prefix_);
-    BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
-}
 
 void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
-    // put this here for now.
-    // need to manually construct to get expected formate when serialized
+    StartStreaming();
+
+    // This buffer will hold the incoming message
+    // Each message contains data for a single transaction
+
+    beast::flat_buffer buffer;
+
+    while (ws_.is_open() && !(*had_signal))
+    {
+        try
+        {
+            buffer.clear();
+            ws_.read(buffer);
+            ws_.text(ws_.got_text());
+            std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+            if (!buffer_content.empty())
+            {
+                // std::cout << buffer_content << std::endl;
+                // ExtractData(buffer_content);
+                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+                streamed_data->push(std::move(buffer_content));
+            }
+        }
+        catch (std::system_error& e)
+        {
+            // any system problems, we close the socket and force our way out.
+            // on EOF, just cleanly shutdown. Let higher level code
+            // decide what to do then.
+
+            auto ec = e.code();
+            if (ec.value() == boost::asio::error::eof)
+            {
+                spdlog::info("EOF on websocket read. Exiting streaming.");
+                StopStreaming();
+                throw StreamingEOF{};
+            }
+            spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
+                                      ec.value(), ec.message()));
+            *had_signal = true;
+            ws_.close(websocket::close_code::going_away);
+        }
+        catch (std::exception& e)
+        {
+            spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
+
+            if (std::string_view{e.what()}.starts_with("End of file") ||
+                std::string_view{e.what()}.starts_with("End of stream"))
+            {
+                // I had expected to get a system error here. Hence the
+                // catch block above.
+                // Anyways, let's just shutdown the stream and exit.
+
+                spdlog::info("EOF on websocket read. Exiting streaming.");
+                StopStreaming();
+                throw StreamingEOF{};
+            }
+            *had_signal = true;
+            StopStreaming();
+        }
+        catch (...)
+        {
+            spdlog::error("Unknown problem processing steamed data.");
+            *had_signal = true;
+            StopStreaming();
+        }
+    }
+    if (*had_signal)
+    {
+        // do a last check for data
+
+        buffer.clear();
+        ws_.read(buffer);
+        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+        if (!buffer_content.empty())
+        {
+            const std::lock_guard<std::mutex> queue_lock(*data_mutex);
+            streamed_data->push(std::move(buffer_content));
+        }
+    }
+    // if the websocket is closed on the server side or there is a timeout which in turn
+    // will cause the websocket to be closed, let's set this flag so other processes which
+    // may be watching it can know.
+
+    StopStreaming();
+    DisconnectWS();
+
+}  // -----  end of method Tiingo::StreamData  -----
+
+void Tiingo::StartStreaming()
+{
+    // we need to do our own connect/disconnect so we can handle any
+    // interruptions in streaming.
+
+    ConnectWS();
 
     Json::Value connection_request;
     connection_request["eventName"] = "subscribe";
@@ -143,93 +163,43 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
     // Send the message
     ws_.write(net::buffer(connection_request_str));
 
-    // This buffer will hold the incoming message
+    // let's make sure we were successful
+
     beast::flat_buffer buffer;
 
-    while (ws_.is_open())
+    ws_.read(buffer);
+    ws_.text(ws_.got_text());
+    std::string buffer_content = beast::buffers_to_string(buffer.cdata());
+    if (!buffer_content.empty())
     {
-        try
-        {
-            buffer.clear();
-            ws_.read(buffer);
-            ws_.text(ws_.got_text());
-            std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-            if (!buffer_content.empty())
-            {
-                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-                streamed_data->push(std::move(buffer_content));
-            }
-            if (*had_signal)
-            {
-                StopStreaming(had_signal);
+        JSONCPP_STRING err;
+        Json::Value response;
 
-                // do a last check for data
+        Json::CharReaderBuilder builder;
+        const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+        //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+        if (!reader->parse(buffer_content.data(), buffer_content.data() + buffer_content.size(), &response, &err))
+        {
+            throw std::runtime_error("Problem parsing tiingo response: "s + err);
+        }
 
-                buffer.clear();
-                ws_.read(buffer);
-                std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-                if (!buffer_content.empty())
-                {
-                    const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-                    streamed_data->push(std::move(buffer_content));
-                }
-                break;
-            }
-        }
-        catch (std::system_error& e)
-        {
-            // any system problems, we close the socket and force our way out
+        std::string message_type = response["messageType"].asString();
+        BOOST_ASSERT_MSG(message_type == "I",
+                         std::format("Expected message type of 'I'. Got: {}", message_type).c_str());
+        int32_t code = response["response"]["code"].asInt();
+        BOOST_ASSERT_MSG(code == 200, std::format("Expected success code of '200'. Got: {}", code).c_str());
 
-            auto ec = e.code();
-            if (ec.value() == boost::asio::error::eof)
-            {
-                spdlog::info("EOF on websocket read. Trying again.");
-                std::this_thread::sleep_for(2ms);
-                // try reading some more
-                continue;
-            }
-            spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
-                                      ec.value(), ec.message()));
-            *had_signal = true;
-            // beast::close_socket(get_lowest_layer(ws_));
-            ws_.close(websocket::close_code::going_away);
-            break;
-        }
-        catch (std::exception& e)
-        {
-            spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
-            *had_signal = true;
-            // beast::close_socket(get_lowest_layer(ws_));
-            ws_.close(websocket::close_code::going_away);
-            break;
-        }
-        catch (...)
-        {
-            spdlog::error("Unknown problem processing steamed data.");
-            *had_signal = true;
-            // beast::close_socket(get_lowest_layer(ws_));
-            ws_.close(websocket::close_code::going_away);
-            break;
-        }
-        buffer.consume(buffer.size());
+        subscription_id_ = response["data"]["subscriptionId"].asString();
     }
-    // if the websocket is closed on the server side or there is a timeout which in turn
-    // will cause the websocket to be closed, let's set this flag so other processes which
-    // may be watching it can know.
+}  // -----  end of method Tiingo::StartStreaming  -----
 
-    if (!ws_.is_open())
-    {
-        *had_signal = true;
-    }
-}  // -----  end of method Tiingo::StreamData  -----
-
-Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
+Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
 
-    const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
-    const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
-    const std::string string_trade_price{R"***($1"$2",)***"};
+    static const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
+    static const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
+    static const std::string string_trade_price{R"***($1"$2",)***"};
     const std::string zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
     // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
@@ -247,116 +217,53 @@ Tiingo::StreamedData Tiingo::ExtractData(const std::string& buffer)
     }
     //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
-    StreamedData pf_data;
+    PF_Data pf_data;
 
-    // each response buffer can contain multiple responses each with a different response
-    // type and content.  We need to process everything we got.
-
-    if (response.isArray())
+    auto message_type = response["messageType"];
+    if (message_type == "A")
     {
-        for (const auto& message : response)
+        auto data = response["data"];
+
+        if (data[0] == "T")
         {
-            auto message_type = message["messageType"];
-            if (message_type == "A")
+            std::smatch m;
+            if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
             {
-                auto data = message["data"];
-
-                if (data[0] != "T")
-                {
-                    continue;
-                }
-                // extract our data
-
-                std::smatch m;
-                if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
-                {
-                    std::cout << "can't find trade price in buffer: " << buffer << '\n';
-                }
-                else
-                {
-                    PF_Data new_value;
-                    new_value.subscription_id_ = subscription_id_;
-                    new_value.time_stamp_ = data[1].asCString();
-                    new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-                    new_value.ticker_ = data[3].asCString();
-                    rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-                    new_value.last_price_ = decimal::Decimal{m[1].str()};
-                    new_value.last_size_ = data[10].asInt();
-
-                    pf_data.push_back(std::move(new_value));
-                }
-
-                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
-                //        << '\n';
-            }
-            else if (message_type == "I")
-            {
-                subscription_id_ = message["data"]["subscriptionId"].asString();
-                //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-            }
-            else if (message_type == "H")
-            {
-                // heartbeat , just return
-
-                continue;
+                std::cout << "can't find trade price in buffer: " << buffer << '\n';
             }
             else
             {
-                spdlog::error("unexpected message type.");
+                pf_data.subscription_id_ = subscription_id_;
+                pf_data.time_stamp_ = data[1].asCString();
+                pf_data.time_stamp_nanoseconds_utc_ = data[2].asInt64();
+                pf_data.ticker_ = data[3].asCString();
+                rng::for_each(pf_data.ticker_, [](char& c) { c = std::toupper(c); });
+                pf_data.last_price_ = decimal::Decimal{m[1].str()};
+                pf_data.last_size_ = data[10].asInt();
             }
+
+            //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
+            //        <<
+            //        '\n';
         }
+    }
+    else if (message_type == "I")
+    {
+        subscription_id_ = response["data"]["subscriptionId"].asString();
+        //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+    }
+    else if (message_type == "H")
+    {
+        // heartbeat , just return
     }
     else
     {
-        auto message_type = response["messageType"];
-        if (message_type == "A")
-        {
-            auto data = response["data"];
-
-            if (data[0] == "T")
-            {
-                std::smatch m;
-                if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
-                {
-                    std::cout << "can't find trade price in buffer: " << buffer << '\n';
-                }
-                else
-                {
-                    PF_Data new_value;
-                    new_value.subscription_id_ = subscription_id_;
-                    new_value.time_stamp_ = data[1].asCString();
-                    new_value.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-                    new_value.ticker_ = data[3].asCString();
-                    rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-                    new_value.last_price_ = decimal::Decimal{m[1].str()};
-                    new_value.last_size_ = data[10].asInt();
-
-                    pf_data.push_back(std::move(new_value));
-                }
-
-                //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
-                //        <<
-                //        '\n';
-            }
-        }
-        else if (message_type == "I")
-        {
-            subscription_id_ = response["data"]["subscriptionId"].asString();
-            //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-        }
-        else if (message_type == "H")
-        {
-            // heartbeat , just return
-        }
-        else
-        {
-            spdlog::error("unexpected message type.");
-        }
+        spdlog::error("unexpected message type.");
     }
     return pf_data;
 }  // -----  end of method Tiingo::ExtractData  -----
 
-void Tiingo::StopStreaming(bool* had_signal)
+void Tiingo::StopStreaming()
 {
     // we need to send the unsubscribe message in a separate connection.
 
@@ -403,60 +310,30 @@ void Tiingo::StopStreaming(bool* had_signal)
 
     ws.next_layer().handshake(ssl::stream_base::client);
 
-    ws.set_option(websocket::stream_base::decorator(
-        [](websocket::request_type& req)
-        { req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro"); }));
-
-    // set timeout options so we don't hang forever if the
-    // exchange is closed.
-
-    beast::websocket::stream_base::timeout opt{
-        std::chrono::seconds(30),  // handshake timeout
-        std::chrono::seconds(20),  // idle timeout
-        true                       // enable keep-alive pings
-    };
-
-    ws.set_option(opt);
+    ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
     ws.handshake(host, websocket_prefix_);
 
-    ws.write(net::buffer(std::string(disconnect_request_str)));
-
-    beast::flat_buffer buffer;
-
-    ws.read(buffer);
-
     try
     {
-        // beast::close_socket(get_lowest_layer(ws));
+        ws.write(net::buffer(std::string(disconnect_request_str)));
+
+        beast::flat_buffer buffer;
+
+        ws.read(buffer);
+
         ws.close(websocket::close_code::normal);
-        //        ws.close(websocket::close_code::normal);
     }
     catch (std::exception& e)
     {
         std::cout << "Problem closing socket after clearing streaming symbols."s + e.what() << '\n';
     }
 
-    *had_signal = true;
+    DisconnectWS();
 
     //    std::cout << beast::make_printable(buffer.data()) << std::endl;
 
 }  // -----  end of method Tiingo::StopStreaming  -----
-
-void Tiingo::Disconnect()
-{
-    beast::flat_buffer buffer;
-
-    try
-    {
-        // beast::close_socket(get_lowest_layer(ws_));
-        ws_.close(websocket::close_code::normal);
-    }
-    catch (std::exception& e)
-    {
-        std::cout << "Problem closing socket after disconnect command."s + e.what() << '\n';
-    }
-}
 
 Json::Value Tiingo::GetTopOfBookAndLastClose()
 {
