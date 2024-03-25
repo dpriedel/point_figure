@@ -2,10 +2,10 @@
 //
 //       Filename:  Eodhd.h
 //
-//    Description:  class to live stream ticker updatas
+//    Description:  class to live stream ticker updatas using CRTP approach
 //
-//        Version:  1.0
-//        Created:  08/06/2021 09:26:57 AM
+//        Version:  2.0
+//        Created:  03/23/2024 09:26:57 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -18,7 +18,6 @@
 #define _EODHD_INC_
 
 #include <cstdint>
-#include <deque>
 #include <format>
 #include <mutex>
 #include <queue>
@@ -35,7 +34,7 @@
 
 // =====================================================================================
 //        Class:  Eodhd
-//  Description:  live stream ticker updates -- look like a generator
+//  Description:  live stream ticker updates and retrieve other ticker data -- look like a generator
 // =====================================================================================
 class Eodhd : public Streamer<Eodhd>
 {
@@ -50,13 +49,12 @@ class Eodhd : public Streamer<Eodhd>
 
     struct PF_Data
     {
-        std::string subscription_id_;
-        std::string ticker_;                      // Ticker
-        std::string time_stamp_;                  // Date
-        Eodhd::TmPt time_stamp_nanoseconds_utc_;  // time_stamp
-        decimal::Decimal last_price_;             // Last Price
-        int32_t last_size_{-1};                   // Last Size
-        bool dark_pool_;
+        std::string ticker_;               // Ticker
+        std::string time_stamp_;           // Date
+        TmPt time_stamp_nanoseconds_utc_;  // time_stamp
+        decimal::Decimal last_price_;      // Last Price
+        int32_t last_size_{-1};            // Last Size
+        bool dark_pool_{false};
         EodMktStatus market_status_{EodMktStatus::e_unknown};
     };
 
@@ -65,6 +63,8 @@ class Eodhd : public Streamer<Eodhd>
     // ====================  LIFECYCLE     =======================================
 
     Eodhd() = default;
+    Eodhd(const Eodhd& rhs) = delete;
+    Eodhd(Eodhd&& rhs) = delete;
     Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
 
     ~Eodhd() = default;
@@ -77,7 +77,7 @@ class Eodhd : public Streamer<Eodhd>
                                                          UseAdjusted use_adjusted,
                                                          const US_MarketHolidays* holidays = nullptr);
 
-    static PF_Data ExtractData(const std::string& buffer);
+    PF_Data ExtractData(const std::string& buffer);
 
     // ====================  MUTATORS      =======================================
 
@@ -87,10 +87,13 @@ class Eodhd : public Streamer<Eodhd>
 
     // ====================  OPERATORS     =======================================
 
+    Eodhd& operator=(const Eodhd& rhs) = delete;
+    Eodhd& operator=(Eodhd&& rhs) = delete;
+
    protected:
     // ====================  METHODS       =======================================
 
-    Json::Value GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
+    std::string GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                               std::chrono::year_month_day end_date, UpOrDown sort_asc);
 
     // ====================  DATA MEMBERS  =======================================
@@ -100,8 +103,6 @@ class Eodhd : public Streamer<Eodhd>
 
     // ====================  DATA MEMBERS  =======================================
 
-    std::vector<std::string> symbol_list_;
-    std::string subscription_id_;
     int version_ = 11;
 
 };  // -----  end of class Eodhd  -----
@@ -114,16 +115,9 @@ struct std::formatter<Eodhd::PF_Data> : std::formatter<std::string>
     {
         std::string record;
         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {:%F %T}", pdata.ticker_,
-                       pdata.last_price_.format("f"), pdata.last_size_, pdata.time_stamp_nanoseconds_utc_);
+                       pdata.last_price_, pdata.last_size_, pdata.time_stamp_nanoseconds_utc_);
         return formatter<std::string>::format(record, ctx);
     }
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Eodhd::PF_Data pf_data)
-{
-    std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_
-              << " time:" << pf_data.time_stamp_nanoseconds_utc_;
-    return os;
-}
 
 #endif  // ----- #ifndef _EODHD_INC_  -----
