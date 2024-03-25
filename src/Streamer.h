@@ -17,7 +17,9 @@
 #ifndef _STREAMER_INC_
 #define _STREAMER_INC_
 
+#include <cctype>
 #include <chrono>
+#include <ranges>
 #include <vector>
 
 #include <boost/asio/connect.hpp>
@@ -29,6 +31,8 @@
 #include <boost/beast/websocket/ssl.hpp>
 
 #include <spdlog/spdlog.h>
+
+namespace rng = std::ranges;
 
 // #pragma GCC diagnostic pop
 
@@ -67,7 +71,7 @@ class Streamer
     {
         // need to disconnect if still connected.
 
-        Disconnect();
+        DisconnectWS();
     }
     Streamer(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
         : api_key_{api_key.get()},
@@ -87,7 +91,7 @@ class Streamer
 
     // ====================  MUTATORS      =======================================
 
-    void Connect()
+    void ConnectWS()
     {
         // the following code is taken from example in Boost documentation
 
@@ -112,18 +116,9 @@ class Streamer
         // Perform the websocket handshake
         ws_.handshake(host, websocket_prefix_);
         BOOST_ASSERT_MSG(ws_.is_open(), "Unable to complete websocket connection.");
-
-        beast::flat_buffer buffer;
-
-        buffer.clear();
-        ws_.read(buffer);
-        ws_.text(ws_.got_text());
-        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-        BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"),
-                         std::format("Failed to get success code. Got: {}", buffer_content).c_str());
     }
 
-    void Disconnect()
+    void DisconnectWS()
     {
         if (!ws_.is_open())
         {
@@ -140,10 +135,16 @@ class Streamer
         }
     }
 
-    void UseSymbols(const std::vector<std::string>& symbols) {}
-    // void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
-    // void StartStreaming();
-    // void StopStreaming();
+    // for streaming or other data retrievals
+
+    void UseSymbols(const std::vector<std::string>& symbols)
+    {
+        symbol_list_ = symbols;
+
+        // make all the sybolos upper case to be consistent
+
+        rng::for_each(symbol_list_, [](auto& symbol) { rng::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
+    }
 
     // ====================  OPERATORS     =======================================
 
@@ -167,17 +168,17 @@ class Streamer
 
     // ====================  DATA MEMBERS  =======================================
 
-    std::string host_;
-    std::string port_;
-    std::string api_key_;
-    std::string websocket_prefix_;
-
     net::io_context ioc_;
     ssl::context ctx_;
     tcp::resolver resolver_;
     websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
 
     std::vector<std::string> symbol_list_;
+
+    std::string host_;
+    std::string port_;
+    std::string api_key_;
+    std::string websocket_prefix_;
 
 };  // ----------  end of template class Streamer  ----------
 
