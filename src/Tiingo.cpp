@@ -146,7 +146,7 @@ void Tiingo::StartStreaming()
     Json::Value connection_request;
     connection_request["eventName"] = "subscribe";
     connection_request["authorization"] = api_key_;
-    connection_request["eventData"]["thresholdLevel"] = 5;
+    connection_request["eventData"]["thresholdLevel"] = 0;
     Json::Value tickers(Json::arrayValue);
     for (const auto& symbol : symbol_list_)
     {
@@ -427,13 +427,67 @@ std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& 
     // we reverse the dates because we worked backwards from our given starting point and
     // Tiingo needs the dates in ascending order.
 
-    const auto ticker_data = GetTickerData(symbol, business_days.second, business_days.first, UpOrDown::e_Down);
+    const std::string ticker_data = GetTickerData(symbol, business_days.second, business_days.first, UpOrDown::e_Down);
 
-    return ConvertJSONPriceHistory(symbol, ticker_data, how_many_previous, use_adjusted);
+    // we get 1 or more rows of csv data
+    // NOTE: csv format result contains a header row
+    // which we need to skip
+    // <date>,<open>,<high>,<low>,<close>,,<volume>,<adj_open>,<adj_high>,<adj_low>,<adj_close>,,<adj_volume><dividend>,<split>
+    // so, let's just quickly parse them out.
+
+    enum fields
+    {
+        e_date = 0,
+        e_open = 1,
+        e_high = 2,
+        e_low = 3,
+        e_close = 4,
+        e_volume = 5,
+        e_adj_open = 6,
+        e_adj_high = 7,
+        e_adj_low = 8,
+        e_adj_close = 9,
+        e_adj_volume = 10,
+        e_dividend = 11,
+        e_split = 12
+    };
+
+    std::vector<StockDataRecord> stock_data;
+
+    const auto rows = split_string<std::string_view>(ticker_data, "\n");
+
+    rng::for_each(rows | vws::drop(1),
+                  [&stock_data, symbol, use_adjusted](const auto row)
+                  {
+                      const auto fields = split_string<std::string_view>(row, ",");
+
+                      if (use_adjusted == UseAdjusted::e_No)
+                      {
+                          StockDataRecord new_data{.date_ = std::string{fields[e_date]},
+                                                   .symbol_ = symbol,
+                                                   .open_ = sv2dec(fields[e_open]),
+                                                   .high_ = sv2dec(fields[e_high]),
+                                                   .low_ = sv2dec(fields[e_low]),
+                                                   .close_ = sv2dec(fields[e_close])};
+                          stock_data.push_back(new_data);
+                      }
+                      else
+                      {
+                          StockDataRecord new_data{.date_ = std::string{fields[e_date]},
+                                                   .symbol_ = symbol,
+                                                   .open_ = sv2dec(fields[e_adj_open]),
+                                                   .high_ = sv2dec(fields[e_adj_high]),
+                                                   .low_ = sv2dec(fields[e_adj_low]),
+                                                   .close_ = sv2dec(fields[e_adj_close])};
+                          stock_data.push_back(new_data);
+                      }
+                  });
+
+    return stock_data;
 
 }  // -----  end of method Tiingo::GetMostRecentTickerData  -----
 
-Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
+std::string Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                                   std::chrono::year_month_day end_date, UpOrDown sort_asc)
 {
     // if any problems occur here, we'll just let beast throw an exception.
@@ -457,9 +511,9 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
 
     const std::string request = std::format(
         "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host_,
-        symbol, start_date, end_date, api_key_, "json", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
+        symbol, start_date, end_date, api_key_, "csv", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
 
-    http::request<http::string_body> req{http::verb::get, request.c_str(), version_};
+    http::request<http::string_body> req{http::verb::get, request, version_};
     req.set(http::field::host, host_);
     req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
@@ -470,6 +524,10 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     http::response<http::string_body> res;
 
     http::read(stream, buffer, res);
+
+    auto result_code = res.result_int();
+    BOOST_ASSERT_MSG(result_code == 200,
+                     std::format("Failed to retrieve ticker data. Result code: {}\n", result_code).c_str());
     std::string result = res.body();
 
     // shutdown without causing a 'stream_truncated' error.
@@ -477,28 +535,5 @@ Json::Value Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
 
-    //    std::cout << "raw data: " << result << '\n';
-
-    // I need to convert some numeric fields to string fields so they
-    // won't be converted to floats and give me a bunch of extra decimal digits.
-    // These values are nicely rounded by Tiingo.
-
-    const std::regex source{R"***("(open|high|low|close|adjOpen|adjHigh|adjLow|adjClose)":\s*([0-9]*\.[0-9]*))***"};
-    const std::string dest{R"***("$1":"$2")***"};
-    const std::string result1 = std::regex_replace(result, source, dest);
-
-    // std::cout << "modified data: " << result1 << '\n';
-
-    // now, just convert to JSON
-
-    JSONCPP_STRING err;
-    Json::Value response;
-
-    Json::CharReaderBuilder builder;
-    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    if (!reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
-    {
-        throw std::runtime_error("Problem parsing tiingo response: "s + err);
-    }
-    return response;
+    return result;
 }  // -----  end of method Tiingo::GetTickerData  -----

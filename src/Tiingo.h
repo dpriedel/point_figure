@@ -43,9 +43,9 @@ class Tiingo : public Streamer<Tiingo>
    public:
     struct PF_Data
     {
-        std::string subscription_id_ = "";
-        std::string ticker_ = "";                 // Ticker
-        std::string time_stamp_ = "";             // Date
+        std::string subscription_id_;
+        std::string ticker_;                      // Ticker
+        std::string time_stamp_;                  // Date
         int64_t time_stamp_nanoseconds_utc_ = 0;  // time_stamp
         decimal::Decimal last_price_ = 0;         // Last Price
         int32_t last_size_ = 0;                   // Last Size
@@ -86,7 +86,7 @@ class Tiingo : public Streamer<Tiingo>
    protected:
     // ====================  METHODS       =======================================
 
-    Json::Value GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
+    std::string GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                               std::chrono::year_month_day end_date, UpOrDown sort_asc);
 
     // ====================  DATA MEMBERS  =======================================
