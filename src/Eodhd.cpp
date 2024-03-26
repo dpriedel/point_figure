@@ -370,18 +370,16 @@ std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& s
     rng::for_each(rows | vws::drop(1),
                   [&stock_data, symbol, use_adjusted](const auto row)
                   {
-                      // split into strings because that's what the Decimal ctor requires
-
-                      const auto fields = split_string<std::string>(row, ",");
+                      const auto fields = split_string<std::string_view>(row, ",");
 
                       StockDataRecord new_data{
-                          .date_ = fields[e_date],
+                          .date_ = std::string{fields[e_date]},
                           .symbol_ = symbol,
-                          .open_ = decimal::Decimal(fields[e_open]),
-                          .high_ = decimal::Decimal{fields[e_high]},
-                          .low_ = decimal::Decimal{fields[e_low]},
+                          .open_ = sv2dec(fields[e_open]),
+                          .high_ = sv2dec(fields[e_high]),
+                          .low_ = sv2dec(fields[e_low]),
                           .close_ = decimal::Decimal{
-                              (use_adjusted == UseAdjusted::e_Yes ? fields[e_adj_close] : fields[e_close])}};
+                              sv2dec(use_adjusted == UseAdjusted::e_Yes ? fields[e_adj_close] : fields[e_close])}};
                       stock_data.push_back(new_data);
                   });
 

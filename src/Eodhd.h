@@ -52,7 +52,7 @@ class Eodhd : public Streamer<Eodhd>
         std::string ticker_;               // Ticker
         std::string time_stamp_;           // Date
         TmPt time_stamp_nanoseconds_utc_;  // time_stamp
-        decimal::Decimal last_price_;      // Last Price
+        decimal::Decimal last_price_ = 0;  // Last Price
         int32_t last_size_{-1};            // Last Size
         bool dark_pool_{false};
         EodMktStatus market_status_{EodMktStatus::e_unknown};
