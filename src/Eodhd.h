@@ -71,7 +71,7 @@ class Eodhd : public Streamer<Eodhd>
 
     // ====================  ACCESSORS     =======================================
 
-    Json::Value GetTopOfBookAndLastClose();
+    TopOfBookList GetTopOfBookAndLastClose();
     std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
                                                          std::chrono::year_month_day start_from, int how_many_previous,
                                                          UseAdjusted use_adjusted,
@@ -102,8 +102,6 @@ class Eodhd : public Streamer<Eodhd>
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
-
-    int version_ = 11;
 
 };  // -----  end of class Eodhd  -----
 

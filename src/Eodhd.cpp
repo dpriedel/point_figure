@@ -323,12 +323,61 @@ void Eodhd::StopStreaming()
 
 }  // -----  end of method Eodhd::StopStreaming  -----
 
-Json::Value Eodhd::GetTopOfBookAndLastClose()
+Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
 {
     // this needs to be done differently for Eodhd since they don't provide
     // the function Tiingo does.
+    // Eod does provide delayed by 15 to 20 minutes'live' API which
+    // returns data for a 1-minute interval.
+    // If you try this too soon after open, the values returned are zeros.
+    // csv response looks like:
+    // code,timestamp,gmtoffset,open,high,low,close,volume,previousClose,change,change_p
+    //
 
-    return {};
+    // NOTE: csv format result contains a header row
+    // which we need to skip
+    // <code>,<timestamp>,<gmtoffset>,<open>,<high>,<low>,<close>,<volume>,<previousClose>,<change>,<change_p>
+    // so, let's just quickly parse them out.
+    enum fields
+    {
+        e_timestamp = 1,
+        e_open = 3,
+        e_close = 6,
+        e_previous_close = 8
+    };
+
+    TopOfBookList stock_data;
+
+    for (const auto& symbol : symbol_list_)
+    {
+        std::string request_string =
+            std::format("https://{}/api/real-time/{}.US?api_token={}&fmt=csv", host_, symbol, api_key_);
+        const auto tob_data = RequestData(request_string);
+        std::cout << std::format("tob: {}\n", tob_data);
+
+        const auto rows = split_string<std::string_view>(tob_data, "\n");
+        const auto fields = split_string<std::string_view>(rows[1], ",");
+
+        const auto time_fld = fields[e_timestamp];
+        int64_t time_value{};
+        if (auto [p, ec] = std::from_chars(time_fld.begin(), time_fld.end(), time_value); ec != std::errc())
+        {
+            throw std::runtime_error(std::format("Problem converting transaction timestamp to int64: {}\n",
+                                                 std::make_error_code(ec).message()));
+        }
+        std::chrono::seconds secs{time_value};
+        // new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
+        TopOfBookOpenAndLastClose new_data{
+            .symbol_ = symbol,
+            .time_stamp_nsecs_ =
+                std::chrono::utc_clock::time_point{std::chrono::duration_cast<std::chrono::nanoseconds>(secs)},
+            .open_ = sv2dec(fields[e_open]),
+            .last_ = sv2dec(fields[e_close]),
+            .previous_close_ = sv2dec(fields[e_previous_close])};
+
+        stock_data.push_back(new_data);
+    }
+    return stock_data;
 }  // -----  end of method Eodhd::GetTopOfBookAndLastClose  -----
 
 std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& symbol,
@@ -391,45 +440,9 @@ std::string Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_mont
                                  std::chrono::year_month_day end_date, UpOrDown sort_asc)
 {
     // if any problems occur here, we'll just let beast throw an exception.
-
-    tcp::resolver resolver(ioc_);
-    beast::ssl_stream<beast::tcp_stream> stream(ioc_, ctx_);
-
-    if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
-    {
-        beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
-        throw beast::system_error{ec};
-    }
-
-    auto const results = resolver.resolve(host_, port_);
-    beast::get_lowest_layer(stream).connect(results);
-    stream.handshake(ssl::stream_base::client);
-
     const std::string request_string =
         std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=csv", host_, symbol,
                     start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key_);
 
-    http::request<http::string_body> req{http::verb::get, request_string, version_};
-    req.set(http::field::host, host_);
-    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-
-    http::write(stream, req);
-
-    beast::flat_buffer buffer;
-
-    http::response<http::string_body> res;
-
-    http::read(stream, buffer, res);
-
-    auto result_code = res.result_int();
-    BOOST_ASSERT_MSG(result_code == 200,
-                     std::format("Failed to retrieve ticker data. Result code: {}\n", result_code).c_str());
-    std::string result = res.body();
-
-    // shutdown without causing a 'stream_truncated' error.
-
-    beast::get_lowest_layer(stream).cancel();
-    beast::get_lowest_layer(stream).close();
-
-    return result;
+    return RequestData(request_string);
 }  // -----  end of method Eodhd::GetTickerData  -----
