@@ -64,7 +64,7 @@ class Tiingo : public Streamer<Tiingo>
 
     // ====================  ACCESSORS     =======================================
 
-    Json::Value GetTopOfBookAndLastClose();
+    TopOfBookList GetTopOfBookAndLastClose();
     std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
                                                          std::chrono::year_month_day start_from, int how_many_previous,
                                                          UseAdjusted use_adjusted,

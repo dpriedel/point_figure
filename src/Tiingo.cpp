@@ -332,28 +332,11 @@ void Tiingo::StopStreaming()
 
 }  // -----  end of method Tiingo::StopStreaming  -----
 
-Json::Value Tiingo::GetTopOfBookAndLastClose()
+Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
 {
     // using the REST API for iex.
-
+    // via the base class common request method.
     // if any problems occur here, we'll just let beast throw an exception.
-
-    tcp::resolver resolver(ioc_);
-    beast::ssl_stream<beast::tcp_stream> stream(ioc_, ctx_);
-
-    if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
-    {
-        beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
-        throw beast::system_error{ec};
-    }
-
-    auto const results = resolver.resolve(host_, port_);
-    beast::get_lowest_layer(stream).connect(results);
-    stream.handshake(ssl::stream_base::client);
-
-    // we use our custom formatter for year_month_day objects because converting to sys_days
-    // and then formatting changes the date (becomes a day earlier) for some reason (time zone
-    // related maybe?? )
 
     std::string symbols;
     auto s = symbol_list_.begin();
@@ -364,51 +347,45 @@ Json::Value Tiingo::GetTopOfBookAndLastClose()
         symbols += *s;
     }
 
-    const std::string request =
-        std::format("https://{}{}/?tickers={}&token={}", host_, websocket_prefix_, symbols, api_key_);
+    const std::string request_string =
+        std::format("https://{}{}/?tickers={}&token={}&format=csv", host_, "/iex", symbols, api_key_);
 
-    http::request<http::string_body> req{http::verb::get, request, version_};
-    req.set(http::field::host, host_);
-    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+    const auto data = RequestData(request_string);
+    std::cout << "modified data: " << data << '\n';
 
-    http::write(stream, req);
+    // now, parse our our csv data
+    // <ticker>,<askPrice>,<askSize>,<bidPrice>,<bidSize>,<high>,<last>,<lastSize>,<lastSaleTimestamp>,<low>,<mid>,<open>,
+    // <prevClose>,<quoteTimestamp>,<timestamp>,<tngoLast>,<volume>
 
-    beast::flat_buffer buffer;
-
-    http::response<http::string_body> res;
-
-    http::read(stream, buffer, res);
-    std::string result = res.body();
-
-    // shutdown without causing a 'stream_truncated' error.
-
-    beast::get_lowest_layer(stream).cancel();
-    beast::get_lowest_layer(stream).close();
-
-    //    std::cout << "raw data: " << result << '\n';
-
-    // I need to convert some numeric fields to string fields so they
-    // won't be converted to floats and give me a bunch of extra decimal digits.
-    // These values are nicely rounded by Tiingo.
-
-    const std::regex source{R"***("(open|prevClose|last)":([0-9]*\.[0-9]*))***"};
-    const std::string dest{R"***("$1":"$2")***"};
-    const std::string result1 = std::regex_replace(result, source, dest);
-
-    //    std::cout << "modified data: " << result1 << '\n';
-
-    // now, just convert to JSON
-
-    JSONCPP_STRING err;
-    Json::Value response;
-
-    Json::CharReaderBuilder builder;
-    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    if (!reader->parse(result1.data(), result1.data() + result1.size(), &response, &err))
+    enum Fields
     {
-        throw std::runtime_error("Problem parsing tiingo response: "s + err);
-    }
-    return response;
+        e_symbol_ = 0,
+        e_timestamp = 14,
+        e_open = 11,
+        e_close = 6,
+        e_previous_close = 12
+    };
+
+    TopOfBookList stock_data;
+
+    const auto rows = split_string<std::string_view>(data, "\n");
+
+    rng::for_each(rows | vws::drop(1),
+                  [&stock_data](const auto row)
+                  {
+                      const auto fields = split_string<std::string_view>(row, ",");
+
+                      const auto tstmp = StringToUTCTimePoint("%FT%T%z", fields[e_timestamp]);
+
+                      TopOfBookOpenAndLastClose new_data{.symbol_ = std::string{fields[e_symbol_]},
+                                                         .time_stamp_nsecs_ = tstmp,
+                                                         .open_ = sv2dec(fields[e_open]),
+                                                         .last_ = sv2dec(fields[e_close]),
+                                                         .previous_close_ = sv2dec(fields[e_previous_close])};
+
+                      stock_data.push_back(new_data);
+                  });
+    return stock_data;
 }  // -----  end of method Tiingo::GetTopOfBookAndLastClose  -----
 
 std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol,
