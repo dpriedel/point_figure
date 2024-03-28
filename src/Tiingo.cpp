@@ -65,8 +65,6 @@ void Tiingo::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
             if (!buffer_content.empty())
             {
-                // std::cout << buffer_content << std::endl;
-                // ExtractData(buffer_content);
                 const std::lock_guard<std::mutex> queue_lock(*data_mutex);
                 streamed_data->push(std::move(buffer_content));
             }
@@ -170,37 +168,36 @@ void Tiingo::StartStreaming()
     ws_.read(buffer);
     ws_.text(ws_.got_text());
     std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-    if (!buffer_content.empty())
+    // if (!buffer_content.empty())
+    // {
+    JSONCPP_STRING err;
+    Json::Value response;
+
+    Json::CharReaderBuilder builder2;
+    const std::unique_ptr<Json::CharReader> reader(builder2.newCharReader());
+    //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+    if (!reader->parse(buffer_content.data(), buffer_content.data() + buffer_content.size(), &response, &err))
     {
-        JSONCPP_STRING err;
-        Json::Value response;
-
-        Json::CharReaderBuilder builder;
-        const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-        //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
-        if (!reader->parse(buffer_content.data(), buffer_content.data() + buffer_content.size(), &response, &err))
-        {
-            throw std::runtime_error("Problem parsing tiingo response: "s + err);
-        }
-
-        std::string message_type = response["messageType"].asString();
-        BOOST_ASSERT_MSG(message_type == "I",
-                         std::format("Expected message type of 'I'. Got: {}", message_type).c_str());
-        int32_t code = response["response"]["code"].asInt();
-        BOOST_ASSERT_MSG(code == 200, std::format("Expected success code of '200'. Got: {}", code).c_str());
-
-        subscription_id_ = response["data"]["subscriptionId"].asString();
+        throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
+
+    std::string message_type = response["messageType"].asString();
+    BOOST_ASSERT_MSG(message_type == "I", std::format("Expected message type of 'I'. Got: {}", message_type).c_str());
+    int32_t code = response["response"]["code"].asInt();
+    BOOST_ASSERT_MSG(code == 200, std::format("Expected success code of '200'. Got: {}", code).c_str());
+
+    subscription_id_ = response["data"]["subscriptionId"].asString();
+    // }
 }  // -----  end of method Tiingo::StartStreaming  -----
 
 Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
 
-    static const std::regex numeric_trade_price{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
-    static const std::regex quoted_trade_price{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
-    static const std::string string_trade_price{R"***($1"$2",)***"};
-    const std::string zapped_buffer = std::regex_replace(buffer, numeric_trade_price, string_trade_price);
+    static const std::regex kNumericTradePrice{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
+    static const std::regex kQuotedTradePrice{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
+    static const std::string kStringTradePrice{R"***($1"$2",)***"};
+    const std::string zapped_buffer = std::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
     // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
     // will eventually need to use locks to access this I think.
@@ -227,9 +224,9 @@ Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
         if (data[0] == "T")
         {
             std::smatch m;
-            if (bool found_it = std::regex_search(zapped_buffer, m, quoted_trade_price); !found_it)
+            if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
             {
-                std::cout << "can't find trade price in buffer: " << buffer << '\n';
+                spdlog::error(std::format("can't find trade price in buffer: {}", zapped_buffer));
             }
             else
             {
@@ -247,11 +244,11 @@ Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
             //        '\n';
         }
     }
-    else if (message_type == "I")
-    {
-        subscription_id_ = response["data"]["subscriptionId"].asString();
-        //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
-    }
+    // else if (message_type == "I")
+    // {
+    //     subscription_id_ = response["data"]["subscriptionId"].asString();
+    //     //        std::cout << "json cpp subscription ID: " << subscription_id_ << '\n';
+    // }
     else if (message_type == "H")
     {
         // heartbeat , just return
@@ -326,7 +323,7 @@ void Tiingo::StopStreaming()
     }
     catch (std::exception& e)
     {
-        std::cout << "Problem closing socket after clearing streaming symbols."s + e.what() << '\n';
+        spdlog::error(std::format("Problem closing socket after clearing streaming symbols: {}", e.what()));
     }
 
     DisconnectWS();
@@ -432,21 +429,23 @@ std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& 
     // we get 1 or more rows of csv data
     // NOTE: csv format result contains a header row
     // which we need to skip
-    // <date>,<open>,<high>,<low>,<close>,,<volume>,<adj_open>,<adj_high>,<adj_low>,<adj_close>,,<adj_volume><dividend>,<split>
+    // NOTE: 'odd' sequence of fields
+    // <date>,<close>,<high>,<low>,<open>,<volume>,<adjClose>,<adjHigh>,<adjLow>,<adjOpen>,<adjVolume>,<divCash>,<splitFactor>
     // so, let's just quickly parse them out.
 
+    // <date>,<close>,<high>,<low>,<open>,<volume>,<adjClose>,<adjHigh>,<adjLow>,<adjOpen>,<adjVolume>,<divCash>,<splitFactor>
     enum fields
     {
         e_date = 0,
-        e_open = 1,
+        e_open = 4,
         e_high = 2,
         e_low = 3,
-        e_close = 4,
+        e_close = 1,
         e_volume = 5,
-        e_adj_open = 6,
+        e_adj_open = 9,
         e_adj_high = 7,
         e_adj_low = 8,
-        e_adj_close = 9,
+        e_adj_close = 6,
         e_adj_volume = 10,
         e_dividend = 11,
         e_split = 12
@@ -492,48 +491,10 @@ std::string Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
 {
     // if any problems occur here, we'll just let beast throw an exception.
 
-    tcp::resolver resolver(ioc_);
-    beast::ssl_stream<beast::tcp_stream> stream(ioc_, ctx_);
-
-    if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
-    {
-        beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
-        throw beast::system_error{ec};
-    }
-
-    auto const results = resolver.resolve(host_, port_);
-    beast::get_lowest_layer(stream).connect(results);
-    stream.handshake(ssl::stream_base::client);
-
-    // we use our custom formatter for year_month_day objects because converting to sys_days
-    // and then formatting changes the date (becomes a day earlier) for some reason (time zone
-    // related maybe?? )
-
-    const std::string request = std::format(
+    const std::string request_string = std::format(
         "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host_,
         symbol, start_date, end_date, api_key_, "csv", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
 
-    http::request<http::string_body> req{http::verb::get, request, version_};
-    req.set(http::field::host, host_);
-    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+    return RequestData(request_string);
 
-    http::write(stream, req);
-
-    beast::flat_buffer buffer;
-
-    http::response<http::string_body> res;
-
-    http::read(stream, buffer, res);
-
-    auto result_code = res.result_int();
-    BOOST_ASSERT_MSG(result_code == 200,
-                     std::format("Failed to retrieve ticker data. Result code: {}\n", result_code).c_str());
-    std::string result = res.body();
-
-    // shutdown without causing a 'stream_truncated' error.
-
-    beast::get_lowest_layer(stream).cancel();
-    beast::get_lowest_layer(stream).close();
-
-    return result;
 }  // -----  end of method Tiingo::GetTickerData  -----

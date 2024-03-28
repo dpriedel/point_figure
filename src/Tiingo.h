@@ -96,8 +96,6 @@ class Tiingo : public Streamer<Tiingo>
 
     // ====================  DATA MEMBERS  =======================================
 
-    int version_ = 11;
-
     std::string subscription_id_;
 
 };  // -----  end of class Tiingo  -----
