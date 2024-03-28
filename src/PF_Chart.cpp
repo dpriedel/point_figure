@@ -854,8 +854,9 @@ decimal::Decimal ComputeATR(std::string_view symbol, const std::vector<StockData
 
         decimal::Decimal max = high_minus_low.max(high_minus_prev_close.max(low_minus_prev_close));
 
-        // std::print("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i,
-        // high_minus_low, high_minus_prev_close, low_minus_prev_close, max);
+        // std::cout << std::format("i: {} hml: {} hmpc: {} lmpc: {} max: {}\n", i, high_minus_low,
+        // high_minus_prev_close,
+        //                          low_minus_prev_close, max);
         total += max;
     }
 

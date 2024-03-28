@@ -74,7 +74,6 @@ class Tiingo : public Streamer<Tiingo>
 
     // ====================  MUTATORS      =======================================
 
-    void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
     void StartStreaming();
     void StopStreaming();
 
