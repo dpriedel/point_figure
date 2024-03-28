@@ -65,6 +65,8 @@ class Streamer
 
     using TmPt = std::chrono::utc_time<std::chrono::utc_clock::duration>;
 
+    using TopOfBookList = std::vector<TopOfBookOpenAndLastClose>;
+
     // ====================  LIFECYCLE     =======================================
 
     ~Streamer()
@@ -146,6 +148,60 @@ class Streamer
         rng::for_each(symbol_list_, [](auto& symbol) { rng::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
     }
 
+    std::string RequestData(const std::string& request_string)
+    {
+        // if any problems occur here, we'll just let beast throw an exception.
+
+        // just grab the code from the example program
+
+        net::io_context ioc;
+        ssl::context ctx{ssl::context::tlsv12_client};
+
+        beast::ssl_stream<beast::tcp_stream> stream(ioc, ctx);
+
+        auto host = host_;
+        auto port = port_;
+        tcp::resolver resolver{ioc};
+
+        if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str()))
+        {
+            beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
+            throw beast::system_error{ec};
+        }
+
+        auto const results = resolver.resolve(host, port);
+        beast::get_lowest_layer(stream).connect(results);
+        stream.handshake(ssl::stream_base::client);
+
+        // const std::string request_string =
+        //     std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=csv", host_,
+        //     symbol,
+        //                 start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key_);
+
+        http::request<http::string_body> req{http::verb::get, request_string, version_};
+        req.set(http::field::host, host);
+        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+        http::write(stream, req);
+
+        beast::flat_buffer buffer;
+
+        http::response<http::string_body> res;
+
+        http::read(stream, buffer, res);
+
+        auto result_code = res.result_int();
+        BOOST_ASSERT_MSG(result_code == 200,
+                         std::format("Failed to retrieve ticker data. Result code: {}\n", result_code).c_str());
+        std::string result = res.body();
+
+        // shutdown without causing a 'stream_truncated' error.
+
+        beast::get_lowest_layer(stream).cancel();
+        beast::get_lowest_layer(stream).close();
+
+        return result;
+    }
     // ====================  OPERATORS     =======================================
 
     Streamer& operator=(const Streamer& rhs) = delete;
@@ -172,6 +228,7 @@ class Streamer
     ssl::context ctx_;
     tcp::resolver resolver_;
     websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
+    int version_ = 11;
 
     std::vector<std::string> symbol_list_;
 
