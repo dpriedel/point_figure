@@ -4,8 +4,8 @@
 //
 //    Description:  Live stream ticker updates
 //
-//        Version:  2.0
-//        Created:  03/23/2024 09:26:57 AM
+//        Version:  3.0
+//        Created:  2024-04-01 10:10 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -53,8 +53,8 @@ void Eodhd::StartStreaming()
     // message formats are 'simple' so let's just use RegExes to work with them.
 
     std::string ticker_list;
-    ticker_list = symbol_list_.front();
-    rng::for_each(symbol_list_ | vws::drop(1),
+    ticker_list = symbol_list.front();
+    rng::for_each(symbol_list | vws::drop(1),
                   [&ticker_list](const auto& sym)
                   {
                       ticker_list += ", ";
@@ -66,13 +66,13 @@ void Eodhd::StartStreaming()
     const auto subscribe_request_str = std::format(R"({{"action": "subscribe", "symbols": "{}"}})", ticker_list);
 
     // Send the message
-    ws_.write(net::buffer(subscribe_request_str));
+    ws.write(net::buffer(subscribe_request_str));
 
     beast::flat_buffer buffer;
 
     buffer.clear();
-    ws_.read(buffer);
-    ws_.text(ws_.got_text());
+    ws.read(buffer);
+    ws.text(ws.got_text());
     std::string buffer_content = beast::buffers_to_string(buffer.cdata());
     BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"),
                      std::format("Failed to get success code. Got: {}", buffer_content).c_str());
@@ -169,8 +169,8 @@ void Eodhd::StopStreaming()
     // we need to send the unsubscribe message in a separate connection.
 
     std::string ticker_list;
-    ticker_list = symbol_list_.front();
-    rng::for_each(symbol_list_ | vws::drop(1),
+    ticker_list = symbol_list.front();
+    rng::for_each(symbol_list | vws::drop(1),
                   [&ticker_list](const auto& sym)
                   {
                       ticker_list += ", ";
@@ -188,27 +188,27 @@ void Eodhd::StopStreaming()
     tcp::resolver resolver{ioc};
     websocket::stream<beast::ssl_stream<tcp::socket>, false> ws{ioc, ctx};
 
-    auto host = host_;
-    auto port = port_;
+    auto tmp_host = host;
+    auto tmp_port = port;
 
-    auto const results = resolver.resolve(host, port);
+    auto const results = resolver.resolve(tmp_host, tmp_port);
 
     auto ep = net::connect(get_lowest_layer(ws), results);
 
-    if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(), host.c_str()))
+    if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(), tmp_host.c_str()))
     {
         throw beast::system_error(
             beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
             "Failed to set SNI Hostname");
     }
 
-    host += ':' + std::to_string(ep.port());
+    tmp_host += ':' + std::to_string(ep.port());
 
     ws.next_layer().handshake(ssl::stream_base::client);
 
     ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
-    ws.handshake(host, websocket_prefix_);
+    ws.handshake(tmp_host, websocket_prefix);
 
     try
     {
@@ -258,10 +258,10 @@ Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
 
     TopOfBookList stock_data;
 
-    for (const auto& symbol : symbol_list_)
+    for (const auto& symbol : symbol_list)
     {
         std::string request_string =
-            std::format("https://{}/api/real-time/{}.US?api_token={}&fmt=csv", host_, symbol, api_key_);
+            std::format("https://{}/api/real-time/{}.US?api_token={}&fmt=csv", host, symbol, api_key);
         const auto tob_data = RequestData(request_string);
 
         const auto rows = split_string<std::string_view>(tob_data, "\n");
@@ -364,8 +364,8 @@ std::string Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_mont
 {
     // if any problems occur here, we'll just let beast throw an exception.
     const std::string request_string =
-        std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=csv", host_, symbol,
-                    start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key_);
+        std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=csv", host, symbol,
+                    start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key);
 
     return RequestData(request_string);
 }  // -----  end of method Eodhd::GetTickerData  -----

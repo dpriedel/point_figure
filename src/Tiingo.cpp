@@ -4,8 +4,8 @@
 //
 //    Description:  Live stream ticker updates
 //
-//        Version:  1.0
-//        Created:  08/06/2021 09:28:55 AM
+//        Version:  3.0
+//        Created:  2024-04-01 10:10 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -55,10 +55,10 @@ void Tiingo::StartStreaming()
 
     Json::Value connection_request;
     connection_request["eventName"] = "subscribe";
-    connection_request["authorization"] = api_key_;
+    connection_request["authorization"] = api_key;
     connection_request["eventData"]["thresholdLevel"] = 0;
     Json::Value tickers(Json::arrayValue);
-    for (const auto& symbol : symbol_list_)
+    for (const auto& symbol : symbol_list)
     {
         tickers.append(symbol);
     }
@@ -71,14 +71,14 @@ void Tiingo::StartStreaming()
     //    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
 
     // Send the message
-    ws_.write(net::buffer(connection_request_str));
+    ws.write(net::buffer(connection_request_str));
 
     // let's make sure we were successful
 
     beast::flat_buffer buffer;
 
-    ws_.read(buffer);
-    ws_.text(ws_.got_text());
+    ws.read(buffer);
+    ws.text(ws.got_text());
     std::string buffer_content = beast::buffers_to_string(buffer.cdata());
     // if (!buffer_content.empty())
     // {
@@ -178,10 +178,10 @@ void Tiingo::StopStreaming()
 
     Json::Value disconnect_request;
     disconnect_request["eventName"] = "unsubscribe";
-    disconnect_request["authorization"] = api_key_;
+    disconnect_request["authorization"] = api_key;
     disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
     Json::Value tickers(Json::arrayValue);
-    for (const auto& symbol : symbol_list_)
+    for (const auto& symbol : symbol_list)
     {
         tickers.append(symbol);
     }
@@ -201,27 +201,27 @@ void Tiingo::StopStreaming()
     tcp::resolver resolver{ioc};
     websocket::stream<beast::ssl_stream<tcp::socket>, false> ws{ioc, ctx};
 
-    auto host = host_;
-    auto port = port_;
+    auto tmp_host = host;
+    auto tmp_port = port;
 
-    auto const results = resolver.resolve(host, port);
+    auto const results = resolver.resolve(tmp_host, tmp_port);
 
     auto ep = net::connect(get_lowest_layer(ws), results);
 
-    if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(), host.c_str()))
+    if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(), tmp_host.c_str()))
     {
         throw beast::system_error(
             beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
             "Failed to set SNI Hostname");
     }
 
-    host += ':' + std::to_string(ep.port());
+    tmp_host += ':' + std::to_string(ep.port());
 
     ws.next_layer().handshake(ssl::stream_base::client);
 
     ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
-    ws.handshake(host, websocket_prefix_);
+    ws.handshake(tmp_host, websocket_prefix);
 
     try
     {
@@ -251,16 +251,16 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
     // if any problems occur here, we'll just let beast throw an exception.
 
     std::string symbols;
-    auto s = symbol_list_.begin();
+    auto s = symbol_list.begin();
     symbols += *s;
-    for (++s; s != symbol_list_.end(); ++s)
+    for (++s; s != symbol_list.end(); ++s)
     {
         symbols += ',';
         symbols += *s;
     }
 
     const std::string request_string =
-        std::format("https://{}{}/?tickers={}&token={}&format=csv", host_, "/iex", symbols, api_key_);
+        std::format("https://{}{}/?tickers={}&token={}&format=csv", host, "/iex", symbols, api_key);
 
     const auto data = RequestData(request_string);
 
@@ -394,8 +394,8 @@ std::string Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     // if any problems occur here, we'll just let beast throw an exception.
 
     const std::string request_string = std::format(
-        "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host_,
-        symbol, start_date, end_date, api_key_, "csv", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
+        "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host,
+        symbol, start_date, end_date, api_key, "csv", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
 
     return RequestData(request_string);
 

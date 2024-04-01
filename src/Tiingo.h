@@ -4,8 +4,8 @@
 //
 //    Description:  class to live stream ticker updatas
 //
-//        Version:  2.0
-//        Created:  03/23/2024 09:26:57 AM
+//        Version:  3.0
+//        Created:  2024-04-01 10:09 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -38,7 +38,7 @@
 //  Description:  live stream ticker updates -- look like a generator
 // =====================================================================================
 
-class Tiingo : public Streamer<Tiingo>
+class Tiingo : public Streamer
 {
    public:
     struct PF_Data
@@ -57,10 +57,10 @@ class Tiingo : public Streamer<Tiingo>
 
     Tiingo() = default;
     Tiingo(const Tiingo& rhs) = delete;
-    Tiingo(Tiingo&& rhs) = default;
+    Tiingo(Tiingo&& rhs) = delete;
     Tiingo(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
 
-    ~Tiingo() = default;
+    ~Tiingo() override = default;
 
     // ====================  ACCESSORS     =======================================
 
@@ -74,13 +74,13 @@ class Tiingo : public Streamer<Tiingo>
 
     // ====================  MUTATORS      =======================================
 
-    void StartStreaming();
-    void StopStreaming();
+    void StartStreaming() override;
+    void StopStreaming() override;
 
     // ====================  OPERATORS     =======================================
 
     Tiingo& operator=(const Tiingo& rhs) = delete;
-    Tiingo& operator=(Tiingo&& rhs) = default;
+    Tiingo& operator=(Tiingo&& rhs) = delete;
 
    protected:
     // ====================  METHODS       =======================================

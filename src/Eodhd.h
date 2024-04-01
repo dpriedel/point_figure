@@ -4,8 +4,8 @@
 //
 //    Description:  class to live stream ticker updatas using CRTP approach
 //
-//        Version:  2.0
-//        Created:  03/23/2024 09:26:57 AM
+//        Version:  3.0
+//        Created:  2024-04-01 10:10 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -36,7 +36,7 @@
 //        Class:  Eodhd
 //  Description:  live stream ticker updates and retrieve other ticker data -- look like a generator
 // =====================================================================================
-class Eodhd : public Streamer<Eodhd>
+class Eodhd : public Streamer
 {
    public:
     enum class EodMktStatus : int32_t
@@ -64,10 +64,10 @@ class Eodhd : public Streamer<Eodhd>
 
     Eodhd() = default;
     Eodhd(const Eodhd& rhs) = delete;
-    Eodhd(Eodhd&& rhs) = default;
+    Eodhd(Eodhd&& rhs) = delete;
     Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
 
-    ~Eodhd() = default;
+    ~Eodhd() override = default;
 
     // ====================  ACCESSORS     =======================================
 
@@ -81,13 +81,13 @@ class Eodhd : public Streamer<Eodhd>
 
     // ====================  MUTATORS      =======================================
 
-    void StartStreaming();
-    void StopStreaming();
+    void StartStreaming() override;
+    void StopStreaming() override;
 
     // ====================  OPERATORS     =======================================
 
     Eodhd& operator=(const Eodhd& rhs) = delete;
-    Eodhd& operator=(Eodhd&& rhs) = default;
+    Eodhd& operator=(Eodhd&& rhs) = delete;
 
    protected:
     // ====================  METHODS       =======================================
