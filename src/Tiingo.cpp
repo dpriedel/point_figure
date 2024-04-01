@@ -15,17 +15,17 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
-#include "boost/static_assert.hpp"
-#include <algorithm>
-#include <chrono>
-#include <exception>
-#include <format>
-#include <iostream>
-#include <mutex>
+// #include "boost/static_assert.hpp"
+// #include <algorithm>
+// #include <chrono>
+// #include <exception>
+// #include <format>
+// #include <iostream>
+// #include <mutex>
 #include <ranges>
 #include <regex>
-#include <spdlog/spdlog.h>
-#include <string_view>
+// #include <spdlog/spdlog.h>
+// #include <string_view>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
@@ -263,7 +263,6 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
         std::format("https://{}{}/?tickers={}&token={}&format=csv", host_, "/iex", symbols, api_key_);
 
     const auto data = RequestData(request_string);
-    std::cout << "modified data: " << data << '\n';
 
     // now, parse our our csv data
     // <ticker>,<askPrice>,<askSize>,<bidPrice>,<bidSize>,<high>,<last>,<lastSize>,<lastSaleTimestamp>,<low>,<mid>,<open>,
@@ -286,6 +285,13 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
                   [&stock_data](const auto row)
                   {
                       const auto fields = split_string<std::string_view>(row, ",");
+
+                      // a few checks to try to catch any changes in response format
+
+                      BOOST_ASSERT_MSG(fields.size() == 17,
+                                       std::format("Missing 1 or more fields from response: '{}'. Expected 17. Got: {}",
+                                                   row, fields.size())
+                                           .c_str());
 
                       const auto tstmp = StringToUTCTimePoint("%FT%T%z", fields[e_timestamp]);
 
@@ -348,6 +354,13 @@ std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& 
                   [&stock_data, symbol, use_adjusted](const auto row)
                   {
                       const auto fields = split_string<std::string_view>(row, ",");
+
+                      // a few checks to try to catch any changes in response format
+
+                      BOOST_ASSERT_MSG(fields.size() == 13,
+                                       std::format("Missing 1 or more fields from response: '{}'. Expected 13. Got: {}",
+                                                   row, fields.size())
+                                           .c_str());
 
                       if (use_adjusted == UseAdjusted::e_No)
                       {

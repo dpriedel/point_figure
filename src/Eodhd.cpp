@@ -16,13 +16,13 @@
 // the guts of this code comes from the examples distributed by Boost.
 
 // #include <algorithm>
-#include <charconv>
-#include <exception>
-// #include <format>
-#include <mutex>
+// #include <charconv>
+// #include <exception>
+// // #include <format>
+// #include <mutex>
 #include <ranges>
 #include <regex>
-#include <string_view>
+// #include <string_view>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
@@ -30,8 +30,8 @@ namespace vws = std::ranges::views;
 #include "Eodhd.h"
 #include "boost/beast/core/buffers_to_string.hpp"
 
-using namespace std::string_literals;
-using namespace std::chrono_literals;
+// using namespace std::string_literals;
+// using namespace std::chrono_literals;
 
 //--------------------------------------------------------------------------------------
 //       Class:  Eodhd
@@ -263,10 +263,16 @@ Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
         std::string request_string =
             std::format("https://{}/api/real-time/{}.US?api_token={}&fmt=csv", host_, symbol, api_key_);
         const auto tob_data = RequestData(request_string);
-        std::cout << std::format("tob: {}\n", tob_data);
 
         const auto rows = split_string<std::string_view>(tob_data, "\n");
         const auto fields = split_string<std::string_view>(rows[1], ",");
+
+        // a few checks to try to catch any changes in response format
+
+        BOOST_ASSERT_MSG(
+            fields.size() == 11,
+            std::format("Missing 1 or more fields from response: '{}'. Expected 11. Got: {}", tob_data, fields.size())
+                .c_str());
 
         const auto time_fld = fields[e_timestamp];
         int64_t time_value{};
@@ -330,6 +336,13 @@ std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& s
                   [&stock_data, symbol, use_adjusted](const auto row)
                   {
                       const auto fields = split_string<std::string_view>(row, ",");
+
+                      // a few checks to try to catch any changes in response format
+
+                      BOOST_ASSERT_MSG(fields.size() == 7,
+                                       std::format("Missing 1 or more fields from response: '{}'. Expected 7. Got: {}",
+                                                   row, fields.size())
+                                           .c_str());
 
                       StockDataRecord new_data{
                           .date_ = std::string{fields[e_date]},

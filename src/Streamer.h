@@ -88,7 +88,7 @@ class Streamer
     }
 
     Streamer(const Streamer& rhs) = delete;
-    Streamer(Streamer&& rhs) = delete;
+    Streamer(Streamer&& rhs) = default;
 
     // ====================  ACCESSORS     =======================================
 
@@ -294,7 +294,7 @@ class Streamer
     // ====================  OPERATORS     =======================================
 
     Streamer& operator=(const Streamer& rhs) = delete;
-    Streamer& operator=(Streamer&& rhs) = delete;
+    Streamer& operator=(Streamer&& rhs) = default;
 
    protected:
     // ====================  METHODS       =======================================

@@ -17,15 +17,15 @@
 #ifndef _EODHD_INC_
 #define _EODHD_INC_
 
-#include <cstdint>
-#include <format>
-#include <mutex>
-#include <queue>
-#include <sys/types.h>
-#include <vector>
-
-#include <decimal.hh>
-#include <json/json.h>
+// #include <cstdint>
+// #include <format>
+// #include <mutex>
+// #include <queue>
+// #include <sys/types.h>
+// #include <vector>
+//
+// #include <decimal.hh>
+// #include <json/json.h>
 
 // #pragma GCC diagnostic push
 // #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -64,7 +64,7 @@ class Eodhd : public Streamer<Eodhd>
 
     Eodhd() = default;
     Eodhd(const Eodhd& rhs) = delete;
-    Eodhd(Eodhd&& rhs) = delete;
+    Eodhd(Eodhd&& rhs) = default;
     Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
 
     ~Eodhd() = default;
@@ -87,7 +87,7 @@ class Eodhd : public Streamer<Eodhd>
     // ====================  OPERATORS     =======================================
 
     Eodhd& operator=(const Eodhd& rhs) = delete;
-    Eodhd& operator=(Eodhd&& rhs) = delete;
+    Eodhd& operator=(Eodhd&& rhs) = default;
 
    protected:
     // ====================  METHODS       =======================================

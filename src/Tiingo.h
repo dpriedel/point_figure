@@ -17,16 +17,16 @@
 #ifndef _TIINGO_INC_
 #define _TIINGO_INC_
 
-#include <chrono>
-#include <deque>
-#include <format>
-#include <mutex>
-#include <queue>
-#include <sys/types.h>
-#include <vector>
-
-#include <decimal.hh>
-#include <json/json.h>
+// #include <chrono>
+// #include <deque>
+// #include <format>
+// #include <mutex>
+// #include <queue>
+// #include <sys/types.h>
+// #include <vector>
+//
+// #include <decimal.hh>
+// #include <json/json.h>
 
 // #pragma GCC diagnostic push
 // #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -57,7 +57,7 @@ class Tiingo : public Streamer<Tiingo>
 
     Tiingo() = default;
     Tiingo(const Tiingo& rhs) = delete;
-    Tiingo(Tiingo&& rhs) = delete;
+    Tiingo(Tiingo&& rhs) = default;
     Tiingo(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
 
     ~Tiingo() = default;
@@ -80,7 +80,7 @@ class Tiingo : public Streamer<Tiingo>
     // ====================  OPERATORS     =======================================
 
     Tiingo& operator=(const Tiingo& rhs) = delete;
-    Tiingo& operator=(Tiingo&& rhs) = delete;
+    Tiingo& operator=(Tiingo&& rhs) = default;
 
    protected:
     // ====================  METHODS       =======================================
