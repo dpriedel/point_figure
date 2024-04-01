@@ -42,6 +42,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
+#include <variant>
 
 // namespace fs = std::filesystem;
 
@@ -133,14 +134,13 @@ class PF_CollectDataApp
                                                             std::string_view delim);
 
     void PrimeChartsForStreaming();
+    void CollectStreamingData();
+    void ProcessStreamedData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
 
     void CollectTiingoStreamingData();
-    void CollectEodhdStreamingData();
 
     void ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
                                    std::queue<std::string> *streamed_data);
-
-    void ProcessEodhdStreamedData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
@@ -162,6 +162,15 @@ class PF_CollectDataApp
 
     // ====================  DATA MEMBERS
     // =======================================
+
+    using PF_Streamer = std::variant<Eodhd, Tiingo>;
+    PF_Streamer PF_streamer_;
+
+    enum Streamers
+    {
+        e_Eodhd = 0,
+        e_Tiingo = 1
+    };
 
     PF_StreamedPrices streamed_prices_;
     PF_StreamedSummary streamed_summary_;
@@ -252,7 +261,7 @@ class PF_CollectDataApp
     };
 
     std::string streaming_source_i_;
-    std::string api_key_;
+    std::string api_key_Tiingo_;
     std::string api_key_Eodhd_;
     std::string destination_i_;
     std::string interval_i_;

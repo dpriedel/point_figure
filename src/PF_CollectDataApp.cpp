@@ -629,10 +629,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
     if (new_data_source_ != Source::e_DB)
     {
-        api_key_ = LoadDataFileForUse(tiingo_api_key_);
-        if (api_key_.ends_with('\n'))
+        api_key_Tiingo_ = LoadDataFileForUse(tiingo_api_key_);
+        if (api_key_Tiingo_.ends_with('\n'))
         {
-            api_key_.resize(api_key_.size() - 1);
+            api_key_Tiingo_.resize(api_key_Tiingo_.size() - 1);
         }
     }
     if (streaming_data_source_ == StreamingSource::e_Eodhd)
@@ -1150,7 +1150,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, s
 
 Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
 {
-    Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_};
+    Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_Tiingo_};
 
     // we need to start from yesterday since we won't get history data for today
     // since we are doing this while the market is open
@@ -1207,81 +1207,86 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     auto market_status =
         GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
+    // set up for tracking data to compute price summary for each ticker
+
     rng::for_each(symbol_list_, [this](const auto &symbol) { streamed_summary_[symbol] = {}; });
+
+    PF_Streamer history_getter;
+    if (streaming_data_source_ == StreamingSource::e_Eodhd)
+    {
+        history_getter.emplace<Streamers::e_Eodhd>(Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
+                                                   Eodhd::APIKey{api_key_Eodhd_}, Eodhd::Prefix{});
+    }
+    else
+    {
+        // just 2 options for now
+        history_getter.emplace<Streamers::e_Tiingo>(Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
+                                                    Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{});
+    }
 
     if (market_status == US_MarketStatus::e_NotOpenYet)
     {
+        // just prior day's close
+
         std::map<std::string, std::vector<StockDataRecord>> cache;
 
-        if (streaming_data_source_ == StreamingSource::e_Tiingo)
+        for (auto &[symbol, chart] : charts_)
         {
-            Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
-            for (auto &[symbol, chart] : charts_)
-            {
-                auto history =
-                    cache.contains(symbol)
-                        ? cache[symbol]
-                        : (cache[symbol] = history_getter.GetMostRecentTickerData(
-                               symbol, today, 2,
-                               price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No, &holidays));
-                chart.AddValue(history[0].close_,
-                               std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
-            }
-        }
-        else
-        {
-            // only Eodhd right now
-
-            Eodhd history_getter{Eodhd::Host{"eodhd.com"}, Eodhd::Port{"443"}, Eodhd::APIKey{api_key_Eodhd_}};
-            for (auto &[symbol, chart] : charts_)
-            {
-                auto history = cache.contains(symbol) ? cache[symbol]
-                                                      : (cache[symbol] = history_getter.GetMostRecentTickerData(
-                                                             symbol, today, 2, UseAdjusted::e_No, &holidays));
-                chart.AddValue(history[0].close_,
-                               std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
-            }
-
-            // initialize our streaming summary 'opening' price (really prior day's close)
-
-            for (const auto &[symbol, data] : cache)
-            {
-                streamed_summary_[symbol].opening_price_ = dec2dbl(data[0].close_);
-                streamed_summary_[symbol].latest_price_ = streamed_summary_[symbol].opening_price_;
-            }
+            // TODO(dpriedel): use visitor
+            auto history = std::visit(
+                [this, &cache, &symbol, &today, &holidays](auto &streamer)
+                {
+                    return cache.contains(symbol)
+                               ? cache[symbol]
+                               : cache[symbol] = streamer.GetMostRecentTickerData(
+                                     symbol, today, 2,
+                                     price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No,
+                                     &holidays);
+                },
+                history_getter);
+            chart.AddValue(history[0].close_,
+                           std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
     {
-        // only have Tiingo option for now
+        auto history = std::visit(
+            [this](auto &streamer)
+            {
+                streamer.UseSymbols(symbol_list_);
+                return streamer.GetTopOfBookAndLastClose();
+            },
+            history_getter);
 
-        Tiingo history_getter{"api.tiingo.com", "443", "/iex", api_key_, symbol_list_};
-        auto history = history_getter.GetTopOfBookAndLastClose();
+        const auto close_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(
+            GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
+        const auto open_time_stamp =
+            std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
+
         for (const auto &h : history)
         {
-            const std::string ticker = h["ticker"].asString();
-            const std::string tstmp = h["timestamp"].asString();
-            const auto quote_time_stamp = StringToUTCTimePoint("%FT%T%z", tstmp);
-            const auto close_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(
-                GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
-            const auto open_time_stamp =
-                std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
-
             rng::for_each(
-                charts_ | vws::filter([&ticker](auto &symbol_and_chart) { return symbol_and_chart.first == ticker; }),
+                charts_ | vws::filter([&h](auto &symbol_and_chart) { return symbol_and_chart.first == h.symbol_; }),
                 [&](auto &symbol_and_chart)
                 {
                     try
                     {
-                        symbol_and_chart.second.AddValue(Decimal{h["prevClose"].asCString()}, close_time_stamp);
-                        symbol_and_chart.second.AddValue(Decimal{h["open"].asCString()}, open_time_stamp);
-                        symbol_and_chart.second.AddValue(Decimal{h["last"].asCString()}, quote_time_stamp);
+                        symbol_and_chart.second.AddValue(h.previous_close_, close_time_stamp);
+                        // Eodhd runs 15-20 minutes delayed so it may no know open and last yet.
+                        // for now, just skip these steps.
+                        // But Tiingo will have values.
+
+                        if (h.open_ != 0)
+                        {
+                            symbol_and_chart.second.AddValue(h.open_, open_time_stamp);
+                            symbol_and_chart.second.AddValue(h.last_, h.time_stamp_nsecs_);
+                        }
                     }
                     catch (const std::exception &e)
                     {
                         spdlog::error(
                             std::format("Problem initializing PF_Chart with streaming data for symbol: {} because: {}",
-                                        ticker, e.what()));
+                                        h.symbol_, e.what()));
                     }
                 });
         }
@@ -1291,24 +1296,32 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
         {
             try
             {
-                const std::string ticker = h["ticker"].asString();
-                streamed_summary_[ticker].opening_price_ = dec2dbl(Decimal{h["prevClose"].asCString()});
-                streamed_summary_[ticker].latest_price_ = dec2dbl(Decimal{h["last"].asCString()});
+                streamed_summary_[h.symbol_].opening_price_ = dec2dbl(h.previous_close_);
+                // again, Eodhd might not have data
+
+                if (h.last_ == 0)
+                {
+                    streamed_summary_[h.symbol_].latest_price_ = dec2dbl(h.previous_close_);
+                }
+                else
+                {
+                    streamed_summary_[h.symbol_].latest_price_ = dec2dbl(h.last_);
+                }
             }
             catch (const std::exception &e)
             {
                 spdlog::error(
                     std::format("Problem initializing streamed summary with streaming data for symbol: {} because: {}",
-                                h["ticker"].asString(), e.what()));
+                                h.symbol_, e.what()));
             }
         }
     }
 }  // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
 
-void PF_CollectDataApp::CollectEodhdStreamingData()
+void PF_CollectDataApp::CollectStreamingData()
 {
     // we're going to use 2 threads here -- a producer thread which collects
-    // streamed data from Eodhd and a consummer thread which will take that
+    // streamed data from the streaming source and a consummer thread which will take that
     // data, decode it and load it into appropriate charts. Processing continues
     // until interrupted.
 
@@ -1353,20 +1366,48 @@ void PF_CollectDataApp::CollectEodhdStreamingData()
     // py::gil_scoped_release gil{};
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
-    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessEodhdStreamedData, this,
+    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this,
                                       &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
     while (!had_signal_)
     {
         try
         {
-            Eodhd quotes{Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
-                         Eodhd::Prefix{"/ws/us?api_token="s += api_key_Eodhd_}, symbol_list_};
+            PF_Streamer quotes;
+            if (streaming_data_source_ == StreamingSource::e_Eodhd)
+            {
+                quotes.emplace<Streamers::e_Eodhd>(Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
+                                                   Eodhd::APIKey{api_key_Eodhd_},
+                                                   Eodhd::Prefix{"/ws/us?api_token="s + api_key_Eodhd_});
+            }
+            else
+            {
+                // just 2 options for now
+                quotes.emplace<Streamers::e_Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{quote_host_port_},
+                                                    Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{"/iex"});
+            }
 
-            auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
-                                             &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+            // TODO: use overloads for each type for now.
+            auto streaming_task = std::visit(
+                [&, this](auto &streamer)
+                {
+                    return std::async(std::launch::async, streamer.*StreamData, &streamer,
+                                      &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+                },
+                quotes);
+            // auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
+            //                                  &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
             streaming_task.get();
         }
         catch (Eodhd::StreamingEOF &e)
+        {
+            // if we got an EOF on the stream, just start up again
+            // unless, we had a signal.
+
+            spdlog::info("Caught 'StreamingEOF'. Trying to continue.");
+
+            continue;
+        }
+        catch (Tiingo::StreamingEOF &e)
         {
             // if we got an EOF on the stream, just start up again
             // unless, we had a signal.
@@ -1628,7 +1669,7 @@ void PF_CollectDataApp::CollectTiingoStreamingData()
 
     PF_CollectDataApp::had_signal_ = false;
 
-    Tiingo quotes{quote_host_name_, quote_host_port_, "/iex", api_key_, symbol_list_};
+    Tiingo quotes{quote_host_name_, quote_host_port_, "/iex", api_key_Tiingo_, symbol_list_};
     quotes.Connect();
 
     // if we are here then we already know that the US market is open for
