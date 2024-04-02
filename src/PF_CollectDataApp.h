@@ -145,8 +145,8 @@ class PF_CollectDataApp
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
 
-    void ShutdownStoreOutputInFiles();
-    void ShutdownStoreOutputInDB();
+    void ShutdownAndStoreOutputInFiles();
+    void ShutdownAndStoreOutputInDB();
 
     // ====================  DATA MEMBERS
     // =======================================
@@ -162,15 +162,6 @@ class PF_CollectDataApp
 
     // ====================  DATA MEMBERS
     // =======================================
-
-    using PF_Streamer = std::variant<Eodhd, Tiingo>;
-    PF_Streamer PF_streamer_;
-
-    enum Streamers
-    {
-        e_Eodhd = 0,
-        e_Tiingo = 1
-    };
 
     PF_StreamedPrices streamed_prices_;
     PF_StreamedSummary streamed_summary_;

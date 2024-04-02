@@ -59,6 +59,15 @@ class Streamer
     {
     };
 
+    struct PF_Data
+    {
+        std::string ticker_;               // Ticker
+        std::string time_stamp_;           // Date
+        TmPt time_stamp_nanoseconds_utc_;  // time_stamp
+        decimal::Decimal last_price_ = 0;  // Last Price
+        int32_t last_size_{-1};            // Last Size
+    };
+
     using Host = UniqType<std::string, struct Host_Tag>;
     using Port = UniqType<std::string, struct Port_Tag>;
     using APIKey = UniqType<std::string, struct API_Key_Tag>;
@@ -81,6 +90,14 @@ class Streamer
 
     // ====================  ACCESSORS     =======================================
 
+    std::string RequestData(const std::string& request_string);
+
+    virtual TopOfBookList GetTopOfBookAndLastClose() = 0;
+    virtual std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
+                                                                 std::chrono::year_month_day start_from,
+                                                                 int how_many_previous, UseAdjusted use_adjusted,
+                                                                 const US_MarketHolidays* holidays) = 0;
+
     // ====================  MUTATORS      =======================================
 
     void ConnectWS();
@@ -93,8 +110,6 @@ class Streamer
     // for streaming or other data retrievals
 
     void UseSymbols(const std::vector<std::string>& symbols);
-
-    std::string RequestData(const std::string& request_string);
 
     // ====================  OPERATORS     =======================================
 

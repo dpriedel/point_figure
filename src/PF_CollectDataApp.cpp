@@ -1036,6 +1036,8 @@ void PF_CollectDataApp::Run_Streaming()
         std::cout << "Market not open for trading YET so we'll wait." << std::endl;
     }
 
+    // initialize PF_Charts to be used by streaming code
+
     std::map<std::string, decimal::Decimal> cache;  // table for memoization of ATR
 
     for (const auto &val : params)
@@ -1064,27 +1066,20 @@ void PF_CollectDataApp::Run_Streaming()
         }
     }
 
+    // setup to capture streamed price data and price movement summary too
+
     for (const auto &symbol : symbol_list_)
     {
         streamed_prices_[symbol] = {};
+        streamed_summary_[symbol] = {};
     }
 
     // let's stream !
 
     PrimeChartsForStreaming();
 
-    if (streaming_data_source_ == StreamingSource::e_Eodhd)
-    {
-        CollectEodhdStreamingData();
-    }
-    else if (streaming_data_source_ == StreamingSource::e_Tiingo)
-    {
-        CollectTiingoStreamingData();
-    }
-    else
-    {
-        throw std::runtime_error("Unknown streaming data source.");
-    }
+    CollectEodhdStreamingData();
+
 }  // -----  end of method PF_CollectDataApp::Run_Streaming  -----
 
 void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, const fs::path &update_file_name) const
@@ -1207,21 +1202,17 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     auto market_status =
         GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
-    // set up for tracking data to compute price summary for each ticker
-
-    rng::for_each(symbol_list_, [this](const auto &symbol) { streamed_summary_[symbol] = {}; });
-
-    PF_Streamer history_getter;
+    std::unique_ptr<Streamer> history_getter;
     if (streaming_data_source_ == StreamingSource::e_Eodhd)
     {
-        history_getter.emplace<Streamers::e_Eodhd>(Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
-                                                   Eodhd::APIKey{api_key_Eodhd_}, Eodhd::Prefix{});
+        history_getter.reset(new Eodhd{Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
+                                       Eodhd::APIKey{api_key_Eodhd_}, Eodhd::Prefix{}});
     }
     else
     {
         // just 2 options for now
-        history_getter.emplace<Streamers::e_Tiingo>(Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
-                                                    Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{});
+        history_getter.reset(new Tiingo{Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
+                                        Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{}});
     }
 
     if (market_status == US_MarketStatus::e_NotOpenYet)
@@ -1232,31 +1223,20 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
 
         for (auto &[symbol, chart] : charts_)
         {
-            // TODO(dpriedel): use visitor
-            auto history = std::visit(
-                [this, &cache, &symbol, &today, &holidays](auto &streamer)
-                {
-                    return cache.contains(symbol)
-                               ? cache[symbol]
-                               : cache[symbol] = streamer.GetMostRecentTickerData(
-                                     symbol, today, 2,
-                                     price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No,
-                                     &holidays);
-                },
-                history_getter);
+            const auto history =
+                cache.contains(symbol)
+                    ? cache[symbol]
+                    : (cache[symbol] = history_getter->GetMostRecentTickerData(
+                           symbol, today, 2,
+                           price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No, &holidays));
             chart.AddValue(history[0].close_,
                            std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
     {
-        auto history = std::visit(
-            [this](auto &streamer)
-            {
-                streamer.UseSymbols(symbol_list_);
-                return streamer.GetTopOfBookAndLastClose();
-            },
-            history_getter);
+        history_getter->UseSymbols(symbol_list_);
+        auto history = history_getter->GetTopOfBookAndLastClose();
 
         const auto close_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(
             GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
@@ -1289,30 +1269,30 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
                                         h.symbol_, e.what()));
                     }
                 });
-        }
-        // initialize our streaming summary 'opening' price (really prior day's close)
+            // initialize our streaming summary 'opening' price (really prior day's close)
 
-        for (const auto &h : history)
-        {
-            try
+            for (const auto &h : history)
             {
-                streamed_summary_[h.symbol_].opening_price_ = dec2dbl(h.previous_close_);
-                // again, Eodhd might not have data
+                try
+                {
+                    streamed_summary_[h.symbol_].opening_price_ = dec2dbl(h.previous_close_);
+                    // again, Eodhd might not have data
 
-                if (h.last_ == 0)
-                {
-                    streamed_summary_[h.symbol_].latest_price_ = dec2dbl(h.previous_close_);
+                    if (h.last_ == 0)
+                    {
+                        streamed_summary_[h.symbol_].latest_price_ = dec2dbl(h.previous_close_);
+                    }
+                    else
+                    {
+                        streamed_summary_[h.symbol_].latest_price_ = dec2dbl(h.last_);
+                    }
                 }
-                else
+                catch (const std::exception &e)
                 {
-                    streamed_summary_[h.symbol_].latest_price_ = dec2dbl(h.last_);
+                    spdlog::error(std::format(
+                        "Problem initializing streamed summary with streaming data for symbol: {} because: {}",
+                        h.symbol_, e.what()));
                 }
-            }
-            catch (const std::exception &e)
-            {
-                spdlog::error(
-                    std::format("Problem initializing streamed summary with streaming data for symbol: {} because: {}",
-                                h.symbol_, e.what()));
             }
         }
     }
@@ -1372,42 +1352,27 @@ void PF_CollectDataApp::CollectStreamingData()
     {
         try
         {
-            PF_Streamer quotes;
+            std::unique_ptr<Streamer> quotes;
             if (streaming_data_source_ == StreamingSource::e_Eodhd)
             {
-                quotes.emplace<Streamers::e_Eodhd>(Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
-                                                   Eodhd::APIKey{api_key_Eodhd_},
-                                                   Eodhd::Prefix{"/ws/us?api_token="s + api_key_Eodhd_});
+                quotes.reset(new Eodhd{Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
+                                       Eodhd::APIKey{api_key_Eodhd_},
+                                       Eodhd::Prefix{"/ws/us?api_token="s + api_key_Eodhd_}});
             }
             else
             {
                 // just 2 options for now
-                quotes.emplace<Streamers::e_Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{quote_host_port_},
-                                                    Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{"/iex"});
+                quotes.reset(new Tiingo{Tiingo::Host{streaming_host_name_}, Tiingo::Port{quote_host_port_},
+                                        Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{"/iex"}});
             }
 
-            // TODO: use overloads for each type for now.
-            auto streaming_task = std::visit(
-                [&, this](auto &streamer)
-                {
-                    return std::async(std::launch::async, streamer.*StreamData, &streamer,
-                                      &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
-                },
-                quotes);
+            auto streaming_task = std::async(std::launch::async, &Streamer::StreamData, quotes.get(),
+                                             &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
             // auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
             //                                  &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
             streaming_task.get();
         }
-        catch (Eodhd::StreamingEOF &e)
-        {
-            // if we got an EOF on the stream, just start up again
-            // unless, we had a signal.
-
-            spdlog::info("Caught 'StreamingEOF'. Trying to continue.");
-
-            continue;
-        }
-        catch (Tiingo::StreamingEOF &e)
+        catch (Streamer::StreamingEOF &e)
         {
             // if we got an EOF on the stream, just start up again
             // unless, we had a signal.
@@ -1428,12 +1393,12 @@ void PF_CollectDataApp::CollectStreamingData()
 
     // make a last check to be sure we  didn't leave any data unprocessed
 
-    ProcessEodhdStreamedData(&PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    ProcessStreamedData(&PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
 }  // -----  end of method PF_CollectDataApp::CollectEodhdStreamingData  -----
 
-void PF_CollectDataApp::ProcessEodhdStreamedData(bool *had_signal, std::mutex *data_mutex,
-                                                 std::queue<std::string> *streamed_data)
+void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_mutex,
+                                            std::queue<std::string> *streamed_data)
 {
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
@@ -2053,18 +2018,18 @@ void PF_CollectDataApp::Shutdown()
 
     if (destination_ == Destination::e_file)
     {
-        ShutdownStoreOutputInFiles();
+        ShutdownAndStoreOutputInFiles();
     }
     else
     {
-        ShutdownStoreOutputInDB();
+        ShutdownAndStoreOutputInDB();
     }
 
     spdlog::info(std::format("\n\n*** End run {}  ***\n",
                              std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
 }  // -----  end of method PF_CollectDataApp::Shutdown  -----
 
-void PF_CollectDataApp::ShutdownStoreOutputInFiles()
+void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
 {
     for (const auto &[symbol, chart] : charts_)
     {
@@ -2108,7 +2073,7 @@ void PF_CollectDataApp::ShutdownStoreOutputInFiles()
     }
 }  // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInFiles  -----
 
-void PF_CollectDataApp::ShutdownStoreOutputInDB()
+void PF_CollectDataApp::ShutdownAndStoreOutputInDB()
 {
     int32_t chart_count = 0;
     PF_DB pf_db{db_params_};

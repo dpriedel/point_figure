@@ -47,13 +47,8 @@ class Eodhd : public Streamer
         e_extended_hours
     };
 
-    struct PF_Data
+    struct Eodhd_PF_Data : public Streamer::PF_Data
     {
-        std::string ticker_;               // Ticker
-        std::string time_stamp_;           // Date
-        TmPt time_stamp_nanoseconds_utc_;  // time_stamp
-        decimal::Decimal last_price_ = 0;  // Last Price
-        int32_t last_size_{-1};            // Last Size
         bool dark_pool_{false};
         EodMktStatus market_status_{EodMktStatus::e_unknown};
     };
@@ -71,13 +66,13 @@ class Eodhd : public Streamer
 
     // ====================  ACCESSORS     =======================================
 
-    TopOfBookList GetTopOfBookAndLastClose();
+    TopOfBookList GetTopOfBookAndLastClose() override;
     std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
                                                          std::chrono::year_month_day start_from, int how_many_previous,
                                                          UseAdjusted use_adjusted,
-                                                         const US_MarketHolidays* holidays = nullptr);
+                                                         const US_MarketHolidays* holidays) override;
 
-    PF_Data ExtractData(const std::string& buffer);
+    std::unique_ptr<Eodhd_PF_Data> ExtractData(const std::string& buffer);
 
     // ====================  MUTATORS      =======================================
 

@@ -64,11 +64,11 @@ class Tiingo : public Streamer
 
     // ====================  ACCESSORS     =======================================
 
-    TopOfBookList GetTopOfBookAndLastClose();
+    TopOfBookList GetTopOfBookAndLastClose() override;
     std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
                                                          std::chrono::year_month_day start_from, int how_many_previous,
                                                          UseAdjusted use_adjusted,
-                                                         const US_MarketHolidays* holidays = nullptr);
+                                                         const US_MarketHolidays* holidays) override;
 
     PF_Data ExtractData(const std::string& buffer);
 
