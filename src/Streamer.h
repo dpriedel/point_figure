@@ -17,10 +17,8 @@
 #ifndef _STREAMER_INC_
 #define _STREAMER_INC_
 
-#include <cctype>
 #include <chrono>
 #include <queue>
-#include <ranges>
 #include <vector>
 
 #include <boost/asio/connect.hpp>
@@ -61,8 +59,9 @@ class Streamer
 
     struct PF_Data
     {
-        std::string ticker_;               // Ticker
-        std::string time_stamp_;           // Date
+        std::string ticker_;      // Ticker
+        std::string time_stamp_;  // Date
+        std::string subscription_id_;
         TmPt time_stamp_nanoseconds_utc_;  // time_stamp
         decimal::Decimal last_price_ = 0;  // Last Price
         int32_t last_size_{-1};            // Last Size
