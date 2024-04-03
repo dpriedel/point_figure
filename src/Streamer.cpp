@@ -16,11 +16,15 @@
 
 #include "Streamer.h"
 
-Streamer::Streamer()  // constructor
+namespace rng = std::ranges;
+
+namespace http = beast::http;
+
+RemoteDataSource::RemoteDataSource()  // constructor
     : ctx{ssl::context::tlsv12_client}, resolver{ioc}, ws{ioc, ctx}
 {
 }
-Streamer::Streamer(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
+RemoteDataSource::RemoteDataSource(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
     : api_key{api_key.get()},
       host{host.get()},
       port{port.get()},
@@ -31,14 +35,14 @@ Streamer::Streamer(const Host& host, const Port& port, const APIKey& api_key, co
 {
 }
 
-Streamer::~Streamer()
+RemoteDataSource::~RemoteDataSource()
 {
     // need to disconnect if still connected.
 
     DisconnectWS();
 }
 
-void Streamer::Streamer::ConnectWS()
+void RemoteDataSource::RemoteDataSource::ConnectWS()
 {
     // the following code is taken from example in Boost documentation
 
@@ -65,7 +69,7 @@ void Streamer::Streamer::ConnectWS()
     BOOST_ASSERT_MSG(ws.is_open(), "Unable to complete websocket connection.");
 }
 
-void Streamer::DisconnectWS()
+void RemoteDataSource::DisconnectWS()
 {
     if (!ws.is_open())
     {
@@ -81,7 +85,7 @@ void Streamer::DisconnectWS()
         spdlog::error("Problem closing socket during disconnect: {}.", e.what());
     }
 }
-void Streamer::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
+void RemoteDataSource::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
 {
     StartStreaming();
 
@@ -171,7 +175,7 @@ void Streamer::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<s
 }
 // for streaming or other data retrievals
 
-void Streamer::UseSymbols(const std::vector<std::string>& symbols)
+void RemoteDataSource::UseSymbols(const std::vector<std::string>& symbols)
 {
     symbol_list = symbols;
 
@@ -180,7 +184,7 @@ void Streamer::UseSymbols(const std::vector<std::string>& symbols)
     rng::for_each(symbol_list, [](auto& symbol) { rng::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
 }
 
-std::string Streamer::RequestData(const std::string& request_string)
+std::string RemoteDataSource::RequestData(const std::string& request_string)
 {
     // if any problems occur here, we'll just let beast throw an exception.
 

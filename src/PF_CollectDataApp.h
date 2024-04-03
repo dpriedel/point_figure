@@ -42,7 +42,6 @@
 #include <string>
 #include <tuple>
 #include <utility>
-#include <variant>
 
 // namespace fs = std::filesystem;
 
@@ -52,14 +51,9 @@ namespace po = boost::program_options;
 
 #include <decimal.hh>
 
-// #include <date/date.h>
-// #include <date/tz.h>
-
 #include <spdlog/spdlog.h>
 
 #include "Boxes.h"
-// #include "DDecQuad.h"
-#include "Eodhd.h"
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
@@ -137,10 +131,10 @@ class PF_CollectDataApp
     void CollectStreamingData();
     void ProcessStreamedData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
 
-    void CollectTiingoStreamingData();
-
-    void ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
-                                   std::queue<std::string> *streamed_data);
+    // void CollectTiingoStreamingData();
+    //
+    // void ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
+    //                                std::queue<std::string> *streamed_data);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
@@ -154,9 +148,9 @@ class PF_CollectDataApp
    private:
     static void HandleSignal(int signal);
 
-    void ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData &updates, std::string ticker);
-    void ProcessUpdatesForEodhdSymbol(const Eodhd::PF_Data &update);
-    void CollectEodhdStreamedData(const Eodhd::PF_Data &update, PF_SignalType new_signal);
+    // void ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData &updates, std::string ticker);
+    void ProcessUpdatesForSymbol(const Json::Value &update);
+    void CollectStreamedData(const Json::Value &update, PF_SignalType new_signal);
 
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
 

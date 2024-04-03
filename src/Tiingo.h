@@ -17,17 +17,6 @@
 #ifndef _TIINGO_INC_
 #define _TIINGO_INC_
 
-// #include <chrono>
-// #include <deque>
-// #include <format>
-// #include <mutex>
-// #include <queue>
-// #include <sys/types.h>
-// #include <vector>
-//
-// #include <decimal.hh>
-// #include <json/json.h>
-
 // #pragma GCC diagnostic push
 // #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
@@ -38,21 +27,9 @@
 //  Description:  live stream ticker updates -- look like a generator
 // =====================================================================================
 
-class Tiingo : public Streamer
+class Tiingo : public RemoteDataSource
 {
    public:
-    struct PF_Data
-    {
-        std::string subscription_id_;
-        std::string ticker_;                      // Ticker
-        std::string time_stamp_;                  // Date
-        int64_t time_stamp_nanoseconds_utc_ = 0;  // time_stamp
-        decimal::Decimal last_price_ = 0;         // Last Price
-        int32_t last_size_ = 0;                   // Last Size
-    };
-
-    // using StreamedData = std::vector<PF_Data>;
-
     // ====================  LIFECYCLE     =======================================
 
     Tiingo() = default;
@@ -70,7 +47,7 @@ class Tiingo : public Streamer
                                                          UseAdjusted use_adjusted,
                                                          const US_MarketHolidays* holidays) override;
 
-    PF_Data ExtractData(const std::string& buffer);
+    Json::Value ExtractStreamedData(const std::string& buffer) override;
 
     // ====================  MUTATORS      =======================================
 
@@ -99,24 +76,25 @@ class Tiingo : public Streamer
 
 };  // -----  end of class Tiingo  -----
 
-template <>
-struct std::formatter<Tiingo::PF_Data> : std::formatter<std::string>
-{
-    // parse is inherited from formatter<string>.
-    auto format(const Tiingo::PF_Data& pdata, std::format_context& ctx) const
-    {
-        std::string record;
-        std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_,
-                       pdata.last_price_, pdata.last_size_, pdata.time_stamp_);
-        return formatter<std::string>::format(record, ctx);
-    }
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Tiingo::PF_Data pf_data)
-{
-    std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_
-              << " time:" << pf_data.time_stamp_;
-    return os;
-}
+// template <>
+// struct std::formatter<Tiingo::PF_Data> : std::formatter<std::string>
+// {
+//     // parse is inherited from formatter<string>.
+//     auto format(const Tiingo::PF_Data& pdata, std::format_context& ctx) const
+//     {
+//         std::string record;
+//         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_,
+//                        pdata.last_price_, pdata.last_size_, pdata.time_stamp_);
+//         return formatter<std::string>::format(record, ctx);
+//     }
+// };
+//
+// inline std::ostream& operator<<(std::ostream& os, const Tiingo::PF_Data pf_data)
+// {
+//     std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " <<
+//     pf_data.last_size_
+//               << " time:" << pf_data.time_stamp_;
+//     return os;
+// }
 
 #endif  // ----- #ifndef _TIINGO_INC_  -----

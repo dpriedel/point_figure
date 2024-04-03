@@ -29,14 +29,12 @@
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
 
+#include <json/json.h>
 #include <spdlog/spdlog.h>
-
-namespace rng = std::ranges;
 
 // #pragma GCC diagnostic pop
 
 namespace beast = boost::beast;          // from <boost/beast.hpp>
-namespace http = beast::http;            // from <boost/beast/http.hpp>
 namespace websocket = beast::websocket;  // from <boost/beast/websocket.hpp>
 namespace net = boost::asio;             // from <boost/asio.hpp>
 namespace ssl = boost::asio::ssl;        // from <boost/asio/ssl.hpp>
@@ -50,22 +48,17 @@ using tcp = boost::asio::ip::tcp;        // from <boost/asio/ip/tcp.hpp>
 //  Description:  wrapper for streamed data sources
 // =====================================================================================
 
-class Streamer
+class RemoteDataSource
 {
    public:
+    // use this as exception class to flag specific streaming error
+    // so we can catch it
+
     struct StreamingEOF
     {
     };
 
-    struct PF_Data
-    {
-        std::string ticker_;      // Ticker
-        std::string time_stamp_;  // Date
-        std::string subscription_id_;
-        TmPt time_stamp_nanoseconds_utc_;  // time_stamp
-        decimal::Decimal last_price_ = 0;  // Last Price
-        int32_t last_size_{-1};            // Last Size
-    };
+    // some custom types to quiet clang-tidy warnings
 
     using Host = UniqType<std::string, struct Host_Tag>;
     using Port = UniqType<std::string, struct Port_Tag>;
@@ -78,14 +71,14 @@ class Streamer
 
     // ====================  LIFECYCLE     =======================================
 
-    Streamer();  // constructor
+    RemoteDataSource();  // constructor
 
-    virtual ~Streamer();
+    virtual ~RemoteDataSource();
 
-    Streamer(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
+    RemoteDataSource(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
 
-    Streamer(const Streamer& rhs) = delete;
-    Streamer(Streamer&& rhs) = delete;
+    RemoteDataSource(const RemoteDataSource& rhs) = delete;
+    RemoteDataSource(RemoteDataSource&& rhs) = delete;
 
     // ====================  ACCESSORS     =======================================
 
@@ -96,6 +89,7 @@ class Streamer
                                                                  std::chrono::year_month_day start_from,
                                                                  int how_many_previous, UseAdjusted use_adjusted,
                                                                  const US_MarketHolidays* holidays) = 0;
+    virtual Json::Value ExtractStreamedData(const std::string& buffer) = 0;
 
     // ====================  MUTATORS      =======================================
 
@@ -112,8 +106,8 @@ class Streamer
 
     // ====================  OPERATORS     =======================================
 
-    Streamer& operator=(const Streamer& rhs) = delete;
-    Streamer& operator=(Streamer&& rhs) = delete;
+    RemoteDataSource& operator=(const RemoteDataSource& rhs) = delete;
+    RemoteDataSource& operator=(RemoteDataSource&& rhs) = delete;
 
    protected:
     // ====================  METHODS       =======================================

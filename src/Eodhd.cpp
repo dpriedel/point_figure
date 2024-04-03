@@ -15,14 +15,8 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
-// #include <algorithm>
-// #include <charconv>
-// #include <exception>
-// // #include <format>
-// #include <mutex>
 #include <ranges>
 #include <regex>
-// #include <string_view>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
@@ -39,7 +33,7 @@ namespace vws = std::ranges::views;
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 Eodhd::Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
-    : Streamer{host, port, api_key, prefix}
+    : RemoteDataSource{host, port, api_key, prefix}
 {
 }  // -----  end of method Eodhd::Eodhd  (constructor)  -----
 
@@ -78,7 +72,7 @@ void Eodhd::StartStreaming()
                      std::format("Failed to get success code. Got: {}", buffer_content).c_str());
 }  // -----  end of method Eodhd::StartStreaming  -----
 
-Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
+Json::Value Eodhd::ExtractStreamedData(const std::string& buffer)
 {
     // response format is 'simple' so we'll use RegExes here too.
 
@@ -107,7 +101,7 @@ Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
     std::cmatch fields;
     const char* response_text = buffer.data();
 
-    PF_Data new_value;
+    Json::Value new_value;
 
     if (bool matched_it = std::regex_match(response_text, fields, kResponseRegex); matched_it)
     {
@@ -119,41 +113,52 @@ Eodhd::PF_Data Eodhd::ExtractData(const std::string& buffer)
                 std::format("Problem converting transaction time to int64: {}\n", std::make_error_code(ec).message()));
         }
         std::chrono::milliseconds ms{time_value};
-        new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
+        // new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
+        new_value["time_stamp_nanoseconds_utc_"] = std::chrono::duration_cast<std::chrono::nanoseconds>(ms).count();
 
-        new_value.ticker_ =
-            std::string_view{response_text + fields.position(e_ticker), static_cast<size_t>(fields.length(e_ticker))};
+        std::string tmp_ticker{response_text + fields.position(e_ticker), static_cast<size_t>(fields.length(e_ticker))};
+        rng::for_each(tmp_ticker, [](char& c) { c = std::toupper(c); });
+        new_value["ticker"] = tmp_ticker;
 
-        tmp_fld = {response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
-        new_value.last_price_ = decimal::Decimal{std::string{tmp_fld}};
+        // tmp_fld = {response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
+        // new_value.last_price_ = decimal::Decimal{std::string{tmp_fld}};
+        new_value["last_price"] =
+            std::string{response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
 
         tmp_fld = {response_text + fields.position(e_volume), static_cast<size_t>(fields.length(e_volume))};
-        if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), new_value.last_size_); ec != std::errc())
+        int64_t last_size{0};
+        if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), last_size); ec != std::errc())
         {
             throw std::runtime_error(std::format("Problem converting transaction volume to int64: {}\n",
                                                  std::make_error_code(ec).message()));
         }
+        new_value["last_size"] = last_size;
 
-        tmp_fld = {response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
-        new_value.dark_pool_ = tmp_fld == "true";
+        // tmp_fld = {response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
+        // new_value.dark_pool_ = tmp_fld == "true";
+        new_value["dark_pool"] =
+            std::string{response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
 
         tmp_fld = {response_text + fields.position(e_mkt_status), static_cast<size_t>(fields.length(e_mkt_status))};
 
         if (tmp_fld == "open")
         {
-            new_value.market_status_ = EodMktStatus::e_open;
+            new_value["market_status"] = std::to_underlying(EodMktStatus::e_open);
         }
         else if (tmp_fld == "closed")
         {
-            new_value.market_status_ = EodMktStatus::e_closed;
+            // new_value.market_status_ = EodMktStatus::e_closed;
+            new_value["market_status"] = std::to_underlying(EodMktStatus::e_closed);
         }
         else if (tmp_fld == "extended-hours")
         {
-            new_value.market_status_ = EodMktStatus::e_extended_hours;
+            // new_value.market_status_ = EodMktStatus::e_extended_hours;
+            new_value["market_status"] = std::to_underlying(EodMktStatus::e_extended_hours);
         }
         else
         {
-            new_value.market_status_ = EodMktStatus::e_unknown;
+            // new_value.market_status_ = EodMktStatus::e_unknown;
+            new_value["market_status"] = std::to_underlying(EodMktStatus::e_unknown);
         }
     }
     else
@@ -248,7 +253,7 @@ Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
     // which we need to skip
     // <code>,<timestamp>,<gmtoffset>,<open>,<high>,<low>,<close>,<volume>,<previousClose>,<change>,<change_p>
     // so, let's just quickly parse them out.
-    enum fields
+    enum Fields
     {
         e_timestamp = 1,
         e_open = 3,

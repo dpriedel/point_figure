@@ -15,17 +15,8 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
-// #include "boost/static_assert.hpp"
-// #include <algorithm>
-// #include <chrono>
-// #include <exception>
-// #include <format>
-// #include <iostream>
-// #include <mutex>
 #include <ranges>
 #include <regex>
-// #include <spdlog/spdlog.h>
-// #include <string_view>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
@@ -42,7 +33,7 @@ using namespace std::chrono_literals;
 //--------------------------------------------------------------------------------------
 
 Tiingo::Tiingo(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
-    : Streamer{host, port, api_key, prefix}
+    : RemoteDataSource{host, port, api_key, prefix}
 {
 }  // -----  end of method Tiingo::Tiingo  (constructor)  -----
 
@@ -102,7 +93,7 @@ void Tiingo::StartStreaming()
     // }
 }  // -----  end of method Tiingo::StartStreaming  -----
 
-Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
+Json::Value Tiingo::ExtractStreamedData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
 
@@ -126,7 +117,8 @@ Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
     }
     //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
-    PF_Data pf_data;
+    // PF_Data pf_data;
+    Json::Value new_value;
 
     auto message_type = response["messageType"];
     if (message_type == "A")
@@ -142,13 +134,20 @@ Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
             }
             else
             {
-                pf_data.subscription_id_ = subscription_id_;
-                pf_data.time_stamp_ = data[1].asCString();
-                pf_data.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-                pf_data.ticker_ = data[3].asCString();
-                rng::for_each(pf_data.ticker_, [](char& c) { c = std::toupper(c); });
-                pf_data.last_price_ = decimal::Decimal{m[1].str()};
-                pf_data.last_size_ = data[10].asInt();
+                // pf_data.subscription_id_ = subscription_id_;
+                new_value["subscription_id"] = subscription_id_;
+                // pf_data.time_stamp_ = data[1].asCString();
+                new_value["time_stamp"] = data[1].asCString();
+                // pf_data.time_stamp_nanoseconds_utc_ = data[2].asInt64();
+                new_value["time_stamp_nanoseconds_utc"] = data[2].asInt64();
+                // pf_data.ticker_ = data[3].asCString();
+                std::string tmp_ticker = data[3].asCString();
+                rng::for_each(tmp_ticker, [](char& c) { c = std::toupper(c); });
+                new_value["ticker"] = tmp_ticker;
+                // pf_data.last_price_ = decimal::Decimal{m[1].str()};
+                new_value["last_price"] = m[1].str();
+                // pf_data.last_size_ = data[10].asInt();
+                new_value["last_size"] = data[10].asInt64();
             }
 
             //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
@@ -169,7 +168,7 @@ Tiingo::PF_Data Tiingo::ExtractData(const std::string& buffer)
     {
         spdlog::error("unexpected message type.");
     }
-    return pf_data;
+    return new_value;
 }  // -----  end of method Tiingo::ExtractData  -----
 
 void Tiingo::StopStreaming()

@@ -17,16 +17,6 @@
 #ifndef _EODHD_INC_
 #define _EODHD_INC_
 
-// #include <cstdint>
-// #include <format>
-// #include <mutex>
-// #include <queue>
-// #include <sys/types.h>
-// #include <vector>
-//
-// #include <decimal.hh>
-// #include <json/json.h>
-
 // #pragma GCC diagnostic push
 // #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
@@ -36,24 +26,16 @@
 //        Class:  Eodhd
 //  Description:  live stream ticker updates and retrieve other ticker data -- look like a generator
 // =====================================================================================
-class Eodhd : public Streamer
+class Eodhd : public RemoteDataSource
 {
    public:
     enum class EodMktStatus : int32_t
     {
-        e_unknown,
-        e_open,
-        e_closed,
-        e_extended_hours
+        e_unknown = 0,
+        e_open = 1,
+        e_closed = 2,
+        e_extended_hours = 3
     };
-
-    struct Eodhd_PF_Data : public Streamer::PF_Data
-    {
-        bool dark_pool_{false};
-        EodMktStatus market_status_{EodMktStatus::e_unknown};
-    };
-
-    // using StreamedData = std::vector<PF_Data>;
 
     // ====================  LIFECYCLE     =======================================
 
@@ -72,7 +54,7 @@ class Eodhd : public Streamer
                                                          UseAdjusted use_adjusted,
                                                          const US_MarketHolidays* holidays) override;
 
-    std::unique_ptr<Eodhd_PF_Data> ExtractData(const std::string& buffer);
+    Json::Value ExtractStreamedData(const std::string& buffer) override;
 
     // ====================  MUTATORS      =======================================
 
@@ -99,17 +81,18 @@ class Eodhd : public Streamer
 
 };  // -----  end of class Eodhd  -----
 
-template <>
-struct std::formatter<Eodhd::PF_Data> : std::formatter<std::string>
-{
-    // parse is inherited from formatter<string>.
-    auto format(const Eodhd::PF_Data& pdata, std::format_context& ctx) const
-    {
-        std::string record;
-        std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {:%F %T}", pdata.ticker_,
-                       pdata.last_price_, pdata.last_size_, pdata.time_stamp_nanoseconds_utc_);
-        return formatter<std::string>::format(record, ctx);
-    }
-};
+// template <>
+// struct std::formatter<Eodhd::PF_Data> : std::formatter<std::string>
+// {
+//     // parse is inherited from formatter<string>.
+//     auto format(const Eodhd::PF_Data& pdata, std::format_context& ctx) const
+//     {
+//         std::string record;
+//         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {:%F %T}",
+//         pdata.ticker_,
+//                        pdata.last_price_, pdata.last_size_, pdata.time_stamp_nanoseconds_utc_);
+//         return formatter<std::string>::format(record, ctx);
+//     }
+// };
 
 #endif  // ----- #ifndef _EODHD_INC_  -----
