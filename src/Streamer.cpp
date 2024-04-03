@@ -17,7 +17,6 @@
 #include "Streamer.h"
 
 namespace rng = std::ranges;
-
 namespace http = beast::http;
 
 RemoteDataSource::RemoteDataSource()  // constructor

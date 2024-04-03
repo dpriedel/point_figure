@@ -90,10 +90,11 @@ void Tiingo::StartStreaming()
     BOOST_ASSERT_MSG(code == 200, std::format("Expected success code of '200'. Got: {}", code).c_str());
 
     subscription_id_ = response["data"]["subscriptionId"].asString();
+
     // }
 }  // -----  end of method Tiingo::StartStreaming  -----
 
-Json::Value Tiingo::ExtractStreamedData(const std::string& buffer)
+Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
 
@@ -118,7 +119,7 @@ Json::Value Tiingo::ExtractStreamedData(const std::string& buffer)
     //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
     // PF_Data pf_data;
-    Json::Value new_value;
+    PF_Data new_value;
 
     auto message_type = response["messageType"];
     if (message_type == "A")
@@ -130,24 +131,18 @@ Json::Value Tiingo::ExtractStreamedData(const std::string& buffer)
             std::smatch m;
             if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
             {
-                spdlog::error(std::format("can't find trade price in buffer: {}", zapped_buffer));
+                std::cout << "can't find trade price in buffer: " << buffer << '\n';
             }
             else
             {
-                // pf_data.subscription_id_ = subscription_id_;
-                new_value["subscription_id"] = subscription_id_;
-                // pf_data.time_stamp_ = data[1].asCString();
-                new_value["time_stamp"] = data[1].asCString();
-                // pf_data.time_stamp_nanoseconds_utc_ = data[2].asInt64();
-                new_value["time_stamp_nanoseconds_utc"] = data[2].asInt64();
-                // pf_data.ticker_ = data[3].asCString();
-                std::string tmp_ticker = data[3].asCString();
-                rng::for_each(tmp_ticker, [](char& c) { c = std::toupper(c); });
-                new_value["ticker"] = tmp_ticker;
-                // pf_data.last_price_ = decimal::Decimal{m[1].str()};
-                new_value["last_price"] = m[1].str();
-                // pf_data.last_size_ = data[10].asInt();
-                new_value["last_size"] = data[10].asInt64();
+                PF_Data new_value;
+                new_value.subscription_id_ = subscription_id_;
+                new_value.time_stamp_ = data[1].asCString();
+                new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::nanoseconds{data[2].asInt64()}};
+                new_value.ticker_ = data[3].asCString();
+                rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+                new_value.last_price_ = decimal::Decimal{m[1].str()};
+                new_value.last_size_ = data[10].asInt();
             }
 
             //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_

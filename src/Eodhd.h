@@ -29,14 +29,6 @@
 class Eodhd : public RemoteDataSource
 {
    public:
-    enum class EodMktStatus : int32_t
-    {
-        e_unknown = 0,
-        e_open = 1,
-        e_closed = 2,
-        e_extended_hours = 3
-    };
-
     // ====================  LIFECYCLE     =======================================
 
     Eodhd() = default;
@@ -54,7 +46,7 @@ class Eodhd : public RemoteDataSource
                                                          UseAdjusted use_adjusted,
                                                          const US_MarketHolidays* holidays) override;
 
-    Json::Value ExtractStreamedData(const std::string& buffer) override;
+    PF_Data ExtractStreamedData(const std::string& buffer) override;
 
     // ====================  MUTATORS      =======================================
 
@@ -80,19 +72,5 @@ class Eodhd : public RemoteDataSource
     // ====================  DATA MEMBERS  =======================================
 
 };  // -----  end of class Eodhd  -----
-
-// template <>
-// struct std::formatter<Eodhd::PF_Data> : std::formatter<std::string>
-// {
-//     // parse is inherited from formatter<string>.
-//     auto format(const Eodhd::PF_Data& pdata, std::format_context& ctx) const
-//     {
-//         std::string record;
-//         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {:%F %T}",
-//         pdata.ticker_,
-//                        pdata.last_price_, pdata.last_size_, pdata.time_stamp_nanoseconds_utc_);
-//         return formatter<std::string>::format(record, ctx);
-//     }
-// };
 
 #endif  // ----- #ifndef _EODHD_INC_  -----

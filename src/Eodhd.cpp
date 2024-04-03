@@ -72,7 +72,7 @@ void Eodhd::StartStreaming()
                      std::format("Failed to get success code. Got: {}", buffer_content).c_str());
 }  // -----  end of method Eodhd::StartStreaming  -----
 
-Json::Value Eodhd::ExtractStreamedData(const std::string& buffer)
+Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string& buffer)
 {
     // response format is 'simple' so we'll use RegExes here too.
 
@@ -101,7 +101,7 @@ Json::Value Eodhd::ExtractStreamedData(const std::string& buffer)
     std::cmatch fields;
     const char* response_text = buffer.data();
 
-    Json::Value new_value;
+    PF_Data new_value;
 
     if (bool matched_it = std::regex_match(response_text, fields, kResponseRegex); matched_it)
     {
@@ -113,52 +113,41 @@ Json::Value Eodhd::ExtractStreamedData(const std::string& buffer)
                 std::format("Problem converting transaction time to int64: {}\n", std::make_error_code(ec).message()));
         }
         std::chrono::milliseconds ms{time_value};
-        // new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
-        new_value["time_stamp_nanoseconds_utc_"] = std::chrono::duration_cast<std::chrono::nanoseconds>(ms).count();
+        new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
 
-        std::string tmp_ticker{response_text + fields.position(e_ticker), static_cast<size_t>(fields.length(e_ticker))};
-        rng::for_each(tmp_ticker, [](char& c) { c = std::toupper(c); });
-        new_value["ticker"] = tmp_ticker;
+        new_value.ticker_ =
+            std::string_view{response_text + fields.position(e_ticker), static_cast<size_t>(fields.length(e_ticker))};
 
-        // tmp_fld = {response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
-        // new_value.last_price_ = decimal::Decimal{std::string{tmp_fld}};
-        new_value["last_price"] =
-            std::string{response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
+        tmp_fld = {response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
+        new_value.last_price_ = decimal::Decimal{std::string{tmp_fld}};
 
         tmp_fld = {response_text + fields.position(e_volume), static_cast<size_t>(fields.length(e_volume))};
-        int64_t last_size{0};
-        if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), last_size); ec != std::errc())
+        if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), new_value.last_size_); ec != std::errc())
         {
             throw std::runtime_error(std::format("Problem converting transaction volume to int64: {}\n",
                                                  std::make_error_code(ec).message()));
         }
-        new_value["last_size"] = last_size;
 
-        // tmp_fld = {response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
-        // new_value.dark_pool_ = tmp_fld == "true";
-        new_value["dark_pool"] =
-            std::string{response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
+        tmp_fld = {response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
+        new_value.dark_pool_ = tmp_fld == "true";
 
         tmp_fld = {response_text + fields.position(e_mkt_status), static_cast<size_t>(fields.length(e_mkt_status))};
 
         if (tmp_fld == "open")
         {
-            new_value["market_status"] = std::to_underlying(EodMktStatus::e_open);
+            new_value.market_status_ = EodMktStatus::e_open;
         }
         else if (tmp_fld == "closed")
         {
-            // new_value.market_status_ = EodMktStatus::e_closed;
-            new_value["market_status"] = std::to_underlying(EodMktStatus::e_closed);
+            new_value.market_status_ = EodMktStatus::e_closed;
         }
         else if (tmp_fld == "extended-hours")
         {
-            // new_value.market_status_ = EodMktStatus::e_extended_hours;
-            new_value["market_status"] = std::to_underlying(EodMktStatus::e_extended_hours);
+            new_value.market_status_ = EodMktStatus::e_extended_hours;
         }
         else
         {
-            // new_value.market_status_ = EodMktStatus::e_unknown;
-            new_value["market_status"] = std::to_underlying(EodMktStatus::e_unknown);
+            new_value.market_status_ = EodMktStatus::e_unknown;
         }
     }
     else
@@ -191,16 +180,16 @@ void Eodhd::StopStreaming()
     ssl::context ctx{ssl::context::tlsv12_client};
 
     tcp::resolver resolver{ioc};
-    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws{ioc, ctx};
+    websocket::stream<beast::ssl_stream<tcp::socket>, false> tmp_ws{ioc, ctx};
 
     auto tmp_host = host;
     auto tmp_port = port;
 
     auto const results = resolver.resolve(tmp_host, tmp_port);
 
-    auto ep = net::connect(get_lowest_layer(ws), results);
+    auto ep = net::connect(get_lowest_layer(tmp_ws), results);
 
-    if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(), tmp_host.c_str()))
+    if (!SSL_set_tlsext_host_name(tmp_ws.next_layer().native_handle(), tmp_host.c_str()))
     {
         throw beast::system_error(
             beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
@@ -209,22 +198,22 @@ void Eodhd::StopStreaming()
 
     tmp_host += ':' + std::to_string(ep.port());
 
-    ws.next_layer().handshake(ssl::stream_base::client);
+    tmp_ws.next_layer().handshake(ssl::stream_base::client);
 
-    ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    tmp_ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
-    ws.handshake(tmp_host, websocket_prefix);
+    tmp_ws.handshake(tmp_host, websocket_prefix);
 
     try
     {
-        ws.write(net::buffer(unsubscribe_request_str));
+        tmp_ws.write(net::buffer(unsubscribe_request_str));
 
         beast::flat_buffer buffer;
 
-        ws.read(buffer);
+        tmp_ws.read(buffer);
 
         // beast::close_socket(get_lowest_layer(ws));
-        ws.close(websocket::close_code::normal);
+        tmp_ws.close(websocket::close_code::normal);
         //        ws.close(websocket::close_code::normal);
     }
     catch (std::exception& e)

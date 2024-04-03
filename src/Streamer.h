@@ -29,7 +29,6 @@
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
 
-#include <json/json.h>
 #include <spdlog/spdlog.h>
 
 // #pragma GCC diagnostic pop
@@ -69,6 +68,28 @@ class RemoteDataSource
 
     using TopOfBookList = std::vector<TopOfBookOpenAndLastClose>;
 
+    // consolidated, unified supeset of streamed data from all sources.
+
+    enum class EodMktStatus : int32_t
+    {
+        e_unknown,
+        e_open,
+        e_closed,
+        e_extended_hours
+    };
+
+    struct PF_Data
+    {
+        std::string subscription_id_;
+        std::string ticker_;               // Ticker
+        std::string time_stamp_;           // Date
+        TmPt time_stamp_nanoseconds_utc_;  // time_stamp
+        decimal::Decimal last_price_;      // Last Price
+        int32_t last_size_{-1};            // Last Size
+        bool dark_pool_;
+        EodMktStatus market_status_{EodMktStatus::e_unknown};
+    };
+
     // ====================  LIFECYCLE     =======================================
 
     RemoteDataSource();  // constructor
@@ -89,7 +110,7 @@ class RemoteDataSource
                                                                  std::chrono::year_month_day start_from,
                                                                  int how_many_previous, UseAdjusted use_adjusted,
                                                                  const US_MarketHolidays* holidays) = 0;
-    virtual Json::Value ExtractStreamedData(const std::string& buffer) = 0;
+    virtual PF_Data ExtractStreamedData(const std::string& buffer) = 0;
 
     // ====================  MUTATORS      =======================================
 
@@ -133,5 +154,25 @@ class RemoteDataSource
     // ====================  DATA MEMBERS  =======================================
 
 };  // ----------  end of template class Streamer  ----------
+
+template <>
+struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
+{
+    // parse is inherited from formatter<string>.
+    auto format(const RemoteDataSource::PF_Data& pdata, std::format_context& ctx) const
+    {
+        std::string record;
+        std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_,
+                       pdata.last_price_, pdata.last_size_, pdata.time_stamp_);
+        return formatter<std::string>::format(record, ctx);
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const RemoteDataSource::PF_Data pf_data)
+{
+    std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_
+              << " time:" << pf_data.time_stamp_;
+    return os;
+}
 
 #endif  // ----- #ifndef _STREAMER_INC_  -----

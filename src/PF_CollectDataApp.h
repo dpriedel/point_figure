@@ -56,7 +56,7 @@ namespace po = boost::program_options;
 #include "Boxes.h"
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
-#include "Tiingo.h"
+#include "Streamer.h"
 #include "utilities.h"
 
 // =====================================================================================
@@ -131,11 +131,6 @@ class PF_CollectDataApp
     void CollectStreamingData();
     void ProcessStreamedData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
 
-    // void CollectTiingoStreamingData();
-    //
-    // void ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
-    //                                std::queue<std::string> *streamed_data);
-
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
 
@@ -148,9 +143,8 @@ class PF_CollectDataApp
    private:
     static void HandleSignal(int signal);
 
-    // void ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData &updates, std::string ticker);
-    void ProcessUpdatesForSymbol(const Json::Value &update);
-    void CollectStreamedData(const Json::Value &update, PF_SignalType new_signal);
+    void ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update);
+    void CollectStreamedData(const RemoteDataSource::PF_Data &update, PF_SignalType new_signal);
 
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
 

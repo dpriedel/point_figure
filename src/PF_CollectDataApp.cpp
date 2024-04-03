@@ -64,6 +64,7 @@ namespace vws = std::ranges::views;
 #include <range/v3/range/conversion.hpp>
 
 // namespace py = pybind11;
+
 // using namespace py::literals;
 
 // #include "DDecQuad.h"
@@ -628,16 +629,16 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
     if (new_data_source_ != Source::e_DB)
     {
-        api_key_Tiingo_ = LoadDataFileForUse(tiingo_api_key_);
-        if (api_key_Tiingo_.ends_with('\n'))
+        if (streaming_data_source_ == StreamingSource::e_Tiingo)
         {
-            api_key_Tiingo_.resize(api_key_Tiingo_.size() - 1);
+            std::ifstream key_file(tiingo_api_key_);
+            key_file >> api_key_Tiingo_;
         }
-    }
-    if (streaming_data_source_ == StreamingSource::e_Eodhd)
-    {
-        std::ifstream key_file(eodhd_api_key_);
-        key_file >> api_key_Eodhd_;
+        else if (streaming_data_source_ == StreamingSource::e_Eodhd)
+        {
+            std::ifstream key_file(eodhd_api_key_);
+            key_file >> api_key_Eodhd_;
+        }
     }
 
     // TODO(dpriedel): this should be a program param...
@@ -1144,7 +1145,18 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, s
 
 Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
 {
-    Tiingo history_getter{quote_host_name_, quote_host_port_, api_key_Tiingo_};
+    std::unique_ptr<RemoteDataSource> history_getter;
+    if (streaming_data_source_ == StreamingSource::e_Eodhd)
+    {
+        history_getter = std::make_unique<Eodhd>(Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
+                                                 Eodhd::APIKey{api_key_Eodhd_}, Eodhd::Prefix{});
+    }
+    else
+    {
+        // just 2 options for now
+        history_getter = std::make_unique<Tiingo>(Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
+                                                  Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{});
+    }
 
     // we need to start from yesterday since we won't get history data for today
     // since we are doing this while the market is open
@@ -1158,8 +1170,8 @@ Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
     auto holidays = MakeHolidayList(today.year());
     rng::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
 
-    const auto history = history_getter.GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1,
-                                                                UseAdjusted::e_Yes, &holidays);
+    const auto history = history_getter->GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1,
+                                                                 UseAdjusted::e_Yes, &holidays);
 
     auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_);
 
@@ -1230,6 +1242,22 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
                            price_fld_name_.starts_with("adj") ? UseAdjusted::e_Yes : UseAdjusted::e_No, &holidays));
             chart.AddValue(history[0].close_,
                            std::chrono::clock_cast<std::chrono::utc_clock>(current_local_time.get_sys_time()));
+        }
+        // initialize our streaming summary 'opening' price (really prior day's close)
+
+        for (const auto &[symbol, h] : cache)
+        {
+            try
+            {
+                // all we've got at this poiint is yesterday's close
+                streamed_summary_[symbol].opening_price_ = dec2dbl(h[0].close_);
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::error(
+                    std::format("Problem initializing streamed summary with streaming data for symbol: {} because: {}",
+                                symbol, e.what()));
+            }
         }
     }
     else if (market_status == US_MarketStatus::e_OpenForTrading)
@@ -1315,7 +1343,8 @@ void PF_CollectDataApp::CollectStreamingData()
 
     // ok, get ready to handle keyboard interrupts, if any.
 
-    std::cout << "starting eodhd streaming." << std::endl;
+    std::cout << std::format("starting {} streaming.\n",
+                             streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo");
 
     struct sigaction sa_old
     {
@@ -1365,6 +1394,8 @@ void PF_CollectDataApp::CollectStreamingData()
                                                   Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{"/iex"});
             }
 
+            quotes->UseSymbols(symbol_list_);
+
             auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, quotes.get(),
                                              &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
             // auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
@@ -1382,7 +1413,9 @@ void PF_CollectDataApp::CollectStreamingData()
         }
         catch (std::exception &e)
         {
-            spdlog::error(std::format("Problem with Eodhd streaming. Message: {}", e.what()));
+            spdlog::error(std::format("Problem with {} streaming. Message: {}",
+                                      streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo",
+                                      e.what()));
             had_signal_ = true;
         }
     }
@@ -1494,14 +1527,14 @@ void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_m
 
 }  // -----  end of method PF_CollectDataApp::ProcessEodhdStreamedData  -----
 
-void PF_CollectDataApp::ProcessUpdatesForSymbol(const Json::Value &update)
+void PF_CollectDataApp::ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update)
 {
     // it is possible that the update could be empty if there was a problem extracting
     // the data.
     // Also, for now, we want to skip 'dark pool' transactions.
     // AND skip 1-share transactions -- maybe these are algo-traders probing the market.
 
-    if (update["last_price"].empty() || update["dark_pool"] == "true" || update["last_size"] == 1)
+    if (update.last_price_ == -1 || update.dark_pool_ || update.last_size_ == 1)
     {
         // last_price_ = -1 means the field was not set
         // during data extraction.
@@ -1516,15 +1549,14 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Json::Value &update)
     // symbol and give each a chance at the new data.
 
     rng::for_each(
-        charts_ | vws::filter([&update](const auto &symbol_and_chart)
-                              { return symbol_and_chart.first == update["ticker"].asCString(); }),
+        charts_ |
+            vws::filter([&update](const auto &symbol_and_chart) { return symbol_and_chart.first == update.ticker_; }),
         [this, &need_to_update_graph, &update, &new_signal](auto &symbol_and_chart)
         {
             try
             {
-                auto chart_changed = symbol_and_chart.second.AddValue(
-                    sv2dec(update["last_price"].asCString()),
-                    RemoteDataSource::TmPt{std::chrono::nanoseconds{update["time_stamp_nanoseconds_utc"].asInt64()}});
+                auto chart_changed =
+                    symbol_and_chart.second.AddValue(update.last_price_, update.time_stamp_nanoseconds_utc_);
                 if (chart_changed != PF_Column::Status::e_Ignored)
                 {
                     need_to_update_graph.push_back(&symbol_and_chart.second);
@@ -1537,7 +1569,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Json::Value &update)
             catch (std::exception &e)
             {
                 spdlog::error(std::format("Problem adding streamed value to chart for symbol: {} because: {}.",
-                                          update["ticker"].asCString(), e.what()));
+                                          update.ticker_, e.what()));
             }
         });
 
@@ -1575,14 +1607,14 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const Json::Value &update)
     ConstructCDSummaryGraphic(streamed_summary_, summary_graphic_path);
 }  // -----  end of method PF_CollectDataApp::ProcessUpdatesForEodhdSymbol  -----
 
-void PF_CollectDataApp::CollectStreamedData(const Json::Value &update, PF_SignalType new_signal)
+void PF_CollectDataApp::CollectStreamedData(const RemoteDataSource::PF_Data &update, PF_SignalType new_signal)
 {
     // we get streamed data at the millisecond resolution.  This is too much to
     // show on a graphic. So, we filter to the second and keep the last value
     // for each second.
 
-    const auto new_time_stamp = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::nanoseconds{update["time_stamp_nanoseconds_utc"].asInt64()});
+    const auto new_time_stamp =
+        std::chrono::duration_cast<std::chrono::seconds>(update.time_stamp_nanoseconds_utc_.time_since_epoch()).count();
     if (!streamed_prices_[update.ticker_].timestamp_seconds_.empty())
     {
         if (new_time_stamp > streamed_prices_[update.ticker_].timestamp_seconds_.back())
@@ -1614,313 +1646,6 @@ void PF_CollectDataApp::CollectStreamedData(const Json::Value &update, PF_Signal
     streamed_summary_[update.ticker_].latest_price_ = dec2dbl(update.last_price_);
 
 }  // -----  end of method PF_CollectDataApp::CollectEodhdStreamedData  -----
-
-// void PF_CollectDataApp::CollectTiingoStreamingData()
-// {
-//     // we're going to use 2 threads here -- a producer thread which collects
-//     // streamed data from Tiingo and a consummer thread which will take that
-//     // data, decode it and load it into appropriate charts. Processing continues
-//     // until interrupted.
-//
-//     // we've added a third thread to manage a countdown timer which will
-//     // interrupt our producer thread at market close.  Otherwise, the producer
-//     // thread will hang forever or until interrupted.
-//
-//     // since this code can potentially run for hours on end
-//     // it's a good idea to provide a way to break into this processing and shut
-//     // it down cleanly. so, a little bit of C...(taken from "Advanced Unix
-//     // Programming" by Warren W. Gay, p. 317)
-//
-//     // ok, get ready to handle keyboard interrupts, if any.
-//
-//     struct sigaction sa_old
-//     {
-//     };
-//     struct sigaction sa_new
-//     {
-//     };
-//
-//     sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
-//     sigemptyset(&sa_new.sa_mask);
-//     sa_new.sa_flags = 0;
-//     sigaction(SIGINT, &sa_new, &sa_old);
-//
-//     PF_CollectDataApp::had_signal_ = false;
-//
-//     Tiingo quotes{quote_host_name_, quote_host_port_, "/iex", api_key_Tiingo_, symbol_list_};
-//     quotes.Connect();
-//
-//     // if we are here then we already know that the US market is open for
-//     // trading.
-//
-//     auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
-//     // add a couple minutes for padding
-//     auto local_market_close =
-//         std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
-//
-//     std::mutex data_mutex;
-//     std::queue<std::string> streamed_data;
-//
-//     // py::gil_scoped_release gil{};
-//
-//     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
-//     auto streaming_task = std::async(std::launch::async, &Tiingo::StreamData, &quotes,
-//     &PF_CollectDataApp::had_signal_,
-//                                      &data_mutex, &streamed_data);
-//     auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessTiingoStreamedData, this,
-//     &quotes,
-//                                       &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
-//
-//     streaming_task.get();
-//     processing_task.get();
-//     timer_task.get();
-//
-//     quotes.Disconnect();
-//
-//     // make a last check to be sure we  didn't leave any data unprocessed
-//
-//     ProcessTiingoStreamedData(&quotes, &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
-//
-// }  // -----  end of method PF_CollectDataApp::CollectTiingoStreamingData  -----
-
-// void PF_CollectDataApp::ProcessTiingoStreamedData(Tiingo *quotes, bool *had_signal, std::mutex *data_mutex,
-//                                                   std::queue<std::string> *streamed_data)
-// {
-//     //    py::gil_scoped_acquire gil{};
-//     std::exception_ptr ep = nullptr;
-//
-//     while (true)
-//     {
-//         if (!streamed_data->empty())
-//         {
-//             std::string new_data;
-//             {
-//                 const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-//                 new_data = streamed_data->front();
-//                 streamed_data->pop();
-//             }
-//             const auto pf_data = quotes->ExtractStreamedData(new_data);
-//             if (pf_data.empty())
-//             {
-//                 // non-trade responses here.
-//                 continue;
-//             }
-//
-//             // our pf_data may contain 1 or more updates for 1 or more symbols.
-//             // so we'll process it a symbol at a time.
-//             // each symbol will have its own thread.
-//
-//             std::vector<std::string> tickers_in_update;
-//             rng::for_each(pf_data, [&tickers_in_update](const auto &u) { tickers_in_update.push_back(u.ticker_); });
-//
-//             rng::sort(tickers_in_update);
-//             const auto [first, last] = rng::unique(tickers_in_update);
-//             tickers_in_update.erase(first, last);
-//
-//             if (tickers_in_update.size() > 1)
-//             {
-//                 std::vector<std::future<void>> tasks;
-//                 tasks.reserve(tickers_in_update.size());
-//                 for (const auto &ticker : tickers_in_update)
-//                 {
-//                     tasks.emplace_back(std::async(std::launch::async,
-//                     &PF_CollectDataApp::ProcessUpdatesForTiingoSymbol,
-//                                                   this, pf_data, ticker));
-//                 }
-//                 // now, let's wait till they're all done
-//                 // and then we'll do the next bunch.
-//
-//                 for (int count = tasks.size(); count; --count)
-//                 {
-//                     int k = wait_for_any(tasks, 100us);
-//                     // std::cout << "k: " << k << '\n';
-//                     try
-//                     {
-//                         tasks[k].get();
-//                     }
-//                     catch (std::system_error &e)
-//                     {
-//                         // any system problems, we eventually abort, but only
-//                         // after finishing work in process.
-//
-//                         spdlog::error(e.what());
-//                         auto ec = e.code();
-//                         spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(),
-//                                       ec.message());
-//
-//                         // OK, let's remember our first time here.
-//
-//                         if (!ep)
-//                         {
-//                             ep = std::current_exception();
-//                         }
-//                         continue;
-//                     }
-//                     catch (std::exception &e)
-//                     {
-//                         // any problems, we'll document them and continue.
-//
-//                         spdlog::error(e.what());
-//
-//                         if (!ep)
-//                         {
-//                             ep = std::current_exception();
-//                         }
-//                         continue;
-//                     }
-//                     catch (...)
-//                     {
-//                         // any problems, we'll document them and continue.
-//
-//                         spdlog::error("Unknown problem with an async download process");
-//
-//                         if (!ep)
-//                         {
-//                             ep = std::current_exception();
-//                         }
-//                         continue;
-//                     }
-//                 }
-//             }
-//             else
-//             {
-//                 // if there are updates for only 1 symbol
-//                 // then no need for threading overhead.
-//
-//                 try
-//                 {
-//                     ProcessUpdatesForTiingoSymbol(pf_data, tickers_in_update[0]);
-//                 }
-//                 catch (std::system_error &e)
-//                 {
-//                     // any system problems, we eventually abort, but only
-//                     // after finishing work in process.
-//
-//                     spdlog::error(e.what());
-//                     auto ec = e.code();
-//                     spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(),
-//                                   ec.message());
-//
-//                     // OK, let's remember our first time here.
-//
-//                     if (!ep)
-//                     {
-//                         ep = std::current_exception();
-//                     }
-//                     continue;
-//                 }
-//                 catch (std::exception &e)
-//                 {
-//                     // any problems, we'll document them and continue.
-//
-//                     spdlog::error(e.what());
-//
-//                     if (!ep)
-//                     {
-//                         ep = std::current_exception();
-//                     }
-//                     continue;
-//                 }
-//                 catch (...)
-//                 {
-//                     // any problems, we'll document them and continue.
-//
-//                     spdlog::error("Unknown problem with an async download process");
-//
-//                     if (!ep)
-//                     {
-//                         ep = std::current_exception();
-//                     }
-//                     continue;
-//                 }
-//             }
-//         }
-//         else
-//         {
-//             std::this_thread::sleep_for(2ms);
-//         }
-//         if (streamed_data->empty() && *had_signal)
-//         {
-//             break;
-//         }
-//     }
-//     if (ep)
-//     {
-//         // spdlog::error(catenate("Processed: ", file_list.size(), " files.
-//         // Successes: ", success_counter,
-//         //         ". Errors: ", error_counter, "."));
-//         *had_signal = true;
-//         std::rethrow_exception(ep);
-//     }
-//
-// }  // -----  end of method PF_CollectDataApp::ProcessTiingoStreamedData  -----
-
-// void PF_CollectDataApp::ProcessUpdatesForTiingoSymbol(const Tiingo::StreamedData &updates, std::string ticker)
-// {
-//     std::vector<PF_Chart *> need_to_update_graph;
-//
-//     // since we can have multiple charts for each symbol, we need to pass the
-//     // new value to all appropriate charts so we find all the charts for each
-//     // symbol and give each a chance at the new data.
-//
-//     auto filter_updates_for_ticker =
-//         updates | vws::filter([&ticker](const auto &update) { return update.ticker_ == ticker; });
-//     for (const auto &new_value : filter_updates_for_ticker)
-//     {
-//         rng::for_each(
-//             charts_ | vws::filter([&ticker](const auto &symbol_and_chart) { return symbol_and_chart.first == ticker;
-//             }), [this, &need_to_update_graph, &new_value, &ticker](auto &symbol_and_chart)
-//             {
-//                 try
-//                 {
-//                     auto chart_changed = symbol_and_chart.second.AddValue(
-//                         new_value.last_price_,
-//                         PF_Column::TmPt{std::chrono::nanoseconds{new_value.time_stamp_nanoseconds_utc_}});
-//                     if (chart_changed != PF_Column::Status::e_Ignored)
-//                     {
-//                         need_to_update_graph.push_back(&symbol_and_chart.second);
-//                     }
-//                     const auto chart_name = symbol_and_chart.second.GetChartBaseName();
-//                     // streamed_prices_[chart_name].timestamp_.push_back(new_value.time_stamp_nanoseconds_utc_);
-//                     // streamed_prices_[chart_name].price_.push_back(dec2dbl(new_value.last_price_));
-//                     // streamed_prices_[chart_name].signal_type_.push_back(
-//                     //     chart_changed == PF_Column::Status::e_AcceptedWithSignal
-//                     //         ? std::to_underlying(symbol_and_chart.second.GetSignals().back().signal_type_)
-//                     //         : 0);
-//                 }
-//                 catch (std::exception &e)
-//                 {
-//                     spdlog::error("Problem adding streamed value to chart for symbol: "s += ticker += " "s +=
-//                     e.what());
-//                 }
-//             });
-//     }
-//
-//     // we could have multiple chart updates for any given symbol but we only
-//     // want to update files and graphic once per symbol.
-//
-//     rng::sort(need_to_update_graph);
-//     const auto [first, last] = rng::unique(need_to_update_graph);
-//     need_to_update_graph.erase(first, last);
-//
-//     for (const PF_Chart *chart : need_to_update_graph)
-//     {
-//         try
-//         {
-//             fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
-//             ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetSymbol()],
-//                                                     trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
-//
-//             fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
-//             chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
-//         }
-//         catch (std::exception &e)
-//         {
-//             spdlog::error("Problem creating graphic for updated streamed value: "s += chart->GetChartBaseName() +=
-//                           " "s += e.what());
-//         }
-//     }
-// }  // -----  end of method PF_CollectDataApp::ProcessUpdatesForSymbol  -----
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 {
