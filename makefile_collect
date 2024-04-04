@@ -50,7 +50,8 @@ SDIR2 := ./src
 SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/ConstructChartGraphic.cpp \
 		$(SDIR2)/Tiingo.cpp \
-		$(SDIR2)/Eodhd.cpp #\
+		$(SDIR2)/Eodhd.cpp \
+		$(SDIR2)/Streamer.cpp 
 
 
 SRCS := $(SRCS1) $(SRCS2)
