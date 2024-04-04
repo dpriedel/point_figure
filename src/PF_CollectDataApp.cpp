@@ -1341,10 +1341,11 @@ void PF_CollectDataApp::CollectStreamingData()
     // it down cleanly. so, a little bit of C...(taken from "Advanced Unix
     // Programming" by Warren W. Gay, p. 317)
 
-    // ok, get ready to handle keyboard interrupts, if any.
+    std::cout << std::format("starting {} streaming.",
+                             streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo")
+              << std::endl;
 
-    std::cout << std::format("starting {} streaming.\n",
-                             streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo");
+    // ok, get ready to handle keyboard interrupts, if any.
 
     struct sigaction sa_old
     {
