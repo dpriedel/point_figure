@@ -63,6 +63,11 @@ void RemoteDataSource::RemoteDataSource::ConnectWS()
     // Perform the SSL handshake
     ws.next_layer().handshake(ssl::stream_base::client);
 
+    // Set a decorator to change the User-Agent of the handshake
+    ws.set_option(websocket::stream_base::decorator(
+        [](websocket::request_type& req)
+        { req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro"); }));
+
     // Perform the websocket handshake
     ws.handshake(tmp_host, websocket_prefix);
     BOOST_ASSERT_MSG(ws.is_open(), "Unable to complete websocket connection.");
