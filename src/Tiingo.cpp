@@ -135,7 +135,6 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
             }
             else
             {
-                PF_Data new_value;
                 new_value.subscription_id_ = subscription_id_;
                 new_value.time_stamp_ = data[1].asCString();
                 new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::nanoseconds{data[2].asInt64()}};
