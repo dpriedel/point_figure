@@ -47,9 +47,7 @@
 #include <filesystem>
 #include <format>
 #include <iterator>
-#include <memory>
 #include <optional>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -139,7 +137,7 @@ class PF_Chart
     static PF_Chart LoadChartFromChartsDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval);
 
     // mainly for Python wrapper
-    static PF_Chart LoadChartFromJSONChartFile(const fs::path &file_name);
+    static PF_Chart LoadChartFromJSONPF_ChartFile(const fs::path &file_name);
 
     // ====================  ACCESSORS =======================================
 

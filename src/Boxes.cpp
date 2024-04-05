@@ -30,9 +30,7 @@
 /* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <algorithm>
-#include <cstdint>
 #include <iterator>
-#include <ranges>
 #include <utility>
 
 namespace rng = std::ranges;

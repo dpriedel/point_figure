@@ -19,11 +19,9 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
-#include <ranges>
 #include <utility>
 
 namespace rng = std::ranges;
-namespace vws = std::ranges::views;
 
 #include <spdlog/spdlog.h>
 

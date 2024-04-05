@@ -35,12 +35,10 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <limits>
 #include <utility>
 
 namespace rng = std::ranges;
@@ -187,9 +185,9 @@ PF_Chart PF_Chart::LoadChartFromChartsDB(const PF_DB &chart_db, PF_ChartParams v
 //      Method:  PF_Chart
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Chart PF_Chart::LoadChartFromJSONChartFile(const fs::path &file_name)
+PF_Chart PF_Chart::LoadChartFromJSONPF_ChartFile(const fs::path &file_name)
 {
-    Json::Value chart_data = ReadAndParseJSONFile(file_name);
+    Json::Value chart_data = ReadAndParsePF_ChartJSONFile(file_name);
     PF_Chart chart_from_file{chart_data};
     return chart_from_file;
 }  // -----  end of method PF_Chart::MakeChartFromJSONFile  (constructor)  -----
@@ -792,6 +790,7 @@ void PF_Chart::FromJSON(const Json::Value &new_data)
     base_box_size_ = decimal::Decimal{new_data["base_box_size"].asCString()};
     fname_box_size_ = decimal::Decimal{new_data["fname_box_size"].asCString()};
     box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asCString()};
+
     y_min_ = decimal::Decimal{new_data["y_min"].asCString()};
     y_max_ = decimal::Decimal{new_data["y_max"].asCString()};
 

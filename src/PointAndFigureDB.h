@@ -36,7 +36,6 @@
 
 #include <json/json.h>
 
-#include <chrono>
 #include <decimal.hh>
 #include <pqxx/pqxx>
 #include <pqxx/stream_from>
