@@ -461,24 +461,21 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(!begin_date_.empty(), "\nMust specify 'begin-date' when data source is 'database'.");
     }
 
-    if (new_data_source_ == Source::e_streaming)
+    if (quote_data_source_i_ == "Eodhd")
     {
-        if (quote_data_source_i_ == "Eodhd")
-        {
-            streaming_data_source_ = StreamingSource::e_Eodhd;
-            BOOST_ASSERT_MSG(!eodhd_api_key_.empty(),
-                             "\nMust specify 'eodhd-key' file when streaming data source is 'Eodhd'.");
-            BOOST_ASSERT_MSG(fs::exists(eodhd_api_key_),
-                             std::format("\nCan't find Eodhd api key file: {}", eodhd_api_key_).c_str());
-        }
-        else if (quote_data_source_i_ == "Tiingo")
-        {
-            streaming_data_source_ = StreamingSource::e_Tiingo;
-            BOOST_ASSERT_MSG(!tiingo_api_key_.empty(),
-                             "\nMust specify 'tiingo-key' file when streaming data source is 'Tiingo'.");
-            BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_),
-                             std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
-        }
+        streaming_data_source_ = StreamingSource::e_Eodhd;
+        BOOST_ASSERT_MSG(!eodhd_api_key_.empty(),
+                         "\nMust specify 'eodhd-key' file when streaming data source is 'Eodhd'.");
+        BOOST_ASSERT_MSG(fs::exists(eodhd_api_key_),
+                         std::format("\nCan't find Eodhd api key file: {}", eodhd_api_key_).c_str());
+    }
+    else if (quote_data_source_i_ == "Tiingo")
+    {
+        streaming_data_source_ = StreamingSource::e_Tiingo;
+        BOOST_ASSERT_MSG(!tiingo_api_key_.empty(),
+                         "\nMust specify 'tiingo-key' file when streaming data source is 'Tiingo'.");
+        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_),
+                         std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
     }
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "\nmax-graphic-cols must be >= -1.");
