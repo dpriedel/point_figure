@@ -463,7 +463,7 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (new_data_source_ == Source::e_streaming)
     {
-        if (streaming_source_i_ == "Eodhd")
+        if (quote_data_source_i_ == "Eodhd")
         {
             streaming_data_source_ = StreamingSource::e_Eodhd;
             BOOST_ASSERT_MSG(!eodhd_api_key_.empty(),
@@ -471,7 +471,7 @@ bool PF_CollectDataApp::CheckArgs()
             BOOST_ASSERT_MSG(fs::exists(eodhd_api_key_),
                              std::format("\nCan't find Eodhd api key file: {}", eodhd_api_key_).c_str());
         }
-        else if (streaming_source_i_ == "Tiingo")
+        else if (quote_data_source_i_ == "Tiingo")
         {
             streaming_data_source_ = StreamingSource::e_Tiingo;
             BOOST_ASSERT_MSG(!tiingo_api_key_.empty(),
@@ -580,7 +580,7 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.PF_db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
         ("stock-db-data-source",      po::value<std::string>(&this->db_params_.stock_db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
-        ("streaming-data-source",     po::value<std::string>(&this->streaming_source_i_), "Name of streaming quotes data source.")
+        ("quote-data-source",     po::value<std::string>(&this->quote_data_source_i_), "Name of streaming quotes data source.")
 
         ("tiingo-key",          po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
         ("eodhd-key",           po::value<fs::path>(&this->eodhd_api_key_)->default_value("./Eodhd_key.dat"), "Path to file containing Eodhd api key. Default is './Eodhd_key.dat'.")
@@ -890,6 +890,7 @@ void PF_CollectDataApp::Run_Update()
         {
             fs::path existing_data_file_name =
                 input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
+            std::cout << std::format("{}\n", existing_data_file_name);
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);

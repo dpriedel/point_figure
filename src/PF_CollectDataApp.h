@@ -239,7 +239,7 @@ class PF_CollectDataApp
         e_Tiingo
     };
 
-    std::string streaming_source_i_;
+    std::string quote_data_source_i_;
     std::string api_key_Tiingo_;
     std::string api_key_Eodhd_;
     std::string destination_i_;
