@@ -104,21 +104,17 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
     const std::string zapped_buffer = std::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
     // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
-    // will eventually need to use locks to access this I think.
-    // for now, we just append data.
     JSONCPP_STRING err;
     Json::Value response;
 
     Json::CharReaderBuilder builder;
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
+
     if (!reader->parse(zapped_buffer.data(), zapped_buffer.data() + zapped_buffer.size(), &response, &err))
     {
         throw std::runtime_error("Problem parsing tiingo response: "s + err);
     }
-    //    std::cout << "\n\n jsoncpp parsed response: " << response << "\n\n";
 
-    // PF_Data pf_data;
     PF_Data new_value;
 
     auto message_type = response["messageType"];
@@ -143,10 +139,6 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
                 new_value.last_price_ = decimal::Decimal{m[1].str()};
                 new_value.last_size_ = data[10].asInt();
             }
-
-            //        std::cout << "new data: " << pf_data_.back().ticker_ << " : " << pf_data_.back().last_price_
-            //        <<
-            //        '\n';
         }
     }
     // else if (message_type == "I")

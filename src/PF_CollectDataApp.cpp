@@ -56,18 +56,11 @@ namespace vws = std::ranges::views;
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
-// #include <pybind11/embed.h>
-// #include <pybind11/gil.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include <range/v3/range/conversion.hpp>
 
-// namespace py = pybind11;
-
-// using namespace py::literals;
-
-// #include "DDecQuad.h"
 #include "ConstructChartGraphic.h"
 #include "Eodhd.h"
 #include "PF_Chart.h"
@@ -887,7 +880,6 @@ void PF_CollectDataApp::Run_Update()
         {
             fs::path existing_data_file_name =
                 input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
-            std::cout << std::format("{}\n", existing_data_file_name);
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -1110,7 +1102,7 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, cons
 
 PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
 {
-    PF_Chart new_chart = PF_Chart::LoadChartFromJSONChartFile(symbol_file_name);
+    PF_Chart new_chart = PF_Chart::LoadChartFromJSONPF_ChartFile(symbol_file_name);
     return new_chart;
 }  // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
 
