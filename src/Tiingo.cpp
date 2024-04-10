@@ -118,11 +118,11 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
     PF_Data new_value;
 
     auto message_type = response["messageType"];
-    if (message_type == "A")
+    if (strcmp(message_type.asCString(), "A") == 0)
     {
         auto data = response["data"];
 
-        if (data[0] == "T")
+        if (strcmp(data[0].asCString(), "T") == 0)
         {
             std::smatch m;
             if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
