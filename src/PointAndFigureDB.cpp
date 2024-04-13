@@ -85,7 +85,8 @@ std::vector<std::string> PF_DB::ListExchanges() const
     return exchanges;
 }  // -----  end of method PF_DB::ListExchanges  -----
 
-std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange, std::string_view min_dollar_volume) const
+std::vector<std::string> PF_DB::ListSymbolsOnExchange(std::string_view exchange,
+                                                      std::string_view min_dollar_volume) const
 {
     std::vector<std::string> symbols;
 
@@ -232,12 +233,13 @@ void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view in
     const auto update_chart_data_cmd = std::format(
         "UPDATE {}_point_and_figure.pf_charts "
         "SET chart_data = '{}', cvs_graphics_data = '{}', last_change_date = {}, last_checked_date = {}, "
-        "current_direction = 'e_{}' "
+        "current_direction = 'e_{}', current_signal = 'e_{}' "
         "WHERE symbol = {} and file_name = {}",
         db_params_.PF_db_mode_, for_db, cvs_graphics_data,
         trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
         trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
-        trxn.quote(the_chart.GetSymbol()), trxn.quote(the_chart.MakeChartFileName(interval, "json")));
+        the_chart.GetCurrentSignal().value_or(PF_Signal{}).signal_type_, trxn.quote(the_chart.GetSymbol()),
+        trxn.quote(the_chart.MakeChartFileName(interval, "json")));
 
     //    std::cout << update_chart_data_cmd << std::endl;
     trxn.exec(update_chart_data_cmd);
@@ -399,7 +401,8 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
         std::string get_symbol_prices_cmd = std::format(
             "SELECT symbol, date, {} FROM {} WHERE {} AND symbol IN (SELECT * FROM "
             "new_stock_data.find_symbols_gte_min_dollar_volume({}, {})) ORDER BY symbol ASC, date ASC",
-            price_fld_name, db_params_.stock_db_data_source_, date_range, c.quote(exchange), c.quote(min_dollar_volume));
+            price_fld_name, db_params_.stock_db_data_source_, date_range, c.quote(exchange),
+            c.quote(min_dollar_volume));
 
         db_data =
             pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char*>(
