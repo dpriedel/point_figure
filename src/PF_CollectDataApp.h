@@ -147,6 +147,7 @@ class PF_CollectDataApp
     void CollectStreamedData(const RemoteDataSource::PF_Data &update, PF_SignalType new_signal);
 
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
+    [[nodiscard]] std::pair<int, int> CountChartsUpAndDown() const;
 
     // ====================  DATA MEMBERS
     // =======================================

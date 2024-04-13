@@ -1640,6 +1640,10 @@ void PF_CollectDataApp::CollectStreamedData(const RemoteDataSource::PF_Data &upd
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 {
+    // just collect some stats on overall effect of running the scan
+
+    const auto [ups1, downs1] = CountChartsUpAndDown();
+
     // I expect this will be run fairly often so that the amount of data
     // retrieved from the stock price DB will be manageable so I will just do
     // that qeury up front and then process that data as the main loop. NOTE: I
@@ -1736,14 +1740,36 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                         xchng, exchange_symbols_processed, exchange_charts_processed, exchange_charts_updated));
     }
 
+    const auto [ups2, downs2] = CountChartsUpAndDown();
+
     spdlog::info(
         std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
                     "{}.",
                     total_symbols_processed, total_charts_processed, total_charts_updated));
 
+    spdlog::info(std::format("Change in 'up' charts: {}. Change in 'down' charts: {}", ups1 - ups2, downs1 - downs2));
+
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
 }  // -----  end of method PF_CollectDataApp::Run_DailyScan  -----
+
+std::pair<int, int> PF_CollectDataApp::CountChartsUpAndDown() const
+{
+    const auto query_up = std::format(
+        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE current_direction = 'e_up'", db_params_.PF_db_mode_);
+    const auto query_down =
+        std::format("SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE current_direction = 'e_down'",
+                    db_params_.PF_db_mode_);
+
+    PF_DB pf_db{db_params_};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::nontransaction trxn{c};
+
+    auto charts_up = trxn.query_value<int>(query_up);
+    auto charts_down = trxn.query_value<int>(query_down);
+    // trxn.commit();
+    return std::make_pair(charts_up, charts_down);
+}  // -----  end of method PF_CollectDataApp::CountChartsUpAndDown  -----
 
 void PF_CollectDataApp::Shutdown()
 {
