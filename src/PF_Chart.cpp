@@ -77,7 +77,8 @@ PF_Chart::PF_Chart(const PF_Chart &rhs)
       y_min_{rhs.y_min_},
       y_max_{rhs.y_max_},
       current_direction_{rhs.current_direction_},
-      max_columns_for_graph_{rhs.max_columns_for_graph_}
+      max_columns_for_graph_{rhs.max_columns_for_graph_},
+      last_change_was_reversal_{rhs.last_change_was_reversal_}
 
 {
     // now, the reason for doing this explicitly is to fix the column box
@@ -109,7 +110,8 @@ PF_Chart::PF_Chart(PF_Chart &&rhs) noexcept
       y_min_{std::move(rhs.y_min_)},
       y_max_{std::move(rhs.y_max_)},
       current_direction_{rhs.current_direction_},
-      max_columns_for_graph_{rhs.max_columns_for_graph_}
+      max_columns_for_graph_{rhs.max_columns_for_graph_},
+      last_change_was_reversal_{rhs.last_change_was_reversal_}
 
 {
     // now, the reason for doing this explicitly is to fix the column box
@@ -212,6 +214,7 @@ PF_Chart &PF_Chart::operator=(const PF_Chart &rhs)
         y_max_ = rhs.y_max_;
         current_direction_ = rhs.current_direction_;
         max_columns_for_graph_ = rhs.max_columns_for_graph_;
+        last_change_was_reversal_ = rhs.last_change_was_reversal_;
 
         // now, the reason for doing this explicitly is to fix the column box
         // pointers.
@@ -242,6 +245,7 @@ PF_Chart &PF_Chart::operator=(PF_Chart &&rhs) noexcept
         y_max_ = std::move(rhs.y_max_);
         current_direction_ = rhs.current_direction_;
         max_columns_for_graph_ = rhs.max_columns_for_graph_;
+        last_change_was_reversal_ = rhs.last_change_was_reversal_;
 
         // now, the reason for doing this explicitly is to fix the column box
         // pointers.
@@ -319,7 +323,7 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
 
     if (!empty())
     {
-        if (the_time <= last_checked_date_)
+        if (the_time <= last_change_date_)
         {
             return PF_Column::Status::e_Ignored;
         }
@@ -330,6 +334,8 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
     }
 
     auto [status, new_col] = current_column_.AddValue(new_value, the_time);
+
+    last_change_was_reversal_ = false;
 
     if (status == PF_Column::Status::e_Accepted)
     {
@@ -360,6 +366,7 @@ PF_Column::Status PF_Chart::AddValue(const decimal::Decimal &new_value, PF_Colum
 
         status = current_column_.AddValue(new_value, the_time).first;
         last_change_date_ = the_time;
+        last_change_was_reversal_ = true;
 
         // if (auto found_signal = PF_Chart::LookForSignals(*this, new_value,
         // the_time); found_signal)
@@ -547,10 +554,8 @@ PF_Chart::ColumnBoxList PF_Chart::GetBoxesForColumns(PF_ColumnFilter which_colum
                   [&result](const auto &col)
                   {
                       auto col_nbr = col.GetColumnNumber();
-                      rng::for_each(col.GetColumnBoxes(),
-                                    [&result, &col, col_nbr](const auto &box) {
-                                        result.push_back(std::pair{col_nbr, dec2dbl(box)});
-                                    });
+                      rng::for_each(col.GetColumnBoxes(), [&result, &col, col_nbr](const auto &box)
+                                    { result.push_back(std::pair{col_nbr, dec2dbl(box)}); });
                   });
 
     return result;
@@ -760,6 +765,7 @@ Json::Value PF_Chart::ToJSON() const
             break;
     };
     result["max_columns"] = max_columns_for_graph_;
+    result["last_change_was_reversal"] = last_change_was_reversal_;
 
     Json::Value cols{Json::arrayValue};
     for (const auto &col : columns_)
@@ -814,6 +820,14 @@ void PF_Chart::FromJSON(const Json::Value &new_data)
     }
 
     max_columns_for_graph_ = new_data["max_columns"].asInt64();
+    if (new_data.isMember("last_change_was_reversal"))
+    {
+        last_change_was_reversal_ = new_data["last_change_was_reversal"].asBool();
+    }
+    else
+    {
+        last_change_was_reversal_ = false;
+    }
 
     // lastly, we can do our columns
     // need to hook them up with current boxes_ data

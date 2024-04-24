@@ -247,6 +247,21 @@ void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view in
     trxn.commit();
 }  // -----  end of method PF_DB::UpdatePFChartDataInDB  -----
 
+void PF_DB::UpdateLastCheckedDateInChartsDB(std::string_view exchange, std::string_view last_checked_date) const
+{
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::work trxn{c};
+
+    const auto update_last_checked_date_stmt = std::format(
+        "UPDATE {}_point_and_figure.pf_charts AS t1 SET last_checked_date = {} FROM new_stock_data.names_and_symbols "
+        "AS t2 WHERE t1.symbol = t2.symbol AND t2.exchange = {}",
+        db_params_.PF_db_mode_, trxn.quote(last_checked_date), trxn.quote(exchange));
+
+    trxn.exec(update_last_checked_date_stmt);
+    trxn.commit();
+
+}  // -----  end of method PF_Chart::UpdateLastCheckedDateInChartsDB  -----
+
 // ===  FUNCTION  ======================================================================
 //         Name:  RetrieveMostRecentStockDataRecordsFromDB
 //  Description:  just run the supplied query and convert the results set in our format.

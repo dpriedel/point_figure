@@ -164,6 +164,11 @@ class PF_Chart
     [[nodiscard]] std::string GetChartBaseName() const { return chart_base_name_; }
     [[nodiscard]] bool HasReversedColumns() const;
 
+    // this is mainly for use after daily scan to be able to count 'ups' and 'downs'
+    // when a trend is continuing.
+
+    [[nodiscard]] bool LastChangeWasReversal() const { return last_change_was_reversal_; }
+
     // for Python
 
     [[nodiscard]] const PF_Column &GetColumn(size_t which) const { return (*this)[which]; }
@@ -347,7 +352,9 @@ class PF_Chart
     PF_Column::Direction current_direction_ = PF_Column::Direction::e_Unknown;
 
     int64_t max_columns_for_graph_ = 0;  // how many columns to show in graphic
-};                                       // -----  end of class PF_Chart  -----
+    bool last_change_was_reversal_ = false;
+
+};  // -----  end of class PF_Chart  -----
 
 // =====================================================================================
 //        Class:  PF_Chart_Iterator

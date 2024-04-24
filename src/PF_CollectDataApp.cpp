@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <format>
 #include <fstream>
@@ -1241,6 +1242,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
             {
                 // all we've got at this poiint is yesterday's close
                 streamed_summary_[symbol].opening_price_ = dec2dbl(h[0].close_);
+                streamed_summary_[symbol].latest_price_ = streamed_summary_[symbol].opening_price_;
             }
             catch (const std::exception &e)
             {
@@ -1738,6 +1740,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
             std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts updated: "
                         "{}.",
                         xchng, exchange_symbols_processed, exchange_charts_processed, exchange_charts_updated));
+
+        pf_db.UpdateLastCheckedDateInChartsDB(xchng, end_date_);
     }
 
     const auto [ups2, downs2] = CountChartsUpAndDown();
@@ -1747,7 +1751,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                     "{}.",
                     total_symbols_processed, total_charts_processed, total_charts_updated));
 
-    spdlog::info(std::format("Change in 'up' charts: {}. Change in 'down' charts: {}", ups1 - ups2, downs1 - downs2));
+    spdlog::info(std::format("Net reversals: {}: {}.", (ups2 - ups1 > 0 ? "UP" : "DOWN"), std::abs(ups2 - ups1)));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 

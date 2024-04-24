@@ -93,6 +93,8 @@ class PF_DB
     void UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view interval,
                                std::string_view cvs_graphics_data) const;
 
+    void UpdateLastCheckedDateInChartsDB(std::string_view exchange, std::string_view last_checked_date) const;
+
     [[nodiscard]] std::vector<StockDataRecord> RetrieveMostRecentStockDataRecordsFromDB(std::string_view symbol,
                                                                                         std::string_view begin_date,
                                                                                         int32_t how_many) const;
