@@ -175,6 +175,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp(const decimal::Decimal& new_value,
             possible_new_top = boxes_->FindNextBox(top_);
         }
 
+        time_span_.second = the_time;
         return {Status::e_Accepted, std::nullopt};
     }
 
@@ -226,6 +227,7 @@ PF_Column::AddResult PF_Column::TryToExtendDown(const decimal::Decimal& new_valu
             possible_new_bottom = boxes_->FindPrevBox(bottom_);
         }
 
+        time_span_.second = the_time;
         return {Status::e_Accepted, std::nullopt};
     }
 
