@@ -208,9 +208,9 @@ void PF_DB::StorePFChartDataIntoDB(const PF_Chart& the_chart, std::string_view i
         trxn.quote(the_chart.GetFNameBoxSize().format("f")), trxn.quote(the_chart.GetChartBoxSize().format("f")),
         the_chart.GetReversalboxes(), json["boxes"]["box_type"].asString(), json["boxes"]["box_scale"].asString(),
         trxn.quote(the_chart.MakeChartFileName(interval, "json")),
-        trxn.quote(std::format("{:%F %T}", the_chart.GetFirstTime())),
-        trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
-        trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
+        trxn.quote(std::format("{:%F %T%z}", the_chart.GetFirstTime())),
+        trxn.quote(std::format("{:%F %T%z}", the_chart.GetLastChangeTime())),
+        trxn.quote(std::format("{:%F %T%z}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
         the_chart.GetCurrentSignal().value_or(PF_Signal{}).signal_type_, for_db, cvs_graphics_data);
 
     // std::cout << add_new_data_cmd << std::endl;
@@ -236,8 +236,8 @@ void PF_DB::UpdatePFChartDataInDB(const PF_Chart& the_chart, std::string_view in
         "current_direction = 'e_{}', current_signal = 'e_{}' "
         "WHERE symbol = {} and file_name = {}",
         db_params_.PF_db_mode_, for_db, cvs_graphics_data,
-        trxn.quote(std::format("{:%F %T}", the_chart.GetLastChangeTime())),
-        trxn.quote(std::format("{:%F %T}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
+        trxn.quote(std::format("{:%F %T%z}", the_chart.GetLastChangeTime())),
+        trxn.quote(std::format("{:%F %T%z}", the_chart.GetLastCheckedTime())), json["current_direction"].asString(),
         the_chart.GetCurrentSignal().value_or(PF_Signal{}).signal_type_, trxn.quote(the_chart.GetSymbol()),
         trxn.quote(the_chart.MakeChartFileName(interval, "json")));
 
