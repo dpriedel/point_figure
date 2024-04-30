@@ -342,8 +342,7 @@ class PF_Chart
     decimal::Decimal box_size_modifier_ = 0;
 
     PF_Column::TmPt first_date_ = {};         //	earliest entry for symbol
-    PF_Column::TmPt last_change_date_ = {};   //	date of last change to
-                                              // data
+    PF_Column::TmPt last_change_date_ = {};   //	date of last change to data
     PF_Column::TmPt last_checked_date_ = {};  //	last time checked to see if update needed
 
     decimal::Decimal y_min_ = 100000;  // just a number
