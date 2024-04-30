@@ -133,7 +133,7 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
             {
                 new_value.subscription_id_ = subscription_id_;
                 new_value.time_stamp_ = data[1].asCString();
-                new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::nanoseconds{data[2].asInt64()}};
+                new_value.time_stamp_nanoseconds_utc_ = UTC_TmPt_NanoSecs{std::chrono::nanoseconds{data[2].asInt64()}};
                 new_value.ticker_ = data[3].asCString();
                 rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
                 new_value.last_price_ = decimal::Decimal{m[1].str()};

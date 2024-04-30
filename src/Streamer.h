@@ -64,7 +64,7 @@ class RemoteDataSource
     using APIKey = UniqType<std::string, struct API_Key_Tag>;
     using Prefix = UniqType<std::string, struct Prefix_Tag>;
 
-    using TmPt = std::chrono::utc_time<std::chrono::utc_clock::duration>;
+    using UTC_TmPt_NanoSecs = std::chrono::utc_time<std::chrono::nanoseconds>;
 
     using TopOfBookList = std::vector<TopOfBookOpenAndLastClose>;
 
@@ -81,11 +81,11 @@ class RemoteDataSource
     struct PF_Data
     {
         std::string subscription_id_;
-        std::string ticker_;                 // Ticker
-        std::string time_stamp_;             // Date
-        TmPt time_stamp_nanoseconds_utc_{};  // time_stamp
-        decimal::Decimal last_price_{-1};    // Last Price
-        int32_t last_size_{-1};              // Last Size
+        std::string ticker_;                              // Ticker
+        std::string time_stamp_;                          // Date
+        UTC_TmPt_NanoSecs time_stamp_nanoseconds_utc_{};  // time_stamp
+        decimal::Decimal last_price_{-1};                 // Last Price
+        int32_t last_size_{-1};                           // Last Size
         bool dark_pool_{false};
         EodMktStatus market_status_{EodMktStatus::e_unknown};
     };

@@ -113,7 +113,8 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string& buffer)
                 std::format("Problem converting transaction time to int64: {}\n", std::make_error_code(ec).message()));
         }
         std::chrono::milliseconds ms{time_value};
-        new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
+        new_value.time_stamp_nanoseconds_utc_ =
+            UTC_TmPt_NanoSecs{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
 
         new_value.ticker_ =
             std::string_view{response_text + fields.position(e_ticker), static_cast<size_t>(fields.length(e_ticker))};
