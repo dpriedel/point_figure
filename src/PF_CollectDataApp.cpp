@@ -1548,8 +1548,8 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data 
         {
             try
             {
-                auto chart_changed =
-                    symbol_and_chart.second.AddValue(update.last_price_, update.time_stamp_nanoseconds_utc_);
+                auto chart_changed = symbol_and_chart.second.AddValue(
+                    update.last_price_, PF_Column::TmPt{update.time_stamp_nanoseconds_utc_});
                 if (chart_changed != PF_Column::Status::e_Ignored)
                 {
                     need_to_update_graph.push_back(&symbol_and_chart.second);
