@@ -206,7 +206,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp(const decimal::Decimal& new_value,
             }
         }
 
-        time_span_.second = the_time;
+        // time_span_.second = the_time;
         return {Status::e_Reversal, MakeReversalColumn(Direction::e_Down, boxes_->FindPrevBox(top_), the_time)};
     }
     return {Status::e_Ignored, std::nullopt};
@@ -258,7 +258,7 @@ PF_Column::AddResult PF_Column::TryToExtendDown(const decimal::Decimal& new_valu
             }
         }
 
-        time_span_.second = the_time;
+        // time_span_.second = the_time;
         return {Status::e_Reversal, MakeReversalColumn(Direction::e_Up, boxes_->FindNextBox(bottom_), the_time)};
     }
     return {Status::e_Ignored, std::nullopt};
@@ -315,8 +315,8 @@ Json::Value PF_Column::ToJSON() const
 
 void PF_Column::FromJSON(const Json::Value& new_data)
 {
-    time_span_.first = TmPt{std::chrono::utc_clock::duration{new_data["first_entry"].asInt64()}};
-    time_span_.second = TmPt{std::chrono::utc_clock::duration{new_data["last_entry"].asInt64()}};
+    time_span_.first = TmPt{std::chrono::nanoseconds{new_data["first_entry"].asInt64()}};
+    time_span_.second = TmPt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
 
     column_number_ = new_data["column_number"].asInt();
     reversal_boxes_ = new_data["reversal_boxes"].asInt();
