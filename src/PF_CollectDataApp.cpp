@@ -1642,10 +1642,6 @@ void PF_CollectDataApp::CollectStreamedData(const RemoteDataSource::PF_Data &upd
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 {
-    // just collect some stats on overall effect of running the scan
-
-    const auto [ups1, downs1] = CountChartsUpAndDown();
-
     // I expect this will be run fairly often so that the amount of data
     // retrieved from the stock price DB will be manageable so I will just do
     // that qeury up front and then process that data as the main loop. NOTE: I
@@ -1744,26 +1740,34 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
         pf_db.UpdateLastCheckedDateInChartsDB(xchng, end_date_);
     }
 
-    const auto [ups2, downs2] = CountChartsUpAndDown();
+    // just collect some stats on overall effect of running the scan
+
+    const auto [ups1, downs1] = CountChartReversalsUpAndDown();
+
+    const auto [ups2, downs2] = CountChartTrendsContinueUpAndDown();
 
     spdlog::info(
         std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
                     "{}.",
                     total_symbols_processed, total_charts_processed, total_charts_updated));
 
-    spdlog::info(std::format("Net reversals: {}: {}.", (ups2 - ups1 > 0 ? "UP" : "DOWN"), std::abs(ups2 - ups1)));
+    spdlog::info(std::format("Net reversals: {}: {}.", (ups1 - downs1 > 0 ? "UP" : "DOWN"), std::abs(ups1 - downs1)));
+    spdlog::info(std::format("Trends continued. Up: {}. Down: {}.", ups2, downs2));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
 }  // -----  end of method PF_CollectDataApp::Run_DailyScan  -----
 
-std::pair<int, int> PF_CollectDataApp::CountChartsUpAndDown() const
+std::pair<int, int> PF_CollectDataApp::CountChartReversalsUpAndDown() const
 {
     const auto query_up = std::format(
-        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE current_direction = 'e_up'", db_params_.PF_db_mode_);
-    const auto query_down =
-        std::format("SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE current_direction = 'e_down'",
-                    db_params_.PF_db_mode_);
+        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
+        "TRUE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_up'",
+        db_params_.PF_db_mode_, end_date_);
+    const auto query_down = std::format(
+        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
+        "TRUE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_down'",
+        db_params_.PF_db_mode_, end_date_);
 
     PF_DB pf_db{db_params_};
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
@@ -1774,6 +1778,27 @@ std::pair<int, int> PF_CollectDataApp::CountChartsUpAndDown() const
     // trxn.commit();
     return std::make_pair(charts_up, charts_down);
 }  // -----  end of method PF_CollectDataApp::CountChartsUpAndDown  -----
+
+std::pair<int, int> PF_CollectDataApp::CountChartTrendsContinueUpAndDown() const
+{
+    const auto query_up = std::format(
+        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
+        "FALSE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_up'",
+        db_params_.PF_db_mode_, end_date_);
+    const auto query_down = std::format(
+        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
+        "FALSE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_down'",
+        db_params_.PF_db_mode_, end_date_);
+
+    PF_DB pf_db{db_params_};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::nontransaction trxn{c};
+
+    auto charts_up = trxn.query_value<int>(query_up);
+    auto charts_down = trxn.query_value<int>(query_down);
+    // trxn.commit();
+    return std::make_pair(charts_up, charts_down);
+}  // -----  end of method PF_CollectDataApp::CountChartTrendsContinueUpAndDown----
 
 void PF_CollectDataApp::Shutdown()
 {
