@@ -14,6 +14,8 @@
 //
 // =====================================================================================
 
+#include <boost/beast/core/flat_buffer.hpp>
+
 #include "Streamer.h"
 
 namespace rng = std::ranges;
