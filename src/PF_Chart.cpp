@@ -187,11 +187,10 @@ PF_Chart PF_Chart::LoadChartFromChartsDB(const PF_DB &chart_db, PF_ChartParams v
 //      Method:  PF_Chart
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Chart PF_Chart::LoadChartFromJSONPF_ChartFile(const fs::path &file_name)
+void PF_Chart::LoadChartFromJSONPF_ChartFile(PF_Chart &chart, const fs::path &file_name)
 {
     Json::Value chart_data = ReadAndParsePF_ChartJSONFile(file_name);
-    PF_Chart chart_from_file{chart_data};
-    return chart_from_file;
+    chart.FromJSON(chart_data);
 }  // -----  end of method PF_Chart::MakeChartFromJSONFile  (constructor)  -----
 
 PF_Chart &PF_Chart::operator=(const PF_Chart &rhs)

@@ -75,6 +75,12 @@ enum class PF_CollectAndReturnStreamedPrices : int32_t
     e_no
 };
 
+enum class X_AxisFormat : int32_t
+{
+    e_show_date,
+    e_show_time
+};
+
 class PF_Chart
 {
    public:
@@ -90,11 +96,6 @@ class PF_Chart
     using Y_Limits = std::pair<decimal::Decimal, decimal::Decimal>;
     using PF_ChartParams = std::tuple<std::string, decimal::Decimal, int32_t, BoxScale>;
 
-    enum class X_AxisFormat : int32_t
-    {
-        e_show_date,
-        e_show_time
-    };
     enum
     {
         e_symbol = 0,
@@ -137,7 +138,7 @@ class PF_Chart
     static PF_Chart LoadChartFromChartsDB(const PF_DB &chart_db, PF_ChartParams vals, std::string_view interval);
 
     // mainly for Python wrapper
-    static PF_Chart LoadChartFromJSONPF_ChartFile(const fs::path &file_name);
+    static void LoadChartFromJSONPF_ChartFile(PF_Chart &chart, const fs::path &file_name);
 
     // ====================  ACCESSORS =======================================
 

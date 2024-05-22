@@ -90,8 +90,7 @@ const auto tb_cat_sell_sym = Chart::ArrowShape(180);
 
 void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
                                              const StreamedPrices& streamed_prices,
-                                             const std::string& /*show_trend_lines*/,
-                                             PF_Chart::X_AxisFormat date_or_time)
+                                             const std::string& /*show_trend_lines*/, X_AxisFormat date_or_time)
 {
     BOOST_ASSERT_MSG(
         !the_chart.empty(),
@@ -244,7 +243,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     rng::for_each(the_chart | vws::drop(skipped_columns),
                   [&x_axis_labels, &date_or_time](const auto& col)
                   {
-                      if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
+                      if (date_or_time == X_AxisFormat::e_show_date)
                       {
                           x_axis_labels.emplace_back(std::format("{:%F}", col.GetTimeSpan().first));
                       }
@@ -370,7 +369,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
             streamed_prices.timestamp_seconds_ | vws::drop(skipped_price_cols),
             [&p_x_axis_labels, &date_or_time](const auto& secs)
             {
-                if (date_or_time == PF_Chart::X_AxisFormat::e_show_date)
+                if (date_or_time == X_AxisFormat::e_show_date)
                 {
                     p_x_axis_labels.emplace_back(std::format("{:%F}", PF_Column::TmPt{std::chrono::seconds{secs}}));
                 }

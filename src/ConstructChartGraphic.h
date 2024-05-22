@@ -76,12 +76,12 @@ struct Signals_2
 
 // void ConstructChartGraphAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename, const
 // streamed_prices& streamed_prices,
-//                                        const std::string& show_trend_lines, PF_Chart::X_AxisFormat
-//                                        date_or_time=PF_Chart::X_AxisFormat::e_show_date);
+//                                        const std::string& show_trend_lines, X_AxisFormat
+//                                        date_or_time=X_AxisFormat::e_show_date);
 
 void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
                                              const StreamedPrices& streamed_prices, const std::string& show_trend_lines,
-                                             PF_Chart::X_AxisFormat date_or_time = PF_Chart::X_AxisFormat::e_show_date);
+                                             X_AxisFormat date_or_time = X_AxisFormat::e_show_date);
 
 void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1& data_arrays, size_t skipped_columns,
                                            std::unique_ptr<XYChart>& the_graphic);

@@ -1103,7 +1103,8 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, cons
 
 PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
 {
-    PF_Chart new_chart = PF_Chart::LoadChartFromJSONPF_ChartFile(symbol_file_name);
+    PF_Chart new_chart;
+    PF_Chart::LoadChartFromJSONPF_ChartFile(new_chart, symbol_file_name);
     return new_chart;
 }  // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
 
@@ -1584,7 +1585,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data 
         {
             fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
             ConstructCDPFChartGraphicAndWriteToFile(*chart, graph_file_path, streamed_prices_[chart->GetSymbol()],
-                                                    trend_lines_, PF_Chart::X_AxisFormat::e_show_time);
+                                                    trend_lines_, X_AxisFormat::e_show_time);
 
             fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
             chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
@@ -1714,7 +1715,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                     if (chart_needs_update)
                     {
                         // we are only doing EOD charts in this routine.
-                        chart.UpdateChartInChartsDB(pf_db, interval_i_, PF_Chart::X_AxisFormat::e_show_date,
+                        chart.UpdateChartInChartsDB(pf_db, interval_i_, X_AxisFormat::e_show_date,
                                                     graphics_format_ == GraphicsFormat::e_csv);
                         exchange_charts_updated += 1;
                     }
@@ -1836,9 +1837,7 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
                 ConstructCDPFChartGraphicAndWriteToFile(
                     chart, graph_file_path,
                     (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetSymbol()] : StreamedPrices{}),
-                    trend_lines_,
-                    interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
-                                                 : PF_Chart::X_AxisFormat::e_show_date);
+                    trend_lines_, interval_ != Interval::e_eod ? X_AxisFormat::e_show_time : X_AxisFormat::e_show_date);
             }
             else
             {
@@ -1846,8 +1845,8 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
                     output_graphs_directory_ /
                     (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "csv"));
                 chart.ConvertChartToTableAndWriteToFile(graph_file_path, interval_ != Interval::e_eod
-                                                                             ? PF_Chart::X_AxisFormat::e_show_time
-                                                                             : PF_Chart::X_AxisFormat::e_show_date);
+                                                                             ? X_AxisFormat::e_show_time
+                                                                             : X_AxisFormat::e_show_date);
             }
         }
         catch (const std::exception &e)
@@ -1875,14 +1874,12 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInDB()
                 ConstructCDPFChartGraphicAndWriteToFile(
                     chart, graph_file_path,
                     (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetSymbol()] : StreamedPrices{}),
-                    trend_lines_,
-                    interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
-                                                 : PF_Chart::X_AxisFormat::e_show_date);
+                    trend_lines_, interval_ != Interval::e_eod ? X_AxisFormat::e_show_time : X_AxisFormat::e_show_date);
             }
-            chart.StoreChartInChartsDB(pf_db, interval_i_,
-                                       interval_ != Interval::e_eod ? PF_Chart::X_AxisFormat::e_show_time
-                                                                    : PF_Chart::X_AxisFormat::e_show_date,
-                                       graphics_format_ == GraphicsFormat::e_csv);
+            chart.StoreChartInChartsDB(
+                pf_db, interval_i_,
+                interval_ != Interval::e_eod ? X_AxisFormat::e_show_time : X_AxisFormat::e_show_date,
+                graphics_format_ == GraphicsFormat::e_csv);
             ++chart_count;
         }
         catch (const std::exception &e)
