@@ -1747,6 +1747,8 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     const auto [ups2, downs2] = CountChartTrendsContinueUpAndDown();
 
+    const auto [ups3, downs3] = CountChartTrendsUnanimousUpAndDown();
+
     spdlog::info(
         std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
                     "{}.",
@@ -1754,6 +1756,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     spdlog::info(std::format("Net reversals: {}: {}.", (ups1 - downs1 > 0 ? "UP" : "DOWN"), std::abs(ups1 - downs1)));
     spdlog::info(std::format("Trends continued. Up: {}. Down: {}.", ups2, downs2));
+    spdlog::info(std::format("Unanimous trends. Up: {}. Down: {}.", ups3, downs3));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
@@ -1761,14 +1764,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
 std::pair<int, int> PF_CollectDataApp::CountChartReversalsUpAndDown() const
 {
-    const auto query_up = std::format(
-        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
-        "TRUE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_up'",
-        db_params_.PF_db_mode_, end_date_);
-    const auto query_down = std::format(
-        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
-        "TRUE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_down'",
-        db_params_.PF_db_mode_, end_date_);
+    const auto query_up =
+        std::format("SELECT count(*) FROM {}_point_and_figure.find_trend_reversals('e_up')", db_params_.PF_db_mode_);
+    const auto query_down =
+        std::format("SELECT count(*) FROM {}_point_and_figure.find_trend_reversals('e_down')", db_params_.PF_db_mode_);
 
     PF_DB pf_db{db_params_};
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
@@ -1782,14 +1781,10 @@ std::pair<int, int> PF_CollectDataApp::CountChartReversalsUpAndDown() const
 
 std::pair<int, int> PF_CollectDataApp::CountChartTrendsContinueUpAndDown() const
 {
-    const auto query_up = std::format(
-        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
-        "FALSE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_up'",
-        db_params_.PF_db_mode_, end_date_);
-    const auto query_down = std::format(
-        "SELECT count(*) FROM {}_point_and_figure.pf_charts WHERE (chart_data ->'last_change_was_reversal')::BOOL IS "
-        "FALSE AND to_char(last_change_date AT TIME ZONE 'utc', 'YYYY-MM-DD') = '{}' AND current_direction = 'e_down'",
-        db_params_.PF_db_mode_, end_date_);
+    const auto query_up =
+        std::format("SELECT count(*) FROM {}_point_and_figure.find_trend_continues('e_up')", db_params_.PF_db_mode_);
+    const auto query_down = std::format("SELECT count(*) FROM {}_point_and_figure.find_trend_continues('e_down')",
+                                        db_params_.PF_db_mode_, end_date_);
 
     PF_DB pf_db{db_params_};
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
@@ -1800,6 +1795,23 @@ std::pair<int, int> PF_CollectDataApp::CountChartTrendsContinueUpAndDown() const
     // trxn.commit();
     return std::make_pair(charts_up, charts_down);
 }  // -----  end of method PF_CollectDataApp::CountChartTrendsContinueUpAndDown----
+
+std::pair<int, int> PF_CollectDataApp::CountChartTrendsUnanimousUpAndDown() const
+{
+    const auto query_up =
+        std::format("SELECT count(*) FROM {}_point_and_figure.find_unanimous_trends('e_up')", db_params_.PF_db_mode_);
+    const auto query_down = std::format("SELECT count(*) FROM {}_point_and_figure.find_unanimous_trends('e_down')",
+                                        db_params_.PF_db_mode_, end_date_);
+
+    PF_DB pf_db{db_params_};
+    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
+    pqxx::nontransaction trxn{c};
+
+    auto charts_up = trxn.query_value<int>(query_up);
+    auto charts_down = trxn.query_value<int>(query_down);
+    // trxn.commit();
+    return std::make_pair(charts_up, charts_down);
+}  // -----  end of method PF_CollectDataApp::CountChartTrendsUnanimousUpAndDown----
 
 void PF_CollectDataApp::Shutdown()
 {

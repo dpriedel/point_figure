@@ -149,6 +149,7 @@ class PF_CollectDataApp
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
     [[nodiscard]] std::pair<int, int> CountChartReversalsUpAndDown() const;
     [[nodiscard]] std::pair<int, int> CountChartTrendsContinueUpAndDown() const;
+    [[nodiscard]] std::pair<int, int> CountChartTrendsUnanimousUpAndDown() const;
 
     // ====================  DATA MEMBERS
     // =======================================
