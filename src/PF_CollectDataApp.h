@@ -174,8 +174,9 @@ class PF_CollectDataApp
     fs::path new_data_input_directory_;
     fs::path output_chart_directory_;
     fs::path output_graphs_directory_;
-    fs::path tiingo_api_key_;
-    fs::path eodhd_api_key_;
+    fs::path PF_CollectDataConfigDir_;
+    fs::path streaming_api_key_1_;
+    fs::path streaming_api_key_2_;
 
     std::string streaming_host_name_;
     std::string quote_host_name_;

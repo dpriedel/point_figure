@@ -35,6 +35,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <format>
 #include <fstream>
 #include <future>
@@ -204,6 +205,25 @@ bool PF_CollectDataApp::Startup()
 
 bool PF_CollectDataApp::CheckArgs()
 {
+    // very first thing to do is find our configuration directory.
+    // Initially, only streaming data API keys are there.
+    // Eventually, a configuration file with all the command-line options CAN be there.
+
+    if (!PF_CollectDataConfigDir_.empty())
+    {
+        BOOST_ASSERT_MSG(fs::exists(PF_CollectDataConfigDir_) && fs::is_directory(PF_CollectDataConfigDir_),
+                         std::format("Unable to find configuration directory: {}.", PF_CollectDataConfigDir_).c_str());
+    }
+    else
+    {
+        const std::string config_var{"PF_COLLECT_DATA_CONFIG_DIR"};
+        const char *env_var = std::getenv(config_var.c_str());
+
+        PF_CollectDataConfigDir_ = env_var == nullptr ? "" : env_var;
+        BOOST_ASSERT_MSG(fs::exists(PF_CollectDataConfigDir_) && fs::is_directory(PF_CollectDataConfigDir_),
+                         std::format("Unable to find configuration directory: {}.", PF_CollectDataConfigDir_).c_str());
+        // look for our environment variable.
+    }
     //	an easy check first
 
     BOOST_ASSERT_MSG(!(use_ATR_ && use_min_max_), "\nCan not use both ATR and MinMax for computing box size.");
@@ -445,9 +465,10 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (new_data_source_ != Source::e_DB && use_ATR_)
     {
-        BOOST_ASSERT_MSG(!tiingo_api_key_.empty(), "\nMust specify api 'key' file when data source is 'streaming'.");
-        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_),
-                         std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
+        BOOST_ASSERT_MSG(!streaming_api_key_1_.empty(),
+                         "\nMust specify api 'key' file when data source is 'streaming'.");
+        BOOST_ASSERT_MSG(fs::exists(streaming_api_key_1_),
+                         std::format("\nCan't find tiingo api key file: {}", streaming_api_key_1_).c_str());
     }
 
     if (new_data_source_ == Source::e_DB)
@@ -458,18 +479,18 @@ bool PF_CollectDataApp::CheckArgs()
     if (quote_data_source_i_ == "Eodhd")
     {
         streaming_data_source_ = StreamingSource::e_Eodhd;
-        BOOST_ASSERT_MSG(!eodhd_api_key_.empty(),
+        BOOST_ASSERT_MSG(!streaming_api_key_2_.empty(),
                          "\nMust specify 'eodhd-key' file when streaming data source is 'Eodhd'.");
-        BOOST_ASSERT_MSG(fs::exists(eodhd_api_key_),
-                         std::format("\nCan't find Eodhd api key file: {}", eodhd_api_key_).c_str());
+        BOOST_ASSERT_MSG(fs::exists(streaming_api_key_2_),
+                         std::format("\nCan't find Eodhd api key file: {}", streaming_api_key_2_).c_str());
     }
     else if (quote_data_source_i_ == "Tiingo")
     {
         streaming_data_source_ = StreamingSource::e_Tiingo;
-        BOOST_ASSERT_MSG(!tiingo_api_key_.empty(),
+        BOOST_ASSERT_MSG(!streaming_api_key_1_.empty(),
                          "\nMust specify 'tiingo-key' file when streaming data source is 'Tiingo'.");
-        BOOST_ASSERT_MSG(fs::exists(tiingo_api_key_),
-                         std::format("\nCan't find tiingo api key file: {}", tiingo_api_key_).c_str());
+        BOOST_ASSERT_MSG(fs::exists(streaming_api_key_1_),
+                         std::format("\nCan't find tiingo api key file: {}", streaming_api_key_1_).c_str());
     }
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "\nmax-graphic-cols must be >= -1.");
@@ -573,10 +594,11 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("stock-db-data-source",      po::value<std::string>(&this->db_params_.stock_db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
         ("quote-data-source",     po::value<std::string>(&this->quote_data_source_i_), "Name of streaming quotes data source.")
 
-        ("tiingo-key",          po::value<fs::path>(&this->tiingo_api_key_)->default_value("./tiingo_key.dat"), "Path to file containing tiingo api key. Default is './tiingo_key.dat'.")
-        ("eodhd-key",           po::value<fs::path>(&this->eodhd_api_key_)->default_value("./Eodhd_key.dat"), "Path to file containing Eodhd api key. Default is './Eodhd_key.dat'.")
-		("use-ATR",             po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
-		("use-MinMax",          po::value<bool>(&use_min_max_)->default_value(false)->implicit_value(true), "compute boxsize using price range from DB then apply specified fraction.")
+        ("config-dir",         po::value<fs::path>(&this->PF_CollectDataConfigDir_), "Path to config directory PF_CollectData application. Default is environment variable 'PF_COLLECT_DATA_CONFIG_DIR'.")
+        ("ATR-streaming-api-key-1",po::value<fs::path>(&this->streaming_api_key_1_), "Name of file containing ATR data and/or first streaming source api key.")
+        ("streaming-api-key-2",po::value<fs::path>(&this->streaming_api_key_2_), "Name of file containing second streaming source api key.")
+		("use-ATR",            po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
+		("use-MinMax",         po::value<bool>(&use_min_max_)->default_value(false)->implicit_value(true), "compute boxsize using price range from DB then apply specified fraction.")
 		;
 
 }		// -----  end of method PF_CollectDataApp::Do_SetupPrograoptions_  -----
@@ -622,12 +644,12 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
     {
         if (streaming_data_source_ == StreamingSource::e_Tiingo)
         {
-            std::ifstream key_file(tiingo_api_key_);
+            std::ifstream key_file(streaming_api_key_1_);
             key_file >> api_key_Tiingo_;
         }
         else if (streaming_data_source_ == StreamingSource::e_Eodhd)
         {
-            std::ifstream key_file(eodhd_api_key_);
+            std::ifstream key_file(streaming_api_key_2_);
             key_file >> api_key_Eodhd_;
         }
     }
@@ -1754,9 +1776,12 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                     "{}.",
                     total_symbols_processed, total_charts_processed, total_charts_updated));
 
-    spdlog::info(std::format("Net reversals: {}: {}.", (ups1 - downs1 > 0 ? "UP" : "DOWN"), std::abs(ups1 - downs1)));
-    spdlog::info(std::format("Trends continued. Up: {}. Down: {}.", ups2, downs2));
-    spdlog::info(std::format("Unanimous trends. Up: {}. Down: {}.", ups3, downs3));
+    spdlog::info(std::format("Reversals. Up: {}. Down: {}. Net reversals: {}: {}.", ups1, downs1,
+                             (ups1 - downs1 > 0 ? "UP" : "DOWN"), std::abs(ups1 - downs1)));
+    spdlog::info(std::format("Trends continued. Up: {}. Down: {}. Net continues: {}: {}.", ups2, downs2,
+                             (ups2 - downs2 > 0 ? "UP" : "DOWN"), std::abs(ups2 - downs2)));
+    spdlog::info(std::format("Unanimous trends. Up: {}. Down: {}. Net unanimous: {}: {}.", ups3, downs3,
+                             (ups3 - downs3 > 0 ? "UP" : "DOWN"), std::abs(ups3 - downs3)));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
