@@ -294,7 +294,7 @@ bool PF_CollectDataApp::CheckArgs()
     }
     else
     {
-        // default to 'today'
+        // default to 'yesterday'
         std::chrono::year_month_day today{--floor<std::chrono::days>(std::chrono::system_clock::now())};
         end_date_ = std::format("{:%Y-%m-%d}", today);
     }
@@ -463,12 +463,18 @@ bool PF_CollectDataApp::CheckArgs()
         }
     }
 
-    if (new_data_source_ != Source::e_DB && use_ATR_)
+    if ((new_data_source_ == Source::e_file && use_ATR_) || new_data_source_ == Source::e_streaming)
     {
-        BOOST_ASSERT_MSG(!streaming_api_key_1_.empty(),
-                         "\nMust specify api 'key' file when data source is 'streaming'.");
-        BOOST_ASSERT_MSG(fs::exists(streaming_api_key_1_),
-                         std::format("\nCan't find tiingo api key file: {}", streaming_api_key_1_).c_str());
+        BOOST_ASSERT_MSG(quote_data_source_i_ == "Tiingo" || quote_data_source_i_ == "Eodhd",
+                         "\nATR quote data source must be either 'Tiingo' or 'Eodhd' when using non-DB ATR.");
+        quote_data_source_ = quote_data_source_i_ == "Tiingo" ? QuoteDataSource::e_Tiingo : QuoteDataSource::e_Eodhd;
+
+        BOOST_ASSERT_MSG(!quote_host_api_key_.empty(), "Must specify a quote source API key file for non-DB ATR.");
+        BOOST_ASSERT_MSG(fs::exists(PF_CollectDataConfigDir_ / quote_host_api_key_),
+                         std::format("\nCan't find ATR quotes source api key file: {}", quote_host_api_key_).c_str());
+
+        std::ifstream quotes_key_file(PF_CollectDataConfigDir_ / quote_host_api_key_);
+        quotes_key_file >> quotes_api_key_;
     }
 
     if (new_data_source_ == Source::e_DB)
@@ -476,21 +482,21 @@ bool PF_CollectDataApp::CheckArgs()
         BOOST_ASSERT_MSG(!begin_date_.empty(), "\nMust specify 'begin-date' when data source is 'database'.");
     }
 
-    if (quote_data_source_i_ == "Eodhd")
+    if (new_data_source_ == Source::e_streaming)
     {
-        streaming_data_source_ = StreamingSource::e_Eodhd;
-        BOOST_ASSERT_MSG(!streaming_api_key_2_.empty(),
-                         "\nMust specify 'eodhd-key' file when streaming data source is 'Eodhd'.");
-        BOOST_ASSERT_MSG(fs::exists(streaming_api_key_2_),
-                         std::format("\nCan't find Eodhd api key file: {}", streaming_api_key_2_).c_str());
-    }
-    else if (quote_data_source_i_ == "Tiingo")
-    {
-        streaming_data_source_ = StreamingSource::e_Tiingo;
-        BOOST_ASSERT_MSG(!streaming_api_key_1_.empty(),
-                         "\nMust specify 'tiingo-key' file when streaming data source is 'Tiingo'.");
-        BOOST_ASSERT_MSG(fs::exists(streaming_api_key_1_),
-                         std::format("\nCan't find tiingo api key file: {}", streaming_api_key_1_).c_str());
+        BOOST_ASSERT_MSG(streaming_data_source_i_ == "Tiingo" || streaming_data_source_i_ == "Eodhd",
+                         "\nStreaming data source must be either 'Tiingo' or 'Eodhd'.");
+        streaming_data_source_ =
+            streaming_data_source_i_ == "Tiingo" ? StreamingSource::e_Tiingo : StreamingSource::e_Eodhd;
+
+        BOOST_ASSERT_MSG(!streaming_host_api_key_.empty(),
+                         "Must specify a streaming source API key file when streaming.");
+        BOOST_ASSERT_MSG(
+            fs::exists(PF_CollectDataConfigDir_ / streaming_host_api_key_),
+            std::format("\nCan't find streaming source api key file: {}", streaming_host_api_key_).c_str());
+
+        std::ifstream streaming_key_file(PF_CollectDataConfigDir_ / streaming_host_api_key_);
+        streaming_key_file >> streaming_api_key_;
     }
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "\nmax-graphic-cols must be >= -1.");
@@ -583,8 +589,9 @@ void PF_CollectDataApp::SetupProgramOptions ()
 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
 
         ("streaming-host",      po::value<std::string>(&this->streaming_host_name_), "web site we stream from.")
+        ("streaming-port",          po::value<std::string>(&this->streaming_host_port_)->default_value("443"), "Port number to use for streaming web site. Default is '443'.")
         ("quote-host",          po::value<std::string>(&this->quote_host_name_), "web site we download from.")
-        ("quote-port",          po::value<std::string>(&this->quote_host_port_)->default_value("443"), "Port number to use for web site. Default is '443'.")
+        ("quote-port",          po::value<std::string>(&this->quote_host_port_)->default_value("443"), "Port number to use for quotes web site. Default is '443'.")
 
         ("db-host",             po::value<std::string>(&this->db_params_.host_name_)->default_value("localhost"), "web location where database is running. Default is 'localhost'.")
         ("db-port",             po::value<int32_t>(&this->db_params_.port_number_)->default_value(5432), "Port number to use for database access. Default is '5432'.")
@@ -592,11 +599,12 @@ void PF_CollectDataApp::SetupProgramOptions ()
         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
         ("db-mode",             po::value<std::string>(&this->db_params_.PF_db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
         ("stock-db-data-source",      po::value<std::string>(&this->db_params_.stock_db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
-        ("quote-data-source",     po::value<std::string>(&this->quote_data_source_i_), "Name of streaming quotes data source.")
+        ("quote-data-source",     po::value<std::string>(&this->quote_data_source_i_), "Name of ATR quotes data source.")
+        ("streaming-data-source",     po::value<std::string>(&this->streaming_data_source_i_), "Name of streaming data source.")
 
         ("config-dir",         po::value<fs::path>(&this->PF_CollectDataConfigDir_), "Path to config directory PF_CollectData application. Default is environment variable 'PF_COLLECT_DATA_CONFIG_DIR'.")
-        ("ATR-streaming-api-key-1",po::value<fs::path>(&this->streaming_api_key_1_), "Name of file containing ATR data and/or first streaming source api key.")
-        ("streaming-api-key-2",po::value<fs::path>(&this->streaming_api_key_2_), "Name of file containing second streaming source api key.")
+        ("quote-api-key",     po::value<fs::path>(&this->quote_host_api_key_), "Name of file containing quotes source api key.")
+        ("streaming-api-key",  po::value<fs::path>(&this->streaming_host_api_key_), "Name of file containing streaming source api key.")
 		("use-ATR",            po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
 		("use-MinMax",         po::value<bool>(&use_min_max_)->default_value(false)->implicit_value(true), "compute boxsize using price range from DB then apply specified fraction.")
 		;
@@ -640,22 +648,7 @@ void PF_CollectDataApp::ParseProgramOptions(const std::vector<std::string> &toke
 
 std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
-    if (new_data_source_ != Source::e_DB)
-    {
-        if (streaming_data_source_ == StreamingSource::e_Tiingo)
-        {
-            std::ifstream key_file(streaming_api_key_1_);
-            key_file >> api_key_Tiingo_;
-        }
-        else if (streaming_data_source_ == StreamingSource::e_Eodhd)
-        {
-            std::ifstream key_file(streaming_api_key_2_);
-            key_file >> api_key_Eodhd_;
-        }
-    }
-
     // TODO(dpriedel): this should be a program param...
-
     number_of_days_history_for_ATR_ = 20;
 
     if (new_data_source_ == Source::e_streaming)
@@ -1163,13 +1156,13 @@ Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
     if (streaming_data_source_ == StreamingSource::e_Eodhd)
     {
         history_getter = std::make_unique<Eodhd>(Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
-                                                 Eodhd::APIKey{api_key_Eodhd_}, Eodhd::Prefix{});
+                                                 Eodhd::APIKey{quotes_api_key_}, Eodhd::Prefix{});
     }
     else
     {
         // just 2 options for now
         history_getter = std::make_unique<Tiingo>(Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
-                                                  Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{});
+                                                  Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{});
     }
 
     // we need to start from yesterday since we won't get history data for today
@@ -1228,16 +1221,16 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
         GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
     std::unique_ptr<RemoteDataSource> history_getter;
-    if (streaming_data_source_ == StreamingSource::e_Eodhd)
+    if (quote_data_source_ == QuoteDataSource::e_Eodhd)
     {
         history_getter = std::make_unique<Eodhd>(Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
-                                                 Eodhd::APIKey{api_key_Eodhd_}, Eodhd::Prefix{});
+                                                 Eodhd::APIKey{quotes_api_key_}, Eodhd::Prefix{});
     }
     else
     {
         // just 2 options for now
         history_getter = std::make_unique<Tiingo>(Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
-                                                  Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{});
+                                                  Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{});
     }
 
     if (market_status == US_MarketStatus::e_NotOpenYet)
@@ -1396,23 +1389,24 @@ void PF_CollectDataApp::CollectStreamingData()
     {
         try
         {
-            std::unique_ptr<RemoteDataSource> quotes;
+            std::unique_ptr<RemoteDataSource> streaming;
             if (streaming_data_source_ == StreamingSource::e_Eodhd)
             {
-                quotes = std::make_unique<Eodhd>(Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
-                                                 Eodhd::APIKey{api_key_Eodhd_},
-                                                 Eodhd::Prefix{"/ws/us?api_token="s + api_key_Eodhd_});
+                streaming = std::make_unique<Eodhd>(
+                    Eodhd::Host{streaming_host_name_}, Eodhd::Port{streaming_host_port_},
+                    Eodhd::APIKey{streaming_api_key_}, Eodhd::Prefix{"/ws/us?api_token="s + streaming_api_key_});
             }
             else
             {
                 // just 2 options for now
-                quotes = std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{quote_host_port_},
-                                                  Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{"/iex"});
+                streaming =
+                    std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{streaming_host_port_},
+                                             Tiingo::APIKey{streaming_api_key_}, Tiingo::Prefix{"/iex"});
             }
 
-            quotes->UseSymbols(symbol_list_);
+            streaming->UseSymbols(symbol_list_);
 
-            auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, quotes.get(),
+            auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, streaming.get(),
                                              &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
             // auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
             //                                  &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
@@ -1455,14 +1449,14 @@ void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_m
     if (streaming_data_source_ == StreamingSource::e_Eodhd)
     {
         streamer = std::make_unique<Eodhd>(Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
-                                           Eodhd::APIKey{api_key_Eodhd_},
-                                           Eodhd::Prefix{"/ws/us?api_token="s + api_key_Eodhd_});
+                                           Eodhd::APIKey{streaming_api_key_},
+                                           Eodhd::Prefix{"/ws/us?api_token="s + streaming_api_key_});
     }
     else
     {
         // just 2 options for now
         streamer = std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{quote_host_port_},
-                                            Tiingo::APIKey{api_key_Tiingo_}, Tiingo::Prefix{"/iex"});
+                                            Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{"/iex"});
     }
     while (true)
     {

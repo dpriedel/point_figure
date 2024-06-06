@@ -175,11 +175,12 @@ class PF_CollectDataApp
     fs::path output_chart_directory_;
     fs::path output_graphs_directory_;
     fs::path PF_CollectDataConfigDir_;
-    fs::path streaming_api_key_1_;
-    fs::path streaming_api_key_2_;
 
     std::string streaming_host_name_;
+    fs::path streaming_host_api_key_;
+    std::string streaming_host_port_;
     std::string quote_host_name_;
+    fs::path quote_host_api_key_;
     std::string quote_host_port_;
 
     PF_DB::DB_Params db_params_{.port_number_ = -1};
@@ -243,9 +244,17 @@ class PF_CollectDataApp
         e_Tiingo
     };
 
+    enum class QuoteDataSource : int32_t
+    {
+        e_unknown,
+        e_Eodhd,
+        e_Tiingo
+    };
+
     std::string quote_data_source_i_;
-    std::string api_key_Tiingo_;
-    std::string api_key_Eodhd_;
+    std::string streaming_data_source_i_;
+    std::string quotes_api_key_;
+    std::string streaming_api_key_;
     std::string destination_i_;
     std::string interval_i_;
     std::string mode_i_;
@@ -260,6 +269,7 @@ class PF_CollectDataApp
     std::vector<std::string> box_size_i_list_;
 
     StreamingSource streaming_data_source_ = StreamingSource::e_unknown;
+    QuoteDataSource quote_data_source_ = QuoteDataSource::e_unknown;
     Source new_data_source_ = Source::e_unknown;
     Source chart_data_source_ = Source::e_unknown;
     SourceFormat source_format_ = SourceFormat::e_csv;
