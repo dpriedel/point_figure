@@ -70,6 +70,7 @@ CFG_LIB := -L../lib_PF_Chart \
 		-lchartdir \
 		-L$(GCCDIR)/lib64 \
 		-lstdc++ \
+		-lstdc++exp \
 		-L/usr/lib \
 		-lmpdec++ \
 		-lmpdec \
