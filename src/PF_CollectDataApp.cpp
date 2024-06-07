@@ -43,6 +43,7 @@
 #include <iterator>
 #include <map>
 #include <mutex>
+#include <print>
 #include <queue>
 #include <ranges>
 #include <sstream>
@@ -892,10 +893,10 @@ void PF_CollectDataApp::Run_Update()
     {
         const auto &symbol = std::get<PF_Chart::e_symbol>(val);
         PF_Chart new_chart;
+        fs::path existing_data_file_name;
         try
         {
-            fs::path existing_data_file_name =
-                input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
+            existing_data_file_name = input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
             if (fs::exists(existing_data_file_name))
             {
                 new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
@@ -928,6 +929,11 @@ void PF_CollectDataApp::Run_Update()
                              "\nJSON files are not yet supported for updating symbol data.");
             AddPriceDataToExistingChartCSV(new_chart, update_file_name);
             charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
+        }
+        catch (const Json::Exception &e)
+        {
+            spdlog::error(std::format("Unable to process JSON data from file: {} because: {}.", existing_data_file_name,
+                                      e.what()));
         }
         catch (const std::exception &e)
         {
@@ -1153,7 +1159,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, s
 Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
 {
     std::unique_ptr<RemoteDataSource> history_getter;
-    if (streaming_data_source_ == StreamingSource::e_Eodhd)
+    if (quote_data_source_ == QuoteDataSource::e_Eodhd)
     {
         history_getter = std::make_unique<Eodhd>(Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
                                                  Eodhd::APIKey{quotes_api_key_}, Eodhd::Prefix{});
