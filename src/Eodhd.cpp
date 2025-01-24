@@ -95,7 +95,7 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string& buffer)
     };
 
     static const std::string kResponseString{
-        R"***(\{"s":"(.*)","p":([.0-9]*),"c":(.*),"v":(.*),"dp":(false|true),"ms":"(open|closed|extended-hours)?","t":([.0-9]*)\})***"};
+        R"***(\{"s":"(.*)","p":([.0-9]*),"c":(.*),"v":(.*),"dp":(false|true),"ms":"(open|closed|close|extended-hours)?","t":([.0-9]*)\})***"};
     static const std::regex kResponseRegex{kResponseString};
 
     std::cmatch fields;
