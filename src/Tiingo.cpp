@@ -47,7 +47,7 @@ void Tiingo::StartStreaming()
     Json::Value connection_request;
     connection_request["eventName"] = "subscribe";
     connection_request["authorization"] = api_key;
-    connection_request["eventData"]["thresholdLevel"] = 5;
+    connection_request["eventData"]["thresholdLevel"] = 6;
     Json::Value tickers(Json::arrayValue);
     for (const auto& symbol : symbol_list)
     {
