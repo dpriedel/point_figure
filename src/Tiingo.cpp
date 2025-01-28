@@ -139,7 +139,7 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
             rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
             // std::cout << std::format("{}\n", new_value.time_stamp_nanoseconds_utc_);
             new_value.last_price_ = decimal::Decimal{m[2].str()};
-            new_value.last_size_ = 1;  // not reported by new Tiingo IEX data
+            new_value.last_size_ = 100;  // not reported by new Tiingo IEX data so just use a standard number
         }
     }
     // else if (message_type == "I")
