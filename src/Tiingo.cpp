@@ -15,8 +15,10 @@
 // =====================================================================================
 // the guts of this code comes from the examples distributed by Boost.
 
+#include <format>
 #include <ranges>
 #include <regex>
+#include <sstream>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
@@ -98,9 +100,9 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
 
-    static const std::regex kNumericTradePrice{R"***(("T",(?:[^,]*,){8})([0-9]*\.[0-9]*),)***"};
-    static const std::regex kQuotedTradePrice{R"***("T",(?:[^,]*,){8}"([0-9]*\.[0-9]*)",)***"};
-    static const std::string kStringTradePrice{R"***($1"$2",)***"};
+    static const std::regex kNumericTradePrice{R"***(("data":\["(?:[^,]*,){2})([0-9]*\.[0-9]*)])***"};
+    static const std::regex kQuotedTradePrice{R"***(("data":\[(?:[^,]*,){2})"([0-9]*\.[0-9]*)")***"};
+    static const std::string kStringTradePrice{R"***($1"$2"])***"};
     const std::string zapped_buffer = std::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
     // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
@@ -122,23 +124,22 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
     {
         auto data = response["data"];
 
-        if (strcmp(data[0].asCString(), "T") == 0)
+        std::smatch m;
+        if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
         {
-            std::smatch m;
-            if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
-            {
-                std::cout << "can't find trade price in buffer: " << buffer << '\n';
-            }
-            else
-            {
-                new_value.subscription_id_ = subscription_id_;
-                new_value.time_stamp_ = data[1].asCString();
-                new_value.time_stamp_nanoseconds_utc_ = UTC_TmPt_NanoSecs{std::chrono::nanoseconds{data[2].asInt64()}};
-                new_value.ticker_ = data[3].asCString();
-                rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
-                new_value.last_price_ = decimal::Decimal{m[1].str()};
-                new_value.last_size_ = data[10].asInt();
-            }
+            std::cout << "can't find trade price in buffer: " << buffer << '\n';
+        }
+        else
+        {
+            new_value.subscription_id_ = subscription_id_;
+            new_value.time_stamp_ = data[0].asCString();
+            std::istringstream(new_value.time_stamp_) >>
+                std::chrono::parse("%FT%T%Ez", new_value.time_stamp_nanoseconds_utc_);
+            new_value.ticker_ = data[1].asCString();
+            rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+            // std::cout << std::format("{}\n", new_value.time_stamp_nanoseconds_utc_);
+            new_value.last_price_ = decimal::Decimal{m[2].str()};
+            new_value.last_size_ = 1;  // not reported by new Tiingo IEX data
         }
     }
     // else if (message_type == "I")
