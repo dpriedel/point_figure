@@ -65,11 +65,11 @@ namespace po = boost::program_options;
 // =====================================================================================
 class PF_CollectDataApp
 {
-   public:
+public:
     using PF_Data = std::vector<std::pair<std::string, PF_Chart>>;
 
     // ====================  LIFECYCLE =======================================
-    PF_CollectDataApp(int argc, char *argv[]);  // constructor
+    PF_CollectDataApp(int argc, char *argv[]); // constructor
 
     // use ctor below for testing with predefined options
 
@@ -79,13 +79,19 @@ class PF_CollectDataApp
     PF_CollectDataApp(const PF_CollectDataApp &rhs) = delete;
     PF_CollectDataApp(PF_CollectDataApp &&rhs) = delete;
 
-    ~PF_CollectDataApp() = default;
+    ~PF_CollectDataApp();
 
     // ====================  ACCESSORS =======================================
 
-    static bool SignalReceived() { return had_signal_; }
+    static bool SignalReceived()
+    {
+        return had_signal_;
+    }
 
-    [[nodiscard]] const PF_Data &GetCharts() const { return charts_; }
+    [[nodiscard]] const PF_Data &GetCharts() const
+    {
+        return charts_;
+    }
 
     // ====================  MUTATORS =======================================
 
@@ -95,7 +101,10 @@ class PF_CollectDataApp
 
     // for testing
 
-    static void SetSignal() { PF_CollectDataApp::had_signal_ = true; }
+    static void SetSignal()
+    {
+        PF_CollectDataApp::had_signal_ = true;
+    }
     static void WaitForTimer(const std::chrono::zoned_seconds &stop_at);
 
     // ====================  OPERATORS =======================================
@@ -103,7 +112,7 @@ class PF_CollectDataApp
     PF_CollectDataApp &operator=(const PF_CollectDataApp &rhs) = delete;
     PF_CollectDataApp &operator=(PF_CollectDataApp &&rhs) = delete;
 
-   protected:
+protected:
     //	Setup for parsing program options.
 
     void SetupProgramOptions();
@@ -140,7 +149,7 @@ class PF_CollectDataApp
     // ====================  DATA MEMBERS
     // =======================================
 
-   private:
+private:
     static void HandleSignal(int signal);
 
     void ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update);
@@ -154,14 +163,16 @@ class PF_CollectDataApp
     // ====================  DATA MEMBERS
     // =======================================
 
+    std::shared_ptr<spdlog::logger> original_logger_;
+
     PF_StreamedPrices streamed_prices_;
     PF_StreamedSummary streamed_summary_;
 
     PF_Data charts_;
 
-    po::positional_options_description positional_;        //	old style
-                                                           // options
-    std::unique_ptr<po::options_description> newoptions_;  //	new style options (with identifiers)
+    po::positional_options_description positional_;       //	old style
+                                                          // options
+    std::unique_ptr<po::options_description> newoptions_; //	new style options (with identifiers)
     po::variables_map variablemap_;
 
     int argc_ = 0;
@@ -302,6 +313,6 @@ class PF_CollectDataApp
     bool use_min_max_ = false;
 
     static bool had_signal_;
-};  // -----  end of class PF_CollectDataApp  -----
+}; // -----  end of class PF_CollectDataApp  -----
 
-#endif  // ----- #ifndef PF_COLLECTDATAAPP_INC  -----
+#endif // ----- #ifndef PF_COLLECTDATAAPP_INC  -----

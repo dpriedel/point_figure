@@ -43,9 +43,9 @@
 #include <iterator>
 #include <map>
 #include <mutex>
-#include <print>
 #include <queue>
 #include <ranges>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <sstream>
 #include <string_view>
 #include <thread>
@@ -54,15 +54,8 @@
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
-#include <date/chrono_io.h>
-#include <date/tz.h>
-#include <fmt/format.h>
-#include <fmt/ranges.h>
-
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
-
-#include <range/v3/range/conversion.hpp>
 
 #include "ConstructChartGraphic.h"
 #include "Eodhd.h"
@@ -82,8 +75,7 @@ bool PF_CollectDataApp::had_signal_ = false;
 
 // code from "The C++ Programming Language" 4th Edition. p. 1243.
 
-template <typename T>
-int wait_for_any(std::vector<std::future<T>> &vf, std::chrono::steady_clock::duration d)
+template <typename T> int wait_for_any(std::vector<std::future<T>> &vf, std::chrono::steady_clock::duration d)
 // return index of ready future
 // if no future is ready, wait for d before trying again
 {
@@ -116,42 +108,71 @@ int wait_for_any(std::vector<std::future<T>> &vf, std::chrono::steady_clock::dur
 //      Method:  PF_CollectDataApp
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_CollectDataApp::PF_CollectDataApp(int argc, char *argv[])
-    : argc_{argc}, argv_{argv} {}  // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
-                                   // -----
+PF_CollectDataApp::PF_CollectDataApp(int argc, char *argv[]) : argc_{argc}, argv_{argv}
+{
+    original_logger_ = spdlog::default_logger();
+} // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
+  // -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_CollectDataApp
 //      Method:  PF_CollectDataApp
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_CollectDataApp::PF_CollectDataApp(const std::vector<std::string> &tokens)
-    : tokens_{tokens} {}  // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
-                          // -----
+PF_CollectDataApp::PF_CollectDataApp(const std::vector<std::string> &tokens) : tokens_{tokens}
+{
+    original_logger_ = spdlog::default_logger();
+} // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
+  // -----
+
+PF_CollectDataApp::~PF_CollectDataApp()
+{
+    if (spdlog::get("PF_Collect_logger"))
+    {
+        spdlog::drop("PF_Collect_logger");
+    }
+    if (original_logger_)
+    {
+        spdlog::set_default_logger(original_logger_);
+    }
+} /* -----  end of method PF_CollectDataApp::~PF_CollectDataApp  (destructor)  ----- */
 
 void PF_CollectDataApp::ConfigureLogging()
 {
-    // we need to set log level if specified and also log file.
+    // this logging code comes from gemini
+
+    spdlog::init_thread_pool(8192, 1);
 
     if (!log_file_path_name_.empty())
     {
-        // if we are running inside our test harness, logging may already by
-        // running so we don't want to clobber it.
-        // different tests may use different names.
-
-        auto logger_name = log_file_path_name_.filename();
-        logger_ = spdlog::get(logger_name);
-        if (!logger_)
+        fs::path log_dir = log_file_path_name_.parent_path();
+        if (!fs::exists(log_dir))
         {
-            fs::path log_dir = log_file_path_name_.parent_path();
-            if (!fs::exists(log_dir))
-            {
-                fs::create_directories(log_dir);
-            }
-
-            logger_ = spdlog::basic_logger_mt<spdlog::async_factory>(logger_name, log_file_path_name_.c_str());
-            spdlog::set_default_logger(logger_);
+            fs::create_directories(log_dir);
         }
+
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_, true);
+
+        auto async_logger = std::make_shared<spdlog::async_logger>(
+            "PF_Collect_logger",
+            spdlog::sinks_init_list{file_sink},
+            spdlog::thread_pool(),
+            spdlog::async_overflow_policy::block // Or spdlog::async_overflow_policy::discard_log_msg
+        );
+
+        spdlog::set_default_logger(async_logger);
+    }
+    else
+    {
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+        // 3. Create an asynchronous logger using the console sink.
+        auto async_logger = std::make_shared<spdlog::async_logger>("PF_Collect_logger", // Name for the console logger
+                                                                   spdlog::sinks_init_list{console_sink},
+                                                                   spdlog::thread_pool(),
+                                                                   spdlog::async_overflow_policy::block);
+
+        spdlog::set_default_logger(async_logger);
     }
 
     // we are running before 'CheckArgs' so we need to do a little editiing
@@ -163,13 +184,16 @@ void PF_CollectDataApp::ConfigureLogging()
                                                                   {"debug", spdlog::level::debug}};
 
     auto which_level = levels.find(logging_level_);
-    BOOST_ASSERT_MSG(
-        which_level != levels.end(),
-        std::format("log-level: {} must be 1 of 'none', 'error', 'information', 'debug'.", logging_level_).c_str());
+    if (which_level != levels.end())
+    {
+        spdlog::set_level(which_level->second);
+    }
+    else
+    {
+        spdlog::set_level(spdlog::level::info);
+    } // we need to set log level if specified and also log file.
 
-    spdlog::set_level(which_level->second);
-
-}  // -----  end of method PF_CollectDataApp::ConfigureLogging  -----
+} // -----  end of method PF_CollectDataApp::ConfigureLogging  -----
 
 bool PF_CollectDataApp::Startup()
 {
@@ -202,7 +226,7 @@ bool PF_CollectDataApp::Startup()
         result = false;
     }
     return result;
-}  // -----  end of method PF_CollectDataApp::Do_StartUp  -----
+} // -----  end of method PF_CollectDataApp::Do_StartUp  -----
 
 bool PF_CollectDataApp::CheckArgs()
 {
@@ -272,14 +296,11 @@ bool PF_CollectDataApp::CheckArgs()
 
             const std::vector<std::string> exchanges{"AMEX",    "BATS",    "NASDAQ", "NMFQS", "NYSE", "OTCCE",
                                                      "OTCGREY", "OTCMKTS", "OTCQB",  "OTCQX", "PINK", "US"};
-            rng::for_each(exchange_list_,
-                          [&exchanges](const auto &xchng)
-                          {
-                              BOOST_ASSERT_MSG(
-                                  std::ranges::find(exchanges, xchng) != exchanges.end(),
-                                  fmt::format("\nexchange: {} must be one of: {}.\n", xchng, exchanges).c_str());
-                          });
-            spdlog::debug(fmt::format("exchanges for scan and bulk load: {}\n", exchange_list_));
+            rng::for_each(exchange_list_, [&exchanges](const auto &xchng) {
+                BOOST_ASSERT_MSG(std::ranges::find(exchanges, xchng) != exchanges.end(),
+                                 std::format("\nexchange: {} must be one of: {}.\n", xchng, exchanges).c_str());
+            });
+            spdlog::debug("exchanges for scan and bulk load: {}\n", exchange_list_);
         }
     }
 
@@ -525,14 +546,13 @@ bool PF_CollectDataApp::CheckArgs()
 
     // edit and translate from text to enums...
 
-    rng::for_each(scale_i_list_,
-                  [](const auto &scale)
-                  {
-                      BOOST_ASSERT_MSG(scale == "linear" || scale == "percent",
-                                       std::format("\nChart scale must be: 'linear' or 'percent': {}", scale).c_str());
-                  });
-    rng::for_each(scale_i_list_, [this](const auto &scale_i)
-                  { this->scale_list_.emplace_back(scale_i == "linear" ? BoxScale::e_Linear : BoxScale::e_Percent); });
+    rng::for_each(scale_i_list_, [](const auto &scale) {
+        BOOST_ASSERT_MSG(scale == "linear" || scale == "percent",
+                         std::format("\nChart scale must be: 'linear' or 'percent': {}", scale).c_str());
+    });
+    rng::for_each(scale_i_list_, [this](const auto &scale_i) {
+        this->scale_list_.emplace_back(scale_i == "linear" ? BoxScale::e_Linear : BoxScale::e_Percent);
+    });
 
     // we can compute whether boxes are fractions or intergers from input. This
     // may be changed by the Boxes code later.
@@ -540,16 +560,14 @@ bool PF_CollectDataApp::CheckArgs()
     // generate PF_Chart type combinations from input params.
 
     auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
-    rng::for_each(params,
-                  [](const auto &x)
-                  {
-                      std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"),
-                                               std::get<2>(x), std::get<3>(x));
-                  });
-    std::cout << std::endl;  // force a flush
+    rng::for_each(params, [](const auto &x) {
+        std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"), std::get<2>(x),
+                                 std::get<3>(x));
+    });
+    std::cout << std::endl; // force a flush
 
     return true;
-}  // -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
+} // -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
 
 // clang-format off
 
@@ -687,7 +705,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run()
         }
     }
     return {};
-}  // -----  end of method PF_CollectDataApp::Do_Run  -----
+} // -----  end of method PF_CollectDataApp::Do_Run  -----
 
 void PF_CollectDataApp::Run_Load()
 {
@@ -726,7 +744,7 @@ void PF_CollectDataApp::Run_Load()
             spdlog::error(std::format("Unable to load data for symbol: {} from file because: {}.", symbol, e.what()));
         }
     }
-}  // -----  end of method PF_CollectDataApp::Run_Load  -----
+} // -----  end of method PF_CollectDataApp::Run_Load  -----
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
 {
@@ -748,7 +766,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
         auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" || xchng == "INDX" || xchng == "US"; };
         const auto [first, last] = rng::remove_if(exchange_list_, dont_use);
         exchange_list_.erase(first, last);
-        spdlog::debug(fmt::format("exchanges for scan: {}\n", exchange_list_));
+        spdlog::debug("exchanges for scan: {}\n", exchange_list_);
 
         for (const auto &xchng : exchange_list_)
         {
@@ -760,10 +778,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
             total_symbols_processed += std::get<0>(counts);
             total_charts_processed += std::get<1>(counts);
             total_charts_updated += std::get<2>(counts);
-            spdlog::info(
-                std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts built: "
-                            "{}.",
-                            xchng, std::get<0>(counts), std::get<1>(counts), std::get<2>(counts)));
+            spdlog::info(std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts built: "
+                                     "{}.",
+                                     xchng, std::get<0>(counts), std::get<1>(counts), std::get<2>(counts)));
         }
     }
     else
@@ -775,13 +792,12 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_LoadFromDB()
     }
     // std::print("symbol list: {}\n", symbol_list_);
 
-    spdlog::info(
-        std::format("Total symbols: {}. Total charts generated: {}. Total charts built: "
-                    "{}.",
-                    total_symbols_processed, total_charts_processed, total_charts_updated));
+    spdlog::info(std::format("Total symbols: {}. Total charts generated: {}. Total charts built: "
+                             "{}.",
+                             total_symbols_processed, total_charts_processed, total_charts_updated));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
-}  // -----  end of method PF_CollectDataApp::Run_Load  -----
+} // -----  end of method PF_CollectDataApp::Run_Load  -----
 
 std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list)
 {
@@ -796,16 +812,15 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
     const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
 
     std::istringstream time_stream;
-    date::utc_time<std::chrono::utc_clock::duration> tp;
+    std::chrono::utc_time<std::chrono::utc_clock::duration> tp;
 
     // we know our database contains 'date's, but we need timepoints.
     // we'll handle that in the conversion routine below.
 
-    auto Row2Closing = [dt_format, &time_stream, &tp](const auto &r)
-    {
+    auto Row2Closing = [dt_format, &time_stream, &tp](const auto &r) {
         time_stream.clear();
         time_stream.str(std::string{std::get<0>(r)});
-        date::from_stream(time_stream, dt_format, tp);
+        std::chrono::from_stream(time_stream, dt_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
         DateCloseRecord new_data{.date_ = tp1, .close_ = Decimal{std::get<1>(r)}};
         return new_data;
@@ -820,10 +835,10 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
             // first, get ready to retrieve our data from DB.  Do this once per
             // symbol.
 
-            std::string get_symbol_prices_cmd = std::format(
-                "SELECT date, {} FROM {} WHERE symbol = {} AND date >= "
-                "{} ORDER BY date ASC",
-                price_fld_name_, db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date_));
+            std::string get_symbol_prices_cmd =
+                std::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= "
+                            "{} ORDER BY date ASC",
+                            price_fld_name_, db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date_));
 
             const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, const char *>(
                 get_symbol_prices_cmd, Row2Closing);
@@ -867,10 +882,9 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
                 }
                 catch (const std::exception &e)
                 {
-                    spdlog::error(
-                        std::format("Unable to load data for symbol chart: {} from DB "
-                                    "because: {}.",
-                                    new_chart.MakeChartFileName(interval_i_, ""), e.what()));
+                    spdlog::error(std::format("Unable to load data for symbol chart: {} from DB "
+                                              "because: {}.",
+                                              new_chart.MakeChartFileName(interval_i_, ""), e.what()));
                 }
             }
         }
@@ -880,7 +894,7 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
         }
     }
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
-}  // -----  end of method PF_CollectDataApp::ProcessSymbolsFromDB  -----
+} // -----  end of method PF_CollectDataApp::ProcessSymbolsFromDB  -----
 
 void PF_CollectDataApp::Run_Update()
 {
@@ -941,7 +955,7 @@ void PF_CollectDataApp::Run_Update()
                                       new_chart.MakeChartFileName(interval_i_, ""), e.what()));
         }
     }
-}  // -----  end of method PF_CollectDataApp::Run_Update  -----
+} // -----  end of method PF_CollectDataApp::Run_Update  -----
 
 void PF_CollectDataApp::Run_UpdateFromDB()
 {
@@ -994,7 +1008,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
                         }
                     }
                 }
-                else  // should only be database here
+                else // should only be database here
                 {
                     new_chart = PF_Chart::LoadChartFromChartsDB(PF_DB{db_params_}, val, interval_i_);
                 }
@@ -1026,7 +1040,7 @@ void PF_CollectDataApp::Run_UpdateFromDB()
             }
         }
     }
-}  // -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
+} // -----  end of method PF_CollectDataApp::Run_UpdateFromDB  -----
 
 void PF_CollectDataApp::Run_Streaming()
 {
@@ -1050,7 +1064,7 @@ void PF_CollectDataApp::Run_Streaming()
 
     // initialize PF_Charts to be used by streaming code
 
-    std::map<std::string, decimal::Decimal> cache;  // table for memoization of ATR
+    std::map<std::string, decimal::Decimal> cache; // table for memoization of ATR
 
     for (const auto &val : params)
     {
@@ -1092,7 +1106,7 @@ void PF_CollectDataApp::Run_Streaming()
 
     CollectStreamingData();
 
-}  // -----  end of method PF_CollectDataApp::Run_Streaming  -----
+} // -----  end of method PF_CollectDataApp::Run_Streaming  -----
 
 void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, const fs::path &update_file_name) const
 {
@@ -1112,41 +1126,38 @@ void PF_CollectDataApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, cons
 
     rng::for_each(
         symbol_data_records | vws::drop(1),
-        [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record)
-        {
+        [this, &new_chart, close_col = close_column.value(), date_col = date_column.value()](const auto record) {
             const auto fields = split_string<std::string_view>(record, ",");
             const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
             new_chart.AddValue(sv2dec(fields[close_col]), StringToUTCTimePoint(dt_format, fields[date_col]));
         });
 
-}  // -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV
-   // -----
+} // -----  end of method PF_CollectDataApp::AddPriceDataToExistingChartCSV
+  // -----
 
 PF_Chart PF_CollectDataApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
 {
     PF_Chart new_chart;
     PF_Chart::LoadChartFromJSONPF_ChartFile(new_chart, symbol_file_name);
     return new_chart;
-}  // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
+} // -----  end of method PF_CollectDataApp::LoadAndParsePriceDataJSON  -----
 
 std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, std::string_view column_name,
                                                       std::string_view delim)
 {
-    auto fields = rng_split_string<std::string_view>(header, delim) | ranges::to<std::vector>();
-    auto do_compare(
-        [&column_name](const auto &field_name)
-        {
-            // need case insensitive compare
-            // found this on StackOverflow (but modified for my use)
-            // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+    auto fields = rng_split_string<std::string_view>(header, delim) | rng::to<std::vector>();
+    auto do_compare([&column_name](const auto &field_name) {
+        // need case insensitive compare
+        // found this on StackOverflow (but modified for my use)
+        // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
 
-            if (column_name.size() != field_name.size())
-            {
-                return false;
-            }
-            return rng::equal(column_name, field_name,
-                              [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
-        });
+        if (column_name.size() != field_name.size())
+        {
+            return false;
+        }
+        return rng::equal(column_name, field_name,
+                          [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
+    });
 
     if (auto found_it = rng::find_if(fields, do_compare); found_it != rng::end(fields))
     {
@@ -1154,7 +1165,7 @@ std::optional<int> PF_CollectDataApp::FindColumnIndex(std::string_view header, s
     }
     return {};
 
-}  // -----  end of method PF_CollectDataApp::FindColumnIndex  -----
+} // -----  end of method PF_CollectDataApp::FindColumnIndex  -----
 
 Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
 {
@@ -1189,7 +1200,7 @@ Decimal PF_CollectDataApp::ComputeATRForChart(const std::string &symbol) const
     auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_);
 
     return atr;
-}  // -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  -----
+} // -----  end of method PF_CollectDataApp::ComputeBoxSizeUsingATR  -----
 
 Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) const
 {
@@ -1208,7 +1219,7 @@ Decimal PF_CollectDataApp::ComputeATRForChartFromDB(const std::string &symbol) c
     }
 
     return atr;
-}  // -----  end of method PF_CollectDataApp::ComputeATRUsingDB  -----
+} // -----  end of method PF_CollectDataApp::ComputeATRUsingDB  -----
 
 void PF_CollectDataApp::PrimeChartsForStreaming()
 {
@@ -1288,8 +1299,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
         {
             rng::for_each(
                 charts_ | vws::filter([&h](auto &symbol_and_chart) { return symbol_and_chart.first == h.symbol_; }),
-                [&](auto &symbol_and_chart)
-                {
+                [&](auto &symbol_and_chart) {
                     try
                     {
                         symbol_and_chart.second.AddValue(h.previous_close_, close_time_stamp);
@@ -1337,7 +1347,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
             }
         }
     }
-}  // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
+} // -----  end of method PF_CollectDataApp::PrimeChartsForStreaming  -----
 
 void PF_CollectDataApp::CollectStreamingData()
 {
@@ -1361,12 +1371,8 @@ void PF_CollectDataApp::CollectStreamingData()
 
     // ok, get ready to handle keyboard interrupts, if any.
 
-    struct sigaction sa_old
-    {
-    };
-    struct sigaction sa_new
-    {
-    };
+    struct sigaction sa_old{};
+    struct sigaction sa_new{};
 
     sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
     sigemptyset(&sa_new.sa_mask);
@@ -1443,7 +1449,7 @@ void PF_CollectDataApp::CollectStreamingData()
 
     ProcessStreamedData(&PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
 
-}  // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
+} // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
 
 void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_mutex,
                                             std::queue<std::string> *streamed_data)
@@ -1541,7 +1547,7 @@ void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_m
         std::rethrow_exception(ep);
     }
 
-}  // -----  end of method PF_CollectDataApp::ProcessEodhdStreamedData  -----
+} // -----  end of method PF_CollectDataApp::ProcessEodhdStreamedData  -----
 
 void PF_CollectDataApp::ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update)
 {
@@ -1567,8 +1573,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data 
     rng::for_each(
         charts_ |
             vws::filter([&update](const auto &symbol_and_chart) { return symbol_and_chart.first == update.ticker_; }),
-        [this, &need_to_update_graph, &update, &new_signal](auto &symbol_and_chart)
-        {
+        [this, &need_to_update_graph, &update, &new_signal](auto &symbol_and_chart) {
             try
             {
                 auto chart_changed = symbol_and_chart.second.AddValue(
@@ -1621,7 +1626,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data 
 
     fs::path summary_graphic_path = output_graphs_directory_ / "PF_StreamingSummary.svg";
     ConstructCDSummaryGraphic(streamed_summary_, summary_graphic_path);
-}  // -----  end of method PF_CollectDataApp::ProcessUpdatesForEodhdSymbol  -----
+} // -----  end of method PF_CollectDataApp::ProcessUpdatesForEodhdSymbol  -----
 
 void PF_CollectDataApp::CollectStreamedData(const RemoteDataSource::PF_Data &update, PF_SignalType new_signal)
 {
@@ -1661,7 +1666,7 @@ void PF_CollectDataApp::CollectStreamedData(const RemoteDataSource::PF_Data &upd
 
     streamed_summary_[update.ticker_].latest_price_ = dec2dbl(update.last_price_);
 
-}  // -----  end of method PF_CollectDataApp::CollectEodhdStreamedData  -----
+} // -----  end of method PF_CollectDataApp::CollectEodhdStreamedData  -----
 
 std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 {
@@ -1687,7 +1692,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
         const auto [first, last] = rng::remove_if(exchange_list_, dont_use);
         exchange_list_.erase(first, last);
     }
-    spdlog::debug(fmt::format("exchanges for scan: {}\n", exchange_list_));
+    spdlog::debug("exchanges for scan: {}\n", exchange_list_);
 
     // our data from the DB is grouped by symbol so we split it into sub-ranges
     // by symbol below.
@@ -1728,12 +1733,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                 bool chart_needs_update = false;
                 try
                 {
-                    rng::for_each(symbol_rng,
-                                  [&chart, &chart_needs_update](const auto &row)
-                                  {
-                                      auto status = chart.AddValue(row.close_, row.date_);
-                                      chart_needs_update |= status == PF_Column::Status::e_Accepted ? 1 : 0;
-                                  });
+                    rng::for_each(symbol_rng, [&chart, &chart_needs_update](const auto &row) {
+                        auto status = chart.AddValue(row.close_, row.date_);
+                        chart_needs_update |= status == PF_Column::Status::e_Accepted ? 1 : 0;
+                    });
                     if (chart_needs_update)
                     {
                         // we are only doing EOD charts in this routine.
@@ -1744,10 +1747,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
                 }
                 catch (const std::exception &e)
                 {
-                    spdlog::error(
-                        std::format("Unable to update data for chart: {} from DB because: "
-                                    "{}.",
-                                    chart.MakeChartFileName(interval_i_, ""), e.what()));
+                    spdlog::error(std::format("Unable to update data for chart: {} from DB because: "
+                                              "{}.",
+                                              chart.MakeChartFileName(interval_i_, ""), e.what()));
                 }
             }
         }
@@ -1755,10 +1757,10 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
         total_symbols_processed += exchange_symbols_processed;
         total_charts_processed += exchange_charts_processed;
         total_charts_updated += exchange_charts_updated;
-        spdlog::info(
-            std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts updated: "
-                        "{}.",
-                        xchng, exchange_symbols_processed, exchange_charts_processed, exchange_charts_updated));
+        spdlog::info(std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts updated: "
+                                 "{}.",
+                                 xchng, exchange_symbols_processed, exchange_charts_processed,
+                                 exchange_charts_updated));
 
         pf_db.UpdateLastCheckedDateInChartsDB(xchng, end_date_);
     }
@@ -1771,10 +1773,9 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     const auto [ups3, downs3] = CountChartTrendsUnanimousUpAndDown();
 
-    spdlog::info(
-        std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
-                    "{}.",
-                    total_symbols_processed, total_charts_processed, total_charts_updated));
+    spdlog::info(std::format("Total symbols: {}. Total charts scanned: {}. Total charts updated: "
+                             "{}.",
+                             total_symbols_processed, total_charts_processed, total_charts_updated));
 
     spdlog::info(std::format("Reversals. Up: {}. Down: {}. Net reversals: {}: {}.", ups1, downs1,
                              (ups1 - downs1 > 0 ? "UP" : "DOWN"), std::abs(ups1 - downs1)));
@@ -1785,7 +1786,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 
-}  // -----  end of method PF_CollectDataApp::Run_DailyScan  -----
+} // -----  end of method PF_CollectDataApp::Run_DailyScan  -----
 
 std::pair<int, int> PF_CollectDataApp::CountChartReversalsUpAndDown() const
 {
@@ -1802,7 +1803,7 @@ std::pair<int, int> PF_CollectDataApp::CountChartReversalsUpAndDown() const
     auto charts_down = trxn.query_value<int>(query_down);
     // trxn.commit();
     return std::make_pair(charts_up, charts_down);
-}  // -----  end of method PF_CollectDataApp::CountChartsUpAndDown  -----
+} // -----  end of method PF_CollectDataApp::CountChartsUpAndDown  -----
 
 std::pair<int, int> PF_CollectDataApp::CountChartTrendsContinueUpAndDown() const
 {
@@ -1819,7 +1820,7 @@ std::pair<int, int> PF_CollectDataApp::CountChartTrendsContinueUpAndDown() const
     auto charts_down = trxn.query_value<int>(query_down);
     // trxn.commit();
     return std::make_pair(charts_up, charts_down);
-}  // -----  end of method PF_CollectDataApp::CountChartTrendsContinueUpAndDown----
+} // -----  end of method PF_CollectDataApp::CountChartTrendsContinueUpAndDown----
 
 std::pair<int, int> PF_CollectDataApp::CountChartTrendsUnanimousUpAndDown() const
 {
@@ -1836,7 +1837,7 @@ std::pair<int, int> PF_CollectDataApp::CountChartTrendsUnanimousUpAndDown() cons
     auto charts_down = trxn.query_value<int>(query_down);
     // trxn.commit();
     return std::make_pair(charts_up, charts_down);
-}  // -----  end of method PF_CollectDataApp::CountChartTrendsUnanimousUpAndDown----
+} // -----  end of method PF_CollectDataApp::CountChartTrendsUnanimousUpAndDown----
 
 void PF_CollectDataApp::Shutdown()
 {
@@ -1853,7 +1854,10 @@ void PF_CollectDataApp::Shutdown()
 
     spdlog::info(std::format("\n\n*** End run {}  ***\n",
                              std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
-}  // -----  end of method PF_CollectDataApp::Shutdown  -----
+
+    std::this_thread::sleep_for(std::chrono::seconds(2)); // Give time for async processing
+
+} // -----  end of method PF_CollectDataApp::Shutdown  -----
 
 void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
 {
@@ -1895,7 +1899,7 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
                 e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "")));
         }
     }
-}  // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInFiles  -----
+} // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInFiles  -----
 
 void PF_CollectDataApp::ShutdownAndStoreOutputInDB()
 {
@@ -1913,23 +1917,22 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInDB()
                     (new_data_source_ == Source::e_streaming ? streamed_prices_[chart.GetSymbol()] : StreamedPrices{}),
                     trend_lines_, interval_ != Interval::e_eod ? X_AxisFormat::e_show_time : X_AxisFormat::e_show_date);
             }
-            chart.StoreChartInChartsDB(
-                pf_db, interval_i_,
-                interval_ != Interval::e_eod ? X_AxisFormat::e_show_time : X_AxisFormat::e_show_date,
-                graphics_format_ == GraphicsFormat::e_csv);
+            chart.StoreChartInChartsDB(pf_db, interval_i_,
+                                       interval_ != Interval::e_eod ? X_AxisFormat::e_show_time
+                                                                    : X_AxisFormat::e_show_date,
+                                       graphics_format_ == GraphicsFormat::e_csv);
             ++chart_count;
         }
         catch (const std::exception &e)
         {
-            spdlog::error(
-                std::format("Problem storing data in DB in shutdown: {} for chart: "
-                            "{}.\nTrying to complete shutdown.",
-                            e.what(), chart.MakeChartFileName(interval_i_, "")));
+            spdlog::error(std::format("Problem storing data in DB in shutdown: {} for chart: "
+                                      "{}.\nTrying to complete shutdown.",
+                                      e.what(), chart.MakeChartFileName(interval_i_, "")));
         }
     }
     spdlog::info(std::format("Stored {} charts in DB.", chart_count));
 
-}  // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInDB  -----
+} // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInDB  -----
 
 void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
 {
@@ -1956,7 +1959,7 @@ void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
             break;
         }
     }
-}  // -----  end of method PF_CollectDataApp::WaitForTimer  -----
+} // -----  end of method PF_CollectDataApp::WaitForTimer  -----
 
 void PF_CollectDataApp::HandleSignal(int signal)
 
