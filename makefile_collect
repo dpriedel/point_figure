@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.87_gcc-14
-GCCDIR := /extra/gcc/gcc-14
+BOOSTDIR := /extra/boost/boost-1.88_gcc-15
+GCCDIR := /extra/gcc/gcc-15
 GTESTDIR := /usr/local/include
 UTILITYDIR := ${HOME}/projects/PF_Project/common_utilities
 CPP := $(GCCDIR)/bin/g++
