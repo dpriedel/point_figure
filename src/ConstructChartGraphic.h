@@ -79,16 +79,16 @@ struct Signals_2
 //                                        const std::string& show_trend_lines, X_AxisFormat
 //                                        date_or_time=X_AxisFormat::e_show_date);
 
-void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
-                                             const StreamedPrices& streamed_prices, const std::string& show_trend_lines,
+void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart &the_chart, const fs::path &output_filename,
+                                             const StreamedPrices &streamed_prices, const std::string &show_trend_lines,
                                              X_AxisFormat date_or_time = X_AxisFormat::e_show_date);
 
-void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1& data_arrays, size_t skipped_columns,
-                                           std::unique_ptr<XYChart>& the_graphic);
+void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart &the_chart, Signals_1 &data_arrays, size_t skipped_columns,
+                                           std::unique_ptr<XYChart> &the_graphic);
 
-void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& data_arrays, size_t skipped_price_cols,
-                                        const StreamedPrices& streamed_prices, std::unique_ptr<XYChart>& the_graphic);
+void ConstructCDPricesGraphicAddSignals(const PF_Chart &the_chart, Signals_2 &data_arrays, size_t skipped_price_cols,
+                                        const StreamedPrices &streamed_prices, std::unique_ptr<XYChart> &the_graphic);
 
-void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const fs::path& output_filename);
+void ConstructCDSummaryGraphic(const PF_StreamedSummary &streamed_summary, const fs::path &output_filename);
 
-#endif  // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  -----
+#endif // ----- #ifndef _CONSTRUCTCHARTGRAPHIC_INC_  -----

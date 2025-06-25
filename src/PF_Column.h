@@ -56,7 +56,7 @@ class PF_Column
 {
     friend class PF_Chart;
 
-   public:
+public:
     enum class Direction : int32_t
     {
         e_Unknown,
@@ -81,28 +81,58 @@ class PF_Column
     // ====================  LIFECYCLE     =======================================
 
     PF_Column() = default;
-    PF_Column(const PF_Column& rhs) = default;
-    PF_Column(PF_Column&& rhs) = default;
+    PF_Column(const PF_Column &rhs) = default;
+    PF_Column(PF_Column &&rhs) = default;
 
-    PF_Column(Boxes* boxes, int32_t column_number, int32_t reversal_boxes, Direction direction = Direction::e_Unknown,
+    PF_Column(Boxes *boxes, int32_t column_number, int32_t reversal_boxes, Direction direction = Direction::e_Unknown,
               decimal::Decimal top = -1, decimal::Decimal bottom = -1);
 
-    PF_Column(Boxes* boxes, const Json::Value& new_data);
+    PF_Column(Boxes *boxes, const Json::Value &new_data);
 
     ~PF_Column() = default;
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] bool IsEmpty() const { return top_ == -1 && bottom_ == -1; }
-    [[nodiscard]] decimal::Decimal GetTop() const { return top_; }
-    [[nodiscard]] decimal::Decimal GetBottom() const { return bottom_; }
-    [[nodiscard]] double GetTopAsDbl() const { return dec2dbl(top_); };
-    [[nodiscard]] double GetBottomAsDbl() const { return dec2dbl(bottom_); };
-    [[nodiscard]] Direction GetDirection() const { return direction_; }
-    [[nodiscard]] int32_t GetColumnNumber() const { return column_number_; }
-    [[nodiscard]] int GetReversalboxes() const { return reversal_boxes_; }
-    [[nodiscard]] bool GetHadReversal() const { return had_reversal_; }
-    [[nodiscard]] TimeSpan GetTimeSpan() const { return time_span_; }
+    [[nodiscard]] bool IsEmpty() const
+    {
+        return top_ == -1 && bottom_ == -1;
+    }
+    [[nodiscard]] decimal::Decimal GetTop() const
+    {
+        return top_;
+    }
+    [[nodiscard]] decimal::Decimal GetBottom() const
+    {
+        return bottom_;
+    }
+    [[nodiscard]] double GetTopAsDbl() const
+    {
+        return dec2dbl(top_);
+    };
+    [[nodiscard]] double GetBottomAsDbl() const
+    {
+        return dec2dbl(bottom_);
+    };
+    [[nodiscard]] Direction GetDirection() const
+    {
+        return direction_;
+    }
+    [[nodiscard]] int32_t GetColumnNumber() const
+    {
+        return column_number_;
+    }
+    [[nodiscard]] int GetReversalboxes() const
+    {
+        return reversal_boxes_;
+    }
+    [[nodiscard]] bool GetHadReversal() const
+    {
+        return had_reversal_;
+    }
+    [[nodiscard]] TimeSpan GetTimeSpan() const
+    {
+        return time_span_;
+    }
 
     // we return an actual list of the boxes rather than
     // a range in case the underlying Boxes list is modified
@@ -114,40 +144,43 @@ class PF_Column
 
     // ====================  MUTATORS      =======================================
 
-    [[nodiscard]] AddResult AddValue(const decimal::Decimal& new_value, TmPt the_time);
+    [[nodiscard]] AddResult AddValue(const decimal::Decimal &new_value, TmPt the_time);
     [[nodiscard]] AddResult AddValue(std::string_view new_value, std::string_view the_time);
 
     // ====================  OPERATORS     =======================================
 
-    PF_Column& operator=(const PF_Column& rhs) = default;
-    PF_Column& operator=(PF_Column&& rhs) = default;
+    PF_Column &operator=(const PF_Column &rhs) = default;
+    PF_Column &operator=(PF_Column &&rhs) = default;
 
     // NOTE: time_span_ is excluded from equality comparison so it can be used
     // when looking for patterns over time.
 
-    bool operator==(const PF_Column& rhs) const;
-    bool operator!=(const PF_Column& rhs) const { return !operator==(rhs); };
+    bool operator==(const PF_Column &rhs) const;
+    bool operator!=(const PF_Column &rhs) const
+    {
+        return !operator==(rhs);
+    };
 
-   protected:
+protected:
     // make reversed column here because we know everything needed to do so.
 
-    PF_Column MakeReversalColumn(Direction direction, const decimal::Decimal& value, TmPt the_time);
+    PF_Column MakeReversalColumn(Direction direction, const decimal::Decimal &value, TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
-    void FromJSON(const Json::Value& new_data);
+private:
+    void FromJSON(const Json::Value &new_data);
 
-    [[nodiscard]] AddResult StartColumn(const decimal::Decimal& new_value, TmPt the_time);
-    [[nodiscard]] AddResult TryToFindDirection(const decimal::Decimal& new_value, TmPt the_time);
-    [[nodiscard]] AddResult TryToExtendUp(const decimal::Decimal& new_value, TmPt the_time);
-    [[nodiscard]] AddResult TryToExtendDown(const decimal::Decimal& new_value, TmPt the_time);
+    [[nodiscard]] AddResult StartColumn(const decimal::Decimal &new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToFindDirection(const decimal::Decimal &new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToExtendUp(const decimal::Decimal &new_value, TmPt the_time);
+    [[nodiscard]] AddResult TryToExtendDown(const decimal::Decimal &new_value, TmPt the_time);
 
     // ====================  DATA MEMBERS  =======================================
 
     TimeSpan time_span_;
 
-    Boxes* boxes_ = nullptr;
+    Boxes *boxes_ = nullptr;
 
     int32_t column_number_ = -1;
     int32_t reversal_boxes_ = -1;
@@ -158,7 +191,7 @@ class PF_Column
     // for 1-box, can have both up and down in same column
     bool had_reversal_ = false;
 
-};  // -----  end of class PF_Column  -----
+}; // -----  end of class PF_Column  -----
 
 //
 //	stream inserter
@@ -166,11 +199,10 @@ class PF_Column
 
 // custom fmtlib formatter for Direction
 
-template <>
-struct std::formatter<PF_Column::Direction> : std::formatter<std::string>
+template <> struct std::formatter<PF_Column::Direction> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Column::Direction& direction, std::format_context& ctx) const
+    auto format(const PF_Column::Direction &direction, std::format_context &ctx) const
     {
         std::string s;
         switch (direction)
@@ -194,11 +226,10 @@ struct std::formatter<PF_Column::Direction> : std::formatter<std::string>
 
 // custom fmtlib formatter for Status
 
-template <>
-struct std::formatter<PF_Column::Status> : std::formatter<std::string>
+template <> struct std::formatter<PF_Column::Status> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Column::Status& status, std::format_context& ctx) const
+    auto format(const PF_Column::Status &status, std::format_context &ctx) const
     {
         std::string s;
         switch (status)
@@ -238,11 +269,10 @@ struct std::formatter<PF_Column::Status> : std::formatter<std::string>
 // 	return os;
 // }
 //
-template <>
-struct std::formatter<PF_Column> : std::formatter<std::string>
+template <> struct std::formatter<PF_Column> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const PF_Column& column, std::format_context& ctx) const
+    auto format(const PF_Column &column, std::format_context &ctx) const
     {
         std::string s;
         std::format_to(std::back_inserter(s),
@@ -255,11 +285,11 @@ struct std::formatter<PF_Column> : std::formatter<std::string>
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const PF_Column& column)
+inline std::ostream &operator<<(std::ostream &os, const PF_Column &column)
 {
     std::format_to(std::ostream_iterator<char>{os}, "{}", column);
 
     return os;
 }
 
-#endif  // ----- #ifndef P_F_COLUMN_INC_  -----
+#endif // ----- #ifndef P_F_COLUMN_INC_  -----

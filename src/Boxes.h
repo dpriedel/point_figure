@@ -60,82 +60,109 @@ enum class BoxScale : int32_t
 // =====================================================================================
 class Boxes
 {
-   public:
+public:
     using Box = decimal::Decimal;
-    using BoxList = std::deque<Box>;  // use a deque so we can add at either end
+    using BoxList = std::deque<Box>; // use a deque so we can add at either end
 
-    static constexpr std::size_t kMaxBoxes = 1000;  // too many boxes and everything becomes too slow
+    static constexpr std::size_t kMaxBoxes = 1000; // too many boxes and everything becomes too slow
     static constexpr int64_t kMinExponent = -5;
 
     // ====================  LIFECYCLE     =======================================
-    Boxes() = default;  // constructor
-    Boxes(const Boxes& rhs) = default;
-    Boxes(Boxes&& rhs) noexcept = default;
+    Boxes() = default; // constructor
+    Boxes(const Boxes &rhs) = default;
+    Boxes(Boxes &&rhs) noexcept = default;
 
     explicit Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier = 0,
                    BoxScale box_scale = BoxScale::e_Linear);
     explicit Boxes(double base_box_size, double box_size_modifier = 0.0, BoxScale box_scale = BoxScale::e_Linear)
-        : Boxes(dbl2dec(base_box_size), dbl2dec(box_size_modifier), box_scale){};
+        : Boxes(dbl2dec(base_box_size), dbl2dec(box_size_modifier), box_scale) {};
 
-    explicit Boxes(const Json::Value& new_data);
+    explicit Boxes(const Json::Value &new_data);
 
     ~Boxes() = default;
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] decimal::Decimal GetBoxSize() const { return runtime_box_size_; }
-    [[nodiscard]] BoxType GetBoxType() const { return box_type_; }
-    [[nodiscard]] BoxScale GetBoxScale() const { return box_scale_; }
-    [[nodiscard]] decimal::Decimal GetScaleUpFactor() const { return percent_box_factor_up_; }
-    [[nodiscard]] decimal::Decimal GetScaleDownFactor() const { return percent_box_factor_down_; }
-    [[nodiscard]] int64_t GetExponent() const { return percent_exponent_; }
-    [[nodiscard]] size_t GetHowMany() const { return boxes_.size(); }
+    [[nodiscard]] decimal::Decimal GetBoxSize() const
+    {
+        return runtime_box_size_;
+    }
+    [[nodiscard]] BoxType GetBoxType() const
+    {
+        return box_type_;
+    }
+    [[nodiscard]] BoxScale GetBoxScale() const
+    {
+        return box_scale_;
+    }
+    [[nodiscard]] decimal::Decimal GetScaleUpFactor() const
+    {
+        return percent_box_factor_up_;
+    }
+    [[nodiscard]] decimal::Decimal GetScaleDownFactor() const
+    {
+        return percent_box_factor_down_;
+    }
+    [[nodiscard]] int64_t GetExponent() const
+    {
+        return percent_exponent_;
+    }
+    [[nodiscard]] size_t GetHowMany() const
+    {
+        return boxes_.size();
+    }
 
-    [[nodiscard]] const BoxList& GetBoxList() const { return boxes_; }
+    [[nodiscard]] const BoxList &GetBoxList() const
+    {
+        return boxes_;
+    }
 
     [[nodiscard]] Json::Value ToJSON() const;
 
-    [[nodiscard]] size_t Distance(const Box& from, const Box& to) const;
+    [[nodiscard]] size_t Distance(const Box &from, const Box &to) const;
 
     // ====================  MUTATORS      =======================================
 
-    Box FindBox(const decimal::Decimal& new_value);
-    Box FindNextBox(const decimal::Decimal& current_value);
-    Box FindPrevBox(const decimal::Decimal& current_value);
+    Box FindBox(const decimal::Decimal &new_value);
+    Box FindNextBox(const decimal::Decimal &current_value);
+    Box FindPrevBox(const decimal::Decimal &current_value);
 
     // we have some lookup-only uses
 
-    [[nodiscard]] Box FindNextBox(const decimal::Decimal& current_value) const;
-    [[nodiscard]] Box FindPrevBox(const decimal::Decimal& current_value) const;
+    [[nodiscard]] Box FindNextBox(const decimal::Decimal &current_value) const;
+    [[nodiscard]] Box FindPrevBox(const decimal::Decimal &current_value) const;
 
     // ====================  OPERATORS     =======================================
 
-    bool operator==(const Boxes& rhs) const;
-    bool operator!=(const Boxes& rhs) const { return !operator==(rhs); }
+    bool operator==(const Boxes &rhs) const;
+    bool operator!=(const Boxes &rhs) const
+    {
+        return !operator==(rhs);
+    }
 
-    Boxes& operator=(const Json::Value& new_data);
+    Boxes &operator=(const Json::Value &new_data);
 
-    Boxes& operator=(const Boxes& rhs) = default;
-    Boxes& operator=(Boxes&& rhs) = default;
+    Boxes &operator=(const Boxes &rhs) = default;
+    Boxes &operator=(Boxes &&rhs) = default;
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
-    void FromJSON(const Json::Value& new_data);
+    void FromJSON(const Json::Value &new_data);
 
-    Box FirstBox(const decimal::Decimal& start_at);
-    Box FirstBoxPerCent(const decimal::Decimal& start_at);
-    Box FindBoxPercent(const decimal::Decimal& new_value);
-    Box FindNextBoxPercent(const decimal::Decimal& current_value);
-    [[nodiscard]] Box FindNextBoxPercent(const decimal::Decimal& current_value) const;
-    Box FindPrevBoxPercent(const decimal::Decimal& current_value);
-    [[nodiscard]] Box FindPrevBoxPercent(const decimal::Decimal& current_value) const;
-    [[nodiscard]] Box RoundDownToNearestBox(const decimal::Decimal& a_value) const;
+    Box FirstBox(const decimal::Decimal &start_at);
+    Box FirstBoxPerCent(const decimal::Decimal &start_at);
+    Box FindBoxPercent(const decimal::Decimal &new_value);
+    Box FindNextBoxPercent(const decimal::Decimal &current_value);
+    [[nodiscard]] Box FindNextBoxPercent(const decimal::Decimal &current_value) const;
+    Box FindPrevBoxPercent(const decimal::Decimal &current_value);
+    [[nodiscard]] Box FindPrevBoxPercent(const decimal::Decimal &current_value) const;
+    [[nodiscard]] Box RoundDownToNearestBox(const decimal::Decimal &a_value) const;
 
     // these functions implement our max number of boxes limit
 
@@ -144,7 +171,7 @@ class Boxes
 
     // ====================  DATA MEMBERS  =======================================
 
-    Box k_min_box_size_{".01"};  // This is arbitrary since stocks can trade in fractions of a penny
+    Box k_min_box_size_{".01"}; // This is arbitrary since stocks can trade in fractions of a penny
 
     BoxList boxes_;
 
@@ -155,18 +182,17 @@ class Boxes
     decimal::Decimal percent_box_factor_down_ = -1;
 
     int64_t percent_exponent_ = 0;
-    BoxType box_type_ = BoxType::e_Integral;  // whether to drop fractional part of new values.
+    BoxType box_type_ = BoxType::e_Integral; // whether to drop fractional part of new values.
     BoxScale box_scale_ = BoxScale::e_Linear;
 
-};  // -----  end of class Boxes  -----
+}; // -----  end of class Boxes  -----
 
 // custom fmtlib formatter for BoxType
 
-template <>
-struct std::formatter<BoxType> : std::formatter<std::string>
+template <> struct std::formatter<BoxType> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const BoxType& box_type, std::format_context& ctx) const
+    auto format(const BoxType &box_type, std::format_context &ctx) const
     {
         std::string s;
         std::format_to(std::back_inserter(s), "{}", (box_type == BoxType::e_Integral ? "integral" : "fractional"));
@@ -176,11 +202,10 @@ struct std::formatter<BoxType> : std::formatter<std::string>
 
 // custom fmtlib formatter for BoxScale
 
-template <>
-struct std::formatter<BoxScale> : std::formatter<std::string>
+template <> struct std::formatter<BoxScale> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const BoxScale& box_scale, std::format_context& ctx) const
+    auto format(const BoxScale &box_scale, std::format_context &ctx) const
     {
         std::string s;
         std::format_to(std::back_inserter(s), "{}", (box_scale == BoxScale::e_Linear ? "linear" : "percent"));
@@ -202,11 +227,10 @@ struct std::formatter<BoxScale> : std::formatter<std::string>
 // 	return os;
 // }
 //
-template <>
-struct std::formatter<Boxes> : std::formatter<std::string>
+template <> struct std::formatter<Boxes> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const Boxes& boxes, std::format_context& ctx) const
+    auto format(const Boxes &boxes, std::format_context &ctx) const
     {
         std::string s;
         std::format_to(std::back_inserter(s),
@@ -216,7 +240,7 @@ struct std::formatter<Boxes> : std::formatter<std::string>
                        boxes.GetScaleDownFactor().format("f"), boxes.GetExponent(), boxes.GetBoxType(),
                        boxes.GetBoxScale());
         std::format_to(std::back_inserter(s), "{}", "[");
-        for (auto i = boxes.GetBoxList().size(); const auto& box : boxes.GetBoxList())
+        for (auto i = boxes.GetBoxList().size(); const auto &box : boxes.GetBoxList())
         {
             std::format_to(std::back_inserter(s), "{}{}", box.format("f"), (--i > 0 ? ", " : ""));
         }
@@ -225,12 +249,12 @@ struct std::formatter<Boxes> : std::formatter<std::string>
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Boxes& boxes)
+inline std::ostream &operator<<(std::ostream &os, const Boxes &boxes)
 {
     std::format_to(std::ostream_iterator<char>{os}, "{}", boxes);
 
     return os;
 }
 
-#endif  // ----- #ifndef BOXES_INC  -----
-        //
+#endif // ----- #ifndef BOXES_INC  -----
+       //

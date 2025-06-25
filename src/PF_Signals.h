@@ -36,12 +36,12 @@ enum class PF_SignalCategory : int32_t
     e_unknown,
     e_PF_Buy,
     e_PF_Sell
-};  // NOLINT
+}; // NOLINT
 enum class PF_CanUse1BoxReversal : int32_t
 {
     e_Yes,
     e_No
-};  // NOLINT
+}; // NOLINT
 
 // NOLINTBEGIN(readability-identifier-naming.*)
 enum class PF_SignalType : int32_t
@@ -244,8 +244,7 @@ std::optional<PF_Signal> LookForNewSignal(const PF_Chart &the_chart, const decim
 
 // custom formatter
 
-template <>
-struct std::formatter<PF_SignalType> : std::formatter<std::string>
+template <> struct std::formatter<PF_SignalType> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
     auto format(const PF_SignalType &signal_type, std::format_context &ctx) const
@@ -296,8 +295,7 @@ struct std::formatter<PF_SignalType> : std::formatter<std::string>
     }
 };
 
-template <>
-struct std::formatter<PF_Signal> : std::formatter<std::string>
+template <> struct std::formatter<PF_Signal> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
     auto format(const PF_Signal &signal, std::format_context &ctx) const
@@ -319,4 +317,4 @@ struct std::formatter<PF_Signal> : std::formatter<std::string>
 };
 // NOLINTEND(readability-identifier-naming.*)
 
-#endif  // ----- #ifndef PF_SIGNALS_INC  -----
+#endif // ----- #ifndef PF_SIGNALS_INC  -----

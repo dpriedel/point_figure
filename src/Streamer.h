@@ -33,11 +33,11 @@
 
 // #pragma GCC diagnostic pop
 
-namespace beast = boost::beast;          // from <boost/beast.hpp>
-namespace websocket = beast::websocket;  // from <boost/beast/websocket.hpp>
-namespace net = boost::asio;             // from <boost/asio.hpp>
-namespace ssl = boost::asio::ssl;        // from <boost/asio/ssl.hpp>
-using tcp = boost::asio::ip::tcp;        // from <boost/asio/ip/tcp.hpp>
+namespace beast = boost::beast;         // from <boost/beast.hpp>
+namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
+namespace net = boost::asio;            // from <boost/asio.hpp>
+namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
+using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 #include "Uniqueifier.h"
 #include "utilities.h"
@@ -49,7 +49,7 @@ using tcp = boost::asio::ip::tcp;        // from <boost/asio/ip/tcp.hpp>
 
 class RemoteDataSource
 {
-   public:
+public:
     // use this as exception class to flag specific streaming error
     // so we can catch it
 
@@ -81,56 +81,56 @@ class RemoteDataSource
     struct PF_Data
     {
         std::string subscription_id_;
-        std::string ticker_;                              // Ticker
-        std::string time_stamp_;                          // Date
-        UTC_TmPt_NanoSecs time_stamp_nanoseconds_utc_{};  // time_stamp
-        decimal::Decimal last_price_{-1};                 // Last Price
-        int32_t last_size_{-1};                           // Last Size
+        std::string ticker_;                             // Ticker
+        std::string time_stamp_;                         // Date
+        UTC_TmPt_NanoSecs time_stamp_nanoseconds_utc_{}; // time_stamp
+        decimal::Decimal last_price_{-1};                // Last Price
+        int32_t last_size_{-1};                          // Last Size
         bool dark_pool_{false};
         EodMktStatus market_status_{EodMktStatus::e_unknown};
     };
 
     // ====================  LIFECYCLE     =======================================
 
-    RemoteDataSource();  // constructor
+    RemoteDataSource(); // constructor
 
     virtual ~RemoteDataSource();
 
-    RemoteDataSource(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
+    RemoteDataSource(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix);
 
-    RemoteDataSource(const RemoteDataSource& rhs) = delete;
-    RemoteDataSource(RemoteDataSource&& rhs) = delete;
+    RemoteDataSource(const RemoteDataSource &rhs) = delete;
+    RemoteDataSource(RemoteDataSource &&rhs) = delete;
 
     // ====================  ACCESSORS     =======================================
 
-    std::string RequestData(const std::string& request_string);
+    std::string RequestData(const std::string &request_string);
 
     virtual TopOfBookList GetTopOfBookAndLastClose() = 0;
-    virtual std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
+    virtual std::vector<StockDataRecord> GetMostRecentTickerData(const std::string &symbol,
                                                                  std::chrono::year_month_day start_from,
                                                                  int how_many_previous, UseAdjusted use_adjusted,
-                                                                 const US_MarketHolidays* holidays) = 0;
-    virtual PF_Data ExtractStreamedData(const std::string& buffer) = 0;
+                                                                 const US_MarketHolidays *holidays) = 0;
+    virtual PF_Data ExtractStreamedData(const std::string &buffer) = 0;
 
     // ====================  MUTATORS      =======================================
 
     void ConnectWS();
     void DisconnectWS();
-    void StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data);
+    void StreamData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
 
     virtual void StartStreaming() = 0;
     virtual void StopStreaming() = 0;
 
     // for streaming or other data retrievals
 
-    void UseSymbols(const std::vector<std::string>& symbols);
+    void UseSymbols(const std::vector<std::string> &symbols);
 
     // ====================  OPERATORS     =======================================
 
-    RemoteDataSource& operator=(const RemoteDataSource& rhs) = delete;
-    RemoteDataSource& operator=(RemoteDataSource&& rhs) = delete;
+    RemoteDataSource &operator=(const RemoteDataSource &rhs) = delete;
+    RemoteDataSource &operator=(RemoteDataSource &&rhs) = delete;
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
@@ -148,18 +148,17 @@ class RemoteDataSource
     std::string api_key;
     std::string websocket_prefix;
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-};  // ----------  end of template class Streamer  ----------
+}; // ----------  end of template class Streamer  ----------
 
-template <>
-struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
+template <> struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
-    auto format(const RemoteDataSource::PF_Data& pdata, std::format_context& ctx) const
+    auto format(const RemoteDataSource::PF_Data &pdata, std::format_context &ctx) const
     {
         std::string record;
         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_,
@@ -168,11 +167,11 @@ struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const RemoteDataSource::PF_Data pf_data)
+inline std::ostream &operator<<(std::ostream &os, const RemoteDataSource::PF_Data pf_data)
 {
     std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_
               << " time:" << pf_data.time_stamp_;
     return os;
 }
 
-#endif  // ----- #ifndef _STREAMER_INC_  -----
+#endif // ----- #ifndef _STREAMER_INC_  -----

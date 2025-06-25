@@ -51,10 +51,8 @@ namespace rng = std::ranges;
 // to that base.
 //
 Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier, BoxScale box_scale)
-    : base_box_size_{std::move(base_box_size)},
-      box_size_modifier_{std::move(box_size_modifier)},
-      box_type_{BoxType::e_Fractional},
-      box_scale_{box_scale}
+    : base_box_size_{std::move(base_box_size)}, box_size_modifier_{std::move(box_size_modifier)},
+      box_type_{BoxType::e_Fractional}, box_scale_{box_scale}
 {
     BOOST_ASSERT_MSG(base_box_size_ != decimal::Decimal{0}, "Base box size can not be zero.");
 
@@ -108,19 +106,19 @@ Boxes::Boxes(decimal::Decimal base_box_size, decimal::Decimal box_size_modifier,
         box_type_ = BoxType::e_Integral;
     }
 
-}  // -----  end of method Boxes::Boxes  (constructor)  -----
+} // -----  end of method Boxes::Boxes  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  Boxes
 //      Method:  Boxes
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-Boxes::Boxes(const Json::Value& new_data)
+Boxes::Boxes(const Json::Value &new_data)
 {
     this->FromJSON(new_data);
-}  // -----  end of method Boxes::Boxes  (constructor)  -----
+} // -----  end of method Boxes::Boxes  (constructor)  -----
 
-size_t Boxes::Distance(const Box& from, const Box& to) const
+size_t Boxes::Distance(const Box &from, const Box &to) const
 {
     if (from == to)
     {
@@ -137,9 +135,9 @@ size_t Boxes::Distance(const Box& from, const Box& to) const
         return rng::distance(x, y);
     }
     return rng::distance(y, x);
-}  // -----  end of method Boxes::Distance  -----
+} // -----  end of method Boxes::Distance  -----
 
-Boxes::Box Boxes::FindBox(const decimal::Decimal& new_value)
+Boxes::Box Boxes::FindBox(const decimal::Decimal &new_value)
 {
     if (boxes_.empty())
     {
@@ -151,7 +149,7 @@ Boxes::Box Boxes::FindBox(const decimal::Decimal& new_value)
         return FindBoxPercent(new_value);
     }
 
-    auto box_finder = [&new_value](const auto& a, const auto& b) { return new_value >= a && new_value < b; };
+    auto box_finder = [&new_value](const auto &a, const auto &b) { return new_value >= a && new_value < b; };
 
     // this code will not match against the last value in the list
 
@@ -192,11 +190,11 @@ Boxes::Box Boxes::FindBox(const decimal::Decimal& new_value)
     };
 
     return boxes_.front();
-}  // -----  end of method Boxes::FindBox  -----
+} // -----  end of method Boxes::FindBox  -----
 
-Boxes::Box Boxes::FindBoxPercent(const decimal::Decimal& new_value)
+Boxes::Box Boxes::FindBoxPercent(const decimal::Decimal &new_value)
 {
-    auto box_finder = [&new_value](const auto& a, const auto& b) { return new_value >= a && new_value < b; };
+    auto box_finder = [&new_value](const auto &a, const auto &b) { return new_value >= a && new_value < b; };
 
     // this code will not match against the last value in the list
 
@@ -247,9 +245,9 @@ Boxes::Box Boxes::FindBoxPercent(const decimal::Decimal& new_value)
     };
 
     return boxes_.front();
-}  // -----  end of method Boxes::FindBox  -----
+} // -----  end of method Boxes::FindBox  -----
 
-Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value)
+Boxes::Box Boxes::FindNextBox(const decimal::Decimal &current_value)
 {
     BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(),
                      std::format("Current value: {} is not contained in boxes.", current_value.format("f")).c_str());
@@ -259,8 +257,9 @@ Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value)
         return FindNextBoxPercent(current_value);
     }
 
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     // this code will not match against the last value in the list
     // which is OK since that means there will be no next box and the
@@ -288,9 +287,9 @@ Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value)
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
-}  // -----  end of method Boxes::FindNextBox  -----
+} // -----  end of method Boxes::FindNextBox  -----
 
-Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value) const
+Boxes::Box Boxes::FindNextBox(const decimal::Decimal &current_value) const
 {
     BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(),
                      std::format("Current value: {} is not contained in boxes.", current_value.format("f")).c_str());
@@ -300,8 +299,9 @@ Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value) const
         return FindNextBoxPercent(current_value);
     }
 
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     // this code will not match against the last value in the list
     // which is OK since that means there will be no next box and the
@@ -313,12 +313,13 @@ Boxes::Box Boxes::FindNextBox(const decimal::Decimal& current_value) const
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
-}  // -----  end of method Boxes::FindNextBox  -----
+} // -----  end of method Boxes::FindNextBox  -----
 
-Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal& current_value)
+Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal &current_value)
 {
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     // this code will not match against the last value in the list
     // which is OK since that means there will be no next box and the
@@ -356,12 +357,13 @@ Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal& current_value)
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
-}  // -----  end of method Boxes::FindNextBoxPercent  -----
+} // -----  end of method Boxes::FindNextBoxPercent  -----
 
-Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal& current_value) const
+Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal &current_value) const
 {
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     // this code will not match against the last value in the list
     // which is OK since that means there will be no next box and the
@@ -373,9 +375,9 @@ Boxes::Box Boxes::FindNextBoxPercent(const decimal::Decimal& current_value) cons
 
     size_t box_index = rng::distance(boxes_.begin(), found_it);
     return boxes_.at(box_index + 1);
-}  // -----  end of method Boxes::FindNextBoxPercent  -----
+} // -----  end of method Boxes::FindNextBoxPercent  -----
 
-Boxes::Box Boxes::FindPrevBox(const decimal::Decimal& current_value)
+Boxes::Box Boxes::FindPrevBox(const decimal::Decimal &current_value)
 {
     BOOST_ASSERT_MSG(current_value >= boxes_.front() && current_value <= boxes_.back(),
                      std::format("Current value: {} is not contained in boxes.", current_value.format("f")).c_str());
@@ -394,8 +396,9 @@ Boxes::Box Boxes::FindPrevBox(const decimal::Decimal& current_value)
 
     // this code will not match against the last value in the list
 
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     if (found_it == boxes_.end())
@@ -414,9 +417,9 @@ Boxes::Box Boxes::FindPrevBox(const decimal::Decimal& current_value)
         return boxes_.front();
     }
     return boxes_.at(box_index - 1);
-}  // -----  end of method Boxes::FindPrevBox  -----
+} // -----  end of method Boxes::FindPrevBox  -----
 
-Boxes::Box Boxes::FindPrevBox(const decimal::Decimal& current_value) const
+Boxes::Box Boxes::FindPrevBox(const decimal::Decimal &current_value) const
 {
     BOOST_ASSERT_MSG(
         current_value > boxes_.front() && current_value <= boxes_.back(),
@@ -429,8 +432,9 @@ Boxes::Box Boxes::FindPrevBox(const decimal::Decimal& current_value) const
 
     // this code will not match against the last value in the list
 
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     if (found_it == boxes_.end())
@@ -445,9 +449,9 @@ Boxes::Box Boxes::FindPrevBox(const decimal::Decimal& current_value) const
     BOOST_ASSERT_MSG(box_index > 0,
                      std::format("Lookup-only box search failed for: {}", current_value.format("f")).c_str());
     return boxes_.at(box_index - 1);
-}  // -----  end of method Boxes::FindPrevBox  -----
+} // -----  end of method Boxes::FindPrevBox  -----
 
-Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal& current_value)
+Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal &current_value)
 {
     if (boxes_.size() == 1)
     {
@@ -463,8 +467,9 @@ Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal& current_value)
 
     // this code will not match against the last value in the list
 
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     if (found_it == boxes_.end())
@@ -488,14 +493,15 @@ Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal& current_value)
         return boxes_.front();
     }
     return boxes_.at(box_index - 1);
-}  // -----  end of method Boxes::FindNextBoxPercent  -----
+} // -----  end of method Boxes::FindNextBoxPercent  -----
 
-Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal& current_value) const
+Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal &current_value) const
 {
     // this code will not match against the last value in the list
 
-    auto box_finder = [&current_value](const auto& a, const auto& b)
-    { return current_value >= a && current_value < b; };
+    auto box_finder = [&current_value](const auto &a, const auto &b) {
+        return current_value >= a && current_value < b;
+    };
 
     auto found_it = rng::adjacent_find(boxes_, box_finder);
     if (found_it == boxes_.end())
@@ -510,15 +516,15 @@ Boxes::Box Boxes::FindPrevBoxPercent(const decimal::Decimal& current_value) cons
     BOOST_ASSERT_MSG(box_index > 0,
                      std::format("Lookup-only box search failed for: {}", current_value.format("f")).c_str());
     return boxes_.at(box_index - 1);
-}  // -----  end of method Boxes::FindNextBoxPercent  -----
+} // -----  end of method Boxes::FindNextBoxPercent  -----
 
-Boxes& Boxes::operator=(const Json::Value& new_data)
+Boxes &Boxes::operator=(const Json::Value &new_data)
 {
     this->FromJSON(new_data);
     return *this;
-}  // -----  end of method Boxes::operator=  -----
+} // -----  end of method Boxes::operator=  -----
 
-bool Boxes::operator==(const Boxes& rhs) const
+bool Boxes::operator==(const Boxes &rhs) const
 {
     if (rhs.base_box_size_ != base_box_size_)
     {
@@ -534,9 +540,9 @@ bool Boxes::operator==(const Boxes& rhs) const
         return false;
     }
     return rhs.boxes_ == boxes_;
-}  // -----  end of method Boxes::operator==  -----
+} // -----  end of method Boxes::operator==  -----
 
-Boxes::Box Boxes::FirstBox(const decimal::Decimal& start_at)
+Boxes::Box Boxes::FirstBox(const decimal::Decimal &start_at)
 {
     BOOST_ASSERT_MSG(base_box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
@@ -566,9 +572,9 @@ Boxes::Box Boxes::FirstBox(const decimal::Decimal& start_at)
 
     return new_box;
 
-}  // -----  end of method Boxes::NewBox  -----
+} // -----  end of method Boxes::NewBox  -----
 
-Boxes::Box Boxes::FirstBoxPerCent(const decimal::Decimal& start_at)
+Boxes::Box Boxes::FirstBoxPerCent(const decimal::Decimal &start_at)
 {
     BOOST_ASSERT_MSG(base_box_size_ != -1, "'box_size' must be specified before adding boxes_.");
 
@@ -578,9 +584,9 @@ Boxes::Box Boxes::FirstBoxPerCent(const decimal::Decimal& start_at)
     PushBack(new_box);
     return new_box;
 
-}  // -----  end of method Boxes::NewBox  -----
+} // -----  end of method Boxes::NewBox  -----
 
-Boxes::Box Boxes::RoundDownToNearestBox(const decimal::Decimal& a_value) const
+Boxes::Box Boxes::RoundDownToNearestBox(const decimal::Decimal &a_value) const
 {
     decimal::Decimal price_as_int;
     if (box_type_ == BoxType::e_Integral)
@@ -595,7 +601,7 @@ Boxes::Box Boxes::RoundDownToNearestBox(const decimal::Decimal& a_value) const
     Box result = price_as_int.divmod(base_box_size_).first * base_box_size_;
     return result;
 
-}  // -----  end of method PF_Column::RoundDowntoNearestBox  -----
+} // -----  end of method PF_Column::RoundDowntoNearestBox  -----
 
 Json::Value Boxes::ToJSON() const
 {
@@ -631,16 +637,16 @@ Json::Value Boxes::ToJSON() const
     };
 
     Json::Value the_boxes{Json::arrayValue};
-    for (const auto& box : boxes_)
+    for (const auto &box : boxes_)
     {
         the_boxes.append(box.format("f"));
     }
     result["boxes"] = the_boxes;
 
     return result;
-}  // -----  end of method Boxes::FromJSON  -----
+} // -----  end of method Boxes::FromJSON  -----
 
-void Boxes::FromJSON(const Json::Value& new_data)
+void Boxes::FromJSON(const Json::Value &new_data)
 {
     base_box_size_ = decimal::Decimal{new_data["box_size"].asCString()};
     box_size_modifier_ = decimal::Decimal{new_data["box_size_modifier"].asCString()};
@@ -681,15 +687,15 @@ void Boxes::FromJSON(const Json::Value& new_data)
 
     // lastly, we can do our boxes
 
-    const auto& the_boxes = new_data["boxes"];
+    const auto &the_boxes = new_data["boxes"];
     boxes_.clear();
-    rng::for_each(the_boxes, [this](const auto& next_box) { this->boxes_.emplace_back(next_box.asCString()); });
+    rng::for_each(the_boxes, [this](const auto &next_box) { this->boxes_.emplace_back(next_box.asCString()); });
 
     // we expect these values to be in ascending order, so let'ts make sure
 
     auto x = rng::adjacent_find(boxes_, rng::greater());
     BOOST_ASSERT_MSG(x == boxes_.end(), "boxes must be in ascending order and it isn't.");
-}  // -----  end of method Boxes::FromJSON  -----
+} // -----  end of method Boxes::FromJSON  -----
 
 void Boxes::PushFront(Box new_box)
 {
@@ -701,7 +707,7 @@ void Boxes::PushFront(Box new_box)
             .c_str());
     boxes_.insert(boxes_.begin(), std::move(new_box));
 
-}  // -----  end of method Boxes::PushFront  -----
+} // -----  end of method Boxes::PushFront  -----
 
 void Boxes::PushBack(Box new_box)
 {
@@ -713,4 +719,4 @@ void Boxes::PushBack(Box new_box)
                     boxes_[kMaxBoxes - 2].format("f"), boxes_[kMaxBoxes - 1].format("f"))
             .c_str());
     boxes_.push_back(std::move(new_box));
-}  // -----  end of method Boxes::PushBack  -----
+} // -----  end of method Boxes::PushBack  -----

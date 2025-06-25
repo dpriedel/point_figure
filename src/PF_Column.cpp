@@ -50,49 +50,45 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-PF_Column::PF_Column(Boxes* boxes, int32_t column_number, int32_t reversal_boxes, Direction direction,
+PF_Column::PF_Column(Boxes *boxes, int32_t column_number, int32_t reversal_boxes, Direction direction,
                      decimal::Decimal top, decimal::Decimal bottom)
-    : boxes_{boxes},
-      column_number_{column_number},
-      reversal_boxes_{reversal_boxes},
-      top_{top},
-      bottom_{bottom},
+    : boxes_{boxes}, column_number_{column_number}, reversal_boxes_{reversal_boxes}, top_{top}, bottom_{bottom},
       direction_{direction}
 {
-}  // -----  end of method PF_Column::PF_Column  (constructor)  -----
+} // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_Column
 //      Method:  PF_Column
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_Column::PF_Column(Boxes* boxes, const Json::Value& new_data) : boxes_{boxes}
+PF_Column::PF_Column(Boxes *boxes, const Json::Value &new_data) : boxes_{boxes}
 {
     try
     {
         bool x = new_data.isMember("direction");
     }
-    catch (Json::Exception& e)
+    catch (Json::Exception &e)
     {
         throw std::domain_error{"Expected actual JSON data. Got something else."};
     }
     this->FromJSON(new_data);
-}  // -----  end of method PF_Column::PF_Column  (constructor)  -----
+} // -----  end of method PF_Column::PF_Column  (constructor)  -----
 
-PF_Column PF_Column::MakeReversalColumn(Direction direction, const decimal::Decimal& value, TmPt the_time)
+PF_Column PF_Column::MakeReversalColumn(Direction direction, const decimal::Decimal &value, TmPt the_time)
 {
     auto new_column = PF_Column{boxes_, column_number_ + 1, reversal_boxes_, direction, value, value};
     new_column.time_span_ = {the_time, the_time};
     return new_column;
-}  // -----  end of method PF_Column::MakeReversalColumn  -----
+} // -----  end of method PF_Column::MakeReversalColumn  -----
 
-bool PF_Column::operator==(const PF_Column& rhs) const
+bool PF_Column::operator==(const PF_Column &rhs) const
 {
     return rhs.reversal_boxes_ == reversal_boxes_ && rhs.direction_ == direction_ && rhs.top_ == top_ &&
            rhs.bottom_ == bottom_ && rhs.had_reversal_ == had_reversal_;
-}  // -----  end of method PF_Column::operator==  -----
+} // -----  end of method PF_Column::operator==  -----
 
-PF_Column::AddResult PF_Column::AddValue(const decimal::Decimal& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::AddValue(const decimal::Decimal &new_value, TmPt the_time)
 {
     if (IsEmpty())
     {
@@ -118,9 +114,9 @@ PF_Column::AddResult PF_Column::AddValue(const decimal::Decimal& new_value, TmPt
         return TryToExtendUp(new_value, the_time);
     }
     return TryToExtendDown(new_value, the_time);
-}  // -----  end of method PF_Column::AddValue  -----
+} // -----  end of method PF_Column::AddValue  -----
 
-PF_Column::AddResult PF_Column::StartColumn(const decimal::Decimal& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::StartColumn(const decimal::Decimal &new_value, TmPt the_time)
 {
     // As this is the first entry in the column, just set fields
     // to the input value rounded down to the nearest box value.
@@ -130,9 +126,9 @@ PF_Column::AddResult PF_Column::StartColumn(const decimal::Decimal& new_value, T
     time_span_ = {the_time, the_time};
 
     return {Status::e_Accepted, std::nullopt};
-}  // -----  end of method PF_Column::StartColumn  -----
+} // -----  end of method PF_Column::StartColumn  -----
 
-PF_Column::AddResult PF_Column::TryToFindDirection(const decimal::Decimal& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::TryToFindDirection(const decimal::Decimal &new_value, TmPt the_time)
 {
     // NOTE: Since a new value may gap up or down, we could
     // have multiple boxes to fill in.
@@ -158,9 +154,9 @@ PF_Column::AddResult PF_Column::TryToFindDirection(const decimal::Decimal& new_v
     }
 
     return {Status::e_Ignored, std::nullopt};
-}  // -----  end of method PF_Column::TryToFindDirection  -----
+} // -----  end of method PF_Column::TryToFindDirection  -----
 
-PF_Column::AddResult PF_Column::TryToExtendUp(const decimal::Decimal& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::TryToExtendUp(const decimal::Decimal &new_value, TmPt the_time)
 {
     // if we are going to extend the column up, then we need to move up by at least 1 box.
 
@@ -198,7 +194,7 @@ PF_Column::AddResult PF_Column::TryToExtendUp(const decimal::Decimal& new_value,
             {
                 // OK, down we go with in-column reversal...
 
-                bottom_ = possible_new_column_top;  // from loop above
+                bottom_ = possible_new_column_top; // from loop above
                 had_reversal_ = true;
                 direction_ = Direction::e_Down;
                 time_span_.second = the_time;
@@ -210,9 +206,9 @@ PF_Column::AddResult PF_Column::TryToExtendUp(const decimal::Decimal& new_value,
         return {Status::e_Reversal, MakeReversalColumn(Direction::e_Down, boxes_->FindPrevBox(top_), the_time)};
     }
     return {Status::e_Ignored, std::nullopt};
-}  // -----  end of method PF_Column::TryToExtendUp  -----
+} // -----  end of method PF_Column::TryToExtendUp  -----
 
-PF_Column::AddResult PF_Column::TryToExtendDown(const decimal::Decimal& new_value, TmPt the_time)
+PF_Column::AddResult PF_Column::TryToExtendDown(const decimal::Decimal &new_value, TmPt the_time)
 {
     // if we are going to extend the column down, then we need to move down by at least 1 box.
 
@@ -250,7 +246,7 @@ PF_Column::AddResult PF_Column::TryToExtendDown(const decimal::Decimal& new_valu
             {
                 // OK, up we go with in-column reversal...
 
-                top_ = possible_new_column_bottom;  // from loop above
+                top_ = possible_new_column_bottom; // from loop above
                 had_reversal_ = true;
                 direction_ = Direction::e_Up;
                 time_span_.second = the_time;
@@ -262,24 +258,24 @@ PF_Column::AddResult PF_Column::TryToExtendDown(const decimal::Decimal& new_valu
         return {Status::e_Reversal, MakeReversalColumn(Direction::e_Up, boxes_->FindNextBox(bottom_), the_time)};
     }
     return {Status::e_Ignored, std::nullopt};
-}  // -----  end of method PF_Column::TryToExtendDown  -----
+} // -----  end of method PF_Column::TryToExtendDown  -----
 
 PF_Column::ColumnBoxes PF_Column::GetColumnBoxes() const
 
 {
     ColumnBoxes result;
 
-    const auto& boxes = boxes_->GetBoxList();
-    const auto& first_col_box = std::ranges::find(boxes, bottom_);
+    const auto &boxes = boxes_->GetBoxList();
+    const auto &first_col_box = std::ranges::find(boxes, bottom_);
 
     // need to include the top box so go 1 past it.  May return 'end' if this is
     // highest column in the chart.
-    const auto& last_col_box = std::ranges::find_if(boxes, [this](const auto& e) { return e > top_; });
+    const auto &last_col_box = std::ranges::find_if(boxes, [this](const auto &e) { return e > top_; });
 
-    std::ranges::for_each(first_col_box, last_col_box, [&result](const auto& e) { result.push_back(e); });
+    std::ranges::for_each(first_col_box, last_col_box, [&result](const auto &e) { result.push_back(e); });
 
     return result;
-}  // -----  end of method PF_Column::GetColumnBoxes  -----
+} // -----  end of method PF_Column::GetColumnBoxes  -----
 //
 Json::Value PF_Column::ToJSON() const
 {
@@ -311,9 +307,9 @@ Json::Value PF_Column::ToJSON() const
 
     result["had_reversal"] = had_reversal_;
     return result;
-}  // -----  end of method PF_Column::ToJSON  -----
+} // -----  end of method PF_Column::ToJSON  -----
 
-void PF_Column::FromJSON(const Json::Value& new_data)
+void PF_Column::FromJSON(const Json::Value &new_data)
 {
     time_span_.first = TmPt{std::chrono::nanoseconds{new_data["first_entry"].asInt64()}};
     time_span_.second = TmPt{std::chrono::nanoseconds{new_data["last_entry"].asInt64()}};
@@ -344,4 +340,4 @@ void PF_Column::FromJSON(const Json::Value& new_data)
 
     had_reversal_ = new_data["had_reversal"].asBool();
 
-}  // -----  end of method PF_Column::FromJSON  -----
+} // -----  end of method PF_Column::FromJSON  -----

@@ -28,25 +28,25 @@
 // =====================================================================================
 class Eodhd : public RemoteDataSource
 {
-   public:
+public:
     // ====================  LIFECYCLE     =======================================
 
     Eodhd() = default;
-    Eodhd(const Eodhd& rhs) = delete;
-    Eodhd(Eodhd&& rhs) = delete;
-    Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
+    Eodhd(const Eodhd &rhs) = delete;
+    Eodhd(Eodhd &&rhs) = delete;
+    Eodhd(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix);
 
     ~Eodhd() override = default;
 
     // ====================  ACCESSORS     =======================================
 
     TopOfBookList GetTopOfBookAndLastClose() override;
-    std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
+    std::vector<StockDataRecord> GetMostRecentTickerData(const std::string &symbol,
                                                          std::chrono::year_month_day start_from, int how_many_previous,
                                                          UseAdjusted use_adjusted,
-                                                         const US_MarketHolidays* holidays) override;
+                                                         const US_MarketHolidays *holidays) override;
 
-    PF_Data ExtractStreamedData(const std::string& buffer) override;
+    PF_Data ExtractStreamedData(const std::string &buffer) override;
 
     // ====================  MUTATORS      =======================================
 
@@ -55,10 +55,10 @@ class Eodhd : public RemoteDataSource
 
     // ====================  OPERATORS     =======================================
 
-    Eodhd& operator=(const Eodhd& rhs) = delete;
-    Eodhd& operator=(Eodhd&& rhs) = delete;
+    Eodhd &operator=(const Eodhd &rhs) = delete;
+    Eodhd &operator=(Eodhd &&rhs) = delete;
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     std::string GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
@@ -66,11 +66,11 @@ class Eodhd : public RemoteDataSource
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-};  // -----  end of class Eodhd  -----
+}; // -----  end of class Eodhd  -----
 
-#endif  // ----- #ifndef _EODHD_INC_  -----
+#endif // ----- #ifndef _EODHD_INC_  -----

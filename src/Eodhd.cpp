@@ -32,10 +32,10 @@ namespace vws = std::ranges::views;
 //      Method:  Eodhd
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-Eodhd::Eodhd(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
+Eodhd::Eodhd(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : RemoteDataSource{host, port, api_key, prefix}
 {
-}  // -----  end of method Eodhd::Eodhd  (constructor)  -----
+} // -----  end of method Eodhd::Eodhd  (constructor)  -----
 
 void Eodhd::StartStreaming()
 {
@@ -48,12 +48,10 @@ void Eodhd::StartStreaming()
 
     std::string ticker_list;
     ticker_list = symbol_list.front();
-    rng::for_each(symbol_list | vws::drop(1),
-                  [&ticker_list](const auto& sym)
-                  {
-                      ticker_list += ", ";
-                      ticker_list += sym;
-                  });
+    rng::for_each(symbol_list | vws::drop(1), [&ticker_list](const auto &sym) {
+        ticker_list += ", ";
+        ticker_list += sym;
+    });
 
     // NOTE: format requires '{{' and '}}' escaping for braces which are to be included in format output string.
 
@@ -70,9 +68,9 @@ void Eodhd::StartStreaming()
     std::string buffer_content = beast::buffers_to_string(buffer.cdata());
     BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"),
                      std::format("Failed to get success code. Got: {}", buffer_content).c_str());
-}  // -----  end of method Eodhd::StartStreaming  -----
+} // -----  end of method Eodhd::StartStreaming  -----
 
-Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string& buffer)
+Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string &buffer)
 {
     // response format is 'simple' so we'll use RegExes here too.
 
@@ -99,7 +97,7 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string& buffer)
     static const std::regex kResponseRegex{kResponseString};
 
     std::cmatch fields;
-    const char* response_text = buffer.data();
+    const char *response_text = buffer.data();
 
     PF_Data new_value;
 
@@ -157,7 +155,7 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string& buffer)
     }
 
     return new_value;
-}  // -----  end of method Eodhd::ExtractData  -----
+} // -----  end of method Eodhd::ExtractData  -----
 
 void Eodhd::StopStreaming()
 {
@@ -165,12 +163,10 @@ void Eodhd::StopStreaming()
 
     std::string ticker_list;
     ticker_list = symbol_list.front();
-    rng::for_each(symbol_list | vws::drop(1),
-                  [&ticker_list](const auto& sym)
-                  {
-                      ticker_list += ", ";
-                      ticker_list += sym;
-                  });
+    rng::for_each(symbol_list | vws::drop(1), [&ticker_list](const auto &sym) {
+        ticker_list += ", ";
+        ticker_list += sym;
+    });
 
     const auto unsubscribe_request_str = std::format(R"({{"action": "unsubscribe", "symbols": "{}"}})", ticker_list);
     // std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
@@ -217,7 +213,7 @@ void Eodhd::StopStreaming()
         tmp_ws.close(websocket::close_code::normal);
         //        ws.close(websocket::close_code::normal);
     }
-    catch (std::exception& e)
+    catch (std::exception &e)
     {
         spdlog::error("Problem closing socket after clearing streaming symbols: {}.", e.what());
     }
@@ -226,7 +222,7 @@ void Eodhd::StopStreaming()
 
     // *had_signal = true;
 
-}  // -----  end of method Eodhd::StopStreaming  -----
+} // -----  end of method Eodhd::StopStreaming  -----
 
 Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
 {
@@ -253,7 +249,7 @@ Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
 
     TopOfBookList stock_data;
 
-    for (const auto& symbol : symbol_list)
+    for (const auto &symbol : symbol_list)
     {
         std::string request_string =
             std::format("https://{}/api/real-time/{}.US?api_token={}&fmt=csv", host, symbol, api_key);
@@ -289,12 +285,12 @@ Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
         stock_data.push_back(new_data);
     }
     return stock_data;
-}  // -----  end of method Eodhd::GetTopOfBookAndLastClose  -----
+} // -----  end of method Eodhd::GetTopOfBookAndLastClose  -----
 
-std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& symbol,
+std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string &symbol,
                                                             std::chrono::year_month_day start_from,
                                                             int how_many_previous, UseAdjusted use_adjusted,
-                                                            const US_MarketHolidays* holidays)
+                                                            const US_MarketHolidays *holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method.
 
@@ -327,32 +323,29 @@ std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string& s
 
     const auto rows = split_string<std::string_view>(ticker_data, "\n");
 
-    rng::for_each(rows | vws::drop(1),
-                  [&stock_data, symbol, use_adjusted](const auto row)
-                  {
-                      const auto fields = split_string<std::string_view>(row, ",");
+    rng::for_each(rows | vws::drop(1), [&stock_data, symbol, use_adjusted](const auto row) {
+        const auto fields = split_string<std::string_view>(row, ",");
 
-                      // a few checks to try to catch any changes in response format
+        // a few checks to try to catch any changes in response format
 
-                      BOOST_ASSERT_MSG(fields.size() == 7,
-                                       std::format("Missing 1 or more fields from response: '{}'. Expected 7. Got: {}",
-                                                   row, fields.size())
-                                           .c_str());
+        BOOST_ASSERT_MSG(
+            fields.size() == 7,
+            std::format("Missing 1 or more fields from response: '{}'. Expected 7. Got: {}", row, fields.size())
+                .c_str());
 
-                      StockDataRecord new_data{
-                          .date_ = std::string{fields[e_date]},
-                          .symbol_ = symbol,
-                          .open_ = sv2dec(fields[e_open]),
-                          .high_ = sv2dec(fields[e_high]),
-                          .low_ = sv2dec(fields[e_low]),
-                          .close_ = decimal::Decimal{
-                              sv2dec(use_adjusted == UseAdjusted::e_Yes ? fields[e_adj_close] : fields[e_close])}};
-                      stock_data.push_back(new_data);
-                  });
+        StockDataRecord new_data{.date_ = std::string{fields[e_date]},
+                                 .symbol_ = symbol,
+                                 .open_ = sv2dec(fields[e_open]),
+                                 .high_ = sv2dec(fields[e_high]),
+                                 .low_ = sv2dec(fields[e_low]),
+                                 .close_ = decimal::Decimal{sv2dec(
+                                     use_adjusted == UseAdjusted::e_Yes ? fields[e_adj_close] : fields[e_close])}};
+        stock_data.push_back(new_data);
+    });
 
     return stock_data;
 
-}  // -----  end of method Eodhd::GetMostRecentTickerData  -----
+} // -----  end of method Eodhd::GetMostRecentTickerData  -----
 
 std::string Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                                  std::chrono::year_month_day end_date, UpOrDown sort_asc)
@@ -363,4 +356,4 @@ std::string Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_mont
                     start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key);
 
     return RequestData(request_string);
-}  // -----  end of method Eodhd::GetTickerData  -----
+} // -----  end of method Eodhd::GetTickerData  -----

@@ -34,10 +34,10 @@ using namespace std::chrono_literals;
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-Tiingo::Tiingo(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
+Tiingo::Tiingo(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : RemoteDataSource{host, port, api_key, prefix}
 {
-}  // -----  end of method Tiingo::Tiingo  (constructor)  -----
+} // -----  end of method Tiingo::Tiingo  (constructor)  -----
 
 void Tiingo::StartStreaming()
 {
@@ -51,7 +51,7 @@ void Tiingo::StartStreaming()
     connection_request["authorization"] = api_key;
     connection_request["eventData"]["thresholdLevel"] = 6;
     Json::Value tickers(Json::arrayValue);
-    for (const auto& symbol : symbol_list)
+    for (const auto &symbol : symbol_list)
     {
         tickers.append(symbol);
     }
@@ -59,7 +59,7 @@ void Tiingo::StartStreaming()
     connection_request["eventData"]["tickers"] = tickers;
 
     Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";  // compact printing and string formatting
+    builder["indentation"] = ""; // compact printing and string formatting
     const std::string connection_request_str = Json::writeString(builder, connection_request);
     //    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
 
@@ -94,9 +94,9 @@ void Tiingo::StartStreaming()
     subscription_id_ = response["data"]["subscriptionId"].asString();
 
     // }
-}  // -----  end of method Tiingo::StartStreaming  -----
+} // -----  end of method Tiingo::StartStreaming  -----
 
-Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
+Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
 {
     // std::cout << "\nraw buffer: " << buffer << std::endl;
 
@@ -136,10 +136,10 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
             std::istringstream(new_value.time_stamp_) >>
                 std::chrono::parse("%FT%T%Ez", new_value.time_stamp_nanoseconds_utc_);
             new_value.ticker_ = data[1].asCString();
-            rng::for_each(new_value.ticker_, [](char& c) { c = std::toupper(c); });
+            rng::for_each(new_value.ticker_, [](char &c) { c = std::toupper(c); });
             // std::cout << std::format("{}\n", new_value.time_stamp_nanoseconds_utc_);
             new_value.last_price_ = decimal::Decimal{m[2].str()};
-            new_value.last_size_ = 100;  // not reported by new Tiingo IEX data so just use a standard number
+            new_value.last_size_ = 100; // not reported by new Tiingo IEX data so just use a standard number
         }
     }
     // else if (message_type == "I")
@@ -156,7 +156,7 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string& buffer)
         spdlog::error("unexpected message type.");
     }
     return new_value;
-}  // -----  end of method Tiingo::ExtractData  -----
+} // -----  end of method Tiingo::ExtractData  -----
 
 void Tiingo::StopStreaming()
 {
@@ -167,7 +167,7 @@ void Tiingo::StopStreaming()
     disconnect_request["authorization"] = api_key;
     disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
     Json::Value tickers(Json::arrayValue);
-    for (const auto& symbol : symbol_list)
+    for (const auto &symbol : symbol_list)
     {
         tickers.append(symbol);
     }
@@ -175,7 +175,7 @@ void Tiingo::StopStreaming()
     disconnect_request["eventData"]["tickers"] = tickers;
 
     Json::StreamWriterBuilder builder;
-    builder["indentation"] = "";  // compact printing and string formatting
+    builder["indentation"] = ""; // compact printing and string formatting
     const std::string disconnect_request_str = Json::writeString(builder, disconnect_request);
     //    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
 
@@ -219,7 +219,7 @@ void Tiingo::StopStreaming()
 
         ws.close(websocket::close_code::normal);
     }
-    catch (std::exception& e)
+    catch (std::exception &e)
     {
         spdlog::error(std::format("Problem closing socket after clearing streaming symbols: {}", e.what()));
     }
@@ -228,7 +228,7 @@ void Tiingo::StopStreaming()
 
     //    std::cout << beast::make_printable(buffer.data()) << std::endl;
 
-}  // -----  end of method Tiingo::StopStreaming  -----
+} // -----  end of method Tiingo::StopStreaming  -----
 
 Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
 {
@@ -267,35 +267,33 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
 
     const auto rows = split_string<std::string_view>(data, "\n");
 
-    rng::for_each(rows | vws::drop(1),
-                  [&stock_data](const auto row)
-                  {
-                      const auto fields = split_string<std::string_view>(row, ",");
+    rng::for_each(rows | vws::drop(1), [&stock_data](const auto row) {
+        const auto fields = split_string<std::string_view>(row, ",");
 
-                      // a few checks to try to catch any changes in response format
+        // a few checks to try to catch any changes in response format
 
-                      BOOST_ASSERT_MSG(fields.size() == 17,
-                                       std::format("Missing 1 or more fields from response: '{}'. Expected 17. Got: {}",
-                                                   row, fields.size())
-                                           .c_str());
+        BOOST_ASSERT_MSG(
+            fields.size() == 17,
+            std::format("Missing 1 or more fields from response: '{}'. Expected 17. Got: {}", row, fields.size())
+                .c_str());
 
-                      const auto tstmp = StringToUTCTimePoint("%FT%T%z", fields[e_timestamp]);
+        const auto tstmp = StringToUTCTimePoint("%FT%T%z", fields[e_timestamp]);
 
-                      TopOfBookOpenAndLastClose new_data{.symbol_ = std::string{fields[e_symbol_]},
-                                                         .time_stamp_nsecs_ = tstmp,
-                                                         .open_ = sv2dec(fields[e_open]),
-                                                         .last_ = sv2dec(fields[e_close]),
-                                                         .previous_close_ = sv2dec(fields[e_previous_close])};
+        TopOfBookOpenAndLastClose new_data{.symbol_ = std::string{fields[e_symbol_]},
+                                           .time_stamp_nsecs_ = tstmp,
+                                           .open_ = sv2dec(fields[e_open]),
+                                           .last_ = sv2dec(fields[e_close]),
+                                           .previous_close_ = sv2dec(fields[e_previous_close])};
 
-                      stock_data.push_back(new_data);
-                  });
+        stock_data.push_back(new_data);
+    });
     return stock_data;
-}  // -----  end of method Tiingo::GetTopOfBookAndLastClose  -----
+} // -----  end of method Tiingo::GetTopOfBookAndLastClose  -----
 
-std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& symbol,
+std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string &symbol,
                                                              std::chrono::year_month_day start_from,
                                                              int how_many_previous, UseAdjusted use_adjusted,
-                                                             const US_MarketHolidays* holidays)
+                                                             const US_MarketHolidays *holidays)
 {
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method.
 
@@ -336,43 +334,41 @@ std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string& 
 
     const auto rows = split_string<std::string_view>(ticker_data, "\n");
 
-    rng::for_each(rows | vws::drop(1),
-                  [&stock_data, symbol, use_adjusted](const auto row)
-                  {
-                      const auto fields = split_string<std::string_view>(row, ",");
+    rng::for_each(rows | vws::drop(1), [&stock_data, symbol, use_adjusted](const auto row) {
+        const auto fields = split_string<std::string_view>(row, ",");
 
-                      // a few checks to try to catch any changes in response format
+        // a few checks to try to catch any changes in response format
 
-                      BOOST_ASSERT_MSG(fields.size() == 13,
-                                       std::format("Missing 1 or more fields from response: '{}'. Expected 13. Got: {}",
-                                                   row, fields.size())
-                                           .c_str());
+        BOOST_ASSERT_MSG(
+            fields.size() == 13,
+            std::format("Missing 1 or more fields from response: '{}'. Expected 13. Got: {}", row, fields.size())
+                .c_str());
 
-                      if (use_adjusted == UseAdjusted::e_No)
-                      {
-                          StockDataRecord new_data{.date_ = std::string{fields[e_date]},
-                                                   .symbol_ = symbol,
-                                                   .open_ = sv2dec(fields[e_open]),
-                                                   .high_ = sv2dec(fields[e_high]),
-                                                   .low_ = sv2dec(fields[e_low]),
-                                                   .close_ = sv2dec(fields[e_close])};
-                          stock_data.push_back(new_data);
-                      }
-                      else
-                      {
-                          StockDataRecord new_data{.date_ = std::string{fields[e_date]},
-                                                   .symbol_ = symbol,
-                                                   .open_ = sv2dec(fields[e_adj_open]),
-                                                   .high_ = sv2dec(fields[e_adj_high]),
-                                                   .low_ = sv2dec(fields[e_adj_low]),
-                                                   .close_ = sv2dec(fields[e_adj_close])};
-                          stock_data.push_back(new_data);
-                      }
-                  });
+        if (use_adjusted == UseAdjusted::e_No)
+        {
+            StockDataRecord new_data{.date_ = std::string{fields[e_date]},
+                                     .symbol_ = symbol,
+                                     .open_ = sv2dec(fields[e_open]),
+                                     .high_ = sv2dec(fields[e_high]),
+                                     .low_ = sv2dec(fields[e_low]),
+                                     .close_ = sv2dec(fields[e_close])};
+            stock_data.push_back(new_data);
+        }
+        else
+        {
+            StockDataRecord new_data{.date_ = std::string{fields[e_date]},
+                                     .symbol_ = symbol,
+                                     .open_ = sv2dec(fields[e_adj_open]),
+                                     .high_ = sv2dec(fields[e_adj_high]),
+                                     .low_ = sv2dec(fields[e_adj_low]),
+                                     .close_ = sv2dec(fields[e_adj_close])};
+            stock_data.push_back(new_data);
+        }
+    });
 
     return stock_data;
 
-}  // -----  end of method Tiingo::GetMostRecentTickerData  -----
+} // -----  end of method Tiingo::GetMostRecentTickerData  -----
 
 std::string Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                                   std::chrono::year_month_day end_date, UpOrDown sort_asc)
@@ -385,4 +381,4 @@ std::string Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
 
     return RequestData(request_string);
 
-}  // -----  end of method Tiingo::GetTickerData  -----
+} // -----  end of method Tiingo::GetTickerData  -----

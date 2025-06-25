@@ -29,25 +29,25 @@
 
 class Tiingo : public RemoteDataSource
 {
-   public:
+public:
     // ====================  LIFECYCLE     =======================================
 
     Tiingo() = default;
-    Tiingo(const Tiingo& rhs) = delete;
-    Tiingo(Tiingo&& rhs) = delete;
-    Tiingo(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix);
+    Tiingo(const Tiingo &rhs) = delete;
+    Tiingo(Tiingo &&rhs) = delete;
+    Tiingo(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix);
 
     ~Tiingo() override = default;
 
     // ====================  ACCESSORS     =======================================
 
     TopOfBookList GetTopOfBookAndLastClose() override;
-    std::vector<StockDataRecord> GetMostRecentTickerData(const std::string& symbol,
+    std::vector<StockDataRecord> GetMostRecentTickerData(const std::string &symbol,
                                                          std::chrono::year_month_day start_from, int how_many_previous,
                                                          UseAdjusted use_adjusted,
-                                                         const US_MarketHolidays* holidays) override;
+                                                         const US_MarketHolidays *holidays) override;
 
-    PF_Data ExtractStreamedData(const std::string& buffer) override;
+    PF_Data ExtractStreamedData(const std::string &buffer) override;
 
     // ====================  MUTATORS      =======================================
 
@@ -56,10 +56,10 @@ class Tiingo : public RemoteDataSource
 
     // ====================  OPERATORS     =======================================
 
-    Tiingo& operator=(const Tiingo& rhs) = delete;
-    Tiingo& operator=(Tiingo&& rhs) = delete;
+    Tiingo &operator=(const Tiingo &rhs) = delete;
+    Tiingo &operator=(Tiingo &&rhs) = delete;
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     std::string GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
@@ -67,13 +67,13 @@ class Tiingo : public RemoteDataSource
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
     std::string subscription_id_;
 
-};  // -----  end of class Tiingo  -----
+}; // -----  end of class Tiingo  -----
 
-#endif  // ----- #ifndef _TIINGO_INC_  -----
+#endif // ----- #ifndef _TIINGO_INC_  -----

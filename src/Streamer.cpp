@@ -21,18 +21,13 @@
 namespace rng = std::ranges;
 namespace http = beast::http;
 
-RemoteDataSource::RemoteDataSource()  // constructor
+RemoteDataSource::RemoteDataSource() // constructor
     : ctx{ssl::context::tlsv12_client}, resolver{ioc}, ws{ioc, ctx}
 {
 }
-RemoteDataSource::RemoteDataSource(const Host& host, const Port& port, const APIKey& api_key, const Prefix& prefix)
-    : api_key{api_key.get()},
-      host{host.get()},
-      port{port.get()},
-      websocket_prefix{prefix.get()},
-      ctx{ssl::context::tlsv12_client},
-      resolver{ioc},
-      ws{ioc, ctx}
+RemoteDataSource::RemoteDataSource(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
+    : api_key{api_key.get()}, host{host.get()}, port{port.get()}, websocket_prefix{prefix.get()},
+      ctx{ssl::context::tlsv12_client}, resolver{ioc}, ws{ioc, ctx}
 {
 }
 
@@ -66,9 +61,9 @@ void RemoteDataSource::RemoteDataSource::ConnectWS()
     ws.next_layer().handshake(ssl::stream_base::client);
 
     // Set a decorator to change the User-Agent of the handshake
-    ws.set_option(websocket::stream_base::decorator(
-        [](websocket::request_type& req)
-        { req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro"); }));
+    ws.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
+        req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+    }));
 
     // Perform the websocket handshake
     ws.handshake(tmp_host, websocket_prefix);
@@ -86,12 +81,12 @@ void RemoteDataSource::DisconnectWS()
         // beast::close_socket(get_lowest_layer(ws_));
         ws.close(websocket::close_code::normal);
     }
-    catch (std::exception& e)
+    catch (std::exception &e)
     {
         spdlog::error("Problem closing socket during disconnect: {}.", e.what());
     }
 }
-void RemoteDataSource::StreamData(bool* had_signal, std::mutex* data_mutex, std::queue<std::string>* streamed_data)
+void RemoteDataSource::StreamData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data)
 {
     StartStreaming();
 
@@ -116,7 +111,7 @@ void RemoteDataSource::StreamData(bool* had_signal, std::mutex* data_mutex, std:
                 streamed_data->push(std::move(buffer_content));
             }
         }
-        catch (std::system_error& e)
+        catch (std::system_error &e)
         {
             // any system problems, we close the socket and force our way out.
             // on EOF, just cleanly shutdown. Let higher level code
@@ -134,7 +129,7 @@ void RemoteDataSource::StreamData(bool* had_signal, std::mutex* data_mutex, std:
             *had_signal = true;
             ws.close(websocket::close_code::going_away);
         }
-        catch (std::exception& e)
+        catch (std::exception &e)
         {
             spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
 
@@ -181,16 +176,16 @@ void RemoteDataSource::StreamData(bool* had_signal, std::mutex* data_mutex, std:
 }
 // for streaming or other data retrievals
 
-void RemoteDataSource::UseSymbols(const std::vector<std::string>& symbols)
+void RemoteDataSource::UseSymbols(const std::vector<std::string> &symbols)
 {
     symbol_list = symbols;
 
     // make all the sybolos upper case to be consistent
 
-    rng::for_each(symbol_list, [](auto& symbol) { rng::for_each(symbol, [](char& c) { c = std::toupper(c); }); });
+    rng::for_each(symbol_list, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
 }
 
-std::string RemoteDataSource::RequestData(const std::string& request_string)
+std::string RemoteDataSource::RequestData(const std::string &request_string)
 {
     // if any problems occur here, we'll just let beast throw an exception.
 

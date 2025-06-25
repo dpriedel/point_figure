@@ -42,12 +42,12 @@ namespace vws = std::ranges::views;
 #include "PF_Signals.h"
 
 // NOLINTBEGIN
-constexpr auto RED = 0xFF0000;     // for down columns
-constexpr auto BLACK = 0x000000;   // for down columns
-constexpr auto GREEN = 0x008000;   // for up columns
-constexpr auto YELLOW = 0xFFFF00;  // for up columns
-constexpr auto BLUE = 0x0000FF;    // for reversed to up columns
-constexpr auto ORANGE = 0xFFA500;  // for reversed to down columns
+constexpr auto RED = 0xFF0000;    // for down columns
+constexpr auto BLACK = 0x000000;  // for down columns
+constexpr auto GREEN = 0x008000;  // for up columns
+constexpr auto YELLOW = 0xFFFF00; // for up columns
+constexpr auto BLUE = 0x0000FF;   // for reversed to up columns
+constexpr auto ORANGE = 0xFFA500; // for reversed to down columns
 constexpr auto LITEGRAY = 0xc0c0c0;
 
 // NOLINTEND
@@ -88,9 +88,9 @@ const auto tt_cat_buy_sym = Chart::ArrowShape();
 const auto tb_cat_sell_sym = Chart::ArrowShape(180);
 // NOLINTEND
 
-void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs::path& output_filename,
-                                             const StreamedPrices& streamed_prices,
-                                             const std::string& /*show_trend_lines*/, X_AxisFormat date_or_time)
+void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart &the_chart, const fs::path &output_filename,
+                                             const StreamedPrices &streamed_prices,
+                                             const std::string & /*show_trend_lines*/, X_AxisFormat date_or_time)
 {
     BOOST_ASSERT_MSG(
         !the_chart.empty(),
@@ -134,17 +134,19 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     }
     // next, merge to data for each column type into the layer list
 
-    rng::for_each(up_cols, [&up_layer](const auto& col_info) { up_layer[col_info.col_nbr_] = col_info; });
-    rng::for_each(down_cols, [&down_layer](const auto& col_info) { down_layer[col_info.col_nbr_] = col_info; });
+    rng::for_each(up_cols, [&up_layer](const auto &col_info) { up_layer[col_info.col_nbr_] = col_info; });
+    rng::for_each(down_cols, [&down_layer](const auto &col_info) { down_layer[col_info.col_nbr_] = col_info; });
     if (!rev_to_up_cols.empty())
     {
-        rng::for_each(rev_to_up_cols, [&reversed_to_up_layer](const auto& col_info)
-                      { reversed_to_up_layer[col_info.col_nbr_] = col_info; });
+        rng::for_each(rev_to_up_cols, [&reversed_to_up_layer](const auto &col_info) {
+            reversed_to_up_layer[col_info.col_nbr_] = col_info;
+        });
     }
     if (!rev_to_down_cols.empty())
     {
-        rng::for_each(rev_to_down_cols, [&reversed_to_down_layer](const auto& col_info)
-                      { reversed_to_down_layer[col_info.col_nbr_] = col_info; });
+        rng::for_each(rev_to_down_cols, [&reversed_to_down_layer](const auto &col_info) {
+            reversed_to_down_layer[col_info.col_nbr_] = col_info;
+        });
     }
 
     // now, make our data arrays for the graphic software
@@ -155,24 +157,20 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     std::vector<double> up_data_bot;
     up_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
 
-    rng::for_each(up_layer | vws::drop(skipped_columns),
-                  [&up_data_top, &up_data_bot](const auto& col_info)
-                  {
-                      up_data_top.push_back(col_info.col_top_);
-                      up_data_bot.push_back(col_info.col_bot_);
-                  });
+    rng::for_each(up_layer | vws::drop(skipped_columns), [&up_data_top, &up_data_bot](const auto &col_info) {
+        up_data_top.push_back(col_info.col_top_);
+        up_data_bot.push_back(col_info.col_bot_);
+    });
 
     std::vector<double> down_data_top;
     down_data_top.reserve(columns_in_PF_Chart - skipped_columns);
     std::vector<double> down_data_bot;
     down_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
 
-    rng::for_each(down_layer | vws::drop(skipped_columns),
-                  [&down_data_top, &down_data_bot](const auto& col_info)
-                  {
-                      down_data_top.push_back(col_info.col_top_);
-                      down_data_bot.push_back(col_info.col_bot_);
-                  });
+    rng::for_each(down_layer | vws::drop(skipped_columns), [&down_data_top, &down_data_bot](const auto &col_info) {
+        down_data_top.push_back(col_info.col_top_);
+        down_data_bot.push_back(col_info.col_bot_);
+    });
 
     std::vector<double> reversed_to_up_data_top;
     std::vector<double> reversed_to_up_data_bot;
@@ -181,8 +179,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
         reversed_to_up_data_top.reserve(columns_in_PF_Chart - skipped_columns);
         reversed_to_up_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
         rng::for_each(reversed_to_up_layer | vws::drop(skipped_columns),
-                      [&reversed_to_up_data_top, &reversed_to_up_data_bot](const auto& col_info)
-                      {
+                      [&reversed_to_up_data_top, &reversed_to_up_data_bot](const auto &col_info) {
                           reversed_to_up_data_top.push_back(col_info.col_top_);
                           reversed_to_up_data_bot.push_back(col_info.col_bot_);
                       });
@@ -195,8 +192,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
         reversed_to_down_data_top.reserve(columns_in_PF_Chart - skipped_columns);
         reversed_to_down_data_bot.reserve(columns_in_PF_Chart - skipped_columns);
         rng::for_each(reversed_to_down_layer | vws::drop(skipped_columns),
-                      [&reversed_to_down_data_top, &reversed_to_down_data_bot](const auto& col_info)
-                      {
+                      [&reversed_to_down_data_top, &reversed_to_down_data_bot](const auto &col_info) {
                           reversed_to_down_data_top.push_back(col_info.col_top_);
                           reversed_to_down_data_bot.push_back(col_info.col_bot_);
                       });
@@ -204,7 +200,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
 
     // want to show approximate overall change in value (computed from boxes, not actual prices)
 
-    const auto& first_col = the_chart[0];
+    const auto &first_col = the_chart[0];
     decimal::Decimal first_value =
         first_col.GetDirection() == PF_Column::Direction::e_Up ? first_col.GetBottom() : first_col.GetTop();
     // apparently, this can happen
@@ -240,23 +236,21 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     std::vector<std::string> x_axis_labels;
     x_axis_labels.reserve(columns_in_PF_Chart - skipped_columns);
 
-    rng::for_each(the_chart | vws::drop(skipped_columns),
-                  [&x_axis_labels, &date_or_time](const auto& col)
-                  {
-                      if (date_or_time == X_AxisFormat::e_show_date)
-                      {
-                          x_axis_labels.emplace_back(std::format("{:%F}", col.GetTimeSpan().first));
-                      }
-                      else
-                      {
-                          x_axis_labels.emplace_back(UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first));
-                      }
-                  });
+    rng::for_each(the_chart | vws::drop(skipped_columns), [&x_axis_labels, &date_or_time](const auto &col) {
+        if (date_or_time == X_AxisFormat::e_show_date)
+        {
+            x_axis_labels.emplace_back(std::format("{:%F}", col.GetTimeSpan().first));
+        }
+        else
+        {
+            x_axis_labels.emplace_back(UTCTimePointToLocalTZHMSString(col.GetTimeSpan().first));
+        }
+    });
 
-    std::vector<const char*> x_axis_label_data;
+    std::vector<const char *> x_axis_label_data;
     x_axis_label_data.reserve(columns_in_PF_Chart - skipped_columns);
     rng::for_each(x_axis_labels,
-                  [&x_axis_label_data](const auto& label) { x_axis_label_data.push_back(label.c_str()); });
+                  [&x_axis_label_data](const auto &label) { x_axis_label_data.push_back(label.c_str()); });
 
     std::unique_ptr<XYChart> c;
     if (streamed_prices.price_.empty())
@@ -343,7 +337,7 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     // allocate store for prices chart labels.
 
     std::vector<std::string> p_x_axis_labels;
-    std::vector<const char*> p_x_axis_label_data;
+    std::vector<const char *> p_x_axis_label_data;
 
     if (!streamed_prices.price_.empty())
     {
@@ -365,24 +359,23 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
 
         p_x_axis_labels.reserve(streamed_prices.timestamp_seconds_.size() - skipped_price_cols);
 
-        rng::for_each(
-            streamed_prices.timestamp_seconds_ | vws::drop(skipped_price_cols),
-            [&p_x_axis_labels, &date_or_time](const auto& secs)
-            {
-                if (date_or_time == X_AxisFormat::e_show_date)
-                {
-                    p_x_axis_labels.emplace_back(std::format("{:%F}", PF_Column::TmPt{std::chrono::seconds{secs}}));
-                }
-                else
-                {
-                    p_x_axis_labels.emplace_back(
-                        UTCTimePointToLocalTZHMSString(PF_Column::TmPt{std::chrono::seconds{secs}}));
-                }
-            });
+        rng::for_each(streamed_prices.timestamp_seconds_ | vws::drop(skipped_price_cols),
+                      [&p_x_axis_labels, &date_or_time](const auto &secs) {
+                          if (date_or_time == X_AxisFormat::e_show_date)
+                          {
+                              p_x_axis_labels.emplace_back(
+                                  std::format("{:%F}", PF_Column::TmPt{std::chrono::seconds{secs}}));
+                          }
+                          else
+                          {
+                              p_x_axis_labels.emplace_back(
+                                  UTCTimePointToLocalTZHMSString(PF_Column::TmPt{std::chrono::seconds{secs}}));
+                          }
+                      });
 
         p_x_axis_label_data.reserve(p_x_axis_labels.size());
         rng::for_each(p_x_axis_labels,
-                      [&p_x_axis_label_data](const auto& label) { p_x_axis_label_data.push_back(label.c_str()); });
+                      [&p_x_axis_label_data](const auto &label) { p_x_axis_label_data.push_back(label.c_str()); });
 
         p = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight3 * kDpi));
         if (!p)
@@ -444,15 +437,16 @@ void ConstructCDPFChartGraphicAndWriteToFile(const PF_Chart& the_chart, const fs
     m->makeChart(output_filename.c_str());
 }
 
-void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1& data_arrays, size_t skipped_columns,
-                                           std::unique_ptr<XYChart>& the_graphic)
+void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart &the_chart, Signals_1 &data_arrays, size_t skipped_columns,
+                                           std::unique_ptr<XYChart> &the_graphic)
 {
     // we may need to drop some signals.
 
-    auto filter_skipped_cols = the_chart.GetSignals() | vws::filter([skipped_columns](const auto& sig)
-                                                                    { return sig.column_number_ >= skipped_columns; });
+    auto filter_skipped_cols = the_chart.GetSignals() | vws::filter([skipped_columns](const auto &sig) {
+                                   return sig.column_number_ >= skipped_columns;
+                               });
 
-    for (const auto& sig : filter_skipped_cols)
+    for (const auto &sig : filter_skipped_cols)
     {
         switch (sig.signal_type_)
         {
@@ -507,7 +501,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.dt_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.dt_buys_x_.data(), data_arrays.dt_buys_x_.size()),
             DoubleArray(data_arrays.dt_buys_price_.data(), data_arrays.dt_buys_price_.size()), "dt buy", dt_buy_sym,
             k10, YELLOW);
@@ -516,7 +510,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.tt_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tt_buys_x_.data(), data_arrays.tt_buys_x_.size()),
             DoubleArray(data_arrays.tt_buys_price_.data(), data_arrays.tt_buys_price_.size()), "tt buy", tt_buy_sym,
             k10, YELLOW);
@@ -525,7 +519,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.db_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.db_sells_x_.data(), data_arrays.db_sells_x_.size()),
             DoubleArray(data_arrays.db_sells_price_.data(), data_arrays.db_sells_price_.size()), "db sell", db_sell_sym,
             k10, BLACK);
@@ -534,7 +528,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.tb_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
             DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()), "tb sell", tb_sell_sym,
             k10, BLACK);
@@ -543,7 +537,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bullish_tt_buys_x_.data(), data_arrays.bullish_tt_buys_x_.size()),
             DoubleArray(data_arrays.bullish_tt_buys_price_.data(), data_arrays.bullish_tt_buys_price_.size()),
             "bullish tt buy", bullish_tt_buy_sym, k10, YELLOW);
@@ -552,7 +546,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.bearish_tb_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bearish_tb_sells_x_.data(), data_arrays.bearish_tb_sells_x_.size()),
             DoubleArray(data_arrays.bearish_tb_sells_price_.data(), data_arrays.bearish_tb_sells_price_.size()),
             "bearish tb sell", bearish_tb_sell_sym, k10, BLACK);
@@ -561,7 +555,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.cat_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_buys_x_.data(), data_arrays.cat_buys_x_.size()),
             DoubleArray(data_arrays.cat_buys_price_.data(), data_arrays.cat_buys_price_.size()), "cat buy", cat_buy_sym,
             k10, YELLOW);
@@ -570,7 +564,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.cat_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_sells_x_.data(), data_arrays.cat_sells_x_.size()),
             DoubleArray(data_arrays.cat_sells_price_.data(), data_arrays.cat_sells_price_.size()), "cat sell",
             cat_sell_sym, k10, BLACK);
@@ -579,7 +573,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.tt_cat_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tt_cat_buys_x_.data(), data_arrays.tt_cat_buys_x_.size()),
             DoubleArray(data_arrays.tt_cat_buys_price_.data(), data_arrays.tt_cat_buys_price_.size()), "tt cat buy",
             tt_cat_buy_sym, k10, YELLOW);
@@ -588,7 +582,7 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
 
     if (!data_arrays.tb_cat_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_cat_sells_x_.data(), data_arrays.tb_cat_sells_x_.size()),
             DoubleArray(data_arrays.tb_cat_sells_price_.data(), data_arrays.tb_cat_sells_price_.size()), "tb cat sell",
             tb_cat_sell_sym, k10, BLACK);
@@ -596,8 +590,8 @@ void ConstructCDPFChartGraphicAddPFSignals(const PF_Chart& the_chart, Signals_1&
     }
 }
 
-void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& data_arrays, size_t skipped_price_cols,
-                                        const StreamedPrices& streamed_prices, std::unique_ptr<XYChart>& the_graphic)
+void ConstructCDPricesGraphicAddSignals(const PF_Chart &the_chart, Signals_2 &data_arrays, size_t skipped_price_cols,
+                                        const StreamedPrices &streamed_prices, std::unique_ptr<XYChart> &the_graphic)
 {
     for (int32_t ndx = 0 + skipped_price_cols; ndx < streamed_prices.signal_type_.size(); ++ndx)
     {
@@ -654,7 +648,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.dt_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.dt_buys_x_.data(), data_arrays.dt_buys_x_.size()),
             DoubleArray(data_arrays.dt_buys_price_.data(), data_arrays.dt_buys_price_.size()), "dt buy", dt_buy_sym,
             k13, YELLOW);
@@ -663,7 +657,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.tt_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tt_buys_x_.data(), data_arrays.tt_buys_x_.size()),
             DoubleArray(data_arrays.tt_buys_price_.data(), data_arrays.tt_buys_price_.size()), "tt buy", tt_buy_sym,
             k13, YELLOW);
@@ -672,7 +666,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.db_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.db_sells_x_.data(), data_arrays.db_sells_x_.size()),
             DoubleArray(data_arrays.db_sells_price_.data(), data_arrays.db_sells_price_.size()), "db sell", db_sell_sym,
             k13, BLACK);
@@ -681,7 +675,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.tb_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_sells_x_.data(), data_arrays.tb_sells_x_.size()),
             DoubleArray(data_arrays.tb_sells_price_.data(), data_arrays.tb_sells_price_.size()), "tb sell", tb_sell_sym,
             k13, BLACK);
@@ -690,7 +684,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.bullish_tt_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bullish_tt_buys_x_.data(), data_arrays.bullish_tt_buys_x_.size()),
             DoubleArray(data_arrays.bullish_tt_buys_price_.data(), data_arrays.bullish_tt_buys_price_.size()),
             "bullish tt buy", bullish_tt_buy_sym, k13, YELLOW);
@@ -699,7 +693,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.bearish_tb_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.bearish_tb_sells_x_.data(), data_arrays.bearish_tb_sells_x_.size()),
             DoubleArray(data_arrays.bearish_tb_sells_price_.data(), data_arrays.bearish_tb_sells_price_.size()),
             "bearish tb sell", bearish_tb_sell_sym, k13, BLACK);
@@ -708,7 +702,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.cat_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_buys_x_.data(), data_arrays.cat_buys_x_.size()),
             DoubleArray(data_arrays.cat_buys_price_.data(), data_arrays.cat_buys_price_.size()), "cat buy", cat_buy_sym,
             k13, YELLOW);
@@ -717,7 +711,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.cat_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.cat_sells_x_.data(), data_arrays.cat_sells_x_.size()),
             DoubleArray(data_arrays.cat_sells_price_.data(), data_arrays.cat_sells_price_.size()), "cat sell",
             cat_sell_sym, k13, BLACK);
@@ -726,7 +720,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.tt_cat_buys_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tt_cat_buys_x_.data(), data_arrays.tt_cat_buys_x_.size()),
             DoubleArray(data_arrays.tt_cat_buys_price_.data(), data_arrays.tt_cat_buys_price_.size()), "tt cat buy",
             tt_cat_buy_sym, k13, YELLOW);
@@ -735,7 +729,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
 
     if (!data_arrays.tb_cat_sells_price_.empty())
     {
-        auto* the_layer = the_graphic->addScatterLayer(
+        auto *the_layer = the_graphic->addScatterLayer(
             DoubleArray(data_arrays.tb_cat_sells_x_.data(), data_arrays.tb_cat_sells_x_.size()),
             DoubleArray(data_arrays.tb_cat_sells_price_.data(), data_arrays.tb_cat_sells_price_.size()), "tb cat sell",
             tb_cat_sell_sym, k13, BLACK);
@@ -743,7 +737,7 @@ void ConstructCDPricesGraphicAddSignals(const PF_Chart& the_chart, Signals_2& da
     }
 }
 
-void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const fs::path& output_filename)
+void ConstructCDSummaryGraphic(const PF_StreamedSummary &streamed_summary, const fs::path &output_filename)
 {
     // simple floating bar graphic which shows overall price movement for each symbol
 
@@ -758,7 +752,7 @@ void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const
     std::vector<std::string> x_axis_labels;
     x_axis_labels.reserve(streamed_summary.size());
 
-    for (const auto& [symbol, data] : streamed_summary)
+    for (const auto &[symbol, data] : streamed_summary)
     {
         auto delta = (data.latest_price_ - data.opening_price_) / data.opening_price_ * 100.;
         deltas.push_back(delta);
@@ -766,11 +760,11 @@ void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const
         x_axis_labels.push_back(symbol);
     }
 
-    std::vector<const char*> x_axis_label_data;
+    std::vector<const char *> x_axis_label_data;
     x_axis_label_data.reserve(streamed_summary.size());
 
     rng::for_each(x_axis_labels,
-                  [&x_axis_label_data](const auto& label) { x_axis_label_data.push_back(label.c_str()); });
+                  [&x_axis_label_data](const auto &label) { x_axis_label_data.push_back(label.c_str()); });
 
     std::unique_ptr<XYChart> c = std::make_unique<XYChart>((kChartWidth * kDpi), (kChartHeight1 * kDpi));
 
@@ -779,7 +773,7 @@ void ConstructCDSummaryGraphic(const PF_StreamedSummary& streamed_summary, const
 
     c->addTitle("\nShowing percent change for streamed tickers.\n(relative to previous day's close)");
 
-    BarLayer* layer = c->addBarLayer(Chart::Overlay);
+    BarLayer *layer = c->addBarLayer(Chart::Overlay);
 
     // Select positive data and add it as data set with green color
     layer->addDataSet(ArrayMath(DoubleArray(deltas.data(), deltas.size())).selectGEZ(DoubleArray(), Chart::NoValue),
