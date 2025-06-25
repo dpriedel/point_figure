@@ -37,7 +37,7 @@ OUTFILE := PF_CollectData
 
 CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
-	-I$(BOOSTDIR) \
+	-isystem$(BOOSTDIR) \
 	-I/usr/local/include/ChartDirector \
 	-I$(UTILITYDIR)/include # \
 
@@ -61,8 +61,6 @@ VPATH := $(SDIR1):$(SDIR2)
 CFG_LIB := -L../lib_PF_Chart \
 		-lPF_Chart \
 		-L/usr/local/lib \
-		-ldate-tz \
-		-lfmt \
 		-lspdlog \
 		-lpqxx \
 		-lpq \
@@ -95,7 +93,7 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug_collect
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++26 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++26 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -DSHOW_STRACE -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
 CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
 
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
