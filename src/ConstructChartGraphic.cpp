@@ -16,8 +16,8 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <cstddef>
+#include <format>
 #include <memory>
 #include <ranges>
 
@@ -29,8 +29,8 @@ namespace vws = std::ranges::views;
 // #include <pybind11/stl.h>
 #include <spdlog/spdlog.h>
 
-#include <fmt/format.h>
-#include <fmt/ranges.h>
+// #include <fmt/format.h>
+// #include <fmt/ranges.h>
 
 #include <chartdir.h>
 
