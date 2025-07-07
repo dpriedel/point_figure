@@ -85,15 +85,17 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string &buffer)
         e_all = 0,
         e_ticker = 1,
         e_price = 2,
-        e_conditions = 3,
-        e_volume = 4,
-        e_dark_pool = 5,
-        e_mkt_status = 6,
+        e_volume = 3,
+        e_mkt_status = 4,
+        e_conditions = 5,
+        e_dark_pool = 6,
         e_time = 7
     };
 
+    // static const std::string kResponseString{
+    //     R"***(\{"s":"(.*)","p":([.0-9]*),"c":(.*),"v":(.*),"dp":(false|true),"ms":"(open|closed|close|extended-hours)?","t":([.0-9]*)\})***"};
     static const std::string kResponseString{
-        R"***(\{"s":"(.*)","p":([.0-9]*),"c":(.*),"v":(.*),"dp":(false|true),"ms":"(open|closed|close|extended-hours)?","t":([.0-9]*)\})***"};
+        R"***(\{"s":"(.*)","p":([.0-9]*),"v":(.*),"e":(.*),"c":(.*),"dp":(false|true),"t":([.0-9]*)\})***"};
     static const std::regex kResponseRegex{kResponseString};
 
     std::cmatch fields;
