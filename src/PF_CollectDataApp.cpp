@@ -75,7 +75,8 @@ bool PF_CollectDataApp::had_signal_ = false;
 
 // code from "The C++ Programming Language" 4th Edition. p. 1243.
 
-template <typename T> int wait_for_any(std::vector<std::future<T>> &vf, std::chrono::steady_clock::duration d)
+template <typename T>
+int wait_for_any(std::vector<std::future<T>> &vf, std::chrono::steady_clock::duration d)
 // return index of ready future
 // if no future is ready, wait for d before trying again
 {
@@ -141,8 +142,6 @@ void PF_CollectDataApp::ConfigureLogging()
 {
     // this logging code comes from gemini
 
-    spdlog::init_thread_pool(8192, 1);
-
     if (!log_file_path_name_.empty())
     {
         fs::path log_dir = log_file_path_name_.parent_path();
@@ -153,26 +152,19 @@ void PF_CollectDataApp::ConfigureLogging()
 
         auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_, true);
 
-        auto async_logger = std::make_shared<spdlog::async_logger>(
-            "PF_Collect_logger",
-            spdlog::sinks_init_list{file_sink},
-            spdlog::thread_pool(),
-            spdlog::async_overflow_policy::block // Or spdlog::async_overflow_policy::discard_log_msg
-        );
+        auto app_logger = std::make_shared<spdlog::logger>("PF_Collect_logger", file_sink);
 
-        spdlog::set_default_logger(async_logger);
+        spdlog::set_default_logger(app_logger);
     }
     else
     {
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
         // 3. Create an asynchronous logger using the console sink.
-        auto async_logger = std::make_shared<spdlog::async_logger>("PF_Collect_logger", // Name for the console logger
-                                                                   spdlog::sinks_init_list{console_sink},
-                                                                   spdlog::thread_pool(),
-                                                                   spdlog::async_overflow_policy::block);
+        auto app_logger = std::make_shared<spdlog::logger>("PF_Collect_logger", // Name for the console logger
+                                                           console_sink);
 
-        spdlog::set_default_logger(async_logger);
+        spdlog::set_default_logger(app_logger);
     }
 
     // we are running before 'CheckArgs' so we need to do a little editiing
