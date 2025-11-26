@@ -86,7 +86,7 @@ void RemoteDataSource::DisconnectWS()
         spdlog::error("Problem closing socket during disconnect: {}.", e.what());
     }
 }
-void RemoteDataSource::StreamData(bool *had_signal, StreamerContext *streamer_context)
+void RemoteDataSource::StreamData(bool *had_signal, StreamerContext &streamer_context)
 {
     StartStreaming();
 
@@ -108,10 +108,10 @@ void RemoteDataSource::StreamData(bool *had_signal, StreamerContext *streamer_co
                 // ExtractData(buffer_content);
                 // open a new context to manage the lock
                 {
-                    std::lock_guard<std::mutex> queue_lock(streamer_context->mtx_);
-                    streamer_context->streamed_data_.push(std::move(buffer_content));
+                    std::lock_guard<std::mutex> queue_lock(streamer_context.mtx_);
+                    streamer_context.streamed_data_.push(std::move(buffer_content));
                 }
-                streamer_context->cv_.notify_one(); // tell extractor 'you've got mail'
+                streamer_context.cv_.notify_one(); // tell extractor 'you've got mail'
             }
         }
         catch (std::system_error &e)
@@ -168,10 +168,10 @@ void RemoteDataSource::StreamData(bool *had_signal, StreamerContext *streamer_co
         {
             // open a new context to manage the lock
             {
-                std::lock_guard<std::mutex> queue_lock(streamer_context->mtx_);
-                streamer_context->streamed_data_.push(std::move(buffer_content));
+                std::lock_guard<std::mutex> queue_lock(streamer_context.mtx_);
+                streamer_context.streamed_data_.push(std::move(buffer_content));
             }
-            streamer_context->cv_.notify_one(); // tell extractor 'you've got mail'
+            streamer_context.cv_.notify_one(); // tell extractor 'you've got mail'
         }
     }
     // if the websocket is closed on the server side or there is a timeout which in turn

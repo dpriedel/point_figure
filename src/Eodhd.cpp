@@ -171,15 +171,15 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string &buffer)
     return new_value;
 } // -----  end of method Eodhd::ExtractData  -----
 
-void Eodhd::StopStreaming(StreamerContext *streamer_context)
+void Eodhd::StopStreaming(StreamerContext &streamer_context)
 {
     // tell our extractor code we are really done
 
     {
-        std::lock_guard<std::mutex> lock(streamer_context->mtx_);
-        streamer_context->done_ = true;
+        std::lock_guard<std::mutex> lock(streamer_context.mtx_);
+        streamer_context.done_ = true;
     }
-    streamer_context->cv_.notify_one();
+    streamer_context.cv_.notify_one();
 
     // we need to send the unsubscribe message in a separate connection.
 

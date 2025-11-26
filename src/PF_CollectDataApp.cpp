@@ -1388,7 +1388,7 @@ void PF_CollectDataApp::CollectStreamingData()
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
     auto processing_task =
-        std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &streamer_context);
+        std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, std::ref(streamer_context));
     while (!had_signal_)
     {
         try
@@ -1411,7 +1411,7 @@ void PF_CollectDataApp::CollectStreamingData()
             streaming->UseSymbols(symbol_list_);
 
             auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, streaming.get(),
-                                             &PF_CollectDataApp::had_signal_, &streamer_context);
+                                             &PF_CollectDataApp::had_signal_, std::ref(streamer_context));
             streaming_task.get();
         }
         catch (RemoteDataSource::StreamingEOF &e)
@@ -1447,11 +1447,11 @@ void PF_CollectDataApp::CollectStreamingData()
     std::cout << "got here after timer expired" << std::endl;
     // make a last check to be sure we  didn't leave any data unprocessed
 
-    ProcessStreamedData(&streamer_context);
+    ProcessStreamedData(std::ref(streamer_context));
 
 } // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
 
-void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext *streamer_context)
+void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext &streamer_context)
 {
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
@@ -1472,24 +1472,24 @@ void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext *s
     while (true)
     {
 
-        std::unique_lock<std::mutex> lock(streamer_context->mtx_);
+        std::unique_lock<std::mutex> lock(streamer_context.mtx_);
 
         // 1. Wait for data OR completion
         // The lambda is the "predicate". The wait only returns if
         // the predicate is true. This handles "spurious wakeups".
-        streamer_context->cv_.wait(
-            lock, [streamer_context] { return !streamer_context->streamed_data_.empty() || streamer_context->done_; });
+        streamer_context.cv_.wait(
+            lock, [&streamer_context] { return !streamer_context.streamed_data_.empty() || streamer_context.done_; });
 
         // 2. Check if we are done and the queue is empty
-        if (streamer_context->done_ && streamer_context->streamed_data_.empty())
+        if (streamer_context.done_ && streamer_context.streamed_data_.empty())
         {
             // std::println("Consumer: Work complete.");
             break;
         }
 
         // 3. Process data
-        std::string new_data = streamer_context->streamed_data_.front();
-        streamer_context->streamed_data_.pop();
+        std::string new_data = streamer_context.streamed_data_.front();
+        streamer_context.streamed_data_.pop();
 
         // Unlock manually before processing if processing is heavy
         // to allow the producer to push more data meanwhile.
@@ -1543,7 +1543,7 @@ void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext *s
             }
             continue;
         }
-        if (streamer_context->streamed_data_.empty())
+        if (streamer_context.streamed_data_.empty())
         {
             break;
         }

@@ -126,10 +126,10 @@ public:
 
     void ConnectWS();
     void DisconnectWS();
-    void StreamData(bool *had_signal, StreamerContext *streamer_context);
+    void StreamData(bool *had_signal, StreamerContext &streamer_context);
 
     virtual void StartStreaming() = 0;
-    virtual void StopStreaming(StreamerContext *streamer_context) = 0;
+    virtual void StopStreaming(StreamerContext &streamer_context) = 0;
 
     // for streaming or other data retrievals
 
