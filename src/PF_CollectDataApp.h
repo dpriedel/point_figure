@@ -138,7 +138,7 @@ protected:
 
     void PrimeChartsForStreaming();
     void CollectStreamingData();
-    void ProcessStreamedData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
+    void ProcessStreamedData(RemoteDataSource::StreamerContext *streamer_context);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;

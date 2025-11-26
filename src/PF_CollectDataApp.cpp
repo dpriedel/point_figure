@@ -865,8 +865,6 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
                 {
                     for (const auto &[new_date, new_price] : closing_prices)
                     {
-                        // std::cout << "new value: " << new_price << "\t" <<
-                        // new_date << std::endl;
                         new_chart.AddValue(new_price, std::chrono::clock_cast<std::chrono::utc_clock>(new_date));
                     }
                     charts_.emplace_back(std::make_pair(symbol, new_chart));
@@ -1219,6 +1217,9 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     // markets are already open, the day's open.  We do this to capture 'gaps'
     // and to set the direction at little sooner.
 
+    // make a holiday list for current year and prior year in case we need to look back that far
+    // to get our ATR.
+
     auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
     std::chrono::year which_year = today.year();
     auto holidays = MakeHolidayList(which_year);
@@ -1239,7 +1240,7 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
     {
         // just 2 options for now
         history_getter = std::make_unique<Tiingo>(Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
-                                                  Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{});
+                                                  Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{"/iex"});
     }
 
     if (market_status == US_MarketStatus::e_NotOpenYet)
@@ -1381,14 +1382,13 @@ void PF_CollectDataApp::CollectStreamingData()
     auto local_market_close =
         std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
 
-    std::mutex data_mutex;
-    std::queue<std::string> streamed_data;
+    RemoteDataSource::StreamerContext streamer_context;
 
     // py::gil_scoped_release gil{};
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
-    auto processing_task = std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this,
-                                      &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    auto processing_task =
+        std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, &streamer_context);
     while (!had_signal_)
     {
         try
@@ -1411,9 +1411,7 @@ void PF_CollectDataApp::CollectStreamingData()
             streaming->UseSymbols(symbol_list_);
 
             auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, streaming.get(),
-                                             &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
-            // auto streaming_task = std::async(std::launch::async, &Eodhd::StreamData, &quotes,
-            //                                  &PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+                                             &PF_CollectDataApp::had_signal_, &streamer_context);
             streaming_task.get();
         }
         catch (RemoteDataSource::StreamingEOF &e)
@@ -1434,17 +1432,26 @@ void PF_CollectDataApp::CollectStreamingData()
         }
     }
 
+    // I get here when streaming stops for whatever reason
+    // so tell the processors that we're done
+
+    {
+        std::lock_guard<std::mutex> lock(streamer_context.mtx_);
+        streamer_context.done_ = true;
+    }
+    streamer_context.cv_.notify_one(); // Wake consumer one last time to see 'done'
+
     processing_task.get();
     timer_task.get();
 
+    std::cout << "got here after timer expired" << std::endl;
     // make a last check to be sure we  didn't leave any data unprocessed
 
-    ProcessStreamedData(&PF_CollectDataApp::had_signal_, &data_mutex, &streamed_data);
+    ProcessStreamedData(&streamer_context);
 
 } // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
 
-void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_mutex,
-                                            std::queue<std::string> *streamed_data)
+void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext *streamer_context)
 {
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
@@ -1464,68 +1471,79 @@ void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_m
     }
     while (true)
     {
-        if (!streamed_data->empty())
+
+        std::unique_lock<std::mutex> lock(streamer_context->mtx_);
+
+        // 1. Wait for data OR completion
+        // The lambda is the "predicate". The wait only returns if
+        // the predicate is true. This handles "spurious wakeups".
+        streamer_context->cv_.wait(
+            lock, [streamer_context] { return !streamer_context->streamed_data_.empty() || streamer_context->done_; });
+
+        // 2. Check if we are done and the queue is empty
+        if (streamer_context->done_ && streamer_context->streamed_data_.empty())
         {
-            std::string new_data;
-            {
-                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-                new_data = streamed_data->front();
-                streamed_data->pop();
-            }
-            const auto pf_data = streamer->ExtractStreamedData(new_data);
-
-            // our PF_Data contains data for just 1 transaction for 1 symbol
-            try
-            {
-                ProcessUpdatesForSymbol(pf_data);
-            }
-            catch (std::system_error &e)
-            {
-                // any system problems, we eventually abort, but only
-                // after finishing work in process.
-
-                spdlog::error(e.what());
-                auto ec = e.code();
-                spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(), ec.message());
-
-                // OK, let's remember our first time here.
-
-                if (!ep)
-                {
-                    ep = std::current_exception();
-                }
-                continue;
-            }
-            catch (std::exception &e)
-            {
-                // any problems, we'll document them and continue.
-
-                spdlog::error(e.what());
-
-                if (!ep)
-                {
-                    ep = std::current_exception();
-                }
-                continue;
-            }
-            catch (...)
-            {
-                // any problems, we'll document them and continue.
-
-                spdlog::error("Unknown problem with an async download process");
-
-                if (!ep)
-                {
-                    ep = std::current_exception();
-                }
-                continue;
-            }
+            // std::println("Consumer: Work complete.");
+            break;
         }
-        else
+
+        // 3. Process data
+        std::string new_data = streamer_context->streamed_data_.front();
+        streamer_context->streamed_data_.pop();
+
+        // Unlock manually before processing if processing is heavy
+        // to allow the producer to push more data meanwhile.
+        lock.unlock();
+
+        const auto pf_data = streamer->ExtractStreamedData(new_data);
+
+        // our PF_Data contains data for just 1 transaction for 1 symbol
+        try
         {
-            std::this_thread::sleep_for(2ms);
+            ProcessUpdatesForSymbol(pf_data);
         }
-        if (streamed_data->empty() && *had_signal)
+        catch (std::system_error &e)
+        {
+            // any system problems, we eventually abort, but only
+            // after finishing work in process.
+
+            spdlog::error(e.what());
+            auto ec = e.code();
+            spdlog::error("Category: {}. Value: {}. Message: {}.", ec.category().name(), ec.value(), ec.message());
+
+            // OK, let's remember our first time here.
+
+            if (!ep)
+            {
+                ep = std::current_exception();
+            }
+            continue;
+        }
+        catch (std::exception &e)
+        {
+            // any problems, we'll document them and continue.
+
+            spdlog::error(e.what());
+
+            if (!ep)
+            {
+                ep = std::current_exception();
+            }
+            continue;
+        }
+        catch (...)
+        {
+            // any problems, we'll document them and continue.
+
+            spdlog::error("Unknown problem with an async download process");
+
+            if (!ep)
+            {
+                ep = std::current_exception();
+            }
+            continue;
+        }
+        if (streamer_context->streamed_data_.empty())
         {
             break;
         }
@@ -1535,7 +1553,6 @@ void PF_CollectDataApp::ProcessStreamedData(bool *had_signal, std::mutex *data_m
         // spdlog::error(catenate("Processed: ", file_list.size(), " files.
         // Successes: ", success_counter,
         //         ". Errors: ", error_counter, "."));
-        *had_signal = true;
         std::rethrow_exception(ep);
     }
 
