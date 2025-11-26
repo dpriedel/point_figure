@@ -86,7 +86,7 @@ void RemoteDataSource::DisconnectWS()
         spdlog::error("Problem closing socket during disconnect: {}.", e.what());
     }
 }
-void RemoteDataSource::StreamData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data)
+void RemoteDataSource::StreamData(bool *had_signal, StreamerContext *streamer_context)
 {
     StartStreaming();
 
@@ -105,10 +105,13 @@ void RemoteDataSource::StreamData(bool *had_signal, std::mutex *data_mutex, std:
             std::string buffer_content = beast::buffers_to_string(buffer.cdata());
             if (!buffer_content.empty())
             {
-                // std::cout << buffer_content << std::endl;
                 // ExtractData(buffer_content);
-                const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-                streamed_data->push(std::move(buffer_content));
+                // open a new context to manage the lock
+                {
+                    std::lock_guard<std::mutex> queue_lock(streamer_context->mtx_);
+                    streamer_context->streamed_data_.push(std::move(buffer_content));
+                }
+                streamer_context->cv_.notify_one(); // tell extractor 'you've got mail'
             }
         }
         catch (std::system_error &e)
@@ -121,7 +124,7 @@ void RemoteDataSource::StreamData(bool *had_signal, std::mutex *data_mutex, std:
             if (ec.value() == boost::asio::error::eof)
             {
                 spdlog::info("EOF on websocket read. Exiting streaming.");
-                StopStreaming();
+                StopStreaming(streamer_context);
                 throw StreamingEOF{};
             }
             spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
@@ -141,17 +144,17 @@ void RemoteDataSource::StreamData(bool *had_signal, std::mutex *data_mutex, std:
                 // Anyways, let's just shutdown the stream and exit.
 
                 spdlog::info("EOF on websocket read. Exiting streaming.");
-                StopStreaming();
+                StopStreaming(streamer_context);
                 throw StreamingEOF{};
             }
             *had_signal = true;
-            StopStreaming();
+            StopStreaming(streamer_context);
         }
         catch (...)
         {
             spdlog::error("Unknown problem processing steamed data.");
             *had_signal = true;
-            StopStreaming();
+            StopStreaming(streamer_context);
         }
     }
     if (*had_signal)
@@ -163,15 +166,19 @@ void RemoteDataSource::StreamData(bool *had_signal, std::mutex *data_mutex, std:
         std::string buffer_content = beast::buffers_to_string(buffer.cdata());
         if (!buffer_content.empty())
         {
-            const std::lock_guard<std::mutex> queue_lock(*data_mutex);
-            streamed_data->push(std::move(buffer_content));
+            // open a new context to manage the lock
+            {
+                std::lock_guard<std::mutex> queue_lock(streamer_context->mtx_);
+                streamer_context->streamed_data_.push(std::move(buffer_content));
+            }
+            streamer_context->cv_.notify_one(); // tell extractor 'you've got mail'
         }
     }
     // if the websocket is closed on the server side or there is a timeout which in turn
     // will cause the websocket to be closed, let's set this flag so other processes which
     // may be watching it can know.
 
-    StopStreaming();
+    StopStreaming(streamer_context);
     DisconnectWS();
 }
 // for streaming or other data retrievals

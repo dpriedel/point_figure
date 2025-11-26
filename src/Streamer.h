@@ -18,6 +18,8 @@
 #define _STREAMER_INC_
 
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <queue>
 #include <vector>
 
@@ -90,6 +92,14 @@ public:
         EodMktStatus market_status_{EodMktStatus::e_unknown};
     };
 
+    struct StreamerContext
+    {
+        std::condition_variable cv_;
+        bool done_ = false; // Flag to signal completion
+        std::mutex mtx_;
+        std::queue<std::string> streamed_data_;
+    };
+
     // ====================  LIFECYCLE     =======================================
 
     RemoteDataSource(); // constructor
@@ -116,10 +126,10 @@ public:
 
     void ConnectWS();
     void DisconnectWS();
-    void StreamData(bool *had_signal, std::mutex *data_mutex, std::queue<std::string> *streamed_data);
+    void StreamData(bool *had_signal, StreamerContext *streamer_context);
 
     virtual void StartStreaming() = 0;
-    virtual void StopStreaming() = 0;
+    virtual void StopStreaming(StreamerContext *streamer_context) = 0;
 
     // for streaming or other data retrievals
 
@@ -155,7 +165,8 @@ private:
 
 }; // ----------  end of template class Streamer  ----------
 
-template <> struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
+template <>
+struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
 {
     // parse is inherited from formatter<string>.
     auto format(const RemoteDataSource::PF_Data &pdata, std::format_context &ctx) const
