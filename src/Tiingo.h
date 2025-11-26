@@ -52,7 +52,7 @@ public:
     // ====================  MUTATORS      =======================================
 
     void StartStreaming() override;
-    void StopStreaming() override;
+    void StopStreaming(StreamerContext *streamer_context) override;
 
     // ====================  OPERATORS     =======================================
 

@@ -16,6 +16,7 @@
 // the guts of this code comes from the examples distributed by Boost.
 
 #include <format>
+#include <print>
 #include <ranges>
 #include <regex>
 #include <sstream>
@@ -61,7 +62,6 @@ void Tiingo::StartStreaming()
     Json::StreamWriterBuilder builder;
     builder["indentation"] = ""; // compact printing and string formatting
     const std::string connection_request_str = Json::writeString(builder, connection_request);
-    //    std::cout << "Jsoncpp connection_request_str: " << connection_request_str << '\n';
 
     // Send the message
     ws.write(net::buffer(connection_request_str));
@@ -98,13 +98,11 @@ void Tiingo::StartStreaming()
 
 Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
 {
-    // std::cout << "\nraw buffer: " << buffer << std::endl;
 
     static const std::regex kNumericTradePrice{R"***(("data":\["(?:[^,]*,){2})([0-9]*\.[0-9]*)])***"};
     static const std::regex kQuotedTradePrice{R"***(("data":\[(?:[^,]*,){2})"([0-9]*\.[0-9]*)")***"};
     static const std::string kStringTradePrice{R"***($1"$2"])***"};
     const std::string zapped_buffer = std::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
-    // std::cout << "\nzapped buffer: " << zapped_buffer << std::endl;
 
     JSONCPP_STRING err;
     Json::Value response;
@@ -127,7 +125,7 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
         std::smatch m;
         if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
         {
-            std::cout << "can't find trade price in buffer: " << buffer << '\n';
+            spdlog::error("can't find trade price in buffer: {}", buffer);
         }
         else
         {
@@ -137,7 +135,6 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
                 std::chrono::parse("%FT%T%Ez", new_value.time_stamp_nanoseconds_utc_);
             new_value.ticker_ = data[1].asCString();
             rng::for_each(new_value.ticker_, [](char &c) { c = std::toupper(c); });
-            // std::cout << std::format("{}\n", new_value.time_stamp_nanoseconds_utc_);
             new_value.last_price_ = decimal::Decimal{m[2].str()};
             new_value.last_size_ = 100; // not reported by new Tiingo IEX data so just use a standard number
         }
@@ -158,8 +155,16 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
     return new_value;
 } // -----  end of method Tiingo::ExtractData  -----
 
-void Tiingo::StopStreaming()
+void Tiingo::StopStreaming(StreamerContext *streamer_context)
 {
+    // tell our extractor code we are really done
+
+    {
+        std::lock_guard<std::mutex> lock(streamer_context->mtx_);
+        streamer_context->done_ = true;
+    }
+    streamer_context->cv_.notify_one();
+
     // we need to send the unsubscribe message in a separate connection.
 
     Json::Value disconnect_request;
@@ -177,7 +182,6 @@ void Tiingo::StopStreaming()
     Json::StreamWriterBuilder builder;
     builder["indentation"] = ""; // compact printing and string formatting
     const std::string disconnect_request_str = Json::writeString(builder, disconnect_request);
-    //    std::cout << "Jsoncpp disconnect_request_str: " << disconnect_request_str << '\n';
 
     // just grab the code from the example program
 
@@ -226,8 +230,6 @@ void Tiingo::StopStreaming()
 
     DisconnectWS();
 
-    //    std::cout << beast::make_printable(buffer.data()) << std::endl;
-
 } // -----  end of method Tiingo::StopStreaming  -----
 
 Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
@@ -246,7 +248,7 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
     }
 
     const std::string request_string =
-        std::format("https://{}{}/?tickers={}&token={}&format=csv", host, "/iex", symbols, api_key);
+        std::format("https://{}{}/?tickers={}&token={}&format=csv", host, websocket_prefix, symbols, api_key);
 
     const auto data = RequestData(request_string);
 
@@ -260,7 +262,8 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
         e_timestamp = 14,
         e_open = 11,
         e_close = 6,
-        e_previous_close = 12
+        e_previous_close = 12,
+        e_tiingo_last = 15
     };
 
     TopOfBookList stock_data;
@@ -277,15 +280,23 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
             std::format("Missing 1 or more fields from response: '{}'. Expected 17. Got: {}", row, fields.size())
                 .c_str());
 
-        const auto tstmp = StringToUTCTimePoint("%FT%T%z", fields[e_timestamp]);
+        // if we have any problems with this data, skip the row an try the next.
+        // missing data here is not very important.
+        try
+        {
+            const auto tstmp = StringToUTCTimePoint("%FT%T%z", fields[e_timestamp]);
 
-        TopOfBookOpenAndLastClose new_data{.symbol_ = std::string{fields[e_symbol_]},
-                                           .time_stamp_nsecs_ = tstmp,
-                                           .open_ = sv2dec(fields[e_open]),
-                                           .last_ = sv2dec(fields[e_close]),
-                                           .previous_close_ = sv2dec(fields[e_previous_close])};
-
-        stock_data.push_back(new_data);
+            TopOfBookOpenAndLastClose new_data{.symbol_ = std::string{fields[e_symbol_]},
+                                               .time_stamp_nsecs_ = tstmp,
+                                               .open_ = sv2dec(fields[e_open]),
+                                               .last_ = sv2dec(fields[e_tiingo_last]),
+                                               .previous_close_ = sv2dec(fields[e_previous_close])};
+            stock_data.push_back(new_data);
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error(e.what());
+        }
     });
     return stock_data;
 } // -----  end of method Tiingo::GetTopOfBookAndLastClose  -----
@@ -298,7 +309,6 @@ std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string &
     // we need to do some date arithmetic so we can use our basic 'GetTickerData' method.
 
     auto business_days = ConstructeBusinessDayRange(start_from, how_many_previous, UpOrDown::e_Down, holidays);
-    //    std::cout << "business days: " << business_days.first << " : " << business_days.second << '\n';
 
     // we reverse the dates because we worked backwards from our given starting point and
     // Tiingo needs the dates in ascending order.
