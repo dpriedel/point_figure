@@ -18,7 +18,6 @@
 #define _TIINGO_INC_
 
 #include "Streamer.h"
-#include <json/json.h> // Ensure jsoncpp is available
 
 class Tiingo : public RemoteDataSource
 {

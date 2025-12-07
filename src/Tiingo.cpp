@@ -20,6 +20,8 @@
 #include <regex>
 #include <sstream>
 
+#include <json/json.h> // Ensure jsoncpp is available
+
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 using namespace std::string_literals;
