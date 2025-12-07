@@ -17,28 +17,14 @@
 #ifndef _EODHD_INC_
 #define _EODHD_INC_
 
-// #pragma GCC diagnostic push
-// #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
 #include "Streamer.h"
 
-// =====================================================================================
-//        Class:  Eodhd
-//  Description:  live stream ticker updates and retrieve other ticker data -- look like a generator
-// =====================================================================================
 class Eodhd : public RemoteDataSource
 {
 public:
-    // ====================  LIFECYCLE     =======================================
-
     Eodhd() = default;
-    Eodhd(const Eodhd &rhs) = delete;
-    Eodhd(Eodhd &&rhs) = delete;
     Eodhd(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix);
-
     ~Eodhd() override = default;
-
-    // ====================  ACCESSORS     =======================================
 
     TopOfBookList GetTopOfBookAndLastClose() override;
     std::vector<StockDataRecord> GetMostRecentTickerData(const std::string &symbol,
@@ -48,29 +34,17 @@ public:
 
     PF_Data ExtractStreamedData(const std::string &buffer) override;
 
-    // ====================  MUTATORS      =======================================
-
-    void StartStreaming() override;
+    // Async Hooks
+    void OnConnected() override;
     void StopStreaming(StreamerContext &streamer_context) override;
 
-    // ====================  OPERATORS     =======================================
-
-    Eodhd &operator=(const Eodhd &rhs) = delete;
-    Eodhd &operator=(Eodhd &&rhs) = delete;
-
 protected:
-    // ====================  METHODS       =======================================
-
     std::string GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                               std::chrono::year_month_day end_date, UpOrDown sort_asc);
 
-    // ====================  DATA MEMBERS  =======================================
+    // Async Handlers
+    void on_write_subscribe(beast::error_code ec, std::size_t bytes_transferred);
+    void on_read_subscribe(beast::error_code ec, std::size_t bytes_transferred);
+};
 
-private:
-    // ====================  METHODS       =======================================
-
-    // ====================  DATA MEMBERS  =======================================
-
-}; // -----  end of class Eodhd  -----
-
-#endif // ----- #ifndef _EODHD_INC_  -----
+#endif

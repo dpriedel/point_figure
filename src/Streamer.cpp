@@ -1,248 +1,251 @@
 // =====================================================================================
-//
 //       Filename:  Streamer.cpp
-//
-//    Description:  Wrapper for streaming data providers
-//
-//        Version:  2.0
-//        Created:  2024-04-01 09:23 AM
-//       Revision:  none
-//       Compiler:  g++
-//
-//         Author:  David P. Riedel (), driedel@cox.net
-//   Organization:
-//
+//    Description:  Wrapper for streaming data providers (Async Implementation)
 // =====================================================================================
 
-#include <boost/beast/core/flat_buffer.hpp>
-
 #include "Streamer.h"
+#include <boost/asio/bind_executor.hpp>
 
 namespace rng = std::ranges;
 namespace http = beast::http;
 
-RemoteDataSource::RemoteDataSource() // constructor
-    : ctx{ssl::context::tlsv12_client}, resolver{ioc}, ws{ioc, ctx}
+RemoteDataSource::RemoteDataSource() : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
 {
 }
+
 RemoteDataSource::RemoteDataSource(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
-    : api_key{api_key.get()}, host{host.get()}, port{port.get()}, websocket_prefix{prefix.get()},
-      ctx{ssl::context::tlsv12_client}, resolver{ioc}, ws{ioc, ctx}
+    : api_key_{api_key.get()}, host_{host.get()}, port_{port.get()}, websocket_prefix_{prefix.get()},
+      ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
 {
 }
 
 RemoteDataSource::~RemoteDataSource()
 {
-    // need to disconnect if still connected.
-
-    DisconnectWS();
+    // Ensure IOC is stopped if object is destroyed
+    if (!ioc_.stopped())
+        ioc_.stop();
 }
 
-void RemoteDataSource::RemoteDataSource::ConnectWS()
+void RemoteDataSource::StreamData(bool *had_signal, StreamerContext &streamer_context)
 {
-    // the following code is taken from example in Boost documentation
+    // Store pointers for async handlers
+    had_signal_ptr_ = had_signal;
+    context_ptr_ = &streamer_context;
+    *had_signal = false;
 
-    auto const results = resolver.resolve(host, port);
+    // Reset io_context for new run
+    ioc_.restart();
 
-    auto ep = net::connect(get_lowest_layer(ws), results);
+    // Setup Signal Handling (Ctrl-C)
+    signals_.add(SIGINT);
+    signals_.add(SIGTERM);
+    signals_.async_wait(beast::bind_front_handler(&RemoteDataSource::on_signal, this));
 
-    if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(), host.c_str()))
+    // Start Connection Process
+    ConnectWS();
+
+    // Run the IO context - this blocks until the stream stops or is interrupted
+    try
     {
-        throw beast::system_error(
-            beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()),
-            "Failed to set SNI Hostname");
+        ioc_.run();
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("Exception in StreamData loop: {}", e.what());
+        *had_signal = true;
     }
 
-    auto tmp_host = host + ':' + std::to_string(ep.port());
+    // Cleanup
+    signals_.clear();
+    context_ptr_ = nullptr;
+    had_signal_ptr_ = nullptr;
+}
 
-    ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+void RemoteDataSource::ConnectWS()
+{
+    // 1. Resolve
+    resolver_.async_resolve(host_, port_, beast::bind_front_handler(&RemoteDataSource::on_resolve, this));
+}
 
-    // Perform the SSL handshake
-    ws.next_layer().handshake(ssl::stream_base::client);
+void RemoteDataSource::on_resolve(beast::error_code ec, tcp::resolver::results_type results)
+{
+    if (ec)
+    {
+        spdlog::error("Resolve failed: {}", ec.message());
+        return;
+    }
 
-    // Set a decorator to change the User-Agent of the handshake
-    ws.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
-        req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+    // 2. Connect TCP
+    net::async_connect(
+        beast::get_lowest_layer(ws_), results, beast::bind_front_handler(&RemoteDataSource::on_connect, this));
+}
+
+void RemoteDataSource::on_connect(beast::error_code ec, tcp::resolver::results_type::endpoint_type ep)
+{
+    if (ec)
+    {
+        spdlog::error("Connect failed: {}", ec.message());
+        return;
+    }
+
+    if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
+    {
+        spdlog::error("Failed to set SNI Hostname");
+        return;
+    }
+
+    // 3. SSL Handshake
+    ws_.next_layer().async_handshake(ssl::stream_base::client,
+                                     beast::bind_front_handler(&RemoteDataSource::on_ssl_handshake, this));
+}
+
+void RemoteDataSource::on_ssl_handshake(beast::error_code ec)
+{
+    if (ec)
+    {
+        spdlog::error("SSL Handshake failed: {}", ec.message());
+        return;
+    }
+
+    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    ws_.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
+        req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async");
     }));
 
-    // Perform the websocket handshake
-    ws.handshake(tmp_host, websocket_prefix);
-    BOOST_ASSERT_MSG(ws.is_open(), "Unable to complete websocket connection.");
+    // 4. Websocket Handshake
+    std::string tmp_host = host_ + ':' + port_; // Port is often implied in host string for handshake, or use host
+    ws_.async_handshake(host_, websocket_prefix_, beast::bind_front_handler(&RemoteDataSource::on_handshake, this));
+}
+
+void RemoteDataSource::on_handshake(beast::error_code ec)
+{
+    if (ec)
+    {
+        spdlog::error("Websocket Handshake failed: {}", ec.message());
+        return;
+    }
+
+    spdlog::debug("Connected. performing subscription...");
+    // 5. Let derived class handle subscription
+    OnConnected();
+}
+
+void RemoteDataSource::StartReadLoop()
+{
+    // Called by derived class when subscription is complete
+    spdlog::debug("Subscription complete. Starting read loop.");
+    do_read();
+}
+
+void RemoteDataSource::do_read()
+{
+    // Set timer for read timeout (e.g., 30 seconds)
+    timer_.expires_after(std::chrono::seconds(30));
+    timer_.async_wait(beast::bind_front_handler(&RemoteDataSource::on_timer, this));
+
+    // Async Read
+    buffer_.clear();
+    ws_.async_read(buffer_, beast::bind_front_handler(&RemoteDataSource::on_read, this));
+}
+
+void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferred)
+{
+    // Operation completed, cancel timer
+    timer_.cancel();
+
+    if (ec == websocket::error::closed)
+    {
+        spdlog::debug("Websocket closed normally.");
+        StopStreaming(*context_ptr_);
+        return;
+    }
+    if (ec)
+    {
+        spdlog::error("Read error: {}", ec.message());
+        StopStreaming(*context_ptr_);
+        return;
+    }
+
+    // Process Data
+    std::string buffer_content = beast::buffers_to_string(buffer_.cdata());
+    if (!buffer_content.empty() && context_ptr_)
+    {
+        {
+            std::lock_guard<std::mutex> queue_lock(context_ptr_->mtx_);
+            context_ptr_->streamed_data_.push(std::move(buffer_content));
+        }
+        context_ptr_->cv_.notify_one();
+    }
+
+    // Loop
+    do_read();
+}
+
+void RemoteDataSource::on_timer(beast::error_code ec)
+{
+    if (ec != net::error::operation_aborted)
+    {
+        // Timer fired implies timeout
+        spdlog::error("Stream read timeout. Closing connection.");
+        // Closing the socket will cause on_read to exit with operation_aborted or similar error
+        ws_.next_layer().next_layer().close();
+    }
+}
+
+void RemoteDataSource::on_signal(beast::error_code ec, int signal_number)
+{
+    if (!ec)
+    {
+        spdlog::info("Signal {} received. Stopping...", signal_number);
+        if (had_signal_ptr_)
+            *had_signal_ptr_ = true;
+        if (context_ptr_)
+            StopStreaming(*context_ptr_);
+
+        // Stop the IO context to exit the run() loop
+        ioc_.stop();
+    }
 }
 
 void RemoteDataSource::DisconnectWS()
 {
-    if (!ws.is_open())
+    if (ws_.is_open())
     {
-        return;
-    }
-    try
-    {
-        // beast::close_socket(get_lowest_layer(ws_));
-        ws.close(websocket::close_code::normal);
-    }
-    catch (std::exception &e)
-    {
-        spdlog::error("Problem closing socket during disconnect: {}.", e.what());
+        ws_.close(websocket::close_code::normal);
     }
 }
-void RemoteDataSource::StreamData(bool *had_signal, StreamerContext &streamer_context)
-{
-    StartStreaming();
-
-    // This buffer will hold the incoming message
-    // Each message contains data for a single transaction
-
-    beast::flat_buffer buffer;
-
-    while (ws.is_open() && !(*had_signal))
-    {
-        try
-        {
-            buffer.clear();
-            ws.read(buffer);
-            ws.text(ws.got_text());
-            std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-            if (!buffer_content.empty())
-            {
-                // ExtractData(buffer_content);
-                // open a new context to manage the lock
-                {
-                    std::lock_guard<std::mutex> queue_lock(streamer_context.mtx_);
-                    streamer_context.streamed_data_.push(std::move(buffer_content));
-                }
-                streamer_context.cv_.notify_one(); // tell extractor 'you've got mail'
-            }
-        }
-        catch (std::system_error &e)
-        {
-            // any system problems, we close the socket and force our way out.
-            // on EOF, just cleanly shutdown. Let higher level code
-            // decide what to do then.
-
-            auto ec = e.code();
-            if (ec.value() == boost::asio::error::eof)
-            {
-                spdlog::info("EOF on websocket read. Exiting streaming.");
-                StopStreaming(streamer_context);
-                throw StreamingEOF{};
-            }
-            spdlog::error(std::format("System error. Category: {}. Value: {}. Message: {}", ec.category().name(),
-                                      ec.value(), ec.message()));
-            *had_signal = true;
-            ws.close(websocket::close_code::going_away);
-        }
-        catch (std::exception &e)
-        {
-            spdlog::error(std::format("Problem processing steamed data. Message: {}", e.what()));
-
-            if (std::string_view{e.what()}.starts_with("End of file") ||
-                std::string_view{e.what()}.starts_with("End of stream"))
-            {
-                // I had expected to get a system error here. Hence the
-                // catch block above.
-                // Anyways, let's just shutdown the stream and exit.
-
-                spdlog::info("EOF on websocket read. Exiting streaming.");
-                StopStreaming(streamer_context);
-                throw StreamingEOF{};
-            }
-            *had_signal = true;
-            StopStreaming(streamer_context);
-        }
-        catch (...)
-        {
-            spdlog::error("Unknown problem processing steamed data.");
-            *had_signal = true;
-            StopStreaming(streamer_context);
-        }
-    }
-    if (*had_signal)
-    {
-        // do a last check for data
-
-        buffer.clear();
-        ws.read(buffer);
-        std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-        if (!buffer_content.empty())
-        {
-            // open a new context to manage the lock
-            {
-                std::lock_guard<std::mutex> queue_lock(streamer_context.mtx_);
-                streamer_context.streamed_data_.push(std::move(buffer_content));
-            }
-            streamer_context.cv_.notify_one(); // tell extractor 'you've got mail'
-        }
-    }
-    // if the websocket is closed on the server side or there is a timeout which in turn
-    // will cause the websocket to be closed, let's set this flag so other processes which
-    // may be watching it can know.
-
-    StopStreaming(streamer_context);
-    DisconnectWS();
-}
-// for streaming or other data retrievals
 
 void RemoteDataSource::UseSymbols(const std::vector<std::string> &symbols)
 {
-    symbol_list = symbols;
-
-    // make all the sybolos upper case to be consistent
-
-    rng::for_each(symbol_list, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
+    symbol_list_ = symbols;
+    rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
 }
 
 std::string RemoteDataSource::RequestData(const std::string &request_string)
 {
-    // if any problems occur here, we'll just let beast throw an exception.
+    // Keep this synchronous for one-off requests
+    net::io_context ioc_req;
+    ssl::context ctx_req{ssl::context::tlsv12_client};
+    beast::ssl_stream<beast::tcp_stream> stream(ioc_req, ctx_req);
+    tcp::resolver resolver_req{ioc_req};
 
-    // just grab the code from the example program
+    if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str()))
+        throw beast::system_error{
+            beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category())};
 
-    net::io_context ioc;
-    ssl::context ctx{ssl::context::tlsv12_client};
-
-    beast::ssl_stream<beast::tcp_stream> stream(ioc, ctx);
-
-    auto tmp_host = host;
-    auto tmp_port = port;
-    tcp::resolver resolver{ioc};
-
-    if (!SSL_set_tlsext_host_name(stream.native_handle(), tmp_host.c_str()))
-    {
-        beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
-        throw beast::system_error{ec};
-    }
-
-    auto const results = resolver.resolve(tmp_host, tmp_port);
+    auto const results = resolver_req.resolve(host_, port_);
     beast::get_lowest_layer(stream).connect(results);
     stream.handshake(ssl::stream_base::client);
 
-    // const std::string request_string =
-    //     std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=csv", host_,
-    //     symbol,
-    //                 start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key_);
-
     http::request<http::string_body> req{http::verb::get, request_string, version};
-    req.set(http::field::host, tmp_host);
+    req.set(http::field::host, host_);
     req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-
     http::write(stream, req);
 
     beast::flat_buffer buffer;
-
     http::response<http::string_body> res;
-
     http::read(stream, buffer, res);
 
-    auto result_code = res.result_int();
-    BOOST_ASSERT_MSG(result_code == 200,
-                     std::format("Failed to retrieve ticker data. Result code: {}\n", result_code).c_str());
-    std::string result = res.body();
-
-    // shutdown without causing a 'stream_truncated' error.
-
-    beast::get_lowest_layer(stream).cancel();
     beast::get_lowest_layer(stream).close();
-
-    return result;
+    return res.body();
 }

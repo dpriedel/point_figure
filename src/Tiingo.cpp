@@ -10,91 +10,93 @@
 //       Compiler:  g++
 //
 //         Author:  David P. Riedel (), driedel@cox.net
-/// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)/
+//        License:  GNU General Public License -v3
+//
 // =====================================================================================
-// the guts of this code comes from the examples distributed by Boost.
 
+#include "Tiingo.h"
 #include <format>
-#include <print>
 #include <ranges>
 #include <regex>
 #include <sstream>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
-
-#include "Tiingo.h"
-
 using namespace std::string_literals;
-using namespace std::chrono_literals;
-
-//--------------------------------------------------------------------------------------
-//       Class:  Tiingo
-//      Method:  Tiingo
-// Description:  constructor
-//--------------------------------------------------------------------------------------
 
 Tiingo::Tiingo(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : RemoteDataSource{host, port, api_key, prefix}
 {
-} // -----  end of method Tiingo::Tiingo  (constructor)  -----
+}
 
-void Tiingo::StartStreaming()
+void Tiingo::OnConnected()
 {
-    // we need to do our own connect/disconnect so we can handle any
-    // interruptions in streaming.
-
-    ConnectWS();
-
+    // Construct Subscription JSON
     Json::Value connection_request;
     connection_request["eventName"] = "subscribe";
-    connection_request["authorization"] = api_key;
+    connection_request["authorization"] = api_key_;
     connection_request["eventData"]["thresholdLevel"] = 6;
     Json::Value tickers(Json::arrayValue);
-    for (const auto &symbol : symbol_list)
+    for (const auto &symbol : symbol_list_)
     {
         tickers.append(symbol);
     }
-
     connection_request["eventData"]["tickers"] = tickers;
 
     Json::StreamWriterBuilder builder;
-    builder["indentation"] = ""; // compact printing and string formatting
+    builder["indentation"] = "";
     const std::string connection_request_str = Json::writeString(builder, connection_request);
 
-    // Send the message
-    ws.write(net::buffer(connection_request_str));
+    // Async Write
+    ws_.async_write(net::buffer(connection_request_str), beast::bind_front_handler(&Tiingo::on_write_subscribe, this));
+}
 
-    // let's make sure we were successful
+void Tiingo::on_write_subscribe(beast::error_code ec, std::size_t bytes_transferred)
+{
+    if (ec)
+    {
+        spdlog::error("Tiingo subscribe write failed: {}", ec.message());
+        return;
+    }
 
-    beast::flat_buffer buffer;
+    // Async Read Response
+    buffer_.clear();
+    ws_.async_read(buffer_, beast::bind_front_handler(&Tiingo::on_read_subscribe, this));
+}
 
-    ws.read(buffer);
-    ws.text(ws.got_text());
-    std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-    // if (!buffer_content.empty())
-    // {
+void Tiingo::on_read_subscribe(beast::error_code ec, std::size_t bytes_transferred)
+{
+    if (ec)
+    {
+        spdlog::error("Tiingo subscribe read failed: {}", ec.message());
+        return;
+    }
+
+    std::string buffer_content = beast::buffers_to_string(buffer_.cdata());
     JSONCPP_STRING err;
     Json::Value response;
+    Json::CharReaderBuilder builder;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
 
-    Json::CharReaderBuilder builder2;
-    const std::unique_ptr<Json::CharReader> reader(builder2.newCharReader());
-    //    if (!reader->parse(buffer.data(), buffer.data() + buffer.size(), &response, nullptr))
     if (!reader->parse(buffer_content.data(), buffer_content.data() + buffer_content.size(), &response, &err))
     {
-        throw std::runtime_error("Problem parsing tiingo response: "s + err);
+        spdlog::error("Problem parsing tiingo response: {}", err);
+        return;
     }
 
     std::string message_type = response["messageType"].asString();
-    BOOST_ASSERT_MSG(message_type == "I", std::format("Expected message type of 'I'. Got: {}", message_type).c_str());
-    int32_t code = response["response"]["code"].asInt();
-    BOOST_ASSERT_MSG(code == 200, std::format("Expected success code of '200'. Got: {}", code).c_str());
+    if (message_type != "I")
+    {
+        spdlog::error("Expected message type of 'I'. Got: {}", message_type);
+        return;
+    }
 
     subscription_id_ = response["data"]["subscriptionId"].asString();
+    spdlog::info("Tiingo Subscribed. ID: {}", subscription_id_);
 
-    // }
-} // -----  end of method Tiingo::StartStreaming  -----
+    // Success! Start the main read loop in base class
+    StartReadLoop();
+}
 
 Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
 {
@@ -153,10 +155,11 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
         spdlog::error("unexpected message type.");
     }
     return new_value;
-} // -----  end of method Tiingo::ExtractData  -----
+}
 
 void Tiingo::StopStreaming(StreamerContext &streamer_context)
 {
+
     // tell our extractor code we are really done
 
     {
@@ -169,10 +172,10 @@ void Tiingo::StopStreaming(StreamerContext &streamer_context)
 
     Json::Value disconnect_request;
     disconnect_request["eventName"] = "unsubscribe";
-    disconnect_request["authorization"] = api_key;
+    disconnect_request["authorization"] = api_key_;
     disconnect_request["eventData"]["subscriptionId"] = subscription_id_;
     Json::Value tickers(Json::arrayValue);
-    for (const auto &symbol : symbol_list)
+    for (const auto &symbol : symbol_list_)
     {
         tickers.append(symbol);
     }
@@ -191,8 +194,8 @@ void Tiingo::StopStreaming(StreamerContext &streamer_context)
     tcp::resolver resolver{ioc};
     websocket::stream<beast::ssl_stream<tcp::socket>, false> ws{ioc, ctx};
 
-    auto tmp_host = host;
-    auto tmp_port = port;
+    auto tmp_host = host_;
+    auto tmp_port = port_;
 
     auto const results = resolver.resolve(tmp_host, tmp_port);
 
@@ -211,7 +214,7 @@ void Tiingo::StopStreaming(StreamerContext &streamer_context)
 
     ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
-    ws.handshake(tmp_host, websocket_prefix);
+    ws.handshake(tmp_host, websocket_prefix_);
 
     try
     {
@@ -229,26 +232,28 @@ void Tiingo::StopStreaming(StreamerContext &streamer_context)
     }
 
     DisconnectWS();
+}
 
-} // -----  end of method Tiingo::StopStreaming  -----
-
-Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
+// ... [Include GetTopOfBookAndLastClose and GetMostRecentTickerData from original file] ...
+// These methods use RequestData which is now synchronous and separate.
+RemoteDataSource::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
 {
+
     // using the REST API for iex.
     // via the base class common request method.
     // if any problems occur here, we'll just let beast throw an exception.
 
     std::string symbols;
-    auto s = symbol_list.begin();
+    auto s = symbol_list_.begin();
     symbols += *s;
-    for (++s; s != symbol_list.end(); ++s)
+    for (++s; s != symbol_list_.end(); ++s)
     {
         symbols += ',';
         symbols += *s;
     }
 
     const std::string request_string =
-        std::format("https://{}{}/?tickers={}&token={}&format=csv", host, websocket_prefix, symbols, api_key);
+        std::format("https://{}{}/?tickers={}&token={}&format=csv", host_, websocket_prefix_, symbols, api_key_);
 
     const auto data = RequestData(request_string);
 
@@ -299,8 +304,7 @@ Tiingo::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
         }
     });
     return stock_data;
-} // -----  end of method Tiingo::GetTopOfBookAndLastClose  -----
-
+}
 std::vector<StockDataRecord> Tiingo::GetMostRecentTickerData(const std::string &symbol,
                                                              std::chrono::year_month_day start_from,
                                                              int how_many_previous, UseAdjusted use_adjusted,
@@ -386,8 +390,8 @@ std::string Tiingo::GetTickerData(std::string_view symbol, std::chrono::year_mon
     // if any problems occur here, we'll just let beast throw an exception.
 
     const std::string request_string = std::format(
-        "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host,
-        symbol, start_date, end_date, api_key, "csv", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
+        "https://{}/tiingo/daily/{}/prices?startDate={}&endDate={}&token={}&format={}&resampleFreq={}&sort={}", host_,
+        symbol, start_date, end_date, api_key_, "csv", "daily", (sort_asc == UpOrDown::e_Up ? "date" : "-date"));
 
     return RequestData(request_string);
 

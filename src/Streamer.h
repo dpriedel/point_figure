@@ -1,39 +1,30 @@
 // =====================================================================================
-//
 //       Filename:  Streamer.h
-//
-//    Description:  Wrapper class for different streaming data sources
-//
-//        Version:  2.0
-//        Created:  2024-04-01 09:28 AM
-//       Revision:  none
-//       Compiler:  g++
-//
-//         Author:  David P. Riedel (), driedel@cox.net
-//        License:  GNU General Public License -v3
-//
+//    Description:  Wrapper class for different streaming data sources (Async Version)
 // =====================================================================================
 
 #ifndef _STREAMER_INC_
 #define _STREAMER_INC_
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <vector>
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/signal_set.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
 
 #include <spdlog/spdlog.h>
-
-// #pragma GCC diagnostic pop
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
@@ -53,13 +44,9 @@ class RemoteDataSource
 {
 public:
     // use this as exception class to flag specific streaming error
-    // so we can catch it
-
     struct StreamingEOF
     {
     };
-
-    // some custom types to quiet clang-tidy warnings
 
     using Host = UniqType<std::string, struct Host_Tag>;
     using Port = UniqType<std::string, struct Port_Tag>;
@@ -67,10 +54,7 @@ public:
     using Prefix = UniqType<std::string, struct Prefix_Tag>;
 
     using UTC_TmPt_NanoSecs = std::chrono::utc_time<std::chrono::nanoseconds>;
-
     using TopOfBookList = std::vector<TopOfBookOpenAndLastClose>;
-
-    // consolidated, unified supeset of streamed data from all sources.
 
     enum class EodMktStatus : int32_t
     {
@@ -83,11 +67,11 @@ public:
     struct PF_Data
     {
         std::string subscription_id_;
-        std::string ticker_;                             // Ticker
-        std::string time_stamp_;                         // Date
-        UTC_TmPt_NanoSecs time_stamp_nanoseconds_utc_{}; // time_stamp
-        decimal::Decimal last_price_{-1};                // Last Price
-        int32_t last_size_{-1};                          // Last Size
+        std::string ticker_;
+        std::string time_stamp_;
+        UTC_TmPt_NanoSecs time_stamp_nanoseconds_utc_{};
+        decimal::Decimal last_price_{-1};
+        int32_t last_size_{-1};
         bool dark_pool_{false};
         EodMktStatus market_status_{EodMktStatus::e_unknown};
     };
@@ -102,10 +86,8 @@ public:
 
     // ====================  LIFECYCLE     =======================================
 
-    RemoteDataSource(); // constructor
-
+    RemoteDataSource();
     virtual ~RemoteDataSource();
-
     RemoteDataSource(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix);
 
     RemoteDataSource(const RemoteDataSource &rhs) = delete;
@@ -113,6 +95,7 @@ public:
 
     // ====================  ACCESSORS     =======================================
 
+    // Synchronous request (kept for non-streaming data)
     std::string RequestData(const std::string &request_string);
 
     virtual TopOfBookList GetTopOfBookAndLastClose() = 0;
@@ -124,51 +107,64 @@ public:
 
     // ====================  MUTATORS      =======================================
 
-    void ConnectWS();
-    void DisconnectWS();
+    // Main entry point for the async loop
     void StreamData(bool *had_signal, StreamerContext &streamer_context);
 
-    virtual void StartStreaming() = 0;
-    virtual void StopStreaming(StreamerContext &streamer_context) = 0;
+    // Derived classes implement this to send subscription messages after connection
+    virtual void OnConnected() = 0;
 
-    // for streaming or other data retrievals
+    // Derived classes implement this to clean up subscriptions
+    virtual void StopStreaming(StreamerContext &streamer_context) = 0;
 
     void UseSymbols(const std::vector<std::string> &symbols);
 
-    // ====================  OPERATORS     =======================================
-
-    RemoteDataSource &operator=(const RemoteDataSource &rhs) = delete;
-    RemoteDataSource &operator=(RemoteDataSource &&rhs) = delete;
+    void ConnectWS();
+    void DisconnectWS();
 
 protected:
-    // ====================  METHODS       =======================================
+    // ====================  ASYNC MECHANICS  ====================================
+
+    // Call this from derived classes when subscription handshake is done
+    void StartReadLoop();
+
+    // Handlers
+    void on_resolve(beast::error_code ec, tcp::resolver::results_type results);
+    void on_connect(beast::error_code ec, tcp::resolver::results_type::endpoint_type ep);
+    void on_ssl_handshake(beast::error_code ec);
+    void on_handshake(beast::error_code ec);
+    void do_read();
+    void on_read(beast::error_code ec, std::size_t bytes_transferred);
+    void on_timer(beast::error_code ec);
+    void on_signal(beast::error_code ec, int signal_number);
 
     // ====================  DATA MEMBERS  =======================================
 
-    net::io_context ioc;
-    ssl::context ctx;
-    tcp::resolver resolver;
-    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws;
+    net::io_context ioc_;
+    ssl::context ctx_;
+    tcp::resolver resolver_;
+    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
     int version = 11;
 
-    std::vector<std::string> symbol_list;
+    // Async components
+    boost::asio::steady_timer timer_{ioc_};
+    boost::asio::signal_set signals_{ioc_};
+    beast::flat_buffer buffer_;
 
-    std::string host;
-    std::string port;
-    std::string api_key;
-    std::string websocket_prefix;
+    // Pointers to external context (valid only during StreamData execution)
+    StreamerContext *context_ptr_ = nullptr;
+    bool *had_signal_ptr_ = nullptr;
 
-private:
-    // ====================  METHODS       =======================================
+    std::vector<std::string> symbol_list_;
+    std::string host_;
+    std::string port_;
+    std::string api_key_;
+    std::string websocket_prefix_;
+};
 
-    // ====================  DATA MEMBERS  =======================================
-
-}; // ----------  end of template class Streamer  ----------
-
+// Formatter specializations...
 template <>
 struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
 {
-    // parse is inherited from formatter<string>.
     auto format(const RemoteDataSource::PF_Data &pdata, std::format_context &ctx) const
     {
         std::string record;
@@ -185,4 +181,4 @@ inline std::ostream &operator<<(std::ostream &os, const RemoteDataSource::PF_Dat
     return os;
 }
 
-#endif // ----- #ifndef _STREAMER_INC_  -----
+#endif

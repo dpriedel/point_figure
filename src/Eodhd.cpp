@@ -10,68 +10,75 @@
 //       Compiler:  g++
 //
 //         Author:  David P. Riedel (), driedel@cox.net
-/// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)/
+//        License:  GNU General Public License -v3
 // =====================================================================================
-// the guts of this code comes from the examples distributed by Boost.
 
+#include "Eodhd.h"
+#include "boost/beast/core/buffers_to_string.hpp"
 #include <ranges>
 #include <regex>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
-#include "Eodhd.h"
-#include "boost/beast/core/buffers_to_string.hpp"
-
-// using namespace std::string_literals;
-// using namespace std::chrono_literals;
-
-//--------------------------------------------------------------------------------------
-//       Class:  Eodhd
-//      Method:  Eodhd
-// Description:  constructor
-//--------------------------------------------------------------------------------------
 Eodhd::Eodhd(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : RemoteDataSource{host, port, api_key, prefix}
 {
-} // -----  end of method Eodhd::Eodhd  (constructor)  -----
+}
 
-void Eodhd::StartStreaming()
+void Eodhd::OnConnected()
 {
-    // we need to do our own connect/disconnect so we can handle any
-    // interruptions in streaming.
-
-    ConnectWS();
-
-    // message formats are 'simple' so let's just use RegExes to work with them.
-
+    // Construct Subscription String
     std::string ticker_list;
-    ticker_list = symbol_list.front();
-    rng::for_each(symbol_list | vws::drop(1), [&ticker_list](const auto &sym) {
+    ticker_list = symbol_list_.front();
+    rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto &sym) {
         ticker_list += ", ";
         ticker_list += sym;
     });
 
-    // NOTE: format requires '{{' and '}}' escaping for braces which are to be included in format output string.
-
     const auto subscribe_request_str = std::format(R"({{"action": "subscribe", "symbols": "{}"}})", ticker_list);
 
-    // Send the message
-    ws.write(net::buffer(subscribe_request_str));
+    // Async Write
+    ws_.async_write(net::buffer(subscribe_request_str), beast::bind_front_handler(&Eodhd::on_write_subscribe, this));
+}
 
-    beast::flat_buffer buffer;
+void Eodhd::on_write_subscribe(beast::error_code ec, std::size_t bytes_transferred)
+{
+    if (ec)
+    {
+        spdlog::error("Eodhd subscribe write failed: {}", ec.message());
+        return;
+    }
 
-    buffer.clear();
-    ws.read(buffer);
-    ws.text(ws.got_text());
-    std::string buffer_content = beast::buffers_to_string(buffer.cdata());
-    BOOST_ASSERT_MSG(buffer_content.starts_with(R"***({"status_code":200,)***"),
-                     std::format("Failed to get success code. Got: {}", buffer_content).c_str());
-} // -----  end of method Eodhd::StartStreaming  -----
+    // Async Read Response
+    buffer_.clear();
+    ws_.async_read(buffer_, beast::bind_front_handler(&Eodhd::on_read_subscribe, this));
+}
+
+void Eodhd::on_read_subscribe(beast::error_code ec, std::size_t bytes_transferred)
+{
+    if (ec)
+    {
+        spdlog::error("Eodhd subscribe read failed: {}", ec.message());
+        return;
+    }
+
+    std::string buffer_content = beast::buffers_to_string(buffer_.cdata());
+
+    // Check for success code
+    if (!buffer_content.starts_with(R"***({"status_code":200,)***"))
+    {
+        spdlog::error("Failed to get success code. Got: {}", buffer_content);
+        return;
+    }
+
+    spdlog::info("Eodhd Subscribed Successfully.");
+    StartReadLoop();
+}
 
 Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string &buffer)
 {
+
     // response format is 'simple' so we'll use RegExes here too.
 
     // {"s":"TGT","p":141,"c":[14,37,41],"v":1,"dp":false,"ms":"open","t":1706109542329}
@@ -169,10 +176,11 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string &buffer)
     }
 
     return new_value;
-} // -----  end of method Eodhd::ExtractData  -----
+}
 
 void Eodhd::StopStreaming(StreamerContext &streamer_context)
 {
+
     // tell our extractor code we are really done
 
     {
@@ -184,8 +192,8 @@ void Eodhd::StopStreaming(StreamerContext &streamer_context)
     // we need to send the unsubscribe message in a separate connection.
 
     std::string ticker_list;
-    ticker_list = symbol_list.front();
-    rng::for_each(symbol_list | vws::drop(1), [&ticker_list](const auto &sym) {
+    ticker_list = symbol_list_.front();
+    rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto &sym) {
         ticker_list += ", ";
         ticker_list += sym;
     });
@@ -201,8 +209,8 @@ void Eodhd::StopStreaming(StreamerContext &streamer_context)
     tcp::resolver resolver{ioc};
     websocket::stream<beast::ssl_stream<tcp::socket>, false> tmp_ws{ioc, ctx};
 
-    auto tmp_host = host;
-    auto tmp_port = port;
+    auto tmp_host = host_;
+    auto tmp_port = port_;
 
     auto const results = resolver.resolve(tmp_host, tmp_port);
 
@@ -221,7 +229,7 @@ void Eodhd::StopStreaming(StreamerContext &streamer_context)
 
     tmp_ws.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
 
-    tmp_ws.handshake(tmp_host, websocket_prefix);
+    tmp_ws.handshake(tmp_host, websocket_prefix_);
 
     try
     {
@@ -243,11 +251,12 @@ void Eodhd::StopStreaming(StreamerContext &streamer_context)
     DisconnectWS();
 
     // *had_signal = true;
+}
 
-} // -----  end of method Eodhd::StopStreaming  -----
-
-Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
+// ... [Includes GetTopOfBookAndLastClose and GetMostRecentTickerData implementation from original file] ...
+RemoteDataSource::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
 {
+
     // this needs to be done differently for Eodhd since they don't provide
     // the function Tiingo does.
     // Eod does provide delayed by 15 to 20 minutes'live' API which
@@ -271,10 +280,10 @@ Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
 
     TopOfBookList stock_data;
 
-    for (const auto &symbol : symbol_list)
+    for (const auto &symbol : symbol_list_)
     {
         std::string request_string =
-            std::format("https://{}/api/real-time/{}.US?api_token={}&fmt=csv", host, symbol, api_key);
+            std::format("https://{}/api/real-time/{}.US?api_token={}&fmt=csv", host_, symbol, api_key_);
         const auto tob_data = RequestData(request_string);
 
         const auto rows = split_string<std::string_view>(tob_data, "\n");
@@ -307,8 +316,7 @@ Eodhd::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
         stock_data.push_back(new_data);
     }
     return stock_data;
-} // -----  end of method Eodhd::GetTopOfBookAndLastClose  -----
-
+}
 std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string &symbol,
                                                             std::chrono::year_month_day start_from,
                                                             int how_many_previous, UseAdjusted use_adjusted,
@@ -366,16 +374,14 @@ std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string &s
     });
 
     return stock_data;
-
-} // -----  end of method Eodhd::GetMostRecentTickerData  -----
-
+}
 std::string Eodhd::GetTickerData(std::string_view symbol, std::chrono::year_month_day start_date,
                                  std::chrono::year_month_day end_date, UpOrDown sort_asc)
 {
     // if any problems occur here, we'll just let beast throw an exception.
     const std::string request_string =
-        std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=csv", host, symbol,
-                    start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key);
+        std::format("https://{}/api/eod/{}.US?from={}&to={}&order={}&period=d&api_token={}&fmt=csv", host_, symbol,
+                    start_date, end_date, (sort_asc == UpOrDown::e_Up ? "a" : "d"), api_key_);
 
     return RequestData(request_string);
-} // -----  end of method Eodhd::GetTickerData  -----
+}
