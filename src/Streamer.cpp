@@ -178,7 +178,14 @@ void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferr
     }
 
     // Loop
-    do_read();
+    if (had_signal_ptr_ && *had_signal_ptr_)
+    {
+        RequestStop();
+    }
+    else
+    {
+        do_read();
+    }
 }
 
 void RemoteDataSource::on_timer(beast::error_code ec)
@@ -207,11 +214,50 @@ void RemoteDataSource::on_signal(beast::error_code ec, int signal_number)
     }
 }
 
+void RemoteDataSource::RequestStop()
+{
+    // This can be called from outside to trigger graceful shutdown
+    boost::asio::post([this]() {
+        if (context_ptr_)
+            StopStreaming(*context_ptr_);
+    });
+}
 void RemoteDataSource::DisconnectWS()
 {
+    // Cancel any pending operations
+    timer_.cancel();
+
     if (ws_.is_open())
     {
-        ws_.close(websocket::close_code::normal);
+        // Close WebSocket gracefully
+        ws_.async_close(websocket::close_code::normal, [this](beast::error_code ec) {
+            if (ec)
+            {
+                spdlog::debug("WebSocket close error: {}", ec.message());
+            }
+            // Close underlying socket properly
+            try
+            {
+                // Access the underlying TCP socket through the SSL stream
+                auto &socket = beast::get_lowest_layer(ws_);
+                if (socket.is_open())
+                {
+                    socket.shutdown(tcp::socket::shutdown_both);
+                    socket.close();
+                }
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::debug("Socket close error: {}", e.what());
+            }
+            // Stop the io_context to exit the run loop
+            ioc_.stop();
+        });
+    }
+    else
+    {
+        // WebSocket already closed, just stop the io_context
+        ioc_.stop();
     }
 }
 

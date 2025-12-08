@@ -16,6 +16,7 @@
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -118,6 +119,7 @@ public:
 
     void UseSymbols(const std::vector<std::string> &symbols);
 
+    void RequestStop();
     void ConnectWS();
     void DisconnectWS();
 
