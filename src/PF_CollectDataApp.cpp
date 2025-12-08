@@ -1364,13 +1364,13 @@ void PF_CollectDataApp::CollectStreamingData()
 
     // ok, get ready to handle keyboard interrupts, if any.
 
-    struct sigaction sa_old{};
-    struct sigaction sa_new{};
-
-    sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
-    sigemptyset(&sa_new.sa_mask);
-    sa_new.sa_flags = 0;
-    sigaction(SIGINT, &sa_new, &sa_old);
+    // struct sigaction sa_old{};
+    // struct sigaction sa_new{};
+    //
+    // sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
+    // sigemptyset(&sa_new.sa_mask);
+    // sa_new.sa_flags = 0;
+    // sigaction(SIGINT, &sa_new, &sa_old);
 
     PF_CollectDataApp::had_signal_ = false;
 
