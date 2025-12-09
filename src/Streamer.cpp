@@ -190,12 +190,17 @@ void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferr
 
 void RemoteDataSource::on_timer(beast::error_code ec)
 {
-    if (ec != net::error::operation_aborted)
+    if (ec == net::error::operation_aborted)
+        return; // Timer was cancelled, do nothing
+
+    spdlog::error("Stream read timeout. Closing connection.");
+
+    // Just close the websocket. This triggers the read handler with an error.
+    // Don't mess with lowest_layer directly unless WS close fails.
+    if (ws_.is_open())
     {
-        // Timer fired implies timeout
-        spdlog::error("Stream read timeout. Closing connection.");
-        // Closing the socket will cause on_read to exit with operation_aborted or similar error
-        ws_.next_layer().next_layer().close();
+        ws_.next_layer().next_layer().cancel(); // Cancel TCP ops
+        ws_.async_close(websocket::close_code::policy_error, [](beast::error_code) {});
     }
 }
 
@@ -224,6 +229,18 @@ void RemoteDataSource::RequestStop()
 }
 void RemoteDataSource::DisconnectWS()
 {
+    // // Do not call ioc_.stop() here.
+    // boost::asio::post(ioc_, [this]() {
+    //     timer_.cancel();
+    //     if (ws_.is_open())
+    //     {
+    //         // Initiate graceful close
+    //         ws_.async_close(websocket::close_code::normal, [this](beast::error_code ec) {
+    //             spdlog::debug("Closed: {}", ec.message());
+    //             // The on_read loop will now fail, loop will exit, ioc_.run() returns.
+    //         });
+    //     }
+    // });
     // Cancel any pending operations
     timer_.cancel();
 
