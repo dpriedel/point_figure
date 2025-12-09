@@ -1444,7 +1444,7 @@ void PF_CollectDataApp::CollectStreamingData()
     processing_task.get();
     timer_task.get();
 
-    std::cout << "got here after timer expired" << std::endl;
+    spdlog::debug("got here after timer expired");
     // make a last check to be sure we  didn't leave any data unprocessed
 
     ProcessStreamedData(std::ref(streamer_context));
