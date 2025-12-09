@@ -15,9 +15,9 @@
 // =====================================================================================
 
 #include "Tiingo.h"
+#include <boost/regex.hpp>
 #include <format>
 #include <ranges>
-#include <regex>
 #include <sstream>
 
 #include <json/json.h> // Ensure jsoncpp is available
@@ -102,11 +102,15 @@ void Tiingo::on_read_subscribe(beast::error_code ec, std::size_t bytes_transferr
 
 Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
 {
+    // Tiingo only provides 3 fields for its 'free' IEX feed
+    // - nanoseconds timestamp as fully formatted text string
+    // - symbol
+    // - price as a 2-digit float.
 
-    static const std::regex kNumericTradePrice{R"***(("data":\["(?:[^,]*,){2})([0-9]*\.[0-9]*)])***"};
-    static const std::regex kQuotedTradePrice{R"***(("data":\[(?:[^,]*,){2})"([0-9]*\.[0-9]*)")***"};
+    static const boost::regex kNumericTradePrice{R"***(("data":\["(?:[^,]*,){2})([0-9]*\.[0-9]*)])***"};
+    static const boost::regex kQuotedTradePrice{R"***(("data":\[(?:[^,]*,){2})"([0-9]*\.[0-9]*)")***"};
     static const std::string kStringTradePrice{R"***($1"$2"])***"};
-    const std::string zapped_buffer = std::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
+    const std::string zapped_buffer = boost::regex_replace(buffer, kNumericTradePrice, kStringTradePrice);
 
     JSONCPP_STRING err;
     Json::Value response;
@@ -126,8 +130,8 @@ Tiingo::PF_Data Tiingo::ExtractStreamedData(const std::string &buffer)
     {
         auto data = response["data"];
 
-        std::smatch m;
-        if (bool found_it = std::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
+        boost::smatch m;
+        if (bool found_it = boost::regex_search(zapped_buffer, m, kQuotedTradePrice); !found_it)
         {
             spdlog::error("can't find trade price in buffer: {}", buffer);
         }
