@@ -171,7 +171,7 @@ struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
     {
         std::string record;
         std::format_to(std::back_inserter(record), "ticker: {}, price: {}, shares: {}, time: {}", pdata.ticker_,
-                       pdata.last_price_, pdata.last_size_, pdata.time_stamp_);
+                       pdata.last_price_, pdata.last_size_, pdata.time_stamp_nanoseconds_utc_);
         return formatter<std::string>::format(record, ctx);
     }
 };
@@ -179,7 +179,7 @@ struct std::formatter<RemoteDataSource::PF_Data> : std::formatter<std::string>
 inline std::ostream &operator<<(std::ostream &os, const RemoteDataSource::PF_Data pf_data)
 {
     std::cout << "ticker: " << pf_data.ticker_ << " price: " << pf_data.last_price_ << " shares: " << pf_data.last_size_
-              << " time:" << pf_data.time_stamp_;
+              << " time:" << pf_data.time_stamp_nanoseconds_utc_;
     return os;
 }
 
