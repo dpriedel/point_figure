@@ -15,11 +15,14 @@
 
 #include "Eodhd.h"
 #include "boost/beast/core/buffers_to_string.hpp"
+#include <boost/regex.hpp>
 #include <ranges>
-#include <regex>
+#include <utility>
 
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
+
+using namespace std::string_view_literals;
 
 Eodhd::Eodhd(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : RemoteDataSource{host, port, api_key, prefix}
@@ -83,11 +86,9 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string &buffer)
 
     // {"s":"TGT","p":141,"c":[14,37,41],"v":1,"dp":false,"ms":"open","t":1706109542329}
 
-    // std::cout << "\nraw buffer: " << buffer << std::endl;
-
     // make referencing the submatch groups more readable
 
-    enum GroupNumber
+    enum GroupNumber : int
     {
         e_all = 0,
         e_ticker = 1,
@@ -115,43 +116,53 @@ Eodhd::PF_Data Eodhd::ExtractStreamedData(const std::string &buffer)
         R"***(\{"s":"(.*)","p":([.0-9]*),"c":(.*),"v":(.*),"dp":(false|true),"ms":"(open|closed|close|extended-hours)?","t":([.0-9]*)\})***"};
     // static const std::string kResponseString{
     //     R"***(\{"s":"(.*)","p":([.0-9]*),"v":(.*),"e":(.*),"c":(.*),"dp":(false|true),"t":([.0-9]*)\})***"};
-    static const std::regex kResponseRegex{kResponseString};
+    static const boost::regex kResponseRegex{kResponseString};
 
-    std::cmatch fields;
+    boost::cmatch fields;
     const char *response_text = buffer.data();
 
     PF_Data new_value;
 
-    if (bool matched_it = std::regex_match(response_text, fields, kResponseRegex); matched_it)
+    if (bool matched_it = boost::regex_match(response_text, fields, kResponseRegex); matched_it)
     {
-        std::string_view tmp_fld{response_text + fields.position(e_time), static_cast<size_t>(fields.length(e_time))};
+        std::string_view tmp_fld(response_text + fields.position(e_time), fields.length(std::to_underlying(e_time)));
+
+        // EODHD provides timestamp with milliseconds resolution.
+        new_value.time_stamp_ = tmp_fld;
+        // make it into nanoseconds.
+        new_value.time_stamp_.append("000000"sv);
+
         int64_t time_value{};
-        if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), time_value); ec != std::errc())
+        if (auto [p, ec] = std::from_chars(new_value.time_stamp_.data(),
+                                           new_value.time_stamp_.data() + new_value.time_stamp_.size(), time_value);
+            ec != std::errc())
         {
-            throw std::runtime_error(
-                std::format("Problem converting transaction time to int64: {}\n", std::make_error_code(ec).message()));
+            throw std::runtime_error(std::format("Problem converting transaction timestamp to int64: {}\n",
+                                                 std::make_error_code(ec).message()));
         }
-        std::chrono::milliseconds ms{time_value};
-        new_value.time_stamp_nanoseconds_utc_ =
-            UTC_TmPt_NanoSecs{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
+        new_value.time_stamp_nanoseconds_utc_ = UTC_TmPt_NanoSecs{std::chrono::nanoseconds{time_value}};
 
         new_value.ticker_ =
-            std::string_view{response_text + fields.position(e_ticker), static_cast<size_t>(fields.length(e_ticker))};
+            std::string_view(response_text + fields.position(e_ticker), fields.length(std::to_underlying(e_ticker)));
 
-        tmp_fld = {response_text + fields.position(e_price), static_cast<size_t>(fields.length(e_price))};
+        tmp_fld =
+            std::string_view(response_text + fields.position(e_price), fields.length(std::to_underlying(e_price)));
         new_value.last_price_ = decimal::Decimal{std::string{tmp_fld}};
 
-        tmp_fld = {response_text + fields.position(e_volume), static_cast<size_t>(fields.length(e_volume))};
+        tmp_fld =
+            std::string_view(response_text + fields.position(e_volume), fields.length(std::to_underlying(e_volume)));
         if (auto [p, ec] = std::from_chars(tmp_fld.begin(), tmp_fld.end(), new_value.last_size_); ec != std::errc())
         {
             throw std::runtime_error(std::format("Problem converting transaction volume to int64: {}\n",
                                                  std::make_error_code(ec).message()));
         }
 
-        tmp_fld = {response_text + fields.position(e_dark_pool), static_cast<size_t>(fields.length(e_dark_pool))};
+        tmp_fld = std::string_view(response_text + fields.position(e_dark_pool),
+                                   fields.length(std::to_underlying(e_dark_pool)));
         new_value.dark_pool_ = tmp_fld == "true";
 
-        tmp_fld = {response_text + fields.position(e_mkt_status), static_cast<size_t>(fields.length(e_mkt_status))};
+        tmp_fld = std::string_view(response_text + fields.position(e_mkt_status),
+                                   fields.length(std::to_underlying(e_mkt_status)));
 
         if (tmp_fld == "open")
         {
