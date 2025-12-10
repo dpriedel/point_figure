@@ -175,6 +175,12 @@ private:
     std::unique_ptr<po::options_description> newoptions_; //	new style options (with identifiers)
     po::variables_map variablemap_;
 
+    // make this a class member because we need to access it
+    // from an async task and this avoids passing an extra argument down
+    // the calling chain. Alos, there will only be 1 of these per run.
+
+    std::unique_ptr<RemoteDataSource> PF_streamer_;
+
     int argc_ = 0;
     char **argv_ = nullptr;
     const std::vector<std::string> tokens_;

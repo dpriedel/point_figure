@@ -1393,24 +1393,24 @@ void PF_CollectDataApp::CollectStreamingData()
     {
         try
         {
-            std::unique_ptr<RemoteDataSource> streaming;
+            // std::unique_ptr<RemoteDataSource> streaming;
             if (streaming_data_source_ == StreamingSource::e_Eodhd)
             {
-                streaming = std::make_unique<Eodhd>(
+                PF_streamer_ = std::make_unique<Eodhd>(
                     Eodhd::Host{streaming_host_name_}, Eodhd::Port{streaming_host_port_},
                     Eodhd::APIKey{streaming_api_key_}, Eodhd::Prefix{"/ws/us?api_token="s + streaming_api_key_});
             }
             else
             {
                 // just 2 options for now
-                streaming =
+                PF_streamer_ =
                     std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{streaming_host_port_},
                                              Tiingo::APIKey{streaming_api_key_}, Tiingo::Prefix{"/iex"});
             }
 
-            streaming->UseSymbols(symbol_list_);
+            PF_streamer_->UseSymbols(symbol_list_);
 
-            auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, streaming.get(),
+            auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, PF_streamer_.get(),
                                              &PF_CollectDataApp::had_signal_, std::ref(streamer_context));
             streaming_task.get();
         }
@@ -1429,25 +1429,16 @@ void PF_CollectDataApp::CollectStreamingData()
                                       streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo",
                                       e.what()));
             had_signal_ = true;
+            streamer_context.done_ = true;
         }
     }
 
-    // I get here when streaming stops for whatever reason
-    // so tell the processors that we're done
-
-    {
-        std::lock_guard<std::mutex> lock(streamer_context.mtx_);
-        streamer_context.done_ = true;
-    }
-    streamer_context.cv_.notify_one(); // Wake consumer one last time to see 'done'
+    PF_streamer_.reset();
 
     processing_task.get();
     timer_task.get();
 
     spdlog::debug("got here after timer expired");
-    // make a last check to be sure we  didn't leave any data unprocessed
-
-    ProcessStreamedData(std::ref(streamer_context));
 
 } // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
 
@@ -1456,46 +1447,30 @@ void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext &s
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
 
-    std::unique_ptr<RemoteDataSource> streamer;
-    if (streaming_data_source_ == StreamingSource::e_Eodhd)
-    {
-        streamer = std::make_unique<Eodhd>(Eodhd::Host{streaming_host_name_}, Eodhd::Port{quote_host_port_},
-                                           Eodhd::APIKey{streaming_api_key_},
-                                           Eodhd::Prefix{"/ws/us?api_token="s + streaming_api_key_});
-    }
-    else
-    {
-        // just 2 options for now
-        streamer = std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{quote_host_port_},
-                                            Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{"/iex"});
-    }
     while (true)
     {
 
         std::unique_lock<std::mutex> lock(streamer_context.mtx_);
 
-        // 1. Wait for data OR completion
-        // The lambda is the "predicate". The wait only returns if
-        // the predicate is true. This handles "spurious wakeups".
         streamer_context.cv_.wait(
             lock, [&streamer_context] { return !streamer_context.streamed_data_.empty() || streamer_context.done_; });
 
-        // 2. Check if we are done and the queue is empty
         if (streamer_context.done_ && streamer_context.streamed_data_.empty())
         {
             // std::println("Consumer: Work complete.");
             break;
         }
 
-        // 3. Process data
+        if (streamer_context.streamed_data_.empty())
+        {
+            continue;
+        }
         std::string new_data = streamer_context.streamed_data_.front();
         streamer_context.streamed_data_.pop();
 
-        // Unlock manually before processing if processing is heavy
-        // to allow the producer to push more data meanwhile.
         lock.unlock();
 
-        const auto pf_data = streamer->ExtractStreamedData(new_data);
+        const auto pf_data = PF_streamer_->ExtractStreamedData(new_data);
 
         // our PF_Data contains data for just 1 transaction for 1 symbol
         try
@@ -1543,16 +1518,9 @@ void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext &s
             }
             continue;
         }
-        if (streamer_context.streamed_data_.empty())
-        {
-            break;
-        }
     }
     if (ep)
     {
-        // spdlog::error(catenate("Processed: ", file_list.size(), " files.
-        // Successes: ", success_counter,
-        //         ". Errors: ", error_counter, "."));
         std::rethrow_exception(ep);
     }
 
