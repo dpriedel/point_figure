@@ -307,22 +307,25 @@ RemoteDataSource::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
             std::format("Missing 1 or more fields from response: '{}'. Expected 11. Got: {}", tob_data, fields.size())
                 .c_str());
 
-        const auto time_fld = fields[e_timestamp];
+        std::string time_fld{fields[e_timestamp]};
+
+        // EODHD provides the timestamp in seconds.  we need to convert to nanoseconds.
+
+        time_fld.append("000000000");
+
         int64_t time_value{};
-        if (auto [p, ec] = std::from_chars(time_fld.begin(), time_fld.end(), time_value); ec != std::errc())
+        if (auto [p, ec] = std::from_chars(&time_fld.front(), &time_fld.back(), time_value); ec != std::errc())
         {
             throw std::runtime_error(std::format("Problem converting transaction timestamp to int64: {}\n",
                                                  std::make_error_code(ec).message()));
         }
         std::chrono::seconds secs{time_value};
-        // new_value.time_stamp_nanoseconds_utc_ = TmPt{std::chrono::duration_cast<std::chrono::nanoseconds>(ms)};
-        TopOfBookOpenAndLastClose new_data{
-            .symbol_ = symbol,
-            .time_stamp_nsecs_ =
-                std::chrono::utc_clock::time_point{std::chrono::duration_cast<std::chrono::nanoseconds>(secs)},
-            .open_ = sv2dec(fields[e_open]),
-            .last_ = sv2dec(fields[e_close]),
-            .previous_close_ = sv2dec(fields[e_previous_close])};
+        TopOfBookOpenAndLastClose new_data{.symbol_ = symbol,
+                                           .time_stamp_nsecs_ =
+                                               std::chrono::utc_clock::time_point{std::chrono::nanoseconds{secs}},
+                                           .open_ = sv2dec(fields[e_open]),
+                                           .last_ = sv2dec(fields[e_close]),
+                                           .previous_close_ = sv2dec(fields[e_previous_close])};
 
         stock_data.push_back(new_data);
     }
