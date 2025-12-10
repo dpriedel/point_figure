@@ -167,9 +167,10 @@ void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferr
     }
 
     // Process Data
-    std::string buffer_content = beast::buffers_to_string(buffer_.cdata());
-    if (!buffer_content.empty() && context_ptr_)
+    if (buffer_.size() > 0 && context_ptr_)
     {
+        std::string buffer_content = beast::buffers_to_string(buffer_.cdata());
+
         {
             std::lock_guard<std::mutex> queue_lock(context_ptr_->mtx_);
             context_ptr_->streamed_data_.push(std::move(buffer_content));
@@ -229,18 +230,6 @@ void RemoteDataSource::RequestStop()
 }
 void RemoteDataSource::DisconnectWS()
 {
-    // // Do not call ioc_.stop() here.
-    // boost::asio::post(ioc_, [this]() {
-    //     timer_.cancel();
-    //     if (ws_.is_open())
-    //     {
-    //         // Initiate graceful close
-    //         ws_.async_close(websocket::close_code::normal, [this](beast::error_code ec) {
-    //             spdlog::debug("Closed: {}", ec.message());
-    //             // The on_read loop will now fail, loop will exit, ioc_.run() returns.
-    //         });
-    //     }
-    // });
     // Cancel any pending operations
     timer_.cancel();
 

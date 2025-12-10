@@ -240,7 +240,6 @@ void Tiingo::StopStreaming(StreamerContext &streamer_context)
     DisconnectWS();
 }
 
-// ... [Include GetTopOfBookAndLastClose and GetMostRecentTickerData from original file] ...
 // These methods use RequestData which is now synchronous and separate.
 RemoteDataSource::TopOfBookList Tiingo::GetTopOfBookAndLastClose()
 {
