@@ -79,9 +79,9 @@ public:
 
     struct StreamerContext
     {
-        std::condition_variable cv_;
+        std::condition_variable cv_ = {};
         bool done_ = false; // Flag to signal completion
-        std::mutex mtx_;
+        std::mutex mtx_ = {};
         std::queue<std::string> streamed_data_;
     };
 
