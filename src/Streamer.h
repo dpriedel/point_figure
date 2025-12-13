@@ -85,7 +85,7 @@ public:
         std::queue<std::string> streamed_data_;
     };
 
-    struct ExtractorContext
+    struct ProcessorContext
     {
         std::condition_variable cv_ = {};
         bool done_ = false; // Flag to signal completion
