@@ -163,6 +163,7 @@ void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferr
     {
         spdlog::error("Read error: {}", ec.message());
         StopStreaming(*context_ptr_);
+        *had_signal_ptr_ = true;
         return;
     }
 
