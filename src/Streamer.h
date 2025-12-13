@@ -85,6 +85,14 @@ public:
         std::queue<std::string> streamed_data_;
     };
 
+    struct ExtractorContext
+    {
+        std::condition_variable cv_ = {};
+        bool done_ = false; // Flag to signal completion
+        std::mutex mtx_ = {};
+        std::queue<PF_Data> extracted_data_ = {};
+    };
+
     // ====================  LIFECYCLE     =======================================
 
     RemoteDataSource();
