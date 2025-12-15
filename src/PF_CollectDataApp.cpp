@@ -31,6 +31,7 @@
 /* You should have received a copy of the GNU General Public License */
 /* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <BS_thread_pool/BS_thread_pool.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -1344,33 +1345,27 @@ void PF_CollectDataApp::PrimeChartsForStreaming()
 
 void PF_CollectDataApp::CollectStreamingData()
 {
-    // we're going to use 2 threads here -- a producer thread which collects
-    // streamed data from the streaming source and a consummer thread which will take that
-    // data, decode it and load it into appropriate charts. Processing continues
-    // until interrupted.
+    // we're going to use multiple threads here -- a producer thread which collects
+    // streamed data from the streaming source,
+    // -- a translator thread which converts the streamed data into a PF_Data struct for
+    // processing
+    // --and a processor thread for each symbol which will take that
+    // data and load it into appropriate charts and update collected history.
+    // Processing continues until interrupted (user interrupt or timeer).
 
-    // we've added a third thread to manage a countdown timer which will
+    // we've added a thread to manage a countdown timer which will
     // interrupt our producer thread at market close.  Otherwise, the producer
     // thread will hang forever or until interrupted.
 
     // since this code can potentially run for hours on end
     // it's a good idea to provide a way to break into this processing and shut
-    // it down cleanly. so, a little bit of C...(taken from "Advanced Unix
-    // Programming" by Warren W. Gay, p. 317)
+    // it down cleanly. A keyboard interrupt handler is provided by the RemoteDataSource async
+    // websocket streamer.
+    // Prior code from "Advaned Unix Programming" by Warren W. Gay, p. 317)
 
     std::cout << std::format("starting {} streaming.",
                              streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo")
               << std::endl;
-
-    // ok, get ready to handle keyboard interrupts, if any.
-
-    // struct sigaction sa_old{};
-    // struct sigaction sa_new{};
-    //
-    // sa_new.sa_handler = PF_CollectDataApp::HandleSignal;
-    // sigemptyset(&sa_new.sa_mask);
-    // sa_new.sa_flags = 0;
-    // sigaction(SIGINT, &sa_new, &sa_old);
 
     PF_CollectDataApp::had_signal_ = false;
 
@@ -1382,13 +1377,40 @@ void PF_CollectDataApp::CollectStreamingData()
     auto local_market_close =
         std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
 
+    // this is for the websocket thread
     RemoteDataSource::StreamerContext streamer_context;
 
+    // data structure to manage processing data extracted from stream.
+    // because the context struct includes a mutux and a condition_variable which are
+    // not copyable or assignable, we need to be slightly indirect here.
+
+    std::vector<RemoteDataSource::ProcessorContext> processor_contexts(symbol_list_.size());
+
+    // so now we want to access our extractor_contexts via symbol;
+    // extractor_contexts[context_map.at(<symbol>)]
+    std::map<std::string, int> symbol_to_context_map;
+    int indx = 0;
+    for (const auto &symbol : symbol_list_)
+    {
+        symbol_to_context_map[symbol] = indx++;
+    }
+
+    // the new part -- use a thread pool for the low level processing tasks which are the most
+    // time-consuming part. add a task for each symbol we are processing data for.
+
+    BS::thread_pool processor_thread_pool(thread_pool_threads_);
+    for (auto &context : processor_contexts)
+    {
+        processor_thread_pool.detach_task([this, &context]() { this->ProcessUpdatesForSymbol(context); });
+    }
+
+    auto parsing_task =
+        std::async(std::launch::async, &PF_CollectDataApp::StreamedDataParser, this, std::ref(streamer_context),
+                   std::ref(processor_contexts), std::ref(symbol_to_context_map));
     // py::gil_scoped_release gil{};
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
-    auto processing_task =
-        std::async(std::launch::async, &PF_CollectDataApp::ProcessStreamedData, this, std::ref(streamer_context));
+
     while (!had_signal_)
     {
         try
@@ -1435,14 +1457,81 @@ void PF_CollectDataApp::CollectStreamingData()
 
     PF_streamer_.reset();
 
-    processing_task.get();
+    streamer_context.done_ = true;
+    streamer_context.cv_.notify_one();
+    parsing_task.get();
+
+    for (auto &context : processor_contexts)
+    {
+        context.done_ = true;
+        context.cv_.notify_one();
+    }
+    processor_thread_pool.wait();
+
     timer_task.get();
 
     spdlog::debug("got here after timer expired");
 
 } // -----  end of method PF_CollectDataApp::CollectStreamingData  -----
 
-void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext &streamer_context)
+// here's a task to parse the streamed buffer of data and xlate it to a PF_Data struct.
+// and then add it to the appropriate processor_contexts buffer for processing.
+
+void PF_CollectDataApp::StreamedDataParser(RemoteDataSource::StreamerContext &streamer_context,
+                                           std::vector<RemoteDataSource::ProcessorContext> &processor_contexts,
+                                           std::map<std::string, int> &symbol_to_context_map)
+{
+    while (true)
+    {
+        std::string new_data;
+        {
+            std::unique_lock<std::mutex> lock(streamer_context.mtx_);
+
+            streamer_context.cv_.wait(lock, [&streamer_context] {
+                return !streamer_context.streamed_data_.empty() || streamer_context.done_;
+            });
+
+            if (streamer_context.done_ && streamer_context.streamed_data_.empty())
+            {
+                // std::println("Consumer: Work complete.");
+                break;
+            }
+
+            if (streamer_context.streamed_data_.empty())
+            {
+                continue;
+            }
+            new_data = std::move(streamer_context.streamed_data_.front());
+            streamer_context.streamed_data_.pop();
+        }
+
+        try
+        {
+            const RemoteDataSource::PF_Data extracted_data = PF_streamer_->ExtractStreamedData(new_data);
+            if (extracted_data.ticker_.empty())
+            {
+                // Tiingo sends 'heartbeat' messages with no data
+                continue;
+            }
+            auto &processor_ctx = processor_contexts[symbol_to_context_map.at(extracted_data.ticker_)];
+
+            // push our data on to the next step
+
+            {
+                std::lock_guard<std::mutex> lock(processor_ctx.mtx_);
+                processor_ctx.extracted_data_.emplace(extracted_data);
+            }
+
+            processor_ctx.cv_.notify_one();
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error("Error parsing websocket data: {}\n{}", new_data, e.what());
+        }
+    }
+};
+
+void PF_CollectDataApp::ProcessUpdatesForSymbol(RemoteDataSource::ProcessorContext &processor_context)
 {
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
@@ -1450,32 +1539,31 @@ void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext &s
     while (true)
     {
 
-        std::unique_lock<std::mutex> lock(streamer_context.mtx_);
+        std::unique_lock<std::mutex> lock(processor_context.mtx_);
 
-        streamer_context.cv_.wait(
-            lock, [&streamer_context] { return !streamer_context.streamed_data_.empty() || streamer_context.done_; });
+        processor_context.cv_.wait(lock, [&processor_context] {
+            return !processor_context.extracted_data_.empty() || processor_context.done_;
+        });
 
-        if (streamer_context.done_ && streamer_context.streamed_data_.empty())
+        if (processor_context.done_ && processor_context.extracted_data_.empty())
         {
             // std::println("Consumer: Work complete.");
             break;
         }
 
-        if (streamer_context.streamed_data_.empty())
+        if (processor_context.extracted_data_.empty())
         {
             continue;
         }
-        std::string new_data = streamer_context.streamed_data_.front();
-        streamer_context.streamed_data_.pop();
+        RemoteDataSource::PF_Data pf_data = std::move(processor_context.extracted_data_.front());
+        processor_context.extracted_data_.pop();
 
         lock.unlock();
-
-        const auto pf_data = PF_streamer_->ExtractStreamedData(new_data);
 
         // our PF_Data contains data for just 1 transaction for 1 symbol
         try
         {
-            ProcessUpdatesForSymbol(pf_data);
+            Do_ProcessUpdatesForSymbol(pf_data);
         }
         catch (std::system_error &e)
         {
@@ -1526,7 +1614,7 @@ void PF_CollectDataApp::ProcessStreamedData(RemoteDataSource::StreamerContext &s
 
 } // -----  end of method PF_CollectDataApp::ProcessEodhdStreamedData  -----
 
-void PF_CollectDataApp::ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update)
+void PF_CollectDataApp::Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update)
 {
     // it is possible that the update could be empty if there was a problem extracting
     // the data.

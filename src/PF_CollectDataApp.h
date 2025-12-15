@@ -138,7 +138,6 @@ protected:
 
     void PrimeChartsForStreaming();
     void CollectStreamingData();
-    void ProcessStreamedData(RemoteDataSource::StreamerContext &streamer_context);
 
     [[nodiscard]] decimal::Decimal ComputeATRForChart(const std::string &symbol) const;
     [[nodiscard]] decimal::Decimal ComputeATRForChartFromDB(const std::string &symbol) const;
@@ -152,9 +151,12 @@ protected:
 private:
     static void HandleSignal(int signal);
 
-    void ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update);
     void CollectStreamedData(const RemoteDataSource::PF_Data &update, PF_SignalType new_signal);
-
+    void StreamedDataParser(RemoteDataSource::StreamerContext &streamer_context,
+                            std::vector<RemoteDataSource::ProcessorContext> &processor_contexts,
+                            std::map<std::string, int> &symbol_to_context_map);
+    void ProcessUpdatesForSymbol(RemoteDataSource::ProcessorContext &processor_context);
+    void Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data &update);
     std::tuple<int, int, int> ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list);
     [[nodiscard]] std::pair<int, int> CountChartReversalsUpAndDown() const;
     [[nodiscard]] std::pair<int, int> CountChartTrendsContinueUpAndDown() const;
@@ -311,6 +313,7 @@ private:
 
     int64_t min_close_volume_ = 100'000;
 
+    int32_t thread_pool_threads_ = 8;
     int32_t max_columns_for_graph_ = -1;
     int32_t number_of_days_history_for_ATR_ = 0;
     bool input_is_path_ = false;
