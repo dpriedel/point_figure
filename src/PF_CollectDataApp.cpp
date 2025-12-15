@@ -1381,7 +1381,7 @@ void PF_CollectDataApp::CollectStreamingData()
     RemoteDataSource::StreamerContext streamer_context;
 
     // data structure to manage processing data extracted from stream.
-    // because the context struct includes a mutux and a condition_variable which are
+    // Because the context struct includes a mutux and a condition_variable which are
     // not copyable or assignable, we need to be slightly indirect here.
 
     std::vector<RemoteDataSource::ProcessorContext> processor_contexts(symbol_list_.size());
@@ -1451,11 +1451,10 @@ void PF_CollectDataApp::CollectStreamingData()
                                       streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo",
                                       e.what()));
             had_signal_ = true;
-            streamer_context.done_ = true;
         }
     }
 
-    PF_streamer_.reset();
+    // PF_streamer_.reset();
 
     streamer_context.done_ = true;
     streamer_context.cv_.notify_one();
@@ -1536,6 +1535,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(RemoteDataSource::ProcessorConte
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
 
+    RemoteDataSource::PF_Data pf_data;
     while (true)
     {
 
@@ -1555,7 +1555,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(RemoteDataSource::ProcessorConte
         {
             continue;
         }
-        RemoteDataSource::PF_Data pf_data = std::move(processor_context.extracted_data_.front());
+        pf_data = std::move(processor_context.extracted_data_.front());
         processor_context.extracted_data_.pop();
 
         lock.unlock();
