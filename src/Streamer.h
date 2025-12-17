@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <vector>
 
 #include <boost/asio/connect.hpp>
@@ -130,6 +131,7 @@ public:
     void RequestStop();
     void ConnectWS();
     void DisconnectWS();
+    void StartReconnect();
 
 protected:
     // ====================  ASYNC MECHANICS  ====================================
@@ -146,6 +148,9 @@ protected:
     void on_read(beast::error_code ec, std::size_t bytes_transferred);
     void on_timer(beast::error_code ec);
     void on_signal(beast::error_code ec, int signal_number);
+    void start_reconnection();
+    std::chrono::milliseconds calculate_reconnect_delay();
+    void try_reconnect();
 
     // ====================  DATA MEMBERS  =======================================
 
@@ -160,15 +165,23 @@ protected:
     boost::asio::signal_set signals_{ioc_};
     beast::flat_buffer buffer_;
 
+    net::steady_timer reconnect_timer_;
+    int max_reconnect_attempts_;
+    int reconnect_attempts_;
+    std::chrono::seconds base_reconnect_delay_;
+    std::mt19937 rng_;
+    std::uniform_int_distribution<> jitter_dist_;
+    bool should_reconnect_;
+
     // Pointers to external context (valid only during StreamData execution)
     StreamerContext *context_ptr_ = nullptr;
     bool *had_signal_ptr_ = nullptr;
 
     std::vector<std::string> symbol_list_;
-    std::string host_;
-    std::string port_;
-    std::string api_key_;
-    std::string websocket_prefix_;
+    const std::string host_;
+    const std::string port_;
+    const std::string api_key_;
+    const std::string websocket_prefix_;
 };
 
 // Formatter specializations...

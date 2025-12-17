@@ -4,18 +4,24 @@
 // =====================================================================================
 
 #include "Streamer.h"
+#include <algorithm>
 #include <boost/asio/bind_executor.hpp>
 
 namespace rng = std::ranges;
 namespace http = beast::http;
 
-RemoteDataSource::RemoteDataSource() : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+RemoteDataSource::RemoteDataSource()
+    : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}, reconnect_timer_(ioc_),
+      max_reconnect_attempts_(5), reconnect_attempts_(0), base_reconnect_delay_(std::chrono::seconds(1)),
+      rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
 {
 }
 
 RemoteDataSource::RemoteDataSource(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : api_key_{api_key.get()}, host_{host.get()}, port_{port.get()}, websocket_prefix_{prefix.get()},
-      ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}
+      ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}, reconnect_timer_(ioc_),
+      max_reconnect_attempts_(5), reconnect_attempts_(0), base_reconnect_delay_(std::chrono::seconds(1)),
+      rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
 {
 }
 
@@ -24,6 +30,13 @@ RemoteDataSource::~RemoteDataSource()
     // Ensure IOC is stopped if object is destroyed
     if (!ioc_.stopped())
         ioc_.stop();
+}
+
+void RemoteDataSource::StartReconnect()
+{
+    should_reconnect_ = true;
+    reconnect_attempts_ = 0; // Reset attempts
+    start_reconnection();
 }
 
 void RemoteDataSource::StreamData(bool *had_signal, StreamerContext &streamer_context)
@@ -76,8 +89,8 @@ void RemoteDataSource::on_resolve(beast::error_code ec, tcp::resolver::results_t
     }
 
     // 2. Connect TCP
-    net::async_connect(
-        beast::get_lowest_layer(ws_), results, beast::bind_front_handler(&RemoteDataSource::on_connect, this));
+    net::async_connect(beast::get_lowest_layer(ws_), results,
+                       beast::bind_front_handler(&RemoteDataSource::on_connect, this));
 }
 
 void RemoteDataSource::on_connect(beast::error_code ec, tcp::resolver::results_type::endpoint_type ep)
@@ -104,16 +117,22 @@ void RemoteDataSource::on_ssl_handshake(beast::error_code ec)
     if (ec)
     {
         spdlog::error("SSL Handshake failed: {}", ec.message());
+        should_reconnect_ = true;
+        start_reconnection();
         return;
     }
 
-    ws_.set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    beast::websocket::stream_base::timeout opt{
+        std::chrono::seconds(30), // Handshake timeout
+        std::chrono::seconds(30), // Idle timeout (disconnect if no data/pong for 30s)
+        true                      // Keep-Alive: Send a Ping if idle
+    };
+    ws_.set_option(opt);
+
     ws_.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
         req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async");
     }));
 
-    // 4. Websocket Handshake
-    std::string tmp_host = host_ + ':' + port_; // Port is often implied in host string for handshake, or use host
     ws_.async_handshake(host_, websocket_prefix_, beast::bind_front_handler(&RemoteDataSource::on_handshake, this));
 }
 
@@ -122,55 +141,153 @@ void RemoteDataSource::on_handshake(beast::error_code ec)
     if (ec)
     {
         spdlog::error("Websocket Handshake failed: {}", ec.message());
+        if (should_reconnect_)
+        {
+            start_reconnection();
+        }
         return;
     }
 
     spdlog::debug("Connected. performing subscription...");
+    reconnect_attempts_ = 0;  // Reset attempts on successful connection
+    should_reconnect_ = true; // Enable reconnection from now on
     // 5. Let derived class handle subscription
     OnConnected();
+}
+
+void RemoteDataSource::start_reconnection()
+{
+    if (!should_reconnect_ || reconnect_attempts_ >= max_reconnect_attempts_)
+    {
+        spdlog::info("Max reconnection attempts reached or reconnection disabled. Stopping.");
+        ioc_.stop();
+        return;
+    }
+
+    ++reconnect_attempts_;
+    auto delay = calculate_reconnect_delay();
+
+    spdlog::info("Attempting to reconnect in {} seconds (attempt {}/{}).", delay.count(), reconnect_attempts_,
+                 max_reconnect_attempts_);
+
+    reconnect_timer_.expires_after(delay);
+    reconnect_timer_.async_wait([this](beast::error_code ec) {
+        if (ec == net::error::operation_aborted)
+        {
+            return;
+        }
+
+        if (ec)
+        {
+            spdlog::error("Reconnection timer error: {}", ec.message());
+            return;
+        }
+
+        try_reconnect();
+    });
+}
+
+std::chrono::milliseconds RemoteDataSource::calculate_reconnect_delay()
+{
+
+    auto delay = base_reconnect_delay_ * std::pow(2.0, reconnect_attempts_ - 1);
+    auto jitter = std::chrono::milliseconds(jitter_dist_(rng_));
+    delay += jitter;
+    auto max_delay = std::chrono::seconds(30);
+    // Convert both to milliseconds for comparison
+    auto delay_ms = std::chrono::duration_cast<std::chrono::milliseconds>(delay);
+    auto max_delay_ms = std::chrono::duration_cast<std::chrono::milliseconds>(max_delay);
+    return std::min(delay_ms, max_delay_ms);
+}
+
+void RemoteDataSource::try_reconnect()
+{
+    try
+    {
+        // Close any existing connection
+        if (ws_.is_open())
+        {
+            // ws_.close(websocket::close_code::normal);
+            beast::get_lowest_layer(ws_).close();
+        }
+
+        // Reconnect
+        ConnectWS();
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("Reconnection attempt failed: {}", e.what());
+        start_reconnection(); // Try again
+    }
 }
 
 void RemoteDataSource::StartReadLoop()
 {
     // Called by derived class when subscription is complete
     spdlog::debug("Subscription complete. Starting read loop.");
+
+    // make sure there are no left-overs in the buffer from subscription Process.
+
+    buffer_.clear();
     do_read();
 }
 
 void RemoteDataSource::do_read()
 {
-    // Set timer for read timeout (e.g., 30 seconds)
-    timer_.expires_after(std::chrono::seconds(30));
-    timer_.async_wait(beast::bind_front_handler(&RemoteDataSource::on_timer, this));
-
     // Async Read
-    buffer_.clear();
     ws_.async_read(buffer_, beast::bind_front_handler(&RemoteDataSource::on_read, this));
 }
 
 void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferred)
 {
-    // Operation completed, cancel timer
-    timer_.cancel();
-
     if (ec == websocket::error::closed)
     {
         spdlog::debug("Websocket closed normally.");
         StopStreaming(*context_ptr_);
         return;
     }
+
+    // Handle Timeouts (detected by Beast via missed Ping/Pong)
+    // Beast uses net::error::timed_out for websocket timeouts
+    if (ec == beast::error::timeout)
+    {
+        spdlog::warn("WebSocket connection timed out (no Ping/Pong). Reconnecting.");
+        should_reconnect_ = true;
+        start_reconnection();
+        return;
+    }
+
+    if (ec == boost::asio::error::eof)
+    {
+        spdlog::warn("Remote socket closed unexpectedly. Attempting reconnection.");
+        should_reconnect_ = true;
+        start_reconnection();
+        return;
+    }
+
     if (ec)
     {
         spdlog::error("Read error: {}", ec.message());
-        StopStreaming(*context_ptr_);
-        *had_signal_ptr_ = true;
+        if (should_reconnect_)
+        {
+            start_reconnection();
+        }
+        else
+        {
+            StopStreaming(*context_ptr_);
+            *had_signal_ptr_ = true;
+        }
         return;
     }
 
     // Process Data
     if (buffer_.size() > 0 && context_ptr_)
     {
+        // We read the data, then manually consume it.
         std::string buffer_content = beast::buffers_to_string(buffer_.cdata());
+
+        // Remove the processed bytes from the buffer so it's empty for the next read
+        buffer_.clear();
 
         {
             std::lock_guard<std::mutex> queue_lock(context_ptr_->mtx_);
@@ -216,6 +333,7 @@ void RemoteDataSource::on_signal(beast::error_code ec, int signal_number)
         if (context_ptr_)
             StopStreaming(*context_ptr_);
 
+        should_reconnect_ = false; // Disable reconnection
         // Stop the IO context to exit the run() loop
         ioc_.stop();
     }
@@ -224,7 +342,7 @@ void RemoteDataSource::on_signal(beast::error_code ec, int signal_number)
 void RemoteDataSource::RequestStop()
 {
     // This can be called from outside to trigger graceful shutdown
-    boost::asio::post([this]() {
+    boost::asio::post(ioc_, [this]() {
         if (context_ptr_)
             StopStreaming(*context_ptr_);
     });
@@ -233,6 +351,7 @@ void RemoteDataSource::DisconnectWS()
 {
     // Cancel any pending operations
     timer_.cancel();
+    reconnect_timer_.cancel();
 
     if (ws_.is_open())
     {
@@ -245,7 +364,6 @@ void RemoteDataSource::DisconnectWS()
             // Close underlying socket properly
             try
             {
-                // Access the underlying TCP socket through the SSL stream
                 auto &socket = beast::get_lowest_layer(ws_);
                 if (socket.is_open())
                 {
