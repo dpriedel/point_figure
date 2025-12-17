@@ -1411,47 +1411,37 @@ void PF_CollectDataApp::CollectStreamingData()
 
     auto timer_task = std::async(std::launch::async, &PF_CollectDataApp::WaitForTimer, local_market_close);
 
-    while (!had_signal_)
+    // the websock streamer (RemoteDataSource) handles reconnect situations so no need to do it here.
+
+    try
     {
-        try
+        // std::unique_ptr<RemoteDataSource> streaming;
+        if (streaming_data_source_ == StreamingSource::e_Eodhd)
         {
-            // std::unique_ptr<RemoteDataSource> streaming;
-            if (streaming_data_source_ == StreamingSource::e_Eodhd)
-            {
-                PF_streamer_ = std::make_unique<Eodhd>(
-                    Eodhd::Host{streaming_host_name_}, Eodhd::Port{streaming_host_port_},
-                    Eodhd::APIKey{streaming_api_key_}, Eodhd::Prefix{"/ws/us?api_token="s + streaming_api_key_});
-            }
-            else
-            {
-                // just 2 options for now
-                PF_streamer_ =
-                    std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{streaming_host_port_},
-                                             Tiingo::APIKey{streaming_api_key_}, Tiingo::Prefix{"/iex"});
-            }
-
-            PF_streamer_->UseSymbols(symbol_list_);
-
-            auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, PF_streamer_.get(),
-                                             &PF_CollectDataApp::had_signal_, std::ref(streamer_context));
-            streaming_task.get();
+            PF_streamer_ = std::make_unique<Eodhd>(Eodhd::Host{streaming_host_name_}, Eodhd::Port{streaming_host_port_},
+                                                   Eodhd::APIKey{streaming_api_key_},
+                                                   Eodhd::Prefix{"/ws/us?api_token="s + streaming_api_key_});
         }
-        catch (RemoteDataSource::StreamingEOF &e)
+        else
         {
-            // if we got an EOF on the stream, just start up again
-            // unless, we had a signal.
-
-            spdlog::info("Caught 'StreamingEOF'. Trying to continue.");
-
-            continue;
+            // just 2 options for now
+            PF_streamer_ =
+                std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{streaming_host_port_},
+                                         Tiingo::APIKey{streaming_api_key_}, Tiingo::Prefix{"/iex"});
         }
-        catch (std::exception &e)
-        {
-            spdlog::error(std::format("Problem with {} streaming. Message: {}",
-                                      streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo",
-                                      e.what()));
-            had_signal_ = true;
-        }
+
+        PF_streamer_->UseSymbols(symbol_list_);
+
+        auto streaming_task = std::async(std::launch::async, &RemoteDataSource::StreamData, PF_streamer_.get(),
+                                         &PF_CollectDataApp::had_signal_, std::ref(streamer_context));
+        streaming_task.get();
+    }
+    catch (std::exception &e)
+    {
+        spdlog::error(std::format("Problem with {} streaming. Message: {}",
+                                  streaming_data_source_ == StreamingSource::e_Eodhd ? "Eodhd" : "Tiingo",
+                                  e.what()));
+        had_signal_ = true;
     }
 
     // PF_streamer_.reset();
@@ -1535,30 +1525,29 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(RemoteDataSource::ProcessorConte
     //    py::gil_scoped_acquire gil{};
     std::exception_ptr ep = nullptr;
 
-    RemoteDataSource::PF_Data pf_data;
     while (true)
     {
-
-        std::unique_lock<std::mutex> lock(processor_context.mtx_);
-
-        processor_context.cv_.wait(lock, [&processor_context] {
-            return !processor_context.extracted_data_.empty() || processor_context.done_;
-        });
-
-        if (processor_context.done_ && processor_context.extracted_data_.empty())
+        RemoteDataSource::PF_Data pf_data;
         {
-            // std::println("Consumer: Work complete.");
-            break;
-        }
+            std::unique_lock<std::mutex> lock(processor_context.mtx_);
 
-        if (processor_context.extracted_data_.empty())
-        {
-            continue;
-        }
-        pf_data = std::move(processor_context.extracted_data_.front());
-        processor_context.extracted_data_.pop();
+            processor_context.cv_.wait(lock, [&processor_context] {
+                return !processor_context.extracted_data_.empty() || processor_context.done_;
+            });
 
-        lock.unlock();
+            if (processor_context.done_ && processor_context.extracted_data_.empty())
+            {
+                // std::println("Consumer: Work complete.");
+                break;
+            }
+
+            if (processor_context.extracted_data_.empty())
+            {
+                continue;
+            }
+            pf_data = std::move(processor_context.extracted_data_.front());
+            processor_context.extracted_data_.pop();
+        }
 
         // our PF_Data contains data for just 1 transaction for 1 symbol
         try
