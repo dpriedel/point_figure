@@ -244,6 +244,8 @@ void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferr
     {
         spdlog::debug("Websocket closed normally.");
         StopStreaming(*context_ptr_);
+        if (had_signal_ptr_)
+            *had_signal_ptr_ = true;
         return;
     }
 
@@ -275,7 +277,8 @@ void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferr
         else
         {
             StopStreaming(*context_ptr_);
-            *had_signal_ptr_ = true;
+            if (had_signal_ptr_)
+                *had_signal_ptr_ = true;
         }
         return;
     }
@@ -343,6 +346,8 @@ void RemoteDataSource::RequestStop()
 {
     // This can be called from outside to trigger graceful shutdown
     boost::asio::post(ioc_, [this]() {
+        if (had_signal_ptr_)
+            *had_signal_ptr_ = true;
         if (context_ptr_)
             StopStreaming(*context_ptr_);
     });
