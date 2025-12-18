@@ -31,7 +31,6 @@
 /* You should have received a copy of the GNU General Public License */
 /* along with PF_CollectData.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <BS_thread_pool/BS_thread_pool.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -44,6 +43,7 @@
 #include <iterator>
 #include <map>
 #include <mutex>
+#include <print>
 #include <queue>
 #include <ranges>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -1395,13 +1395,13 @@ void PF_CollectDataApp::CollectStreamingData()
         symbol_to_context_map[symbol] = indx++;
     }
 
-    // the new part -- use a thread pool for the low level processing tasks which are the most
+    // the new part -- use a thread for the low level processing tasks which are the most
     // time-consuming part. add a task for each symbol we are processing data for.
 
-    BS::thread_pool processor_thread_pool(thread_pool_threads_);
+    std::vector<std::thread> processor_threads;
     for (auto &context : processor_contexts)
     {
-        processor_thread_pool.detach_task([this, &context]() { this->ProcessUpdatesForSymbol(context); });
+        processor_threads.emplace_back(&PF_CollectDataApp::ProcessUpdatesForSymbol, this, std::ref(context));
     }
 
     auto parsing_task =
@@ -1455,7 +1455,11 @@ void PF_CollectDataApp::CollectStreamingData()
         context.done_ = true;
         context.cv_.notify_one();
     }
-    processor_thread_pool.wait();
+
+    for (auto &thread : processor_threads)
+    {
+        thread.join();
+    }
 
     timer_task.get();
 
@@ -1482,7 +1486,7 @@ void PF_CollectDataApp::StreamedDataParser(RemoteDataSource::StreamerContext &st
 
             if (streamer_context.done_ && streamer_context.streamed_data_.empty())
             {
-                // std::println("Consumer: Work complete.");
+                std::println("Consumer/Producer: Work complete.");
                 break;
             }
 
@@ -1537,7 +1541,7 @@ void PF_CollectDataApp::ProcessUpdatesForSymbol(RemoteDataSource::ProcessorConte
 
             if (processor_context.done_ && processor_context.extracted_data_.empty())
             {
-                // std::println("Consumer: Work complete.");
+                std::println("Consumer: Work complete.");
                 break;
             }
 
