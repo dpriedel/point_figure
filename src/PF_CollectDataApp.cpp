@@ -1976,6 +1976,12 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
                 e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "")));
         }
     }
+
+    if (new_data_source_ == Source::e_streaming && graphics_format_ == GraphicsFormat::e_svg)
+    {
+        fs::path summary_graphic_path = output_graphs_directory_ / "PF_StreamingSummary.svg";
+        ConstructCDSummaryGraphic(streamed_summary_, summary_graphic_path);
+    }
 } // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInFiles  -----
 
 void PF_CollectDataApp::ShutdownAndStoreOutputInDB()
