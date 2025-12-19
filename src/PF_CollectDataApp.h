@@ -43,6 +43,8 @@
 #include <tuple>
 #include <utility>
 
+using namespace std::chrono_literals;
+
 // namespace fs = std::filesystem;
 
 #include <boost/program_options.hpp>
@@ -66,7 +68,7 @@ namespace po = boost::program_options;
 class PF_CollectDataApp
 {
 public:
-    using PF_Data = std::vector<std::pair<std::string, PF_Chart>>;
+    using PF_Charts = std::vector<std::pair<std::string, PF_Chart>>;
 
     // ====================  LIFECYCLE =======================================
     PF_CollectDataApp(int argc, char *argv[]); // constructor
@@ -88,7 +90,7 @@ public:
         return had_signal_;
     }
 
-    [[nodiscard]] const PF_Data &GetCharts() const
+    [[nodiscard]] const PF_Charts &GetCharts() const
     {
         return charts_;
     }
@@ -170,7 +172,12 @@ private:
     PF_StreamedPrices streamed_prices_;
     PF_StreamedSummary streamed_summary_;
 
-    PF_Data charts_;
+    PF_Charts charts_;
+
+    // don't draw updated charts too frequently
+    std::chrono::time_point<std::chrono::system_clock> last_summary_draw_time_;
+    std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> last_draw_times_;
+    const std::chrono::seconds minimum_delay_ = 2s;
 
     po::positional_options_description positional_;       //	old style
                                                           // options

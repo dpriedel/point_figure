@@ -50,7 +50,8 @@ void Tiingo::OnConnected()
     const std::string connection_request_str = Json::writeString(builder, connection_request);
 
     // Async Write
-    ws_.async_write(net::buffer(connection_request_str), beast::bind_front_handler(&Tiingo::on_write_subscribe, this));
+    ws_.value().async_write(net::buffer(connection_request_str),
+                            beast::bind_front_handler(&Tiingo::on_write_subscribe, this));
 }
 
 void Tiingo::on_write_subscribe(beast::error_code ec, std::size_t bytes_transferred)
@@ -63,7 +64,7 @@ void Tiingo::on_write_subscribe(beast::error_code ec, std::size_t bytes_transfer
 
     // Async Read Response
     buffer_.clear();
-    ws_.async_read(buffer_, beast::bind_front_handler(&Tiingo::on_read_subscribe, this));
+    ws_.value().async_read(buffer_, beast::bind_front_handler(&Tiingo::on_read_subscribe, this));
 }
 
 void Tiingo::on_read_subscribe(beast::error_code ec, std::size_t bytes_transferred)

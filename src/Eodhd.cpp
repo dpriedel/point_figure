@@ -42,7 +42,8 @@ void Eodhd::OnConnected()
     const auto subscribe_request_str = std::format(R"({{"action": "subscribe", "symbols": "{}"}})", ticker_list);
 
     // Async Write
-    ws_.async_write(net::buffer(subscribe_request_str), beast::bind_front_handler(&Eodhd::on_write_subscribe, this));
+    ws_.value().async_write(net::buffer(subscribe_request_str),
+                            beast::bind_front_handler(&Eodhd::on_write_subscribe, this));
 }
 
 void Eodhd::on_write_subscribe(beast::error_code ec, std::size_t bytes_transferred)
@@ -55,7 +56,7 @@ void Eodhd::on_write_subscribe(beast::error_code ec, std::size_t bytes_transferr
 
     // Async Read Response
     buffer_.clear();
-    ws_.async_read(buffer_, beast::bind_front_handler(&Eodhd::on_read_subscribe, this));
+    ws_.value().async_read(buffer_, beast::bind_front_handler(&Eodhd::on_read_subscribe, this));
 }
 
 void Eodhd::on_read_subscribe(beast::error_code ec, std::size_t bytes_transferred)

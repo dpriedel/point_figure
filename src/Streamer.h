@@ -6,11 +6,11 @@
 #ifndef _STREAMER_INC_
 #define _STREAMER_INC_
 
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <random>
 #include <vector>
@@ -157,7 +157,7 @@ protected:
     net::io_context ioc_;
     ssl::context ctx_;
     tcp::resolver resolver_;
-    websocket::stream<beast::ssl_stream<tcp::socket>, false> ws_;
+    std::optional<websocket::stream<beast::ssl_stream<tcp::socket>, false>> ws_;
     int version = 11;
 
     // Async components

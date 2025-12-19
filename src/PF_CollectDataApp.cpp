@@ -70,7 +70,6 @@ namespace vws = std::ranges::views;
 using decimal::Decimal;
 
 using namespace std::string_literals;
-using namespace std::chrono_literals;
 
 bool PF_CollectDataApp::had_signal_ = false;
 
@@ -1095,6 +1094,15 @@ void PF_CollectDataApp::Run_Streaming()
 
     PrimeChartsForStreaming();
 
+    // set up time delays between drawing chart updates
+
+    auto now = std::chrono::system_clock::now();
+    for (const auto &symbol : symbol_list_)
+    {
+        last_draw_times_[symbol] = now;
+    }
+    last_summary_draw_time_ = now;
+
     CollectStreamingData();
 
 } // -----  end of method PF_CollectDataApp::Run_Streaming  -----
@@ -1664,8 +1672,14 @@ void PF_CollectDataApp::Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Da
     const auto [first, last] = rng::unique(need_to_update_graph);
     need_to_update_graph.erase(first, last);
 
+    auto now = std::chrono::system_clock::now();
     for (const PF_Chart *chart : need_to_update_graph)
     {
+        auto last_drawn = last_draw_times_.at(chart->GetSymbol());
+        if (now < last_drawn + minimum_delay_)
+        {
+            continue;
+        }
         try
         {
             fs::path graph_file_path = output_graphs_directory_ / (chart->MakeChartFileName("", "svg"));
@@ -1674,6 +1688,7 @@ void PF_CollectDataApp::Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Da
 
             fs::path chart_file_path = output_chart_directory_ / (chart->MakeChartFileName("", "json"));
             chart->ConvertChartToJsonAndWriteToFile(chart_file_path);
+            last_draw_times_.at(chart->GetSymbol()) = now;
         }
         catch (std::exception &e)
         {
@@ -1682,8 +1697,12 @@ void PF_CollectDataApp::Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Da
         }
     }
 
-    fs::path summary_graphic_path = output_graphs_directory_ / "PF_StreamingSummary.svg";
-    ConstructCDSummaryGraphic(streamed_summary_, summary_graphic_path);
+    if (now > last_summary_draw_time_ + minimum_delay_)
+    {
+        fs::path summary_graphic_path = output_graphs_directory_ / "PF_StreamingSummary.svg";
+        ConstructCDSummaryGraphic(streamed_summary_, summary_graphic_path);
+        last_summary_draw_time_ = now;
+    }
 } // -----  end of method PF_CollectDataApp::ProcessUpdatesForEodhdSymbol  -----
 
 void PF_CollectDataApp::CollectStreamedData(const RemoteDataSource::PF_Data &update, PF_SignalType new_signal)

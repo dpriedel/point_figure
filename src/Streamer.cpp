@@ -11,7 +11,7 @@ namespace rng = std::ranges;
 namespace http = beast::http;
 
 RemoteDataSource::RemoteDataSource()
-    : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}, reconnect_timer_(ioc_),
+    : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_(std::in_place, ioc_, ctx_), reconnect_timer_(ioc_),
       max_reconnect_attempts_(5), reconnect_attempts_(0), base_reconnect_delay_(std::chrono::seconds(1)),
       rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
 {
@@ -19,7 +19,7 @@ RemoteDataSource::RemoteDataSource()
 
 RemoteDataSource::RemoteDataSource(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : api_key_{api_key.get()}, host_{host.get()}, port_{port.get()}, websocket_prefix_{prefix.get()},
-      ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{ioc_, ctx_}, reconnect_timer_(ioc_),
+      ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{std::in_place, ioc_, ctx_}, reconnect_timer_(ioc_),
       max_reconnect_attempts_(5), reconnect_attempts_(0), base_reconnect_delay_(std::chrono::seconds(1)),
       rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
 {
@@ -76,6 +76,7 @@ void RemoteDataSource::StreamData(bool *had_signal, StreamerContext &streamer_co
 
 void RemoteDataSource::ConnectWS()
 {
+    ws_.emplace(ioc_, ctx_);
     // 1. Resolve
     resolver_.async_resolve(host_, port_, beast::bind_front_handler(&RemoteDataSource::on_resolve, this));
 }
@@ -89,7 +90,7 @@ void RemoteDataSource::on_resolve(beast::error_code ec, tcp::resolver::results_t
     }
 
     // 2. Connect TCP
-    net::async_connect(beast::get_lowest_layer(ws_), results,
+    net::async_connect(beast::get_lowest_layer(ws_.value()), results,
                        beast::bind_front_handler(&RemoteDataSource::on_connect, this));
 }
 
@@ -101,15 +102,15 @@ void RemoteDataSource::on_connect(beast::error_code ec, tcp::resolver::results_t
         return;
     }
 
-    if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
+    if (!SSL_set_tlsext_host_name(ws_.value().next_layer().native_handle(), host_.c_str()))
     {
         spdlog::error("Failed to set SNI Hostname");
         return;
     }
 
     // 3. SSL Handshake
-    ws_.next_layer().async_handshake(ssl::stream_base::client,
-                                     beast::bind_front_handler(&RemoteDataSource::on_ssl_handshake, this));
+    ws_.value().next_layer().async_handshake(ssl::stream_base::client,
+                                             beast::bind_front_handler(&RemoteDataSource::on_ssl_handshake, this));
 }
 
 void RemoteDataSource::on_ssl_handshake(beast::error_code ec)
@@ -127,13 +128,14 @@ void RemoteDataSource::on_ssl_handshake(beast::error_code ec)
         std::chrono::seconds(30), // Idle timeout (disconnect if no data/pong for 30s)
         true                      // Keep-Alive: Send a Ping if idle
     };
-    ws_.set_option(opt);
+    ws_.value().set_option(opt);
 
-    ws_.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
+    ws_.value().set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
         req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async");
     }));
 
-    ws_.async_handshake(host_, websocket_prefix_, beast::bind_front_handler(&RemoteDataSource::on_handshake, this));
+    ws_.value().async_handshake(host_, websocket_prefix_,
+                                beast::bind_front_handler(&RemoteDataSource::on_handshake, this));
 }
 
 void RemoteDataSource::on_handshake(beast::error_code ec)
@@ -204,12 +206,10 @@ void RemoteDataSource::try_reconnect()
 {
     try
     {
+        reconnect_timer_.cancel();
         // Close any existing connection
-        if (ws_.is_open())
-        {
-            // ws_.close(websocket::close_code::normal);
-            beast::get_lowest_layer(ws_).close();
-        }
+        ws_.reset();
+        ws_.emplace(ioc_, ctx_);
 
         // Reconnect
         ConnectWS();
@@ -235,7 +235,7 @@ void RemoteDataSource::StartReadLoop()
 void RemoteDataSource::do_read()
 {
     // Async Read
-    ws_.async_read(buffer_, beast::bind_front_handler(&RemoteDataSource::on_read, this));
+    ws_.value().async_read(buffer_, beast::bind_front_handler(&RemoteDataSource::on_read, this));
 }
 
 void RemoteDataSource::on_read(beast::error_code ec, std::size_t bytes_transferred)
@@ -319,10 +319,10 @@ void RemoteDataSource::on_timer(beast::error_code ec)
 
     // Just close the websocket. This triggers the read handler with an error.
     // Don't mess with lowest_layer directly unless WS close fails.
-    if (ws_.is_open())
+    if (ws_.value().is_open())
     {
-        ws_.next_layer().next_layer().cancel(); // Cancel TCP ops
-        ws_.async_close(websocket::close_code::policy_error, [](beast::error_code) {});
+        ws_.value().next_layer().next_layer().cancel(); // Cancel TCP ops
+        ws_.value().async_close(websocket::close_code::policy_error, [](beast::error_code) {});
     }
 }
 
@@ -358,10 +358,10 @@ void RemoteDataSource::DisconnectWS()
     timer_.cancel();
     reconnect_timer_.cancel();
 
-    if (ws_.is_open())
+    if (ws_.value().is_open())
     {
         // Close WebSocket gracefully
-        ws_.async_close(websocket::close_code::normal, [this](beast::error_code ec) {
+        ws_.value().async_close(websocket::close_code::normal, [this](beast::error_code ec) {
             if (ec)
             {
                 spdlog::debug("WebSocket close error: {}", ec.message());
@@ -369,7 +369,7 @@ void RemoteDataSource::DisconnectWS()
             // Close underlying socket properly
             try
             {
-                auto &socket = beast::get_lowest_layer(ws_);
+                auto &socket = beast::get_lowest_layer(ws_.value());
                 if (socket.is_open())
                 {
                     socket.shutdown(tcp::socket::shutdown_both);
