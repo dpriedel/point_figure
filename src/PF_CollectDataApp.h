@@ -46,10 +46,10 @@
 using namespace std::chrono_literals;
 
 // namespace fs = std::filesystem;
+#include <CLI/CLI.hpp>
+// #include <boost/program_options.hpp>
 
-#include <boost/program_options.hpp>
-
-namespace po = boost::program_options;
+// namespace po = boost::program_options;
 
 #include <decimal.hh>
 
@@ -179,10 +179,11 @@ private:
     std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> last_draw_times_;
     const std::chrono::seconds minimum_delay_ = 2s;
 
-    po::positional_options_description positional_;       //	old style
-                                                          // options
-    std::unique_ptr<po::options_description> newoptions_; //	new style options (with identifiers)
-    po::variables_map variablemap_;
+    CLI::App app_;
+    // po::positional_options_description positional_;       //	old style
+    //                                                       // options
+    // std::unique_ptr<po::options_description> newoptions_; //	new style options (with identifiers)
+    // po::variables_map variablemap_;
 
     // make this a class member because we need to access it
     // from an async task and this avoids passing an extra argument down
@@ -305,6 +306,9 @@ private:
 
     Mode mode_ = Mode::e_unknown;
     Interval interval_ = Interval::e_unknown;
+
+    std::chrono::year_month_day start_date_;
+    std::chrono::year_month_day stop_date_;
 
     std::vector<std::string> symbol_list_;
     std::vector<std::string> exchange_list_;
