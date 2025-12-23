@@ -312,7 +312,7 @@ RemoteDataSource::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
 
         BOOST_ASSERT_MSG(fields[e_timestamp] != "NA" && fields[e_open] != "NA",
                          std::format("No ToB data found for symbol: {}", symbol).c_str());
-        std::println("ToB data: {}", rows[1]);
+        // std::println("ToB data: {}", rows[1]);
         std::string time_fld{fields[e_timestamp]};
 
         // EODHD provides the timestamp in seconds.  we need to convert to nanoseconds.
