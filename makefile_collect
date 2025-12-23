@@ -75,9 +75,9 @@ CFG_LIB := -L../lib_PF_Chart \
 		-lcrypt \
 		-lpthread \
 		-lssl -lcrypto \
-		-ljsoncpp \
-		-L$(BOOSTDIR)/lib \
-		-lboost_program_options-mt-x64 
+		-ljsoncpp  # \
+		# -L$(BOOSTDIR)/lib \
+		# -lboost_program_options-mt-x64 
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
