@@ -16,6 +16,8 @@
 #include "Eodhd.h"
 #include "boost/beast/core/buffers_to_string.hpp"
 #include <boost/regex.hpp>
+#include <boost/regex/config.hpp>
+#include <print>
 #include <ranges>
 #include <utility>
 
@@ -308,6 +310,9 @@ RemoteDataSource::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
             std::format("Missing 1 or more fields from response: '{}'. Expected 11. Got: {}", tob_data, fields.size())
                 .c_str());
 
+        BOOST_ASSERT_MSG(fields[e_timestamp] != "NA" && fields[e_open] != "NA",
+                         std::format("No ToB data found for symbol: {}", symbol).c_str());
+        std::println("ToB data: {}", rows[1]);
         std::string time_fld{fields[e_timestamp]};
 
         // EODHD provides the timestamp in seconds.  we need to convert to nanoseconds.
@@ -317,8 +322,8 @@ RemoteDataSource::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
         int64_t time_value{};
         if (auto [p, ec] = std::from_chars(&time_fld.front(), &time_fld.back(), time_value); ec != std::errc())
         {
-            throw std::runtime_error(std::format("Problem converting transaction timestamp to int64: {}\n",
-                                                 std::make_error_code(ec).message()));
+            throw std::runtime_error(std::format("Problem converting transaction timestamp: {} to int64: {}\n",
+                                                 time_fld, std::make_error_code(ec).message()));
         }
         std::chrono::seconds secs{time_value};
         TopOfBookOpenAndLastClose new_data{.symbol_ = symbol,
@@ -367,6 +372,7 @@ std::vector<StockDataRecord> Eodhd::GetMostRecentTickerData(const std::string &s
     std::vector<StockDataRecord> stock_data;
 
     const auto rows = split_string<std::string_view>(ticker_data, "\n");
+    BOOST_ASSERT_MSG(rows.size() > 1, std::format("No recent data returned for symbol: {}", symbol).c_str());
 
     rng::for_each(rows | vws::drop(1), [&stock_data, symbol, use_adjusted](const auto row) {
         const auto fields = split_string<std::string_view>(row, ",");
