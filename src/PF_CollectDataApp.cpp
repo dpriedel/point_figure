@@ -5,8 +5,8 @@
 //    Description:  This program will compute Point & Figure data for the
 //    				given input file.
 //
-//        Version:  2.0
-//        Created:  2021-07-20 11:50 AM
+//        Version:  3.0
+//        Created:  2025-12-22 03:46 PM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -244,45 +244,47 @@ bool PF_CollectDataApp::CheckArgs()
     }
     //	an easy check first
 
-    BOOST_ASSERT_MSG(!(use_ATR_ && use_min_max_), "\nCan not use both ATR and MinMax for computing box size.");
+    // BOOST_ASSERT_MSG(!(use_ATR_ && use_min_max_), "\nCan not use both ATR and MinMax for computing box size.");
     boxsize_source_ = (use_ATR_       ? BoxsizeSource::e_from_ATR
                        : use_min_max_ ? BoxsizeSource::e_from_MinMax
                                       : BoxsizeSource::e_from_args);
 
     //	let's get our input and output set up
 
-    BOOST_ASSERT_MSG(mode_i_ == "load" || mode_i_ == "update" || mode_i_ == "daily-scan",
-                     std::format("\nMode must be: 'load', 'update' or 'daily-scan': {}", mode_i_).c_str());
+    // BOOST_ASSERT_MSG(mode_i_ == "load" || mode_i_ == "update" || mode_i_ == "daily-scan",
+    //                  std::format("\nMode must be: 'load', 'update' or 'daily-scan': {}", mode_i_).c_str());
     mode_ = mode_i_ == "load" ? Mode::e_load : mode_i_ == "update" ? Mode::e_update : Mode::e_daily_scan;
 
     // now make sure we can find our data for input and output.
 
-    BOOST_ASSERT_MSG(
-        new_data_source_i_ == "file" || new_data_source_i_ == "streaming" || new_data_source_i_ == "database",
-        std::format("\nNew data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i_).c_str());
+    // BOOST_ASSERT_MSG(
+    //     new_data_source_i_ == "file" || new_data_source_i_ == "streaming" || new_data_source_i_ == "database",
+    //     std::format("\nNew data source must be: 'file', 'streaming' or 'database': {}", new_data_source_i_).c_str());
     new_data_source_ = new_data_source_i_ == "file"       ? Source::e_file
                        : new_data_source_i_ == "database" ? Source::e_DB
                                                           : Source::e_streaming;
 
-    BOOST_ASSERT_MSG(
-        chart_data_source_i_ == "file" || chart_data_source_i_ == "database",
-        std::format("\nExisting chart data source must be: 'file' or 'database': {}", chart_data_source_i_).c_str());
+    // BOOST_ASSERT_MSG(
+    //     chart_data_source_i_ == "file" || chart_data_source_i_ == "database",
+    //     std::format("\nExisting chart data source must be: 'file' or 'database': {}", chart_data_source_i_).c_str());
     chart_data_source_ = chart_data_source_i_ == "file" ? Source::e_file : Source::e_DB;
 
-    BOOST_ASSERT_MSG(destination_i_ == "file" || destination_i_ == "database",
-                     std::format("\nData destination must be: 'file' or 'database': {}", destination_i_).c_str());
+    // BOOST_ASSERT_MSG(destination_i_ == "file" || destination_i_ == "database",
+    //                  std::format("\nData destination must be: 'file' or 'database': {}", destination_i_).c_str());
     destination_ = destination_i_ == "file" ? Destination::e_file : Destination::e_DB;
 
     if (mode_ == Mode::e_daily_scan || new_data_source_ == Source::e_DB)
     {
         // set up exchange list early.
 
-        if (!exchange_list_i_.empty())
+        // if (!exchange_list_i_.empty())
+        // {
+        //     rng::for_each(split_string<std::string>(exchange_list_i_, ","),
+        //                   [this](const auto xchng) { exchange_list_.push_back(xchng); });
+        //     rng::for_each(exchange_list_,
+        //                   [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
+        if (!exchange_list_.empty())
         {
-            rng::for_each(split_string<std::string>(exchange_list_i_, ","),
-                          [this](const auto xchng) { exchange_list_.push_back(xchng); });
-            rng::for_each(exchange_list_,
-                          [](auto &xchng) { rng::for_each(xchng, [](char &c) { c = std::toupper(c); }); });
             rng::sort(exchange_list_);
             const auto [first, last] = rng::unique(exchange_list_);
             exchange_list_.erase(first, last);
@@ -299,19 +301,20 @@ bool PF_CollectDataApp::CheckArgs()
 
     // validate our dates, if any
 
-    if (!begin_date_.empty())
-    {
-        auto ymd = StringToDateYMD("%F", begin_date_);
-    }
-    if (!end_date_.empty())
-    {
-        auto ymd = StringToDateYMD("%F", end_date_);
-    }
-    else
+    // if (!begin_date_.empty())
+    // {
+    //     auto ymd = StringToDateYMD("%F", begin_date_);
+    // }
+    // if (!end_date_.empty())
+    // {
+    //     auto ymd = StringToDateYMD("%F", end_date_);
+    // }
+    // else
+    if (end_date_.empty())
     {
         // default to 'yesterday'
-        std::chrono::year_month_day today{--floor<std::chrono::days>(std::chrono::system_clock::now())};
-        end_date_ = std::format("{:%Y-%m-%d}", today);
+        stop_date_ = {--floor<std::chrono::days>(std::chrono::system_clock::now())};
+        end_date_ = std::format("{:%Y-%m-%d}", stop_date_);
     }
 
     // do daily-scan edits upfront because we only need a couple
@@ -345,12 +348,13 @@ bool PF_CollectDataApp::CheckArgs()
     // this is to avoid having to provide unnecessary arguments for daily scan
     // processing.
 
-    BOOST_ASSERT_MSG(!box_size_i_list_.empty(), "\nMust provide at least 1 'boxsize' parameter.");
-    BOOST_ASSERT_MSG(!reversal_boxes_list_.empty(), "\nMust provide at least 1 'reversal' parameter.");
+    // BOOST_ASSERT_MSG(!box_size_i_list_.empty(), "\nMust provide at least 1 'boxsize' parameter.");
+    // BOOST_ASSERT_MSG(!reversal_boxes_list_.empty(), "\nMust provide at least 1 'reversal' parameter.");
 
     // this is a hack because the Decimal class has limited streams support
 
-    std::ranges::for_each(box_size_i_list_, [this](const auto &b) { this->box_size_list_.emplace_back(Decimal{b}); });
+    // std::ranges::for_each(box_size_i_list_, [this](const auto &b) { this->box_size_list_.emplace_back(Decimal{b});
+    // });
 
     // we now have two possible sources for symbols. We need to be sure we have
     // 1 of them.
@@ -364,6 +368,7 @@ bool PF_CollectDataApp::CheckArgs()
         rng::sort(symbol_list_);
         const auto [first, last] = rng::unique(symbol_list_);
         symbol_list_.erase(first, last);
+        rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
     }
 
     // if symbol-list is 'ALL' then we will generate a list of symbols from our
@@ -373,12 +378,13 @@ bool PF_CollectDataApp::CheckArgs()
     {
         symbol_list_.clear();
     }
-    else
-    {
-        rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
-    }
+    // else
+    // {
+    //     rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); });
+    //     });
+    // }
 
-    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty() || !exchange_list_i_.empty(),
+    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty() || !exchange_list_.empty(),
                      "\nMust provide either 1 or more '-s' values or 'symbol-list' or 'exchange-list' list.");
 
     if (use_min_max_)
@@ -395,11 +401,12 @@ bool PF_CollectDataApp::CheckArgs()
 
         BOOST_ASSERT_MSG(!new_data_input_directory_.empty(),
                          "\nMust specify 'new-data-dir' when data source is 'file'.");
-        BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_),
-                         std::format("\nCan't find new data input directory: {}", new_data_input_directory_).c_str());
+        // BOOST_ASSERT_MSG(fs::exists(new_data_input_directory_),
+        //                  std::format("\nCan't find new data input directory: {}",
+        //                  new_data_input_directory_).c_str());
 
-        BOOST_ASSERT_MSG(source_format_i_ == "csv" || source_format_i_ == "json",
-                         std::format("\nNew data files must be: 'csv' or 'json': {}", source_format_i_).c_str());
+        // BOOST_ASSERT_MSG(source_format_i_ == "csv" || source_format_i_ == "json",
+        //                  std::format("\nNew data files must be: 'csv' or 'json': {}", source_format_i_).c_str());
         source_format_ = source_format_i_ == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
 
         // if we are adding to existing data then we need to know where to find
@@ -407,12 +414,12 @@ bool PF_CollectDataApp::CheckArgs()
 
         if (mode_ == Mode::e_update && chart_data_source_ == Source::e_file)
         {
-            BOOST_ASSERT_MSG(!input_chart_directory_.empty(),
-                             "\nMust specify 'chart-data-dir' when data source is "
-                             "'file' and mode is 'update'.");
-            BOOST_ASSERT_MSG(
-                fs::exists(input_chart_directory_),
-                std::format("\nCan't find new existing chart data directory: {}", input_chart_directory_).c_str());
+            // BOOST_ASSERT_MSG(!input_chart_directory_.empty(),
+            //                  "\nMust specify 'chart-data-dir' when data source is "
+            //                  "'file' and mode is 'update'.");
+            // BOOST_ASSERT_MSG(
+            //     fs::exists(input_chart_directory_),
+            //     std::format("\nCan't find new existing chart data directory: {}", input_chart_directory_).c_str());
 
             // we could write out data to a separate location if we want
             // otherwise, use the charts directory.
@@ -424,8 +431,8 @@ bool PF_CollectDataApp::CheckArgs()
         }
     }
 
-    BOOST_ASSERT_MSG(graphics_format_i_ == "svg" || graphics_format_i_ == "csv",
-                     std::format("\ngraphics-format must be either 'svg' or 'csv': {}", graphics_format_i_).c_str());
+    // BOOST_ASSERT_MSG(graphics_format_i_ == "svg" || graphics_format_i_ == "csv",
+    //                  std::format("\ngraphics-format must be either 'svg' or 'csv': {}", graphics_format_i_).c_str());
     graphics_format_ = graphics_format_i_ == "svg" ? GraphicsFormat::e_svg : GraphicsFormat::e_csv;
 
     if (destination_ == Destination::e_file)
@@ -480,8 +487,8 @@ bool PF_CollectDataApp::CheckArgs()
 
     if ((new_data_source_ == Source::e_file && use_ATR_) || new_data_source_ == Source::e_streaming)
     {
-        BOOST_ASSERT_MSG(quote_data_source_i_ == "Tiingo" || quote_data_source_i_ == "Eodhd",
-                         "\nATR quote data source must be either 'Tiingo' or 'Eodhd' when using non-DB ATR.");
+        // BOOST_ASSERT_MSG(quote_data_source_i_ == "Tiingo" || quote_data_source_i_ == "Eodhd",
+        //                  "\nATR quote data source must be either 'Tiingo' or 'Eodhd' when using non-DB ATR.");
         quote_data_source_ = quote_data_source_i_ == "Tiingo" ? QuoteDataSource::e_Tiingo : QuoteDataSource::e_Eodhd;
 
         BOOST_ASSERT_MSG(!quote_host_api_key_.empty(), "Must specify a quote source API key file for non-DB ATR.");
@@ -499,8 +506,8 @@ bool PF_CollectDataApp::CheckArgs()
 
     if (new_data_source_ == Source::e_streaming)
     {
-        BOOST_ASSERT_MSG(streaming_data_source_i_ == "Tiingo" || streaming_data_source_i_ == "Eodhd",
-                         "\nStreaming data source must be either 'Tiingo' or 'Eodhd'.");
+        // BOOST_ASSERT_MSG(streaming_data_source_i_ == "Tiingo" || streaming_data_source_i_ == "Eodhd",
+        //                  "\nStreaming data source must be either 'Tiingo' or 'Eodhd'.");
         streaming_data_source_ =
             streaming_data_source_i_ == "Tiingo" ? StreamingSource::e_Tiingo : StreamingSource::e_Eodhd;
 
@@ -516,8 +523,8 @@ bool PF_CollectDataApp::CheckArgs()
 
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "\nmax-graphic-cols must be >= -1.");
 
-    BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle",
-                     std::format("\nshow-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
+    // BOOST_ASSERT_MSG(trend_lines_ == "no" || trend_lines_ == "data" || trend_lines_ == "angle",
+    //                  std::format("\nshow-trend-lines must be: 'no' or 'data' or 'angle': {}", trend_lines_).c_str());
 
     const std::map<std::string, Interval> possible_intervals = {{"eod", Interval::e_eod},   {"live", Interval::e_live},
                                                                 {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5},
@@ -632,7 +639,15 @@ void PF_CollectDataApp::SetupProgramOptions() {
 
     symbols_source_group->add_option("--symbol-list", symbol_list_i_, 
         "Comma-delimited list of symbols to process OR 'ALL'.");
-    symbols_source_group->require_option(0, 1);
+    symbols_source_group->add_option("--exchange-list", exchange_list_, 
+        "Symbols from specified exchange(s) for daily-scan/bulk loads.")
+        ->delimiter(',')
+        ->transform([](std::string s) {
+            std::transform(s.begin(), s.end(), s.begin(),
+                           [](unsigned char c) { return (c != '/' ? ::toupper(c) : '_'); });
+            return s;
+        });
+    symbols_source_group->require_option(1, 3);
 
     app_.add_option("--new-data-dir", new_data_input_directory_, 
         "Directory containing files with new data.")
@@ -701,8 +716,14 @@ void PF_CollectDataApp::SetupProgramOptions() {
         "Data field to use for price value.")
         ->default_val("Close");
 
-    app_.add_option("--exchange-list", exchange_list_i_, 
-        "Symbols from specified exchange(s) for daily-scan/bulk loads.");
+    // app_.add_option("--exchange-list", exchange_list_, 
+    //     "Symbols from specified exchange(s) for daily-scan/bulk loads.")
+    //     ->delimiter(',')
+    //     ->transform([](std::string s) {
+    //         std::transform(s.begin(), s.end(), s.begin(),
+    //                        [](unsigned char c) { return (c != '/' ? ::toupper(c) : '_'); });
+    //         return s;
+    //     });
 
     app_.add_option("--min-dollar-volume", min_dollar_volume_, 
         "Minimum dollar volume to filter stocks. Default is $100000")
@@ -723,10 +744,19 @@ void PF_CollectDataApp::SetupProgramOptions() {
         "Output directory to write generated graphics.");
 
     app_.add_option("-b,--boxsize", box_size_i_list_, 
-        "Box step size: 'n', 'm.n'");
+        "Box step size: 'n', 'm.n'")
+        ->delimiter(',')
+        ->transform([this](std::string s) {
+            Decimal d{s};
+            box_size_list_.push_back(d);
+            return s;
+        });
+        // ->required();
 
     app_.add_option("-r,--reversal", reversal_boxes_list_, 
-        "Reversal size in number of boxes.");
+        "Reversal size in number of boxes.")
+        ->delimiter(',');
+        // ->required();
 
     app_.add_option("--max-graphic-cols", max_columns_for_graph_, 
         "Max columns in graphic. -1 for ALL.")
@@ -762,8 +792,10 @@ void PF_CollectDataApp::SetupProgramOptions() {
     app_.add_option("--stock-db-data-source", db_params_.stock_db_data_source_, "Table containing symbol data.")
         ->default_val("new_stock_data.current_data");
 
-    app_.add_option("--quote-data-source", quote_data_source_i_, "ATR quotes data source.");
-    app_.add_option("--streaming-data-source", streaming_data_source_i_, "Streaming data source.");
+    app_.add_option("--quote-data-source", quote_data_source_i_, "ATR quotes data source.")
+        ->check(CLI::IsMember({"Eodhd", "Tiingo"}));
+    app_.add_option("--streaming-data-source", streaming_data_source_i_, "Streaming data source.")
+        ->check(CLI::IsMember({"Eodhd", "Tiingo"}));
 
     // Config and Keys
     app_.add_option("--config-dir", PF_CollectDataConfigDir_, "Path to config directory.");
@@ -771,8 +803,27 @@ void PF_CollectDataApp::SetupProgramOptions() {
     app_.add_option("--streaming-api-key", streaming_host_api_key_, "File containing streaming API key.");
 
     // Flags (Booleans)
-    app_.add_flag("--use-ATR", use_ATR_, "Compute ATR and use to compute box size.");
-    app_.add_flag("--use-MinMax", use_min_max_, "Compute boxsize using price range from DB.");
+    auto atr_or_minmax = app_.add_option_group("min-max-or_atr", "Must specify only 1 of 'use-ATR' or 'use-MinMax;.");
+    atr_or_minmax->add_flag("--use-ATR", use_ATR_, "Compute ATR and use to compute box size.");
+    atr_or_minmax->add_flag("--use-MinMax", use_min_max_, "Compute boxsize using price range from DB.");
+    atr_or_minmax->require_option(0, 1);
+
+    // soem final checks.
+
+    app_.callback([&](){
+        if(mode_i_ != "daily-scan")
+        {
+            if (box_size_list_.empty())
+            {
+                throw CLI::ValidationError("Box size must be specified.");
+            }
+            if(reversal_boxes_list_.empty())
+            {
+                throw CLI::ValidationError("Reversal boxes must be provided.");
+            }
+        }
+    });
+    
 }
 // void PF_CollectDataApp::SetupProgramOptions ()
 // {
@@ -2191,6 +2242,8 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
 {
     for (const auto &[symbol, chart] : charts_)
     {
+        if (chart.empty())
+            continue;
         try
         {
             fs::path output_file_name =
@@ -2241,6 +2294,8 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInDB()
     PF_DB pf_db{db_params_};
     for (const auto &[symbol, chart] : charts_)
     {
+        if (chart.empty())
+            continue;
         try
         {
             if (graphics_format_ == GraphicsFormat::e_svg)
