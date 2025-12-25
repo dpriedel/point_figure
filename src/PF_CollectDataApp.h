@@ -179,7 +179,7 @@ private:
     std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> last_draw_times_;
     const std::chrono::seconds minimum_delay_ = 2s;
 
-    CLI::App app_;
+    CLI::App app_{"Point and Figure Charts for Linux. Build from files, database, live stream."};
     // po::positional_options_description positional_;       //	old style
     //                                                       // options
     // std::unique_ptr<po::options_description> newoptions_; //	new style options (with identifiers)
