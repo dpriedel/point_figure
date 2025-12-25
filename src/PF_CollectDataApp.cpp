@@ -206,7 +206,7 @@ bool PF_CollectDataApp::Startup()
         spdlog::error(std::format("Problem in startup: {}\n", e.what()));
         //	we're outta here!
 
-        //		this->Shutdown();
+        // this->Shutdown();
         result = false;
     }
     catch (...)
@@ -227,12 +227,7 @@ bool PF_CollectDataApp::CheckArgs()
     // Initially, only streaming data API keys are there.
     // Eventually, a configuration file with all the command-line options CAN be there.
 
-    if (!PF_CollectDataConfigDir_.empty())
-    {
-        BOOST_ASSERT_MSG(fs::exists(PF_CollectDataConfigDir_) && fs::is_directory(PF_CollectDataConfigDir_),
-                         std::format("Unable to find configuration directory: {}.", PF_CollectDataConfigDir_).c_str());
-    }
-    else
+    if (PF_CollectDataConfigDir_.empty())
     {
         const std::string config_var{"PF_COLLECT_DATA_CONFIG_DIR"};
         const char *env_var = std::getenv(config_var.c_str());
@@ -301,15 +296,6 @@ bool PF_CollectDataApp::CheckArgs()
 
     // validate our dates, if any
 
-    // if (!begin_date_.empty())
-    // {
-    //     auto ymd = StringToDateYMD("%F", begin_date_);
-    // }
-    // if (!end_date_.empty())
-    // {
-    //     auto ymd = StringToDateYMD("%F", end_date_);
-    // }
-    // else
     if (end_date_.empty())
     {
         // default to 'yesterday'
@@ -716,15 +702,6 @@ void PF_CollectDataApp::SetupProgramOptions() {
         "Data field to use for price value.")
         ->default_val("Close");
 
-    // app_.add_option("--exchange-list", exchange_list_, 
-    //     "Symbols from specified exchange(s) for daily-scan/bulk loads.")
-    //     ->delimiter(',')
-    //     ->transform([](std::string s) {
-    //         std::transform(s.begin(), s.end(), s.begin(),
-    //                        [](unsigned char c) { return (c != '/' ? ::toupper(c) : '_'); });
-    //         return s;
-    //     });
-
     app_.add_option("--min-dollar-volume", min_dollar_volume_, 
         "Minimum dollar volume to filter stocks. Default is $100000")
         ->default_val("100000");
@@ -798,7 +775,16 @@ void PF_CollectDataApp::SetupProgramOptions() {
         ->check(CLI::IsMember({"Eodhd", "Tiingo"}));
 
     // Config and Keys
-    app_.add_option("--config-dir", PF_CollectDataConfigDir_, "Path to config directory.");
+    app_.add_option("--config-dir", PF_CollectDataConfigDir_, "Path to config directory.")
+        ->check(CLI::ExistingDirectory)
+        ->check([](const std::string &path_str) {
+            // The path is guaranteed to exist and be a directory at this point.
+            if (std::filesystem::is_empty(path_str))
+            {
+                return "Drectory 'config-dir': '" + path_str + "' contains no files.";
+            }
+            return std::string{}; // Return an empty string for success
+        });
     app_.add_option("--quote-api-key", quote_host_api_key_, "File containing quotes API key.");
     app_.add_option("--streaming-api-key", streaming_host_api_key_, "File containing streaming API key.");
 
@@ -825,64 +811,6 @@ void PF_CollectDataApp::SetupProgramOptions() {
     });
     
 }
-// void PF_CollectDataApp::SetupProgramOptions ()
-// {
-//     newoptions_ = std::make_unique<po::options_description>();
-//
-// 	newoptions_->add_options()
-// 		("help,h",											"produce help message")
-// 		("symbol,s",			po::value<std::vector<std::string>>(&this->symbol_list_),	"name of symbol we are processing data for. Repeat for multiple symbols.")
-// 		("symbol-list",			po::value<std::string>(&this->symbol_list_i_),	"Comma-delimited list of symbols to process OR 'ALL' to use all symbols from the specified exchange.")
-// 		("new-data-dir",		po::value<fs::path>(&this->new_data_input_directory_),	"name of directory containing files with new data for symbols we are using.")
-// 		("chart-data-dir",		po::value<fs::path>(&this->input_chart_directory_),	"name of directory containing existing files with data for symbols we are using.")
-// 		("destination",	    	po::value<std::string>(&this->destination_i_)->default_value("file"),	"destination: send data to 'file' or 'database'. Default is 'file'.")
-// 		("new-data-source",		po::value<std::string>(&this->new_data_source_i_)->default_value("file"),	"source for new data: either 'file', 'streaming' or 'database'. Default is 'file'.")
-// 		("chart-data-source",	po::value<std::string>(&this->chart_data_source_i_)->default_value("file"),	"source for existing chart data: either 'file' or 'database'. Default is 'file'.")
-// 		("source-format",		po::value<std::string>(&this->source_format_i_)->default_value("csv"),	"source data format: either 'csv' or 'json'. Default is 'csv'.")
-// 		("graphics-format",		po::value<std::string>(&this->graphics_format_i_)->default_value("svg"),	"Output graphics file format: either 'svg' or 'csv'. Default is 'svg'.")
-// 		("mode,m",				po::value<std::string>(&this->mode_i_)->default_value("load"),	"mode: either 'load' new data, 'update' existing data or 'daily-scan'. Default is 'load'.")
-// 		("interval,i",			po::value<std::string>(&this->interval_i_)->default_value("eod"),	"interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'. Default is 'eod'.")
-// 		("scale",				po::value<std::vector<std::string>>(&this->scale_i_list_),	"scale: 'linear', 'percent'. Default is 'linear'.")
-// 		("price-fld-name",		po::value<std::string>(&this->price_fld_name_)->default_value("Close"),	"price-fld-name: which data field to use for price value. Default is 'Close'.")
-//
-// 		("exchange-list",		po::value<std::string>(&this->exchange_list_i_),	"exchange-list: use symbols from specified exchange(s) for daily-scan and bulk loads from database. Default is: not specified.")
-// 		("min-dollar-volume",	po::value<std::string>(&this->min_dollar_volume_)->default_value("100000"),	"Minimum dollar volue price for a symbol to filter small stocks from daily-scan and bulk loads. Default is $5.00")
-// 		// ("min-close-volume",    po::value<int64_t>(&this->min_close_volume_)->default_value(100'000),	"Minimum closing volume for a symbol to filter small stocks from daily-scan and bulk loads. Default is 100'000")
-//
-// 		("begin-date",			po::value<std::string>(&this->begin_date_),	"Start date for extracting data from database source.")
-// 		("end-date",			po::value<std::string>(&this->end_date_),	"Stop date for extracting data from database source. Default is 'today'.")
-// 		("output-chart-dir",	po::value<fs::path>(&this->output_chart_directory_),	"output directory for chart [and graphic] files.")
-// 		("output-graph-dir",	po::value<fs::path>(&this->output_graphs_directory_),	"name of output directory to write generated graphics to.")
-// 		("boxsize,b",			po::value<std::vector<std::string>>(&this->box_size_i_list_),   	"box step size. 'n', 'm.n'")
-// 		("reversal,r",			po::value<std::vector<int32_t>>(&this->reversal_boxes_list_),		"reversal size in number of boxes.")
-// 		("max-graphic-cols",	po::value<int32_t>(&this->max_columns_for_graph_)->default_value(-1),
-// 									"maximum number of columns to show in graphic. Use -1 for ALL, 0 to keep existing value, if any, otherwise -1. >0 to specify how many columns.")
-// 		("show-trend-lines",	po::value<std::string>(&this->trend_lines_)->default_value("no"),	"Show trend lines on graphic. Can be 'data' or 'angle'. Default is 'no'.")
-// 		("log-path",            po::value<fs::path>(&log_file_path_name_),	"path name for log file.")
-// 		("log-level,l",         po::value<std::string>(&logging_level_)->default_value("information"), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
-//
-//         ("streaming-host",      po::value<std::string>(&this->streaming_host_name_), "web site we stream from.")
-//         ("streaming-port",          po::value<std::string>(&this->streaming_host_port_)->default_value("443"), "Port number to use for streaming web site. Default is '443'.")
-//         ("quote-host",          po::value<std::string>(&this->quote_host_name_), "web site we download from.")
-//         ("quote-port",          po::value<std::string>(&this->quote_host_port_)->default_value("443"), "Port number to use for quotes web site. Default is '443'.")
-//
-//         ("db-host",             po::value<std::string>(&this->db_params_.host_name_)->default_value("localhost"), "web location where database is running. Default is 'localhost'.")
-//         ("db-port",             po::value<int32_t>(&this->db_params_.port_number_)->default_value(5432), "Port number to use for database access. Default is '5432'.")
-//         ("db-user",             po::value<std::string>(&this->db_params_.user_name_), "Database user name.  Required if using database.")
-//         ("db-name",             po::value<std::string>(&this->db_params_.db_name_), "Name of database containing PF_Chart data. Required if using database.")
-//         ("db-mode",             po::value<std::string>(&this->db_params_.PF_db_mode_)->default_value("test"), "'test' or 'live' schema to use. Default is 'test'.")
-//         ("stock-db-data-source",      po::value<std::string>(&this->db_params_.stock_db_data_source_)->default_value("new_stock_data.current_data"), "table containing symbol data. Default is 'new_stock_data.current_data'.")
-//         ("quote-data-source",     po::value<std::string>(&this->quote_data_source_i_), "Name of ATR quotes data source.")
-//         ("streaming-data-source",     po::value<std::string>(&this->streaming_data_source_i_), "Name of streaming data source.")
-//
-//         ("config-dir",         po::value<fs::path>(&this->PF_CollectDataConfigDir_), "Path to config directory PF_CollectData application. Default is environment variable 'PF_COLLECT_DATA_CONFIG_DIR'.")
-//         ("quote-api-key",     po::value<fs::path>(&this->quote_host_api_key_), "Name of file containing quotes source api key.")
-//         ("streaming-api-key",  po::value<fs::path>(&this->streaming_host_api_key_), "Name of file containing streaming source api key.")
-// 		("use-ATR",            po::value<bool>(&use_ATR_)->default_value(false)->implicit_value(true), "compute Average True Value and use to compute box size for streaming.")
-// 		("use-MinMax",         po::value<bool>(&use_min_max_)->default_value(false)->implicit_value(true), "compute boxsize using price range from DB then apply specified fraction.")
-// 		;
-//
-// }		// -----  end of method PF_CollectDataApp::Do_SetupPrograoptions_  -----
 
 // clang-format on
 
@@ -894,6 +822,11 @@ void PF_CollectDataApp::ParseProgramOptions(const std::vector<std::string> &toke
         {
             // If the token vector is empty, parse the original argc/argv.
             // This is the standard execution path.
+            auto args = std::views::counted(argv_, argc_) |
+                        std::views::transform([](char *arg) { return std::string_view(arg); });
+            auto cmd_line_vw = rng::views::join_with(rng::views::drop(args, 1), " "sv);
+            std::string cmd_line = rng::to<std::string>(cmd_line_vw);
+            spdlog::info("cmd line: {}", cmd_line);
             app_.parse(argc_, argv_);
         }
         else
@@ -906,7 +839,7 @@ void PF_CollectDataApp::ParseProgramOptions(const std::vector<std::string> &toke
             auto cmd_line_vw = rng::views::join_with(rng::views::drop(tokens, 1), " "sv);
 
             std::string cmd_line = rng::to<std::string>(cmd_line_vw);
-            // std::println("{}", cmd_line);
+            spdlog::info("tokens: {}", cmd_line);
             app_.parse(cmd_line);
         }
         // This prints all options and their current values (including defaults)
@@ -919,6 +852,7 @@ void PF_CollectDataApp::ParseProgramOptions(const std::vector<std::string> &toke
         // All we need to do is exit gracefully. Re-throwing is a clean way
         // to signal the caller that execution should stop.
         app_.exit(e);
+        throw std::runtime_error("Someone callled for Help.");
     }
     catch (const CLI::ParseError &e)
     {
@@ -928,35 +862,6 @@ void PF_CollectDataApp::ParseProgramOptions(const std::vector<std::string> &toke
         // but re-throwing is better for a class member function.
         throw std::runtime_error(std::format("Command line parse error: {}", e.what()));
     }
-    // if (tokens.empty())
-    // {
-    //     auto options = po::parse_command_line(argc_, argv_, *newoptions_);
-    //     po::store(options, variablemap_);
-    //     if (this->argc_ == 1 || variablemap_.count("help") == 1)
-    //     {
-    //         std::cout << *newoptions_ << "\n";
-    //         throw std::runtime_error("\nExiting after 'help'.");
-    //     }
-    // }
-    // else
-    // {
-    //     auto options = po::command_line_parser(tokens).options(*newoptions_).run();
-    //     po::store(options, variablemap_);
-    //     if (variablemap_.count("help") == 1)
-    //     {
-    //         std::cout << *newoptions_ << "\n";
-    //         throw std::runtime_error("\nExiting after 'help'.");
-    //     }
-    // }
-    // po::notify(variablemap_);
-    //
-    // // std::print("\nRuntime parameters:\n");
-    // //    for (const auto& [param, value] : variablemap_)
-    // //    {
-    // // 	// std::cout << "param: " << param << " value: " <<
-    // // value.as<std::string>() << '\n'; 	std::print("param: {}. value:
-    // // .\n", param);
-    // //    }
 } /* -----  end of method ExtractorApp::ParsePrograoptions_  ----- */
 
 std::tuple<int, int, int> PF_CollectDataApp::Run()
