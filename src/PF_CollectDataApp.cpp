@@ -55,7 +55,6 @@
 namespace rng = std::ranges;
 namespace vws = std::ranges::views;
 
-#include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include "ConstructChartGraphic.h"
@@ -73,37 +72,6 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 bool PF_CollectDataApp::had_signal_ = false;
-
-// code from "The C++ Programming Language" 4th Edition. p. 1243.
-
-template <typename T>
-int wait_for_any(std::vector<std::future<T>> &vf, std::chrono::steady_clock::duration d)
-// return index of ready future
-// if no future is ready, wait for d before trying again
-{
-    while (true)
-    {
-        for (int i = 0; i != vf.size(); ++i)
-        {
-            if (!vf[i].valid())
-            {
-                continue;
-            }
-            switch (vf[i].wait_for(0s))
-            {
-                case std::future_status::ready:
-                    return i;
-
-                case std::future_status::timeout:
-                    break;
-
-                case std::future_status::deferred:
-                    throw std::runtime_error("wait_for_all(): deferred future");
-            }
-        }
-        std::this_thread::sleep_for(d);
-    }
-}
 
 //--------------------------------------------------------------------------------------
 //       Class:  PF_CollectDataApp
@@ -161,7 +129,6 @@ void PF_CollectDataApp::ConfigureLogging()
     {
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
-        // 3. Create an asynchronous logger using the console sink.
         auto app_logger = std::make_shared<spdlog::logger>("PF_Collect_logger", // Name for the console logger
                                                            console_sink);
 
@@ -555,8 +522,8 @@ bool PF_CollectDataApp::CheckArgs()
     return true;
 } // -----  end of method PF_CollectDataApp::Do_CheckArgs  -----
 
-// clang-format off
-void PF_CollectDataApp::SetupProgramOptions() {
+void PF_CollectDataApp::SetupProgramOptions()
+{
     // Add a preparse callback to check for no arguments
     app_.preparse_callback([](size_t argCount) {
         if (argCount == 0)
@@ -613,9 +580,11 @@ void PF_CollectDataApp::SetupProgramOptions() {
         return std::string{}; // Success
     };
 
-    auto symbols_source_group = app_.add_option_group("Symbols source", "Specify ticker symbols to process. At most, use 1.");
-    symbols_source_group->add_option("-s,--symbol", symbol_list_, 
-        "Name of symbol we are processing data for. Repeat for multiple symbols.")
+    auto symbols_source_group =
+        app_.add_option_group("Symbols source", "Specify ticker symbols to process. At most, use 1.");
+    symbols_source_group
+        ->add_option("-s,--symbol", symbol_list_,
+                     "Name of symbol we are processing data for. Repeat for multiple symbols.")
         ->delimiter(',')
         ->transform([](std::string s) {
             std::transform(s.begin(), s.end(), s.begin(),
@@ -623,10 +592,10 @@ void PF_CollectDataApp::SetupProgramOptions() {
             return s;
         });
 
-    symbols_source_group->add_option("--symbol-list", symbol_list_i_, 
-        "Comma-delimited list of symbols to process OR 'ALL'.");
-    symbols_source_group->add_option("--exchange-list", exchange_list_, 
-        "Symbols from specified exchange(s) for daily-scan/bulk loads.")
+    symbols_source_group->add_option("--symbol-list", symbol_list_i_,
+                                     "Comma-delimited list of symbols to process OR 'ALL'.");
+    symbols_source_group
+        ->add_option("--exchange-list", exchange_list_, "Symbols from specified exchange(s) for daily-scan/bulk loads.")
         ->delimiter(',')
         ->transform([](std::string s) {
             std::transform(s.begin(), s.end(), s.begin(),
@@ -635,8 +604,7 @@ void PF_CollectDataApp::SetupProgramOptions() {
         });
     symbols_source_group->require_option(1, 3);
 
-    app_.add_option("--new-data-dir", new_data_input_directory_, 
-        "Directory containing files with new data.")
+    app_.add_option("--new-data-dir", new_data_input_directory_, "Directory containing files with new data.")
         ->check(CLI::ExistingDirectory)
         ->check([](const std::string &path_str) {
             // The path is guaranteed to exist and be a directory at this point.
@@ -647,8 +615,7 @@ void PF_CollectDataApp::SetupProgramOptions() {
             return std::string{}; // Return an empty string for success
         });
 
-    app_.add_option("--chart-data-dir", input_chart_directory_, 
-        "Directory containing existing data files.")
+    app_.add_option("--chart-data-dir", input_chart_directory_, "Directory containing existing data files.")
         ->check(CLI::ExistingDirectory)
         ->check([](const std::string &path_str) {
             // The path is guaranteed to exist and be a directory at this point.
@@ -659,96 +626,76 @@ void PF_CollectDataApp::SetupProgramOptions() {
             return std::string{}; // Return an empty string for success
         });
 
-    app_.add_option("--destination", destination_i_, 
-        "Destination: 'file' or 'database'.")
+    app_.add_option("--destination", destination_i_, "Destination: 'file' or 'database'.")
         ->default_val("file")
         ->check(CLI::IsMember({"file", "database"}));
 
-    app_.add_option("--new-data-source", new_data_source_i_, 
-        "Source for new data: 'file', 'streaming', or 'database'.")
+    app_.add_option("--new-data-source", new_data_source_i_, "Source for new data: 'file', 'streaming', or 'database'.")
         ->default_val("file")
         ->check(CLI::IsMember({"file", "database", "streaming"}));
 
-    app_.add_option("--chart-data-source", chart_data_source_i_, 
-        "Source for existing chart data: 'file' or 'database'.")
+    app_.add_option("--chart-data-source", chart_data_source_i_,
+                    "Source for existing chart data: 'file' or 'database'.")
         ->default_val("file")
         ->check(CLI::IsMember({"file", "database"}));
 
-    app_.add_option("--source-format", source_format_i_, 
-        "Source data format: 'csv' or 'json'.")
+    app_.add_option("--source-format", source_format_i_, "Source data format: 'csv' or 'json'.")
         ->default_val("csv")
         ->check(CLI::IsMember({"csv", "json"}));
 
-    app_.add_option("--graphics-format", graphics_format_i_, 
-        "Output graphics file format: 'svg' or 'csv'.")
+    app_.add_option("--graphics-format", graphics_format_i_, "Output graphics file format: 'svg' or 'csv'.")
         ->default_val("svg")
         ->check(CLI::IsMember({"csv", "svg"}));
 
-    app_.add_option("-m,--mode", mode_i_, 
-        "Mode: 'load', 'update', or 'daily-scan'.")
+    app_.add_option("-m,--mode", mode_i_, "Mode: 'load', 'update', or 'daily-scan'.")
         ->default_val("load")
         ->check(CLI::IsMember({"load", "update", "daily-scan"}));
 
-    app_.add_option("-i,--interval", interval_i_, 
-        "Interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'.")
+    app_.add_option("-i,--interval", interval_i_, "Interval: 'eod', 'live', '1sec', '5sec', '1min', '5min'.")
         ->default_val("eod")
         ->check(CLI::IsMember({"eod", "live", "1sec", "5sec", "1min", "5min"}));
 
-    app_.add_option("--scale", scale_i_list_, 
-        "Scale: 'linear', 'percent'.")
+    app_.add_option("--scale", scale_i_list_, "Scale: 'linear', 'percent'.")
         ->check(CLI::IsMember({"linear", "percent"}));
 
-    app_.add_option("--price-fld-name", price_fld_name_, 
-        "Data field to use for price value.")
-        ->default_val("Close");
+    app_.add_option("--price-fld-name", price_fld_name_, "Data field to use for price value.")->default_val("Close");
 
-    app_.add_option("--min-dollar-volume", min_dollar_volume_, 
-        "Minimum dollar volume to filter stocks. Default is $100000")
+    app_.add_option("--min-dollar-volume", min_dollar_volume_,
+                    "Minimum dollar volume to filter stocks. Default is $100000")
         ->default_val("100000");
 
-    app_.add_option("--begin-date", begin_date_, 
-        "Start date for extracting data from database.")
+    app_.add_option("--begin-date", begin_date_, "Start date for extracting data from database.")
         ->check([this, &check_date](const std::string &str) { return check_date(str, start_date_); });
 
-    app_.add_option("--end-date", end_date_, 
-        "Stop date for extracting data from database.")
+    app_.add_option("--end-date", end_date_, "Stop date for extracting data from database.")
         ->check([this, &check_date](const std::string &str) { return check_date(str, stop_date_); });
 
-    app_.add_option("--output-chart-dir", output_chart_directory_, 
-        "Output directory for chart and graphic files.");
+    app_.add_option("--output-chart-dir", output_chart_directory_, "Output directory for chart and graphic files.");
 
-    app_.add_option("--output-graph-dir", output_graphs_directory_, 
-        "Output directory to write generated graphics.");
+    app_.add_option("--output-graph-dir", output_graphs_directory_, "Output directory to write generated graphics.");
 
-    app_.add_option("-b,--boxsize", box_size_i_list_, 
-        "Box step size: 'n', 'm.n'")
+    app_.add_option("-b,--boxsize", box_size_i_list_, "Box step size: 'n', 'm.n'")
         ->delimiter(',')
         ->transform([this](std::string s) {
             Decimal d{s};
             box_size_list_.push_back(d);
             return s;
         });
-        // ->required();
+    // ->required();
 
-    app_.add_option("-r,--reversal", reversal_boxes_list_, 
-        "Reversal size in number of boxes.")
-        ->delimiter(',');
-        // ->required();
+    app_.add_option("-r,--reversal", reversal_boxes_list_, "Reversal size in number of boxes.")->delimiter(',');
+    // ->required();
 
-    app_.add_option("--max-graphic-cols", max_columns_for_graph_, 
-        "Max columns in graphic. -1 for ALL.")
+    app_.add_option("--max-graphic-cols", max_columns_for_graph_, "Max columns in graphic. -1 for ALL.")
         ->default_val(-1);
 
-    app_.add_option("--show-trend-lines", trend_lines_, 
-        "Show trend lines: 'no', 'data', or 'angle'.")
+    app_.add_option("--show-trend-lines", trend_lines_, "Show trend lines: 'no', 'data', or 'angle'.")
         ->default_val("no")
         ->check(CLI::IsMember({"no", "data", "angle"}));
 
-    app_.add_option("--log-path", log_file_path_name_, 
-        "Path name for log file.");
+    app_.add_option("--log-path", log_file_path_name_, "Path name for log file.");
 
-    app_.add_option("-l,--log-level", logging_level_, 
-        "Logging level: 'none|error|information|debug'.")
+    app_.add_option("-l,--log-level", logging_level_, "Logging level: 'none|error|information|debug'.")
         ->default_val("information")
         ->check(CLI::IsMember({"none", "error", "information", "debug"}));
 
@@ -763,7 +710,8 @@ void PF_CollectDataApp::SetupProgramOptions() {
     app_.add_option("--db-port", db_params_.port_number_, "Database port.")->default_val(5432);
     app_.add_option("--db-user", db_params_.user_name_, "Database user name.");
     app_.add_option("--db-name", db_params_.db_name_, "Database name.");
-    app_.add_option("--db-mode", db_params_.PF_db_mode_, "'test' or 'live' schema.")->default_val("test")
+    app_.add_option("--db-mode", db_params_.PF_db_mode_, "'test' or 'live' schema.")
+        ->default_val("test")
         ->check(CLI::IsMember({"test", "live"}));
 
     app_.add_option("--stock-db-data-source", db_params_.stock_db_data_source_, "Table containing symbol data.")
@@ -796,23 +744,20 @@ void PF_CollectDataApp::SetupProgramOptions() {
 
     // soem final checks.
 
-    app_.callback([&](){
-        if(mode_i_ != "daily-scan")
+    app_.callback([&]() {
+        if (mode_i_ != "daily-scan")
         {
             if (box_size_list_.empty())
             {
                 throw CLI::ValidationError("Box size must be specified.");
             }
-            if(reversal_boxes_list_.empty())
+            if (reversal_boxes_list_.empty())
             {
                 throw CLI::ValidationError("Reversal boxes must be provided.");
             }
         }
     });
-    
 }
-
-// clang-format on
 
 void PF_CollectDataApp::ParseProgramOptions(const std::vector<std::string> &tokens)
 {
