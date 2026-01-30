@@ -458,14 +458,15 @@ std::optional<StreamedPrices> PF_Chart::BuildChartFromPricesDB(const PF_DB::DB_P
         time_stream.str(std::string{std::get<0>(r)});
         std::chrono::from_stream(time_stream, dt_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
-        DateCloseRecord new_data{.date_ = tp1, .close_ = decimal::Decimal{std::get<1>(r)}};
+        DateCloseRecord new_data{.date_ = tp1, .close_ = decimal::Decimal{std::get<1>(r).data()}};
         return new_data;
     };
 
     try
     {
-        const auto closing_prices = prices_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, const char *>(
-            get_symbol_prices_cmd, Row2Closing);
+        const auto closing_prices =
+            prices_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd,
+                                                                                                  Row2Closing);
 
         for (const auto &[new_date, new_price] : closing_prices)
         {

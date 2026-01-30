@@ -966,7 +966,7 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
         time_stream.str(std::string{std::get<0>(r)});
         std::chrono::from_stream(time_stream, dt_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
-        DateCloseRecord new_data{.date_ = tp1, .close_ = Decimal{std::get<1>(r)}};
+        DateCloseRecord new_data{.date_ = tp1, .close_ = Decimal{std::get<1>(r).data()}};
         return new_data;
     };
 
@@ -984,8 +984,9 @@ std::tuple<int, int, int> PF_CollectDataApp::ProcessSymbolsFromDB(const std::vec
                             "{} ORDER BY date ASC",
                             price_fld_name_, db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date_));
 
-            const auto closing_prices = pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, const char *>(
-                get_symbol_prices_cmd, Row2Closing);
+            const auto closing_prices =
+                pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd,
+                                                                                                  Row2Closing);
 
             // only need to compute this once per symbol also
             auto atr_or_range = use_ATR_       ? ComputeATRForChartFromDB(symbol)

@@ -344,7 +344,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
         std::chrono::from_stream(time_stream, date_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
         MultiSymbolDateCloseRecord new_data{
-            .symbol_ = std::string{std::get<0>(r)}, .date_ = tp1, .close_ = decimal::Decimal{std::get<2>(r)}};
+            .symbol_ = std::string{std::get<0>(r)}, .date_ = tp1, .close_ = decimal::Decimal{std::get<2>(r).data()}};
         return new_data;
     };
 
@@ -360,9 +360,8 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsInList(cons
             std::format("SELECT symbol, date, {} FROM {} WHERE symbol in {} AND {} ORDER BY symbol, date ASC",
                         price_fld_name, db_params_.stock_db_data_source_, query_list, date_range);
 
-        db_data =
-            pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char *>(
-                get_symbol_prices_cmd, Row2Closing);
+        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view,
+                                               std::string_view>(get_symbol_prices_cmd, Row2Closing);
         spdlog::debug(
             std::format("Done retrieving data for symbols in: {}. Got: {} rows.", query_list, db_data.size()));
     }
@@ -398,7 +397,7 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
         std::chrono::from_stream(time_stream, date_format, tp);
         std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
         MultiSymbolDateCloseRecord new_data{
-            .symbol_ = std::string{std::get<0>(r)}, .date_ = tp1, .close_ = decimal::Decimal{std::get<2>(r)}};
+            .symbol_ = std::string{std::get<0>(r)}, .date_ = tp1, .close_ = decimal::Decimal{std::get<2>(r).data()}};
         return new_data;
     };
 
@@ -416,9 +415,8 @@ std::vector<MultiSymbolDateCloseRecord> PF_DB::GetPriceDataForSymbolsOnExchange(
                         price_fld_name, db_params_.stock_db_data_source_, date_range, c.quote(exchange),
                         c.quote(min_dollar_volume));
 
-        db_data =
-            pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view, const char *>(
-                get_symbol_prices_cmd, Row2Closing);
+        db_data = pf_db.RunSQLQueryUsingStream<MultiSymbolDateCloseRecord, std::string_view, std::string_view,
+                                               std::string_view>(get_symbol_prices_cmd, Row2Closing);
         spdlog::debug(
             std::format("Done retrieving data for symbols on exchange: {}. Got: {} rows.", exchange, db_data.size()));
     }
@@ -450,7 +448,7 @@ decimal::Decimal PF_DB::ComputePriceRangeForSymbolFromDB(std::string_view symbol
 
     decimal::Decimal price_range;
 
-    auto Row2Range = [](const auto &r) { return decimal::Decimal{r[0].template as<const char *>()}; };
+    auto Row2Range = [](const auto &r) { return decimal::Decimal{r[0].c_str()}; };
 
     try
     {
