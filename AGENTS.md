@@ -3,6 +3,7 @@
 ## Build Commands
 
 ### Main Application
+
 ```bash
 # Debug build
 make -f makefile_collect CFG=Debug
@@ -15,13 +16,16 @@ make -f makefile_collect clean
 ```
 
 ### Compiler and Standards
+
 - **Compiler**: GCC 15+ with `-std=c++26`
 - **Libraries**: Boost 1.90, spdlog, fmt, range-v3, Howard Hinnant's date, jsoncpp, libdecnumber/mpdecimal, ChartDirector, pqxx (PostgreSQL)
 - **Linker flags**: Use `-Wl,-rpath` for runtime library paths
+- Include directories: ./src ../common_utilities/include/
 
 ## Testing
 
 ### Running Tests
+
 ```bash
 # Build and run decimal_test
 make -f decimal_test.mk
@@ -30,6 +34,7 @@ make -f decimal_test.mk
 ```
 
 ### Test Structure
+
 - Tests follow the `CMyApp` pattern with `Do_StartUp()`, `Do_Run()`, `Do_CheckArgs()` lifecycle
 - Use try-catch blocks around application code to capture exceptions
 - Tests typically return exit codes: 0=success, 1-5=various error states
@@ -37,6 +42,7 @@ make -f decimal_test.mk
 ## Linting and Code Quality
 
 ### Python
+
 ```bash
 # Lint Python files
 ruff check .
@@ -46,6 +52,7 @@ ruff check --select=E,F,B
 ```
 
 ### SQL
+
 ```bash
 # Lint SQL files
 sqlfluff lint .
@@ -58,7 +65,9 @@ sqlfluff lint .
 ## Code Style Guidelines
 
 ### File Headers
+
 All source files require standard header block:
+
 ```cpp
 // =====================================================================================
 //
@@ -83,31 +92,37 @@ Followed by GPL v3 license notice in comment form.
 ### Naming Conventions
 
 #### Classes
+
 - PascalCase: `PF_CollectDataApp`, `PF_Chart`, `PointAndFigureDB`
 - Prefix with domain: `PF_` for Point-and-Figure related classes
 
 #### Functions and Methods
+
 - PascalCase for member functions: `Startup()`, `Run()`, `Shutdown()`
 - Use `[[nodiscard]]` on functions whose return values should not be ignored
 - Private methods with `_` suffix: `PF_streamer_`, `charts_`
 
 #### Variables
+
 - Member variables: camelCase with trailing underscore: `charts_`, `logger_`
 - Static members: static with trailing underscore: `had_signal_`
 - Constants: `kMaxBoxes`, `kMinExponent`
 - Local variables: camelCase: `new_data`, `streamed_prices`
 
 #### Enums
+
 - PascalCase enum types: `BoxType`, `BoxScale`
 - Lowercase enum values with prefix: `e_Integral`, `e_Linear`, `e_Percent`
 
 #### Files
+
 - C++ source: `FileName.cpp`, `FileName.h`
 - Python: `FileName.py` (PascalCase)
 
 ### Formatting
 
 #### Indentation
+
 - 4 spaces for indentation (no tabs)
 - Method descriptions follow pattern:
   ```cpp
@@ -119,6 +134,7 @@ Followed by GPL v3 license notice in comment form.
   ```
 
 #### Braces and Spacing
+
 - Allman/BSD style (brace on separate line):
   ```cpp
   bool PF_CollectDataApp::Startup()
@@ -131,12 +147,14 @@ Followed by GPL v3 license notice in comment form.
 - Space after commas: `func(a, b, c)`
 
 #### Line Length
+
 - Maximum 120 characters (Python and SQL)
 - C++ uses wrapping for long lines
 
 ### Imports and Includes
 
 #### C++ Include Order
+
 1. Standard library headers (alphabetical)
 2. Third-party headers (alphabetical)
 3. Project headers (relative paths)
@@ -152,12 +170,14 @@ Followed by GPL v3 license notice in comment form.
 ```
 
 #### Python Imports
+
 ```python
 import pandas as pd
 import matplotlib
 import numpy as np
 import mplfinance as mpf
 ```
+
 - Standard library first
 - Third-party libraries second
 - Use `as` aliases for common libraries
@@ -165,6 +185,7 @@ import mplfinance as mpf
 ### Types and Templates
 
 #### Type Aliases
+
 ```cpp
 using PF_Charts = std::vector<std::pair<std::string, PF_Chart>>;
 using Box = decimal::Decimal;
@@ -172,6 +193,7 @@ using BoxList = std::deque<Box>;
 ```
 
 #### Modern C++ Features
+
 - Use `std::optional` for optional return values
 - Use `std::unique_ptr` and `std::shared_ptr` for ownership
 - Use `std::ranges` and views when appropriate
@@ -180,6 +202,7 @@ using BoxList = std::deque<Box>;
 - Prefer `std::chrono` for time operations
 
 #### Decimal Precision
+
 - Use `decimal::Decimal` for financial calculations
 - Set context at startup:
   ```cpp
@@ -190,6 +213,7 @@ using BoxList = std::deque<Box>;
 ### Error Handling
 
 #### Exception Handling
+
 ```cpp
 try
 {
@@ -213,18 +237,21 @@ catch (...)
 ```
 
 #### Logging
+
 - Use spdlog with named loggers: `spdlog::info()`, `spdlog::error()`
 - Configure logging early in Startup()
 - Set log level based on command-line options
 - Use file sinks for persistent logging
 
 #### Assertions
+
 - Use `BOOST_ASSERT_MSG()` for precondition checks
 - Use `[[nodiscard]]` for critical return values
 
 ### Memory Management
 
 #### Ownership
+
 - Use `std::unique_ptr` for exclusive ownership
 - Use `std::shared_ptr` for shared ownership (e.g., spdlog loggers)
 - Default constructors, copy/move operations should be explicit:
@@ -235,6 +262,7 @@ catch (...)
   ```
 
 #### Smart Pointers
+
 ```cpp
 std::shared_ptr<spdlog::logger> logger_;
 std::unique_ptr<RemoteDataSource> PF_streamer_;
@@ -243,6 +271,7 @@ std::unique_ptr<RemoteDataSource> PF_streamer_;
 ### Database Operations
 
 #### PostgreSQL
+
 - Use libpqxx for database access
 - Always use parameterized queries to prevent SQL injection
 - Handle transaction boundaries explicitly
@@ -263,11 +292,13 @@ pqxx::work tx{c};
 ### Comments
 
 #### Documentation Style
+
 - Use block comments for class/method descriptions
 - Include brief description of purpose
 - Mark lifecycle methods clearly
 
 #### Inline Comments
+
 - Keep comments concise and on same line when possible
 - Explain why, not what
 - Use `//` for implementation details
