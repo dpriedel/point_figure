@@ -147,6 +147,13 @@ protected:
     void ShutdownAndStoreOutputInFiles();
     void ShutdownAndStoreOutputInDB();
 
+    // Resume functionality for streaming mode
+    void LoadChartsFromFiles();
+    void LoadStreamedPricesFromFiles();
+    void LoadStreamedSummaryFromFile();
+    void SaveStreamedPricesToFiles();
+    void SaveStreamedSummaryToFile();
+
     // ====================  DATA MEMBERS
     // =======================================
 
@@ -331,6 +338,7 @@ private:
     bool output_is_path_ = false;
     bool use_ATR_ = false;
     bool use_min_max_ = false;
+    bool resume_mode_ = false;
 
     static bool had_signal_;
 }; // -----  end of class PF_CollectDataApp  -----
