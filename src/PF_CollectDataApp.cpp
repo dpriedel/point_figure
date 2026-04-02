@@ -742,6 +742,8 @@ void PF_CollectDataApp::SetupProgramOptions()
     atr_or_minmax->add_flag("--use-MinMax", use_min_max_, "Compute boxsize using price range from DB.");
     atr_or_minmax->require_option(0, 1);
 
+    app_.add_flag("--resume", resume_mode_, "Resume streaming from saved data files.");
+
     // soem final checks.
 
     app_.callback([&]() {
@@ -1205,47 +1207,60 @@ void PF_CollectDataApp::Run_Streaming()
         std::cout << "Market not open for trading YET so we'll wait." << std::endl;
     }
 
-    // initialize PF_Charts to be used by streaming code
-
-    std::map<std::string, decimal::Decimal> cache; // table for memoization of ATR
-
-    for (const auto &val : params)
+    // === RESUME MODE: Load existing data ===
+    if (resume_mode_)
     {
-        const auto &symbol = std::get<PF_Chart::e_symbol>(val);
-        try
-        {
-            PF_Chart new_chart;
-            // compute ATR once per symbol
-            decimal::Decimal atr;
-            if (use_ATR_)
-            {
-                atr = cache.contains(symbol) ? cache[symbol] : (cache[symbol] = ComputeATRForChart(symbol));
-                new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
-            }
-            else
-            {
-                atr = 0;
-                new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
-            }
-            charts_.emplace_back(std::make_pair(symbol, new_chart));
-        }
-        catch (const std::exception &e)
-        {
-            spdlog::error(std::format("Unable to compute ATR for: '{}' because: {}.\n", symbol, e.what()));
-        }
+        LoadChartsFromFiles();
+        LoadStreamedPricesFromFiles();
+        LoadStreamedSummaryFromFile();
+        spdlog::info("Resume mode: loaded existing data");
     }
-
-    // setup to capture streamed price data and price movement summary too
-
-    for (const auto &symbol : symbol_list_)
+    else
     {
-        streamed_prices_[symbol] = {};
-        streamed_summary_[symbol] = {};
+        // === NORMAL MODE: Create new charts ===
+
+        // initialize PF_Charts to be used by streaming code
+
+        std::map<std::string, decimal::Decimal> cache; // table for memoization of ATR
+
+        for (const auto &val : params)
+        {
+            const auto &symbol = std::get<PF_Chart::e_symbol>(val);
+            try
+            {
+                PF_Chart new_chart;
+                // compute ATR once per symbol
+                decimal::Decimal atr;
+                if (use_ATR_)
+                {
+                    atr = cache.contains(symbol) ? cache[symbol] : (cache[symbol] = ComputeATRForChart(symbol));
+                    new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                }
+                else
+                {
+                    atr = 0;
+                    new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                }
+                charts_.emplace_back(std::make_pair(symbol, new_chart));
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::error(std::format("Unable to compute ATR for: '{}' because: {}.\n", symbol, e.what()));
+            }
+        }
+
+        // setup to capture streamed price data and price movement summary too
+
+        for (const auto &symbol : symbol_list_)
+        {
+            streamed_prices_[symbol] = {};
+            streamed_summary_[symbol] = {};
+        }
+
+        // let's stream !
+
+        PrimeChartsForStreaming();
     }
-
-    // let's stream !
-
-    PrimeChartsForStreaming();
 
     // set up time delays between drawing chart updates
 
@@ -2089,8 +2104,15 @@ void PF_CollectDataApp::Shutdown()
 
 } // -----  end of method PF_CollectDataApp::Shutdown  -----
 
-void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
+  void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
 {
+    // Save streamed data for resume functionality
+    if (new_data_source_ == Source::e_streaming)
+    {
+        SaveStreamedPricesToFiles();
+        SaveStreamedSummaryToFile();
+    }
+
     for (const auto &[symbol, chart] : charts_)
     {
         if (chart.empty())
@@ -2199,7 +2221,208 @@ void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
             break;
         }
     }
-} // -----  end of method PF_CollectDataApp::WaitForTimer  -----
+ } // -----  end of method PF_CollectDataApp::WaitForTimer  -----
+
+void PF_CollectDataApp::LoadChartsFromFiles()
+{
+    auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
+
+    for (const auto &val : params)
+    {
+        const auto &symbol = std::get<PF_Chart::e_symbol>(val);
+        fs::path chart_file_path = output_chart_directory_ / MakeChartNameFromParams(val, "", "json");
+
+        try
+        {
+            if (fs::exists(chart_file_path))
+            {
+                PF_Chart loaded_chart;
+                PF_Chart::LoadChartFromJSONPF_ChartFile(loaded_chart, chart_file_path);
+                if (max_columns_for_graph_ != 0)
+                {
+                    loaded_chart.SetMaxGraphicColumns(max_columns_for_graph_);
+                }
+                charts_.emplace_back(std::make_pair(symbol, std::move(loaded_chart)));
+                spdlog::info("Loaded chart from: {}", chart_file_path.string());
+            }
+            else
+            {
+                // Create new chart
+                decimal::Decimal atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
+                PF_Chart new_chart = use_ATR_
+                                        ? PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_}
+                                        : PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
+                spdlog::info("No saved chart for {}, creating new one", symbol);
+            }
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error("Corrupt chart file {} for symbol {}: {}. Exiting.", chart_file_path.string(), symbol,
+                          e.what());
+            throw; // Exit on corrupt file
+        }
+    }
+} // -----  end of method PF_CollectDataApp::LoadChartsFromFiles  -----
+
+void PF_CollectDataApp::LoadStreamedPricesFromFiles()
+{
+    for (const auto &symbol : symbol_list_)
+    {
+        fs::path prices_file = output_chart_directory_ / (symbol + "_streamed_prices.json");
+
+        if (fs::exists(prices_file))
+        {
+            try
+            {
+                Json::Value streamed_data;
+                std::ifstream in(prices_file);
+                in >> streamed_data;
+                in.close();
+
+                StreamedPrices prices;
+                // Manually parse JSON arrays to vectors
+                if (streamed_data.isMember("timestamp_seconds") && streamed_data["timestamp_seconds"].isArray())
+                {
+                    const auto &ts_array = streamed_data["timestamp_seconds"];
+                    for (const auto &val : ts_array)
+                    {
+                        prices.timestamp_seconds_.push_back(val.asInt64());
+                    }
+                }
+                if (streamed_data.isMember("price") && streamed_data["price"].isArray())
+                {
+                    const auto &price_array = streamed_data["price"];
+                    for (const auto &val : price_array)
+                    {
+                        prices.price_.push_back(val.asDouble());
+                    }
+                }
+                if (streamed_data.isMember("signal_type") && streamed_data["signal_type"].isArray())
+                {
+                    const auto &signal_array = streamed_data["signal_type"];
+                    for (const auto &val : signal_array)
+                    {
+                        prices.signal_type_.push_back(val.asInt());
+                    }
+                }
+
+                streamed_prices_[symbol] = prices;
+                spdlog::info("Loaded streamed prices for {} from {}", symbol, prices_file.string());
+            }
+            catch (const Json::Exception &e)
+            {
+                spdlog::error("Corrupt streamed prices file {} for symbol {}: {}. Exiting.", prices_file.string(),
+                              symbol, e.what());
+                throw;
+            }
+        }
+        else
+        {
+            spdlog::info("No streamed prices file for {}, starting fresh", symbol);
+            streamed_prices_[symbol] = {};
+        }
+    }
+} // -----  end of method PF_CollectDataApp::LoadStreamedPricesFromFiles  -----
+
+void PF_CollectDataApp::LoadStreamedSummaryFromFile()
+{
+    fs::path summary_file = output_chart_directory_ / "streamed_summary.json";
+
+    if (fs::exists(summary_file))
+    {
+        try
+        {
+            Json::Value summary_data;
+            std::ifstream in(summary_file);
+            in >> summary_data;
+            in.close();
+
+            for (const auto &symbol : symbol_list_)
+            {
+                std::string symbol_key = symbol;
+                if (summary_data.isMember(symbol_key))
+                {
+                    const auto &symbol_data = summary_data[symbol_key];
+                    StreamedSummary summary;
+                    summary.opening_price_ = symbol_data["opening_price"].asDouble();
+                    summary.latest_price_ = symbol_data["latest_price"].asDouble();
+                    summary.curent_signal_type_ = symbol_data["curent_signal_type"].asInt();
+                    streamed_summary_[symbol] = summary;
+                }
+            }
+            spdlog::info("Loaded streamed summary from {}", summary_file.string());
+        }
+        catch (const Json::Exception &e)
+        {
+            spdlog::error("Corrupt summary file {}: {}. Exiting.", summary_file.string(), e.what());
+            throw;
+        }
+    }
+    else
+    {
+        spdlog::info("No summary file found, starting fresh");
+        for (const auto &symbol : symbol_list_)
+        {
+            streamed_summary_[symbol] = {};
+        }
+    }
+} // -----  end of method PF_CollectDataApp::LoadStreamedSummaryFromFile  -----
+
+void PF_CollectDataApp::SaveStreamedPricesToFiles()
+{
+    for (const auto &[symbol, prices] : streamed_prices_)
+    {
+        if (prices.timestamp_seconds_.empty())
+        {
+            continue; // Skip empty data
+        }
+
+        fs::path prices_file = output_chart_directory_ / (symbol + "_streamed_prices.json");
+        std::ofstream out(prices_file);
+
+        Json::Value root;
+        root["timestamp_seconds"] = Json::Value(Json::arrayValue);
+        root["price"] = Json::Value(Json::arrayValue);
+        root["signal_type"] = Json::Value(Json::arrayValue);
+
+        for (auto timestamp : prices.timestamp_seconds_)
+        {
+            root["timestamp_seconds"].append(timestamp);
+        }
+        for (auto price : prices.price_)
+        {
+            root["price"].append(price);
+        }
+        for (auto signal : prices.signal_type_)
+        {
+            root["signal_type"].append(signal);
+        }
+
+        out << root << std::endl;
+        out.close();
+    }
+    spdlog::info("Saved streamed prices to {}", output_chart_directory_.string());
+} // -----  end of method PF_CollectDataApp::SaveStreamedPricesToFiles  -----
+
+void PF_CollectDataApp::SaveStreamedSummaryToFile()
+{
+    fs::path summary_file = output_chart_directory_ / "streamed_summary.json";
+    std::ofstream out(summary_file);
+
+    Json::Value root;
+    for (const auto &[symbol, summary] : streamed_summary_)
+    {
+        std::string symbol_key = symbol;
+        root[symbol_key]["opening_price"] = summary.opening_price_;
+        root[symbol_key]["latest_price"] = summary.latest_price_;
+        root[symbol_key]["curent_signal_type"] = summary.curent_signal_type_;
+    }
+
+    out << root << std::endl;
+    out.close();
+    spdlog::info("Saved streamed summary to {}", summary_file.string());
+} // -----  end of method PF_CollectDataApp::SaveStreamedSummaryToFile  -----
 
 void PF_CollectDataApp::HandleSignal(int signal)
 
