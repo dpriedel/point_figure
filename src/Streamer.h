@@ -168,6 +168,8 @@ protected:
     net::steady_timer reconnect_timer_;
     int max_reconnect_attempts_;
     int reconnect_attempts_;
+    int subscription_fail_count_;
+    int max_subscription_fails_;
     std::chrono::seconds base_reconnect_delay_;
     std::mt19937 rng_;
     std::uniform_int_distribution<> jitter_dist_;

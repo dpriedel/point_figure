@@ -12,16 +12,16 @@ namespace http = beast::http;
 
 RemoteDataSource::RemoteDataSource()
     : ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_(std::in_place, ioc_, ctx_), reconnect_timer_(ioc_),
-      max_reconnect_attempts_(5), reconnect_attempts_(0), base_reconnect_delay_(std::chrono::seconds(1)),
-      rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
+      max_reconnect_attempts_(5), reconnect_attempts_(0), subscription_fail_count_(0), max_subscription_fails_(5),
+      base_reconnect_delay_(std::chrono::seconds(1)), rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
 {
 }
 
 RemoteDataSource::RemoteDataSource(const Host &host, const Port &port, const APIKey &api_key, const Prefix &prefix)
     : api_key_{api_key.get()}, host_{host.get()}, port_{port.get()}, websocket_prefix_{prefix.get()},
       ctx_{ssl::context::tlsv12_client}, resolver_{ioc_}, ws_{std::in_place, ioc_, ctx_}, reconnect_timer_(ioc_),
-      max_reconnect_attempts_(5), reconnect_attempts_(0), base_reconnect_delay_(std::chrono::seconds(1)),
-      rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
+      max_reconnect_attempts_(5), reconnect_attempts_(0), subscription_fail_count_(0), max_subscription_fails_(5),
+      base_reconnect_delay_(std::chrono::seconds(1)), rng_(std::random_device{}()), jitter_dist_(0, 500), should_reconnect_(false)
 {
 }
 
@@ -151,7 +151,6 @@ void RemoteDataSource::on_handshake(beast::error_code ec)
     }
 
     spdlog::debug("Connected. performing subscription...");
-    reconnect_attempts_ = 0;  // Reset attempts on successful connection
     should_reconnect_ = true; // Enable reconnection from now on
     // 5. Let derived class handle subscription
     OnConnected();
@@ -159,7 +158,7 @@ void RemoteDataSource::on_handshake(beast::error_code ec)
 
 void RemoteDataSource::start_reconnection()
 {
-    if (!should_reconnect_ || reconnect_attempts_ >= max_reconnect_attempts_)
+    if (!should_reconnect_ || reconnect_attempts_ >= max_reconnect_attempts_ || subscription_fail_count_ >= max_subscription_fails_)
     {
         spdlog::info("Max reconnection attempts reached or reconnection disabled. Stopping.");
         ioc_.stop();
@@ -169,7 +168,7 @@ void RemoteDataSource::start_reconnection()
     ++reconnect_attempts_;
     auto delay = calculate_reconnect_delay();
 
-    spdlog::info("Attempting to reconnect in {} seconds (attempt {}/{}).", delay.count(), reconnect_attempts_,
+    spdlog::info("Attempting to reconnect in {} ms (attempt {}/{}).", delay.count(), reconnect_attempts_,
                  max_reconnect_attempts_);
 
     reconnect_timer_.expires_after(delay);
@@ -192,7 +191,8 @@ void RemoteDataSource::start_reconnection()
 std::chrono::milliseconds RemoteDataSource::calculate_reconnect_delay()
 {
 
-    auto delay = base_reconnect_delay_ * std::pow(2.0, reconnect_attempts_ - 1);
+    auto effective_attempts = std::max(reconnect_attempts_, subscription_fail_count_);
+    auto delay = base_reconnect_delay_ * std::pow(2.0, effective_attempts - 1);
     auto jitter = std::chrono::milliseconds(jitter_dist_(rng_));
     delay += jitter;
     auto max_delay = std::chrono::seconds(30);

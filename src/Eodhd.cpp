@@ -53,6 +53,7 @@ void Eodhd::on_write_subscribe(beast::error_code ec, std::size_t bytes_transferr
     if (ec)
     {
         spdlog::error("Eodhd subscribe write failed: {}", ec.message());
+        ++subscription_fail_count_;
         spdlog::info("Will attempt reconnection.");
         start_reconnection();
         return;
@@ -68,6 +69,7 @@ void Eodhd::on_read_subscribe(beast::error_code ec, std::size_t bytes_transferre
     if (ec)
     {
         spdlog::error("Eodhd subscribe read failed: {}", ec.message());
+        ++subscription_fail_count_;
         spdlog::info("Will attempt reconnection.");
         start_reconnection();
         return;
@@ -79,12 +81,14 @@ void Eodhd::on_read_subscribe(beast::error_code ec, std::size_t bytes_transferre
     if (!buffer_content.starts_with(R"***({"status_code":200,)***"))
     {
         spdlog::error("Failed to get success code. Got: {}", buffer_content);
+        ++subscription_fail_count_;
         spdlog::info("Will attempt reconnection.");
         start_reconnection();
         return;
     }
 
     spdlog::info("Eodhd Subscribed Successfully.");
+    subscription_fail_count_ = 0;
     StartReadLoop();
 }
 
