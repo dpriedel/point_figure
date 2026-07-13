@@ -132,6 +132,7 @@ public:
     void ConnectWS();
     void DisconnectWS();
     void StartReconnect();
+    void ResetAndRestart();
 
 protected:
     // ====================  ASYNC MECHANICS  ====================================

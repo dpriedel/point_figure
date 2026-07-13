@@ -25,3 +25,14 @@ After the early return, no `async_read` is active on the websocket. The 30s ping
 
 ## Response Format Note
 The error `{"status":500,...}` uses `status` key (not `status_code`). This appears to be Eodhd's server-level error format, distinct from the normal subscription response format.
+
+## Additional Findings (2026-07-13 code review)
+
+### Comma-space in symbol strings (likely cause of 500 errors)
+Subscribe/unsubscribe messages join symbols with `", "` (comma + space). EODHD docs require no spaces: `"symbols": "AAPL,TSLA"`. Server may reject `" MSFT"` (leading space) as unknown symbol, triggering 500.
+
+### DNS/TCP failures are terminal
+`on_resolve()` and `on_connect()` log error and return — no reconnection attempt. Transient network issues cause permanent streaming failure.
+
+### No recovery after max retries
+Once `subscription_fail_count_ >= 5`, IO context stops permanently. Only way to recover is restart process. Added `ResetAndRestart()` method to allow programmatic recovery.

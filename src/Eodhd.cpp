@@ -37,7 +37,7 @@ void Eodhd::OnConnected()
     std::string ticker_list;
     ticker_list = symbol_list_.front();
     rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto &sym) {
-        ticker_list += ", ";
+        ticker_list += ",";
         ticker_list += sym;
     });
 
@@ -218,7 +218,7 @@ void Eodhd::StopStreaming(StreamerContext &streamer_context)
     std::string ticker_list;
     ticker_list = symbol_list_.front();
     rng::for_each(symbol_list_ | vws::drop(1), [&ticker_list](const auto &sym) {
-        ticker_list += ", ";
+        ticker_list += ",";
         ticker_list += sym;
     });
 

@@ -39,6 +39,16 @@ void RemoteDataSource::StartReconnect()
     start_reconnection();
 }
 
+void RemoteDataSource::ResetAndRestart()
+{
+    subscription_fail_count_ = 0;
+    reconnect_attempts_ = 0;
+    should_reconnect_ = true;
+    ws_.reset();
+    ioc_.restart();
+    ConnectWS();
+}
+
 void RemoteDataSource::StreamData(bool *had_signal, StreamerContext &streamer_context)
 {
     // Store pointers for async handlers
@@ -86,6 +96,7 @@ void RemoteDataSource::on_resolve(beast::error_code ec, tcp::resolver::results_t
     if (ec)
     {
         spdlog::error("Resolve failed: {}", ec.message());
+        start_reconnection();
         return;
     }
 
@@ -99,6 +110,7 @@ void RemoteDataSource::on_connect(beast::error_code ec, tcp::resolver::results_t
     if (ec)
     {
         spdlog::error("Connect failed: {}", ec.message());
+        start_reconnection();
         return;
     }
 
@@ -158,9 +170,21 @@ void RemoteDataSource::on_handshake(beast::error_code ec)
 
 void RemoteDataSource::start_reconnection()
 {
-    if (!should_reconnect_ || reconnect_attempts_ >= max_reconnect_attempts_ || subscription_fail_count_ >= max_subscription_fails_)
+    if (!should_reconnect_)
     {
-        spdlog::info("Max reconnection attempts reached or reconnection disabled. Stopping.");
+        spdlog::info("Reconnection disabled. Stopping.");
+        ioc_.stop();
+        return;
+    }
+    if (reconnect_attempts_ >= max_reconnect_attempts_)
+    {
+        spdlog::warn("Max reconnection attempts ({}) reached. Stopping.", max_reconnect_attempts_);
+        ioc_.stop();
+        return;
+    }
+    if (subscription_fail_count_ >= max_subscription_fails_)
+    {
+        spdlog::warn("Max subscription failures ({}) reached. Stopping.", max_subscription_fails_);
         ioc_.stop();
         return;
     }
