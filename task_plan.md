@@ -30,4 +30,5 @@ Add `start_reconnection()` + info log to three error paths in `src/Eodhd.cpp`:
 - [x] Add reconnection to DNS/TCP failure paths
 - [x] Split reconnection guard into specific messages
 - [x] Add `ResetAndRestart()` public method for recovery after max retries
+- [x] Fix shutdown hang: `start_reconnection()` exit paths set `had_signal_` before `ioc_.stop()`
 - [ ] Test during market hours (Monday+)

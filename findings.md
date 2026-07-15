@@ -36,3 +36,6 @@ Subscribe/unsubscribe messages join symbols with `", "` (comma + space). EODHD d
 
 ### No recovery after max retries
 Once `subscription_fail_count_ >= 5`, IO context stops permanently. Only way to recover is restart process. Added `ResetAndRestart()` method to allow programmatic recovery.
+
+### Shutdown hang after max retries (2026-07-15)
+When `start_reconnection()` exhausts all retries, it calls `ioc_.stop()` but doesn't set `had_signal_ = true`. The timer thread (`WaitForTimer`) only exits when `had_signal_` is true OR market close arrives. Since neither condition was met, the main thread hung on `timer_task.get()` for hours until market close. Fixed by setting `*had_signal_ptr_ = true` before all three `ioc_.stop()` calls in `start_reconnection()`.

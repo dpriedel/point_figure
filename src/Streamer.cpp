@@ -173,18 +173,21 @@ void RemoteDataSource::start_reconnection()
     if (!should_reconnect_)
     {
         spdlog::info("Reconnection disabled. Stopping.");
+        if (had_signal_ptr_) *had_signal_ptr_ = true;
         ioc_.stop();
         return;
     }
     if (reconnect_attempts_ >= max_reconnect_attempts_)
     {
         spdlog::warn("Max reconnection attempts ({}) reached. Stopping.", max_reconnect_attempts_);
+        if (had_signal_ptr_) *had_signal_ptr_ = true;
         ioc_.stop();
         return;
     }
     if (subscription_fail_count_ >= max_subscription_fails_)
     {
         spdlog::warn("Max subscription failures ({}) reached. Stopping.", max_subscription_fails_);
+        if (had_signal_ptr_) *had_signal_ptr_ = true;
         ioc_.stop();
         return;
     }
