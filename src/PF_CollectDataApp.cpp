@@ -1790,7 +1790,10 @@ void PF_CollectDataApp::Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Da
     // Also, for now, we want to skip 'dark pool' transactions.
     // AND skip 1-share transactions -- maybe these are algo-traders probing the market.
 
-    if (update.last_price_ == -1 || update.dark_pool_ || update.last_size_ == 1)
+    // if (update.last_price_ == -1 || update.dark_pool_ || update.last_size_ == 1)
+
+    // let's look at dark pool trx for now since they supposedly make up 40% of trading volume.
+    if (update.last_price_ == -1 || update.last_size_ == 1)
     {
         // last_price_ = -1 means the field was not set
         // during data extraction.
@@ -2104,7 +2107,7 @@ void PF_CollectDataApp::Shutdown()
 
 } // -----  end of method PF_CollectDataApp::Shutdown  -----
 
-  void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
+void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
 {
     // Save streamed data for resume functionality
     if (new_data_source_ == Source::e_streaming)
@@ -2221,7 +2224,7 @@ void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
             break;
         }
     }
- } // -----  end of method PF_CollectDataApp::WaitForTimer  -----
+} // -----  end of method PF_CollectDataApp::WaitForTimer  -----
 
 void PF_CollectDataApp::LoadChartsFromFiles()
 {
@@ -2250,8 +2253,8 @@ void PF_CollectDataApp::LoadChartsFromFiles()
                 // Create new chart
                 decimal::Decimal atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
                 PF_Chart new_chart = use_ATR_
-                                        ? PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_}
-                                        : PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                                         ? PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_}
+                                         : PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                 charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
                 spdlog::info("No saved chart for {}, creating new one", symbol);
             }

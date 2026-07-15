@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.90_gcc-15
-GCCDIR := /extra/gcc/gcc-15
+BOOSTDIR := /extra/boost/boost-1.91_gcc-16
+GCCDIR := /extra/gcc/gcc-16
 GTESTDIR := /usr/local/include
 UTILITYDIR := ${HOME}/projects/PF_Project/common_utilities
 CPP := $(GCCDIR)/bin/g++
@@ -43,20 +43,21 @@ CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib/ChartDirector
 
-SDIR1 := .
-SRCS1 := $(SDIR1)/Main.cpp
+# SDIR1 := .
+# SRCS1 := $(SDIR1)/Main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/PF_CollectDataApp.cpp \
+SRCS2 := $(SDIR2)/Main.cpp \
+		$(SDIR2)/PF_CollectDataApp.cpp \
 		$(SDIR2)/ConstructChartGraphic.cpp \
 		$(SDIR2)/Tiingo.cpp \
 		$(SDIR2)/Eodhd.cpp \
 		$(SDIR2)/Streamer.cpp 
 
 
-SRCS := $(SRCS1) $(SRCS2)
+SRCS := $(SRCS2)
 
-VPATH := $(SDIR1):$(SDIR2)
+VPATH := $(SDIR2)
 
 CFG_LIB := -L../lib_PF_Chart \
 		-lPF_Chart \
@@ -79,10 +80,10 @@ CFG_LIB := -L../lib_PF_Chart \
 		# -L$(BOOSTDIR)/lib \
 		# -lboost_program_options-mt-x64 
 
-OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
+# OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 
-OBJS=$(OBJS1) $(OBJS2)
+OBJS=$(OBJS2)
 
 DEPS=$(OBJS:.o=.d)
 
@@ -123,7 +124,7 @@ $(OUTDIR)/%.o : %.cpp
 $(OUTDIR)/%.o : %.c
 	$(CCOMPILE)
 
-$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS4) ../lib_PF_Chart/libPF_Chart.a
+$(OUTFILE): $(OUTDIR) $(OBJS2) $(OBJS4) ../lib_PF_Chart/libPF_Chart.a
 	$(LINK)
 
 -include $(DEPS)
