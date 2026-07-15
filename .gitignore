@@ -1,12 +1,14 @@
+AGENTS.md
+
 # this is just a test file
 tutorial.cpp
 Debug/*
 makefile_x86_64
-Debug_e2e/*
-Debug_collect/*
-decimal_test/*
-Debug_test/*
-Release/*
+Debug_e2e/**
+Debug_collect/**
+decimal_test/**
+Debug_test/**
+Release/**
 
 src/tags
 tags
@@ -39,4 +41,15 @@ src/experiments/*
 # real file is elsewhere
 
 pg_create_new_stock_tables.sql
+
+.nvim.lua
+.sqlfluff
+.sqlintrc.json
+.sqllsrc.json
+
+EODData_DailyMarketUpdates
+
+data_files/**
+
+research_documents/**
 
