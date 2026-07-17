@@ -56,6 +56,7 @@ using namespace std::chrono_literals;
 #include <spdlog/spdlog.h>
 
 #include "Boxes.h"
+#include "common/PF_AppBase.h"
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
 #include "Streamer.h"
@@ -65,7 +66,7 @@ using namespace std::chrono_literals;
 //        Class:  PF_CollectDataApp
 //  Description:  application specific stuff
 // =====================================================================================
-class PF_CollectDataApp
+class PF_CollectDataApp : public PF_AppBase
 {
 public:
     using PF_Charts = std::vector<std::pair<std::string, PF_Chart>>;
@@ -81,14 +82,7 @@ public:
     PF_CollectDataApp(const PF_CollectDataApp &rhs) = delete;
     PF_CollectDataApp(PF_CollectDataApp &&rhs) = delete;
 
-    ~PF_CollectDataApp();
-
     // ====================  ACCESSORS =======================================
-
-    static bool SignalReceived()
-    {
-        return had_signal_;
-    }
 
     [[nodiscard]] const PF_Charts &GetCharts() const
     {
@@ -103,24 +97,15 @@ public:
 
     // for testing
 
-    static void SetSignal()
-    {
-        PF_CollectDataApp::had_signal_ = true;
-    }
-    static void WaitForTimer(const std::chrono::zoned_seconds &stop_at);
-
     // ====================  OPERATORS =======================================
 
     PF_CollectDataApp &operator=(const PF_CollectDataApp &rhs) = delete;
     PF_CollectDataApp &operator=(PF_CollectDataApp &&rhs) = delete;
 
 protected:
-    //	Setup for parsing program options.
+    //      Setup for parsing program options.
 
     void SetupProgramOptions();
-    void ParseProgramOptions(const std::vector<std::string> &tokens);
-
-    void ConfigureLogging();
 
     bool CheckArgs();
 
@@ -158,8 +143,6 @@ protected:
     // =======================================
 
 private:
-    static void HandleSignal(int signal);
-
     void CollectStreamedData(const RemoteDataSource::PF_Data &update, PF_SignalType new_signal);
     void StreamedDataParser(RemoteDataSource::StreamerContext &streamer_context,
                             std::vector<RemoteDataSource::ProcessorContext> &processor_contexts,
@@ -174,8 +157,6 @@ private:
     // ====================  DATA MEMBERS
     // =======================================
 
-    std::shared_ptr<spdlog::logger> original_logger_;
-
     PF_StreamedPrices streamed_prices_;
     PF_StreamedSummary streamed_summary_;
 
@@ -186,7 +167,6 @@ private:
     std::map<std::string, std::chrono::time_point<std::chrono::system_clock>> last_draw_times_;
     const std::chrono::seconds minimum_delay_ = 2s;
 
-    CLI::App app_{"Point and Figure Charts for Linux. Build from files, database, live stream."};
     // po::positional_options_description positional_;       //	old style
     //                                                       // options
     // std::unique_ptr<po::options_description> newoptions_; //	new style options (with identifiers)
@@ -198,17 +178,10 @@ private:
 
     std::unique_ptr<RemoteDataSource> PF_streamer_;
 
-    int argc_ = 0;
-    char **argv_ = nullptr;
-    const std::vector<std::string> tokens_;
-    std::string logging_level_{"information"};
-
     fs::path input_chart_directory_;
-    fs::path log_file_path_name_;
     fs::path new_data_input_directory_;
     fs::path output_chart_directory_;
     fs::path output_graphs_directory_;
-    fs::path PF_CollectDataConfigDir_;
 
     std::string streaming_host_name_;
     fs::path streaming_host_api_key_;
@@ -216,8 +189,6 @@ private:
     std::string quote_host_name_;
     fs::path quote_host_api_key_;
     std::string quote_host_port_;
-
-    PF_DB::DB_Params db_params_{.port_number_ = -1};
 
     std::shared_ptr<spdlog::logger> logger_;
 
@@ -340,7 +311,6 @@ private:
     bool use_min_max_ = false;
     bool resume_mode_ = false;
 
-    static bool had_signal_;
 }; // -----  end of class PF_CollectDataApp  -----
 
 #endif // ----- #ifndef PF_COLLECTDATAAPP_INC  -----

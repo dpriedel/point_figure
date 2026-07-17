@@ -1,41 +1,60 @@
-# Findings: Eodhd WebSocket Subscription Failure
+# Findings: PF_CollectDataApp Codebase Analysis
 
-## Error Observed
+## Architecture Assessment
+
+### Current State — Monolithic God Class
+- `PF_CollectDataApp`: ~2400 lines, ~52 member variables
+- Single dispatcher in `Run()` routes to 6 mode-specific methods based on CLI args
+- All modes compiled into one binary with all dependencies linked
+
+### Mode Dispatch Structure
 ```
-[2026-07-08 09:31:53.485] [PF_Collect_logger] [error] Failed to get success code. Got: {"status":500,"message":"Server error"}
+Run()
+├── new_data_source_ == streaming ──► Run_Streaming()
+├── mode_ == daily_scan             ──► Run_DailyScan()
+├── new_data_source_ == file
+│   ├── mode_ == load    ──► Run_Load()
+│   └── mode_ == update  ──► Run_Update()
+└── new_data_source_ == DB
+    ├── mode_ == load    ──► Run_LoadFromDB()
+    └── mode_ == update  ──► Run_UpdateFromDB()
 ```
 
-## Code Flow Analysis
+### Existing Separation (Good)
+- Domain model (`PF_Chart`, `PF_Column`, `Boxes`, `PF_Signals`) isolated in `libPF_Chart.a`
+- Data source abstraction via `RemoteDataSource` base class (Tiingo/Eodhd interchangeable)
+- Database access encapsulated in `PF_DB` class
+- CLI parsing uses CLI11 framework cleanly
 
-### Normal path:
-1. `on_handshake()` succeeds → sets `should_reconnect_ = true`, calls `OnConnected()`
-2. `OnConnected()` sends subscribe message via async_write
-3. `on_write_subscribe()` completes, starts async_read for response
-4. `on_read_subscribe()` receives `{"status_code":200,...}` → calls `StartReadLoop()`
-5. Read loop begins collecting streaming data
+### Tight Coupling (Needs Work)
+- App class handles: argument validation, logging, all 6 run modes, streaming pipeline, ATR computation, file/DB persistence, signal handling, statistics — all inline
+- ~50 member variables mixing concerns from unrelated modes
+- `CheckArgs()` is a massive function with mode-specific conditional blocks
+- No service layer — app directly instantiates `PF_DB`, `Eodhd`/`Tiingo`, calls methods inline
 
-### Failure path (before fix):
-1. Steps 1-3 same as normal
-2. Server responds with `{"status":500,"message":"Server error"}`
-3. `on_read_subscribe()` logs error and **returns** — no read loop, no reconnection
-4. WebSocket sits idle; streaming data never collected again
+### ChartDirector Dependency
+- Closed-source third-party library (`-lchartdir`)
+- Used in `ConstructChartGraphic.cpp` (per-binary) and `PF_Chart_CD.cpp` (in `libPF_Chart.a`)
+- NOT needed by scanner — pure DB statistics, no graphics generation
+- Needed by loader, updater, streamer for chart graphic generation
+- `ConstructChartGraphic.cpp` should stay as shared source (not in library) to give per-binary control over this closed-source dependency
 
-### Why no automatic recovery?
-After the early return, no `async_read` is active on the websocket. The 30s ping/pong timeout may or may not fire depending on whether Beast's timeout mechanism works without a pending operation. Either way, there's no logging to indicate recovery is being attempted, making it appear streaming died permanently.
+### Test Infrastructure
+- E2e tests: 28 tests across 7 fixtures in `../PF_Test/EndToEnd_Test.cpp`
+- Tests construct `PF_CollectDataApp(const vector<string>& tokens)` directly
+- Unit tests: domain logic in `../PF_Test/Unit_Test.cpp` (tests PF_Chart, Boxes, etc.)
+- E2e makefile compiles test + app sources together, links libPF_Chart
 
-## Response Format Note
-The error `{"status":500,...}` uses `status` key (not `status_code`). This appears to be Eodhd's server-level error format, distinct from the normal subscription response format.
+### Test Distribution by Mode
+| Fixture | Tests | Maps To |
+|---|---|---|
+| `SingleFileEndToEnd` | 2 | pf_loader |
+| `LoadAndUpdate` | 1 | pf_updater |
+| `Database` | 8 | pf_loader + pf_updater |
+| `ProgramOptions` | 4 | shared validation |
+| `DailyScan` | 1 | pf_scanner |
+| `StreamEodhdData`, `StreamTiingoData` | 4 | pf_streamer |
+| `ResumeModeTests` | 5 | pf_streamer |
 
-## Additional Findings (2026-07-13 code review)
-
-### Comma-space in symbol strings (likely cause of 500 errors)
-Subscribe/unsubscribe messages join symbols with `", "` (comma + space). EODHD docs require no spaces: `"symbols": "AAPL,TSLA"`. Server may reject `" MSFT"` (leading space) as unknown symbol, triggering 500.
-
-### DNS/TCP failures are terminal
-`on_resolve()` and `on_connect()` log error and return — no reconnection attempt. Transient network issues cause permanent streaming failure.
-
-### No recovery after max retries
-Once `subscription_fail_count_ >= 5`, IO context stops permanently. Only way to recover is restart process. Added `ResetAndRestart()` method to allow programmatic recovery.
-
-### Shutdown hang after max retries (2026-07-15)
-When `start_reconnection()` exhausts all retries, it calls `ioc_.stop()` but doesn't set `had_signal_ = true`. The timer thread (`WaitForTimer`) only exits when `had_signal_` is true OR market close arrives. Since neither condition was met, the main thread hung on `timer_task.get()` for hours until market close. Fixed by setting `*had_signal_ptr_ = true` before all three `ioc_.stop()` calls in `start_reconnection()`.
+### Key Insight for Incremental Migration
+The token-vector constructor (`PF_CollectDataApp(tokens)`) is the integration point. Each extracted program gets its own app class with the same `(tokens)` constructor pattern, allowing tests to migrate one fixture at a time while the monolith remains functional via delegation shims.

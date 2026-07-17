@@ -71,16 +71,14 @@ using decimal::Decimal;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
-bool PF_CollectDataApp::had_signal_ = false;
-
 //--------------------------------------------------------------------------------------
 //       Class:  PF_CollectDataApp
 //      Method:  PF_CollectDataApp
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_CollectDataApp::PF_CollectDataApp(int argc, char *argv[]) : argc_{argc}, argv_{argv}
+PF_CollectDataApp::PF_CollectDataApp(int argc, char *argv[]) : PF_AppBase(argc, argv)
 {
-    original_logger_ = spdlog::default_logger();
+    app_.description("Point and Figure Charts for Linux. Build from files, database, live stream.");
 } // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
   // -----
 
@@ -89,71 +87,11 @@ PF_CollectDataApp::PF_CollectDataApp(int argc, char *argv[]) : argc_{argc}, argv
 //      Method:  PF_CollectDataApp
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-PF_CollectDataApp::PF_CollectDataApp(const std::vector<std::string> &tokens) : tokens_{tokens}
+PF_CollectDataApp::PF_CollectDataApp(const std::vector<std::string> &tokens) : PF_AppBase(tokens)
 {
-    original_logger_ = spdlog::default_logger();
+    app_.description("Point and Figure Charts for Linux. Build from files, database, live stream.");
 } // -----  end of method PF_CollectDataApp::PF_CollectDataApp  (constructor)
   // -----
-
-PF_CollectDataApp::~PF_CollectDataApp()
-{
-    if (spdlog::get("PF_Collect_logger"))
-    {
-        spdlog::drop("PF_Collect_logger");
-    }
-    if (original_logger_)
-    {
-        spdlog::set_default_logger(original_logger_);
-    }
-} /* -----  end of method PF_CollectDataApp::~PF_CollectDataApp  (destructor)  ----- */
-
-void PF_CollectDataApp::ConfigureLogging()
-{
-    // this logging code comes from gemini
-
-    if (!log_file_path_name_.empty())
-    {
-        fs::path log_dir = log_file_path_name_.parent_path();
-        if (!fs::exists(log_dir))
-        {
-            fs::create_directories(log_dir);
-        }
-
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_, true);
-
-        auto app_logger = std::make_shared<spdlog::logger>("PF_Collect_logger", file_sink);
-
-        spdlog::set_default_logger(app_logger);
-    }
-    else
-    {
-        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-
-        auto app_logger = std::make_shared<spdlog::logger>("PF_Collect_logger", // Name for the console logger
-                                                           console_sink);
-
-        spdlog::set_default_logger(app_logger);
-    }
-
-    // we are running before 'CheckArgs' so we need to do a little editiing
-    // ourselves.
-
-    const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
-                                                                  {"error", spdlog::level::err},
-                                                                  {"information", spdlog::level::info},
-                                                                  {"debug", spdlog::level::debug}};
-
-    auto which_level = levels.find(logging_level_);
-    if (which_level != levels.end())
-    {
-        spdlog::set_level(which_level->second);
-    }
-    else
-    {
-        spdlog::set_level(spdlog::level::info);
-    } // we need to set log level if specified and also log file.
-
-} // -----  end of method PF_CollectDataApp::ConfigureLogging  -----
 
 bool PF_CollectDataApp::Startup()
 {
@@ -760,56 +698,6 @@ void PF_CollectDataApp::SetupProgramOptions()
         }
     });
 }
-
-void PF_CollectDataApp::ParseProgramOptions(const std::vector<std::string> &tokens)
-{
-    try
-    {
-        if (tokens.empty())
-        {
-            // If the token vector is empty, parse the original argc/argv.
-            // This is the standard execution path.
-            auto args = std::views::counted(argv_, argc_) |
-                        std::views::transform([](char *arg) { return std::string_view(arg); });
-            auto cmd_line_vw = rng::views::join_with(rng::views::drop(args, 1), " "sv);
-            std::string cmd_line = rng::to<std::string>(cmd_line_vw);
-            spdlog::info("cmd line: {}", cmd_line);
-            app_.parse(argc_, argv_);
-        }
-        else
-        {
-            // Note: CLI11's vector parse does NOT expect the program name.
-            // NOTE: I don't understand how to setup the call for using
-            // the tokens vector directly (it doesn't seem to work with the obvious call
-            // as I get parse errors that I shouldn't)
-            // so I'll join them into a comand line and use that.
-            auto cmd_line_vw = rng::views::join_with(rng::views::drop(tokens, 1), " "sv);
-
-            std::string cmd_line = rng::to<std::string>(cmd_line_vw);
-            spdlog::info("tokens: {}", cmd_line);
-            app_.parse(cmd_line);
-        }
-        // This prints all options and their current values (including defaults)
-        // std::cout << app_.config_to_str(true, true) << std::endl;
-    }
-    catch (const CLI::CallForHelp &e)
-    {
-        // CLI11 automatically prints the help message when it sees -h or --help.
-        // It then throws CLI::CallForHelp.
-        // All we need to do is exit gracefully. Re-throwing is a clean way
-        // to signal the caller that execution should stop.
-        app_.exit(e);
-        throw std::runtime_error("Someone callled for Help.");
-    }
-    catch (const CLI::ParseError &e)
-    {
-        // For any other parsing error (missing required option, bad value, etc.),
-        // CLI11 throws a ParseError. We can format a clean message and throw.
-        // The app_.exit(e) call is often used in main() to get an exit code,
-        // but re-throwing is better for a class member function.
-        throw std::runtime_error(std::format("Command line parse error: {}", e.what()));
-    }
-} /* -----  end of method ExtractorApp::ParsePrograoptions_  ----- */
 
 std::tuple<int, int, int> PF_CollectDataApp::Run()
 {
@@ -1958,8 +1846,7 @@ std::tuple<int, int, int> PF_CollectDataApp::Run_DailyScan()
 
         auto db_data = pf_db.GetPriceDataForSymbolsOnExchange(xchng, begin_date_, end_date_, price_fld_name_, dt_format,
                                                               min_dollar_volume_);
-        // ranges::for_each(db_data, [](const auto& xx) {std::print("{}, {},
-        // {}\n", xx.symbol, xx.tp, xx.price); });
+        // rng::for_each(db_data, [](const auto &xx) { std::print("{}, {}, {}\n", xx.symbol_, xx.date_, xx.close_); });
 
         // then we process each sub-range and apply the data for each symbol to
         // all PF_Chart variants that we find in the DB for that symbol.
@@ -2149,11 +2036,12 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInFiles()
         }
         catch (const std::exception &e)
         {
-            spdlog::error(std::format(
-                "Problem in shutdown: {} for chart: {}.\nTrying to "
-                "complete "
-                "shutdown.",
-                e.what(), chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "")));
+            spdlog::error(
+                std::format("Problem in shutdown: {} for chart: {}.\nTrying to "
+                            "complete "
+                            "shutdown.",
+                            e.what(),
+                            chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "")));
         }
     }
 
@@ -2198,33 +2086,6 @@ void PF_CollectDataApp::ShutdownAndStoreOutputInDB()
     spdlog::info(std::format("Stored {} charts in DB.", chart_count));
 
 } // -----  end of method PF_CollectDataApp::ShutdownStoreOutputInDB  -----
-
-void PF_CollectDataApp::WaitForTimer(const std::chrono::zoned_seconds &stop_at)
-{
-    while (true)
-    {
-        // if the user has signaled time to leave, then do it
-
-        if (PF_CollectDataApp::had_signal_)
-        {
-            std::cout << "\n*** User interrupted. ***" << std::endl;
-            break;
-        }
-
-        const std::chrono::zoned_seconds now = std::chrono::zoned_seconds(
-            std::chrono::current_zone(), floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-        if (now.get_sys_time() < stop_at.get_sys_time())
-        {
-            std::this_thread::sleep_for(1min);
-        }
-        else
-        {
-            std::cout << "\n*** Timer expired. ***" << std::endl;
-            PF_CollectDataApp::had_signal_ = true;
-            break;
-        }
-    }
-} // -----  end of method PF_CollectDataApp::WaitForTimer  -----
 
 void PF_CollectDataApp::LoadChartsFromFiles()
 {
@@ -2426,12 +2287,3 @@ void PF_CollectDataApp::SaveStreamedSummaryToFile()
     out.close();
     spdlog::info("Saved streamed summary to {}", summary_file.string());
 } // -----  end of method PF_CollectDataApp::SaveStreamedSummaryToFile  -----
-
-void PF_CollectDataApp::HandleSignal(int signal)
-
-{
-    // only thing we need to do
-
-    PF_CollectDataApp::had_signal_ = true;
-
-} /* -----  end of method PF_CollectDataApp::HandleSignal  ----- */

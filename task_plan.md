@@ -1,34 +1,149 @@
-# Task Plan: Eodhd WebSocket Streaming Failure Recovery
+# Task Plan: PF_CollectDataApp Refactoring → 4 Programs
 
 ## Problem
-Eodhd websocket client gets `{"status":500,"message":"Server error"}` during streaming. When this occurs, streaming stops permanently with no recovery.
+`PF_CollectDataApp` is a ~2400-line god class with ~52 member variables handling 6 distinct run modes through a single dispatcher. Tight coupling between batch processing, database maintenance, and real-time streaming makes the code hard to maintain, test, and deploy independently.
 
-## Root Cause
-`on_read_subscribe()` in `src/Eodhd.cpp` returns early on subscription failure without:
-- Starting the read loop (`StartReadLoop()`)
-- Triggering reconnection (`start_reconnection()`)
+## Goal
+Split into 4 focused programs sharing a common base class:
+- `pf_loader` — Initial chart creation from historical data (file or DB)
+- `pf_updater` — Incremental chart updates with new price data (file or DB)
+- `pf_scanner` — Daily database maintenance and trend statistics
+- `pf_streamer` — Real-time WebSocket streaming during market hours
 
-Same issue exists in `on_write_subscribe()` error path.
+## Phases
 
-## Solution
-Add `start_reconnection()` + info log to three error paths in `src/Eodhd.cpp`:
-1. `on_write_subscribe` — write failure (line 56-57)
-2. `on_read_subscribe` — read error (line 71-72)
-3. `on_read_subscribe` — non-success response (line 82-83)
+### Phase 0 — Shared Foundation (no behavior change)
+Create `PF_AppBase` extracting infrastructure shared by all programs:
+- CLI11 app setup (`app_`)
+- Logging configuration (`ConfigureLogging()`, logger members, log level parsing)
+- Signal handling (`HandleSignal()`, `had_signal_`, `SetSignal()`, `WaitForTimer()`)
+- DB params (`db_params_`)
+- Config directory resolution (env var + CLI arg)
 
-## Additional Issues Found (2026-07-13 code review)
-- Comma-space in subscribe/unsubscribe symbol strings (`", "` instead of `","`) — likely triggers server 500 errors
-- DNS/TCP failures in `on_resolve`/`on_connect` don't trigger reconnection
-- Ambiguous guard message doesn't indicate which limit was hit
-- No way to recover after max retries reached (process must restart)
+`PF_CollectDataApp` inherits from `PF_AppBase`. All existing behavior preserved.
+
+**Files created:** `src/common/PF_AppBase.h`, `src/common/PF_AppBase.cpp`
+**Tests affected:** None — all 28 e2e tests pass unchanged.
+**Verification:** Debug build compiles, all e2e + unit tests green.
+
+### Phase 1 — Extract `pf_scanner` (lowest risk)
+Move to `PF_ScannerApp : public PF_AppBase`:
+- `Run_DailyScan()`
+- `CountChartReversalsUpAndDown()`, `CountChartTrendsContinueUpAndDown()`, `CountChartTrendsUnanimousUpAndDown()`
+- `ProcessSymbolsFromDB()` (daily-scan variant)
+- Scanner-specific CLI args: `--exchange-list`, `--min-dollar-volume`, `--begin-date`, `--end-date`
+
+Keep compatibility shim in `PF_CollectDataApp::Run_DailyScan()` that delegates to scanner.
+
+**ChartDirector:** NOT needed — pure DB operations, no graphics generation.
+
+**Files created:** `src/scanner/PF_ScannerApp.h`, `src/scanner/PF_ScannerApp.cpp`
+**Tests affected:** 1 (`DailyScan`) updated to instantiate `PF_ScannerApp`.
+**Verification:** All e2e tests green. `pf_scanner` binary builds independently.
+
+### Phase 2 — Extract `pf_streamer` (moderate risk, high isolation)
+Move to `PF_StreamerApp : public PF_AppBase`:
+- `Run_Streaming()`, `PrimeChartsForStreaming()`, `CollectStreamingData()`
+- `StreamedDataParser()`, `ProcessUpdatesForSymbol()`, `Do_ProcessUpdatesForSymbol()`, `CollectStreamedData()`
+- Resume: `LoadChartsFromFiles()`, `LoadStreamedPricesFromFiles()`, `LoadStreamedSummaryFromFile()`, `SaveStreamedPricesToFiles()`, `SaveStreamedSummaryToFile()`
+- Streaming state: `streamed_prices_`, `streamed_summary_`, rate-limiting members
+
+Move WebSocket sources to `src/streamer/` (compile ONLY into this binary):
+- `Streamer.h/.cpp`, `Eodhd.h/.cpp`, `Tiingo.h/.cpp`
+
+**ChartDirector:** Needed for real-time graphic updates. Link `-lchartdir`.
+
+**Files created:** `src/streamer/PF_StreamerApp.h`, `src/streamer/PF_StreamerApp.cpp`
+**Files moved:** `src/{Streamer,Eodhd,Tiingo}.h/.cpp` → `src/streamer/`
+**Tests affected:** 9 (streaming + resume tests) updated to instantiate `PF_StreamerApp`.
+**Verification:** All e2e tests green. `pf_streamer` binary builds independently with Boost.Beast + ChartDirector.
+
+### Phase 3 — Extract `pf_loader` and `pf_updater` (most shared code)
+Create `ChartProcessor` service for common iteration logic:
+- Cartesian product of symbols x box_sizes x reversals x scales
+- Chart creation from price data (file or DB source)
+- `ComputeATRForChart()`, `ComputeATRForChartFromDB()`
+- MinMax box size computation
+- `LoadAndParsePriceDataJSON()`, `AddPriceDataToExistingChartCSV()`, `FindColumnIndex()`
+- Chart persistence (file or DB destination)
+
+`PF_LoaderApp : public PF_AppBase`:
+- `Run_Load()`, `Run_LoadFromDB()`
+
+`PF_UpdaterApp : public PF_AppBase`:
+- `Run_Update()`, `Run_UpdateFromDB()`
+
+**ChartDirector:** Needed for chart graphics generation. Link `-lchartdir`.
+`ConstructChartGraphic.cpp` compiled into each binary that needs it (loader, updater, streamer). NOT moved to library — keeps library's external deps minimal and gives per-binary control over the closed-source dependency.
+
+**Files created:** `src/common/ChartProcessor.h/.cpp`, `src/loader/PF_LoaderApp.h/.cpp`, `src/updater/PF_UpdaterApp.h/.cpp`
+**Tests affected:** 13 (load, update, DB, options tests) updated.
+**Verification:** All e2e tests green. Both binaries build independently.
+
+### Phase 4 — Decommission monolith
+Remove `PF_CollectDataApp`. Replace `Main.cpp` with 4 separate main files. Update makefile to produce 4 targets. Remove compatibility shims.
+
+**Tests affected:** All tests now exercise individual programs directly.
+**Verification:** Full test suite green on all 4 binaries.
+
+## Build System Evolution
+
+| Phase | Binaries | Notes |
+|---|---|---|
+| 0 | `PF_CollectData` | Unchanged |
+| 1 | `PF_CollectData` + `pf_scanner` | Scanner links libpqxx, NO ChartDirector |
+| 2 | `+ pf_streamer` | Streamer links Boost.Beast + ChartDirector |
+| 3 | `+ pf_loader`, `+ pf_updater` | Both link ChartDirector |
+| 4 | `pf_scanner`, `pf_streamer`, `pf_loader`, `pf_updater` | Monolith removed |
+
+### ChartDirector dependency matrix
+| Program | ChartDirector | Boost.Beast | libPF_Chart |
+|---|---|---|---|
+| `pf_scanner` | NO | NO | YES |
+| `pf_streamer` | YES | YES | YES |
+| `pf_loader` | YES | NO | YES |
+| `pf_updater` | YES | NO | YES |
+
+### ChartDirector notes
+- Closed-source third-party library (`-lchartdir`, headers in `/usr/local/include/ChartDirector/`)
+- Used in `ConstructChartGraphic.cpp` (compiled per-binary) and `PF_Chart_CD.cpp` (already in `libPF_Chart.a`)
+- `ConstructChartGraphic.cpp` stays as shared source compiled into loader, updater, and streamer — NOT moved to the static library to keep per-binary control over this closed-source dependency
+- `pf_scanner` is the only program without ChartDirector dependency — smaller binary, faster builds, no license surface area
+
+## Directory Structure (after Phase 3)
+```
+src/
+  common/
+    PF_AppBase.h/.cpp            (Phase 0)
+    ChartProcessor.h/.cpp        (Phase 3)
+  scanner/
+    PF_ScannerApp.h/.cpp         (Phase 1)
+  streamer/
+    PF_StreamerApp.h/.cpp        (Phase 2)
+    Streamer.h/.cpp              (moved Phase 2)
+    Eodhd.h/.cpp                 (moved Phase 2)
+    Tiingo.h/.cpp                (moved Phase 2)
+  loader/
+    PF_LoaderApp.h/.cpp          (Phase 3)
+  updater/
+    PF_UpdaterApp.h/.cpp         (Phase 3)
+  PF_CollectDataApp.h/.cpp       (removed Phase 4)
+  Main.cpp                       (replaced Phase 4)
+  ConstructChartGraphic.h/.cpp   (shared source, compiled per-binary into loader/updater/streamer)
+```
+
+## Test Migration Strategy
+Per phase: affected e2e tests updated to instantiate the new app class directly. Unaffected tests continue unchanged. Each phase verified green before proceeding.
+
+| Test Fixture | Tests | Migrates In |
+|---|---|---|
+| `DailyScan` | 1 | Phase 1 → `PF_ScannerApp` |
+| `StreamEodhdData`, `StreamTiingoData`, `ResumeModeTests` | 9 | Phase 2 → `PF_StreamerApp` |
+| `SingleFileEndToEnd`, `LoadAndUpdate`, `Database`, `ProgramOptions` | 13 | Phase 3 → `PF_LoaderApp` / `PF_UpdaterApp` |
 
 ## Steps
-- [x] Identify root cause in code review
-- [x] Implement fix in Eodhd.cpp
-- [x] Verify compilation (Debug + link)
-- [x] Fix comma-space in subscribe/unsubscribe strings
-- [x] Add reconnection to DNS/TCP failure paths
-- [x] Split reconnection guard into specific messages
-- [x] Add `ResetAndRestart()` public method for recovery after max retries
-- [x] Fix shutdown hang: `start_reconnection()` exit paths set `had_signal_` before `ioc_.stop()`
-- [ ] Test during market hours (Monday+)
+- [x] Phase 0: Create `PF_AppBase`, verify all tests pass
+- [x] Phase 1: Extract `pf_scanner`, migrate 1 test
+- [x] Phase 2: Extract `pf_streamer`, move WebSocket sources, migrate 9 tests
+- [ ] Phase 3: Create `ChartProcessor`, extract `pf_loader` + `pf_updater`, migrate 13 tests
+- [ ] Phase 4: Remove monolith, 4 standalone binaries

@@ -49,6 +49,7 @@ RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/u
 SDIR2 := ./src
 SRCS2 := $(SDIR2)/Main.cpp \
 		$(SDIR2)/PF_CollectDataApp.cpp \
+		$(SDIR2)/common/PF_AppBase.cpp \
 		$(SDIR2)/ConstructChartGraphic.cpp \
 		$(SDIR2)/Tiingo.cpp \
 		$(SDIR2)/Eodhd.cpp \
@@ -57,7 +58,7 @@ SRCS2 := $(SDIR2)/Main.cpp \
 
 SRCS := $(SRCS2)
 
-VPATH := $(SDIR2)
+VPATH := $(SDIR2) $(SDIR2)/common
 
 CFG_LIB := -L../lib_PF_Chart \
 		-lPF_Chart \
@@ -135,12 +136,166 @@ $(OUTDIR):
 # Rebuild this project
 rebuild: cleanall all
 
-# Clean this project
-clean:
-	rm -f $(OUTFILE)
-	rm -f $(OBJS)
-	rm -f $(OUTDIR)/*.d
-	rm -f $(OUTDIR)/*.o
-
 # Clean this project and all dependencies
 cleanall: clean
+
+# ============================================================================
+# pf_scanner target — NO ChartDirector dependency
+# ============================================================================
+
+SCANNER_OUTFILE := pf_scanner
+SCANNER_OUTDIR := Debug_scanner
+
+SCANNER_INC := -I${HOME}/projects/PF_Project/point_figure/src \
+	-I$(GTESTDIR) \
+	-isystem$(BOOSTDIR) \
+	-I$(UTILITYDIR)/include
+
+SCANNER_LIB := -L../lib_PF_Chart \
+		-lPF_Chart \
+		-L/usr/local/lib \
+		-lspdlog \
+		-lpqxx \
+		-lpq \
+		-L$(GCCDIR)/lib64 \
+		-lstdc++ \
+		-lstdc++exp \
+		-L/usr/lib \
+		-lmpdec++ \
+		-lmpdec \
+		-lcrypt \
+		-lpthread \
+		-lssl -lcrypto \
+		-ljsoncpp
+
+SCANNER_RPATH := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
+
+ifeq "$(CFG)" "Debug"
+SCANNER_CXXFLAGS := -O0 -g3 -std=c++26 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -DSHOW_STRACE -fPIC
+SCANNER_LINK_CMD := $(CPP) -g -o $(SCANNER_OUTFILE)
+endif
+
+ifeq "$(CFG)" "Release"
+SCANNER_CXXFLAGS := -O3 -std=c++26 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC
+SCANNER_LINK_CMD := $(CPP) -flto=auto -o $(SCANNER_OUTFILE)
+endif
+
+SCANNER_OBJS := $(SCANNER_OUTDIR)/scanner_main.o \
+	$(SCANNER_OUTDIR)/PF_ScannerApp.o \
+	$(SCANNER_OUTDIR)/PF_AppBase_scanner.o
+
+all: $(OUTFILE) $(SCANNER_OUTFILE)
+
+$(SCANNER_OUTDIR):
+	mkdir -p "$(SCANNER_OUTDIR)"
+
+$(SCANNER_OUTDIR)/scanner_main.o: src/scanner/Main.cpp | $(SCANNER_OUTDIR)
+	$(CPP) -c -x c++ $(SCANNER_CXXFLAGS) -o $@ $(SCANNER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(SCANNER_OUTDIR)/PF_ScannerApp.o: src/scanner/PF_ScannerApp.cpp | $(SCANNER_OUTDIR)
+	$(CPP) -c -x c++ $(SCANNER_CXXFLAGS) -o $@ $(SCANNER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(SCANNER_OUTDIR)/PF_AppBase_scanner.o: src/common/PF_AppBase.cpp | $(SCANNER_OUTDIR)
+	$(CPP) -c -x c++ $(SCANNER_CXXFLAGS) -o $@ $(SCANNER_INC) $< -march=native -mtune=native -MMD -MP
+
+-include $(SCANNER_OBJS:.o=.d)
+
+$(SCANNER_OUTFILE): $(SCANNER_OBJS) ../lib_PF_Chart/libPF_Chart.a
+	$(SCANNER_LINK_CMD) $(SCANNER_OBJS) $(SCANNER_LIB) -Wl,-E $(SCANNER_RPATH)
+
+# ============================================================================
+# pf_streamer target — WITH ChartDirector (for SVG graphics)
+# ============================================================================
+
+STREAMER_OUTFILE := pf_streamer
+STREAMER_OUTDIR := Debug_streamer
+
+STREAMER_INC := -I${HOME}/projects/PF_Project/point_figure/src \
+	-I$(GTESTDIR) \
+	-isystem$(BOOSTDIR) \
+	-I/usr/local/include/ChartDirector \
+	-I$(UTILITYDIR)/include
+
+STREAMER_LIB := -L../lib_PF_Chart \
+		-lPF_Chart \
+		-L/usr/local/lib \
+		-lspdlog \
+		-lpqxx \
+		-lpq \
+		-L/usr/local/lib/ChartDirector \
+		-lchartdir \
+		-L$(GCCDIR)/lib64 \
+		-lstdc++ \
+		-lstdc++exp \
+		-L/usr/lib \
+		-lmpdec++ \
+		-lmpdec \
+		-lcrypt \
+		-lpthread \
+		-lssl -lcrypto \
+		-ljsoncpp
+
+STREAMER_RPATH := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib/ChartDirector
+
+ifeq "$(CFG)" "Debug"
+STREAMER_CXXFLAGS := -O0 -g3 -std=c++26 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -DSHOW_STRACE -fPIC
+STREAMER_LINK_CMD := $(CPP) -g -o $(STREAMER_OUTFILE)
+endif
+
+ifeq "$(CFG)" "Release"
+STREAMER_CXXFLAGS := -O3 -std=c++26 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC
+STREAMER_LINK_CMD := $(CPP) -flto=auto -o $(STREAMER_OUTFILE)
+endif
+
+STREAMER_OBJS := $(STREAMER_OUTDIR)/streamer_main.o \
+	$(STREAMER_OUTDIR)/PF_StreamerApp.o \
+	$(STREAMER_OUTDIR)/PF_AppBase_streamer.o \
+	$(STREAMER_OUTDIR)/ConstructChartGraphic.o \
+	$(STREAMER_OUTDIR)/Tiingo.o \
+	$(STREAMER_OUTDIR)/Eodhd.o \
+	$(STREAMER_OUTDIR)/Streamer.o
+
+all: $(OUTFILE) $(SCANNER_OUTFILE) $(STREAMER_OUTFILE)
+
+$(STREAMER_OUTDIR):
+	mkdir -p "$(STREAMER_OUTDIR)"
+
+$(STREAMER_OUTDIR)/streamer_main.o: src/streamer/Main.cpp | $(STREAMER_OUTDIR)
+	$(CPP) -c -x c++ $(STREAMER_CXXFLAGS) -o $@ $(STREAMER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(STREAMER_OUTDIR)/PF_StreamerApp.o: src/streamer/PF_StreamerApp.cpp | $(STREAMER_OUTDIR)
+	$(CPP) -c -x c++ $(STREAMER_CXXFLAGS) -o $@ $(STREAMER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(STREAMER_OUTDIR)/PF_AppBase_streamer.o: src/common/PF_AppBase.cpp | $(STREAMER_OUTDIR)
+	$(CPP) -c -x c++ $(STREAMER_CXXFLAGS) -o $@ $(STREAMER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(STREAMER_OUTDIR)/ConstructChartGraphic.o: src/ConstructChartGraphic.cpp | $(STREAMER_OUTDIR)
+	$(CPP) -c -x c++ $(STREAMER_CXXFLAGS) -o $@ $(STREAMER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(STREAMER_OUTDIR)/Tiingo.o: src/Tiingo.cpp | $(STREAMER_OUTDIR)
+	$(CPP) -c -x c++ $(STREAMER_CXXFLAGS) -o $@ $(STREAMER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(STREAMER_OUTDIR)/Eodhd.o: src/Eodhd.cpp | $(STREAMER_OUTDIR)
+	$(CPP) -c -x c++ $(STREAMER_CXXFLAGS) -o $@ $(STREAMER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(STREAMER_OUTDIR)/Streamer.o: src/Streamer.cpp | $(STREAMER_OUTDIR)
+	$(CPP) -c -x c++ $(STREAMER_CXXFLAGS) -o $@ $(STREAMER_INC) $< -march=native -mtune=native -MMD -MP
+
+-include $(STREAMER_OBJS:.o=.d)
+
+$(STREAMER_OUTFILE): $(STREAMER_OBJS) ../lib_PF_Chart/libPF_Chart.a
+	$(STREAMER_LINK_CMD) $(STREAMER_OBJS) $(STREAMER_LIB) -Wl,-E $(STREAMER_RPATH)
+
+clean:
+	rm -f $(OUTFILE)
+	rm -f $(SCANNER_OUTFILE)
+	rm -f $(STREAMER_OUTFILE)
+	rm -f $(OBJS)
+	rm -f $(SCANNER_OBJS)
+	rm -f $(STREAMER_OBJS)
+	rm -f $(OUTDIR)/*.d
+	rm -f $(OUTDIR)/*.o
+	rm -f $(SCANNER_OUTDIR)/*.d
+	rm -f $(SCANNER_OUTDIR)/*.o
+	rm -f $(STREAMER_OUTDIR)/*.d
+	rm -f $(STREAMER_OUTDIR)/*.o
