@@ -1,7 +1,7 @@
 # Progress: PF_CollectDataApp Refactoring
 
 ## Status
-Phases 0-2 complete. Beginning Phase 3.
+Phase 3a (pf_loader) complete. Starting Phase 3b (pf_updater).
 
 ## Completed
 - [x] 2026-07-17 — Analyzed codebase structure, identified god class (~2400 lines, ~52 members)
@@ -23,6 +23,11 @@ Phases 0-2 complete. Beginning Phase 3.
 - [x] 2026-07-17 — Phase 2: Added `pf_streamer` target to makefile_collect (WITH ChartDirector dependency)
 - [x] 2026-07-17 — Phase 2: Updated e2e makefile with streamer sources and VPATH
 - [x] 2026-07-17 — Phase 2: Verified pf_streamer binary builds, e2e test binary compiles cleanly
+- [x] 2026-07-17 — Phase 3a: Created `PF_LoaderApp` in `src/loader/`, extracted loader logic (~8 methods, ~25 members)
+- [x] 2026-07-17 — Phase 3a: Added `pf_loader` target to makefile_collect (WITH ChartDirector + Streamer.o for RemoteDataSource)
+- [x] 2026-07-17 — Phase 3a: Updated e2e makefile with loader sources and VPATH
+- [x] 2026-07-17 — Phase 3a: Migrated `SingleFileEndToEnd.VerifyCanLoadCSVDataAndSaveToChartFile` to use `PF_LoaderApp`
+- [x] 2026-07-17 — Phase 3a: Verified pf_loader binary builds, all SingleFileEndToEnd tests pass (2/2), monolith tests still pass
 
 ## Pending
 - [ ] Phase 3: Create `ChartProcessor`, extract `pf_loader` + `pf_updater` (13 tests migrate)

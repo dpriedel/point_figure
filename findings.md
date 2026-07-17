@@ -58,3 +58,14 @@ Run()
 
 ### Key Insight for Incremental Migration
 The token-vector constructor (`PF_CollectDataApp(tokens)`) is the integration point. Each extracted program gets its own app class with the same `(tokens)` constructor pattern, allowing tests to migrate one fixture at a time while the monolith remains functional via delegation shims.
+
+### Phase 3a Findings (pf_loader — completed)
+- `Streamer.cpp` must be compiled into loader binary because Tiingo/Eodhd inherit from RemoteDataSource
+- Loader does NOT need WebSocket/streaming functionality — only needs ATR computation helpers that use Eodhd/Tiingo HTTP APIs
+- `--mode load` option removed from pf_loader CLI (fixed to load mode by design)
+- First SingleFileEndToEnd test migrated successfully; second test kept on monolith (exercises both load AND update paths)
+
+### Phase 3b Plan (pf_updater — next)
+- Extract `Run_Update()` and `Run_UpdateFromDB()` from monolith
+- Updater shares helper methods with loader: ATR computation, CSV parsing, JSON loading, shutdown persistence
+- Consider shared base or utility header for loader/updater common code if duplication becomes significant

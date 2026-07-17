@@ -58,22 +58,20 @@ Move WebSocket sources to `src/streamer/` (compile ONLY into this binary):
 **Tests affected:** 9 (streaming + resume tests) updated to instantiate `PF_StreamerApp`.
 **Verification:** All e2e tests green. `pf_streamer` binary builds independently with Boost.Beast + ChartDirector.
 
-### Phase 3 — Extract `pf_loader` and `pf_updater` (most shared code)
-Create `ChartProcessor` service for common iteration logic:
-- Cartesian product of symbols x box_sizes x reversals x scales
-- Chart creation from price data (file or DB source)
+### Phase 3a — Extract `pf_loader` (done)
+Move to `PF_LoaderApp : public PF_AppBase`:
+- `Run_Load()`, `Run_LoadFromDB()`, `ProcessSymbolsFromDB()`
 - `ComputeATRForChart()`, `ComputeATRForChartFromDB()`
-- MinMax box size computation
 - `LoadAndParsePriceDataJSON()`, `AddPriceDataToExistingChartCSV()`, `FindColumnIndex()`
-- Chart persistence (file or DB destination)
-
-`PF_LoaderApp : public PF_AppBase`:
-- `Run_Load()`, `Run_LoadFromDB()`
-
-`PF_UpdaterApp : public PF_AppBase`:
-- `Run_Update()`, `Run_UpdateFromDB()`
+- `ShutdownAndStoreOutputInFiles()`, `ShutdownAndStoreOutputInDB()`
 
 **ChartDirector:** Needed for chart graphics generation. Link `-lchartdir`.
+**Streamer.cpp:** Required — Tiingo/Eodhd inherit from RemoteDataSource.
+
+### Phase 3b — Extract `pf_updater` (in progress)
+Move to `PF_UpdaterApp : public PF_AppBase`:
+- `Run_Update()`, `Run_UpdateFromDB()`
+- Shares same helper methods as loader (ATR, CSV parsing, shutdown)
 `ConstructChartGraphic.cpp` compiled into each binary that needs it (loader, updater, streamer). NOT moved to library — keeps library's external deps minimal and gives per-binary control over the closed-source dependency.
 
 **Files created:** `src/common/ChartProcessor.h/.cpp`, `src/loader/PF_LoaderApp.h/.cpp`, `src/updater/PF_UpdaterApp.h/.cpp`
@@ -93,7 +91,8 @@ Remove `PF_CollectDataApp`. Replace `Main.cpp` with 4 separate main files. Updat
 | 0 | `PF_CollectData` | Unchanged |
 | 1 | `PF_CollectData` + `pf_scanner` | Scanner links libpqxx, NO ChartDirector |
 | 2 | `+ pf_streamer` | Streamer links Boost.Beast + ChartDirector |
-| 3 | `+ pf_loader`, `+ pf_updater` | Both link ChartDirector |
+| 3a | `+ pf_loader` | Loader links ChartDirector + RemoteDataSource |
+| 3b | `+ pf_updater` | Updater links ChartDirector + RemoteDataSource |
 | 4 | `pf_scanner`, `pf_streamer`, `pf_loader`, `pf_updater` | Monolith removed |
 
 ### ChartDirector dependency matrix
@@ -115,21 +114,24 @@ Remove `PF_CollectDataApp`. Replace `Main.cpp` with 4 separate main files. Updat
 src/
   common/
     PF_AppBase.h/.cpp            (Phase 0)
-    ChartProcessor.h/.cpp        (Phase 3)
   scanner/
     PF_ScannerApp.h/.cpp         (Phase 1)
+    Main.cpp                     (Phase 1)
   streamer/
     PF_StreamerApp.h/.cpp        (Phase 2)
-    Streamer.h/.cpp              (moved Phase 2)
-    Eodhd.h/.cpp                 (moved Phase 2)
-    Tiingo.h/.cpp                (moved Phase 2)
+    Main.cpp                     (Phase 2)
   loader/
-    PF_LoaderApp.h/.cpp          (Phase 3)
+    PF_LoaderApp.h/.cpp          (Phase 3a)
+    Main.cpp                     (Phase 3a)
   updater/
-    PF_UpdaterApp.h/.cpp         (Phase 3)
+    PF_UpdaterApp.h/.cpp         (Phase 3b)
+    Main.cpp                     (Phase 3b)
   PF_CollectDataApp.h/.cpp       (removed Phase 4)
   Main.cpp                       (replaced Phase 4)
   ConstructChartGraphic.h/.cpp   (shared source, compiled per-binary into loader/updater/streamer)
+  Streamer.h/.cpp                (RemoteDataSource base, compiled into loader/updater/streamer)
+  Eodhd.h/.cpp                   (compiled into loader/updater/streamer)
+  Tiingo.h/.cpp                  (compiled into loader/updater/streamer)
 ```
 
 ## Test Migration Strategy
@@ -139,11 +141,13 @@ Per phase: affected e2e tests updated to instantiate the new app class directly.
 |---|---|---|
 | `DailyScan` | 1 | Phase 1 → `PF_ScannerApp` |
 | `StreamEodhdData`, `StreamTiingoData`, `ResumeModeTests` | 9 | Phase 2 → `PF_StreamerApp` |
-| `SingleFileEndToEnd`, `LoadAndUpdate`, `Database`, `ProgramOptions` | 13 | Phase 3 → `PF_LoaderApp` / `PF_UpdaterApp` |
+| `SingleFileEndToEnd.VerifyCanLoadCSVDataAndSaveToChartFile` | 1 | Phase 3a → `PF_LoaderApp` |
+| `SingleFileEndToEnd`, `LoadAndUpdate`, `Database`, `ProgramOptions` | 12 remaining | Phase 3b → `PF_LoaderApp` / `PF_UpdaterApp` |
 
 ## Steps
 - [x] Phase 0: Create `PF_AppBase`, verify all tests pass
 - [x] Phase 1: Extract `pf_scanner`, migrate 1 test
 - [x] Phase 2: Extract `pf_streamer`, move WebSocket sources, migrate 9 tests
-- [ ] Phase 3: Create `ChartProcessor`, extract `pf_loader` + `pf_updater`, migrate 13 tests
+- [x] Phase 3a: Extract `pf_loader`, migrate 1 test (SingleFileEndToEnd.VerifyCanLoadCSVDataAndSaveToChartFile)
+- [ ] Phase 3b: Extract `pf_updater`, migrate remaining load/update tests
 - [ ] Phase 4: Remove monolith, 4 standalone binaries
