@@ -95,10 +95,21 @@ void PF_AppBase::ParseProgramOptions(const std::vector<std::string> &tokens)
         }
         else
         {
-            auto cmd_line_vw = rng::views::join_with(rng::views::drop(tokens, 1), " "sv);
-            std::string cmd_line = rng::to<std::string>(cmd_line_vw);
-            spdlog::info("tokens: {}", cmd_line);
-            app_.parse(cmd_line);
+            // Convert token-style args to argv-like format for CLI11
+            std::vector<char*> argv_ptrs;
+            std::vector<std::unique_ptr<std::vector<char>>> arg_buffers;
+            for (const auto &token : tokens)
+            {
+                auto buf = std::make_unique<std::vector<char>>(token.size() + 1);
+                std::copy(token.begin(), token.end(), buf->begin());
+                buf->back() = '\0';
+                argv_ptrs.push_back(buf->data());
+                arg_buffers.push_back(std::move(buf));
+            }
+            int argc = static_cast<int>(argv_ptrs.size());
+            spdlog::info("tokens: {}",
+                         rng::views::join_with(rng::views::drop(tokens, 1), " "sv) | rng::to<std::string>());
+            app_.parse(argc, argv_ptrs.data());
         }
     }
     catch (const CLI::CallForHelp &e)

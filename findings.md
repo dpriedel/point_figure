@@ -65,7 +65,14 @@ The token-vector constructor (`PF_CollectDataApp(tokens)`) is the integration po
 - `--mode load` option removed from pf_loader CLI (fixed to load mode by design)
 - First SingleFileEndToEnd test migrated successfully; second test kept on monolith (exercises both load AND update paths)
 
-### Phase 3b Plan (pf_updater — next)
+### Phase 3b Plan (pf_updater — in progress)
 - Extract `Run_Update()` and `Run_UpdateFromDB()` from monolith
 - Updater shares helper methods with loader: ATR computation, CSV parsing, JSON loading, shutdown persistence
 - Consider shared base or utility header for loader/updater common code if duplication becomes significant
+
+### Phase 3b Findings
+- CLI11 argv-style parsing required: token values like `.1` fail when passed as string join; must use char* pointer array with proper null termination
+- `--use-ATR` must use `add_flag()` not `add_option()` to avoid consuming next token as value
+- `--config-dir` CLI option and `PF_COLLECT_DATA_CONFIG_DIR` env var resolution needed in loader/updater CheckArgs() for API key file lookup
+- LoadAndUpdate test fails with JSON parsing error (`asCString(): requires stringValue`) on existing chart files — may indicate format mismatch or missing data in test chart files
+- Network timeout to Eodhd.com during ATR computation — external service dependency blocks test completion

@@ -1,4 +1,4 @@
-#include "loader/PF_LoaderApp.h"
+#include "updater/PF_UpdaterApp.h"
 
 #include <algorithm>
 #include <chrono>
@@ -26,27 +26,26 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 // =====================================================================================
-//        Class:  PF_LoaderApp
-//  Description:  Load mode — builds charts from file or database source
+//        Class:  PF_UpdaterApp
+//  Description:  Update mode — incrementally updates charts with new price data
 // =====================================================================================
 
-PF_LoaderApp::PF_LoaderApp(int argc, char *argv[])
+PF_UpdaterApp::PF_UpdaterApp(int argc, char *argv[])
     : PF_AppBase{argc, argv}
 {
-    app_.description("Point & Figure loader: builds charts from files or database.");
+    app_.description("Point & Figure updater: incrementally updates charts with new price data.");
     SetupProgramOptions();
 }
 
-PF_LoaderApp::PF_LoaderApp(const std::vector<std::string> &tokens)
+PF_UpdaterApp::PF_UpdaterApp(const std::vector<std::string> &tokens)
     : PF_AppBase{tokens}
 {
-    app_.description("Point & Figure loader: builds charts from files or database.");
+    app_.description("Point & Figure updater: incrementally updates charts with new price data.");
     SetupProgramOptions();
 }
 
-bool PF_LoaderApp::Startup()
+bool PF_UpdaterApp::Startup()
 {
-    constexpr const char *time_fmt = "\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n";
     spdlog::info(std::format("\n\n*** Starting run {} ***\n",
                               std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
     bool result{true};
@@ -69,22 +68,22 @@ bool PF_LoaderApp::Startup()
     return result;
 }
 
-std::tuple<int, int, int> PF_LoaderApp::Run()
+std::tuple<int, int, int> PF_UpdaterApp::Run()
 {
     number_of_days_history_for_ATR_ = 20;
 
     if (new_data_source_ == Source::e_file)
     {
-        Run_Load();
+        Run_Update();
     }
     else if (new_data_source_ == Source::e_DB)
     {
-        return Run_LoadFromDB();
+        Run_UpdateFromDB();
     }
     return {};
 }
 
-void PF_LoaderApp::Shutdown()
+void PF_UpdaterApp::Shutdown()
 {
     if (destination_ == Destination::e_file)
     {
@@ -101,7 +100,7 @@ void PF_LoaderApp::Shutdown()
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
-void PF_LoaderApp::SetupProgramOptions()
+void PF_UpdaterApp::SetupProgramOptions()
 {
     app_.preparse_callback([](size_t argCount) {
         if (argCount == 0)
@@ -165,7 +164,7 @@ void PF_LoaderApp::SetupProgramOptions()
     // Symbol options
 
     auto symbols_source_group =
-        app_.add_option_group("Symbols source", "Specify ticker symbols to process. At most, use 1.");
+        app_.add_option_group("Symbols source", "Specify ticker symbols to process.");
     symbols_source_group
         ->add_option("-s,--symbol", symbol_list_,
                      "Name of symbol we are processing data for. Repeat for multiple symbols.")
@@ -176,11 +175,7 @@ void PF_LoaderApp::SetupProgramOptions()
         });
 
     symbols_source_group->add_option("--symbol-list", symbol_list_i_,
-                                     "Comma-separated list of symbols or 'ALL'.")
-        ->transform([](std::string s) {
-            std::transform(s.begin(), s.end(), s.begin(), ::toupper);
-            return s;
-        });
+                                     "Comma-separated list of symbols.");
 
     // Data source options
 
@@ -195,7 +190,14 @@ void PF_LoaderApp::SetupProgramOptions()
         ->default_val("csv")
         ->check(CLI::IsMember({"csv", "json"}));
 
-    // Mode is fixed to 'load' for this app — no CLI option needed
+    // Chart data source — where to find existing charts to update
+
+    app_.add_option("--chart-data-source", chart_data_source_i_,
+                    "Source for existing chart data: 'file' or 'database'.")
+        ->default_val("file")
+        ->check(CLI::IsMember({"file", "database"}));
+
+    // Mode is fixed to 'update' for this app — no CLI option needed
 
     // Interval and chart parameters
 
@@ -208,7 +210,7 @@ void PF_LoaderApp::SetupProgramOptions()
         ->check(CLI::IsMember({"linear", "percent"}));
 
     app_.add_option("--price-fld-name", price_fld_name_, "Data field to use for price value.")
-        ->default_val("split_adj_close");
+        ->default_val("Close");
 
     // Destination options
 
@@ -216,10 +218,9 @@ void PF_LoaderApp::SetupProgramOptions()
         ->required()
         ->check(CLI::IsMember({"file", "database"}));
 
-    app_.add_option("--output-chart-dir", output_chart_directory_, "Directory for output chart JSON files.")
-        ->check(CLI::ExistingPath);
+    app_.add_option("--output-chart-dir", output_chart_directory_, "Directory for output chart JSON files.");
 
-    app_.add_option("--chart-data-dir", input_chart_directory_, "Directory with existing chart data (for update mode).");
+    app_.add_option("--chart-data-dir", input_chart_directory_, "Directory with existing chart data.");
 
     app_.add_option("--output-graph-dir", output_graphs_directory_, "Directory for output graph files.");
 
@@ -268,7 +269,7 @@ void PF_LoaderApp::SetupProgramOptions()
         ->check(CLI::IsMember({"no", "data", "angle"}));
 }
 
-bool PF_LoaderApp::CheckArgs()
+bool PF_UpdaterApp::CheckArgs()
 {
     // Resolve config directory from CLI option or environment variable
     if (PF_CollectDataConfigDir_.empty())
@@ -284,9 +285,13 @@ bool PF_LoaderApp::CheckArgs()
                         : new_data_source_i_ == "database" ? Source::e_DB
                                                            : Source::e_unknown;
 
+    chart_data_source_ = chart_data_source_i_ == "file"     ? Source::e_file
+                           : chart_data_source_i_ == "database" ? Source::e_DB
+                                                                : Source::e_unknown;
+
     destination_ = destination_i_ == "file" ? Destination::e_file : Destination::e_DB;
 
-    if (!symbol_list_i_.empty() && symbol_list_i_ != "ALL")
+    if (!symbol_list_i_.empty())
     {
         rng::for_each(split_string<std::string>(symbol_list_i_, ","),
                       [this](const auto sym) { symbol_list_.push_back(sym); });
@@ -296,13 +301,8 @@ bool PF_LoaderApp::CheckArgs()
         rng::for_each(symbol_list_, [](auto &symbol) { rng::for_each(symbol, [](char &c) { c = std::toupper(c); }); });
     }
 
-    if (symbol_list_i_ == "ALL")
-    {
-        symbol_list_.clear();
-    }
-
     BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty(),
-                     "\nMust provide either 1 or more '-s' values or 'symbol-list' set to 'ALL'.");
+                     "\nMust provide either 1 or more '-s' values or 'symbol-list'.");
 
     if (new_data_source_ == Source::e_file)
     {
@@ -310,6 +310,16 @@ bool PF_LoaderApp::CheckArgs()
                          "\nMust specify 'new-data-dir' when data source is 'file'.");
 
         source_format_ = source_format_i_ == "csv" ? SourceFormat::e_csv : SourceFormat::e_json;
+
+        // if we are adding to existing data then we need to know where to find that data
+
+        if (chart_data_source_ == Source::e_file)
+        {
+            if (output_chart_directory_.empty())
+            {
+                output_chart_directory_ = input_chart_directory_;
+            }
+        }
     }
 
     graphics_format_ = graphics_format_i_ == "svg" ? GraphicsFormat::e_svg : GraphicsFormat::e_csv;
@@ -414,172 +424,128 @@ bool PF_LoaderApp::CheckArgs()
     return true;
 }
 
-void PF_LoaderApp::Run_Load()
+void PF_UpdaterApp::Run_Update()
 {
     auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
 
     for (const auto &val : params)
     {
         const auto &symbol = std::get<PF_Chart::e_symbol>(val);
+        PF_Chart new_chart;
+        fs::path existing_data_file_name;
         try
         {
-            fs::path symbol_file_name =
-                new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
-            BOOST_ASSERT_MSG(
-                fs::exists(symbol_file_name),
-                std::format("\nCan't find data file: {} for symbol: {}.", symbol_file_name, symbol).c_str());
-            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv,
-                             "\nJSON files are not yet supported for loading symbol data.");
-            auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
-            PF_Chart new_chart;
-            if (use_ATR_)
+            existing_data_file_name = input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
+            if (fs::exists(existing_data_file_name))
             {
-                new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
+                if (max_columns_for_graph_ != 0)
+                {
+                    new_chart.SetMaxGraphicColumns(max_columns_for_graph_);
+                }
             }
             else
             {
-                new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
-            }
-            AddPriceDataToExistingChartCSV(new_chart, symbol_file_name);
-            charts_.emplace_back(std::make_pair(symbol, new_chart));
-        }
-        catch (const std::exception &e)
-        {
-            spdlog::error(std::format("Unable to load data for symbol: {} from file because: {}.", symbol, e.what()));
-        }
-    }
-}
+                // no existing data to update, so make a new chart
 
-std::tuple<int, int, int> PF_LoaderApp::Run_LoadFromDB()
-{
-    int32_t total_symbols_processed = 0;
-    int32_t total_charts_processed = 0;
-    int32_t total_charts_updated = 0;
-
-    if (symbol_list_i_ == "ALL")
-    {
-        PF_DB pf_db{db_params_};
-
-        auto exchange_list = pf_db.ListExchanges();
-
-        auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" || xchng == "INDX" || xchng == "US"; };
-        const auto [first, last] = rng::remove_if(exchange_list, dont_use);
-        exchange_list.erase(first, last);
-        spdlog::debug("exchanges for load: {}\n", exchange_list);
-
-        for (const auto &xchng : exchange_list)
-        {
-            spdlog::info(std::format("Building charts for symbols on xchng: {} with minimum dollar volume >= {}.",
-                                      xchng, min_dollar_volume_));
-
-            auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_dollar_volume_);
-            const auto counts = ProcessSymbolsFromDB(symbol_list);
-            total_symbols_processed += std::get<0>(counts);
-            total_charts_processed += std::get<1>(counts);
-            total_charts_updated += std::get<2>(counts);
-            spdlog::info(std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts built: "
-                                      "{}.",
-                                      xchng, std::get<0>(counts), std::get<1>(counts), std::get<2>(counts)));
-        }
-    }
-    else
-    {
-        const auto counts = ProcessSymbolsFromDB(symbol_list_);
-        total_symbols_processed += std::get<0>(counts);
-        total_charts_processed += std::get<1>(counts);
-        total_charts_updated += std::get<2>(counts);
-    }
-
-    spdlog::info(std::format("Total symbols: {}. Total charts generated: {}. Total charts built: "
-                              "{}.",
-                              total_symbols_processed, total_charts_processed, total_charts_updated));
-
-    return {total_symbols_processed, total_charts_processed, total_charts_updated};
-}
-
-std::tuple<int, int, int> PF_LoaderApp::ProcessSymbolsFromDB(const std::vector<std::string> &symbol_list)
-{
-    int32_t total_symbols_processed = 0;
-    int32_t total_charts_processed = 0;
-    int32_t total_charts_updated = 0;
-
-    PF_DB pf_db{db_params_};
-
-    pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
-
-    const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
-
-    std::istringstream time_stream;
-    std::chrono::utc_time<std::chrono::utc_clock::duration> tp;
-
-    auto Row2Closing = [dt_format, &time_stream, &tp](const auto &r) {
-        time_stream.clear();
-        time_stream.str(std::string{std::get<0>(r)});
-        std::chrono::from_stream(time_stream, dt_format, tp);
-        std::chrono::utc_time<std::chrono::utc_clock::duration> tp1{tp.time_since_epoch()};
-        DateCloseRecord new_data{.date_ = tp1, .close_ = Decimal{std::get<1>(r).data()}};
-        return new_data;
-    };
-
-    for (const auto &symbol : symbol_list)
-    {
-        ++total_symbols_processed;
-
-        try
-        {
-            std::string get_symbol_prices_cmd =
-                std::format("SELECT date, {} FROM {} WHERE symbol = {} AND date >= "
-                            "{} ORDER BY date ASC",
-                            price_fld_name_, db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date_));
-
-            const auto closing_prices =
-                pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd,
-                                                                                                   Row2Closing);
-
-            auto atr_or_range = use_ATR_       ? ComputeATRForChartFromDB(symbol)
-                                : use_min_max_ ? pf_db.ComputePriceRangeForSymbolFromDB(symbol, begin_date_, end_date_)
-                                               : 0;
-
-            std::vector<std::string> the_symbol{symbol};
-            auto params = vws::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
-
-            for (const auto &val : params)
-            {
-                PF_Chart new_chart;
-                if (use_ATR_ || use_min_max_)
+                auto atr = use_ATR_ ? ComputeATRForChart(symbol) : 0;
+                if (use_ATR_)
                 {
-                    new_chart = PF_Chart{atr_or_range, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                 }
                 else
                 {
-                    new_chart = PF_Chart{val, atr_or_range, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
-                }
-                try
-                {
-                    for (const auto &[new_date, new_price] : closing_prices)
-                    {
-                        new_chart.AddValue(new_price, std::chrono::clock_cast<std::chrono::utc_clock>(new_date));
-                    }
-                    charts_.emplace_back(std::make_pair(symbol, new_chart));
-                    ++total_charts_processed;
-                }
-                catch (const std::exception &e)
-                {
-                    spdlog::error(std::format("Unable to load data for symbol chart: {} from DB "
-                                              "because: {}.",
-                                              new_chart.MakeChartFileName(interval_i_, ""), e.what()));
+                    new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
                 }
             }
+            fs::path update_file_name =
+                new_data_input_directory_ / (symbol + '.' + (source_format_ == SourceFormat::e_csv ? "csv" : "json"));
+            BOOST_ASSERT_MSG(
+                fs::exists(update_file_name),
+                std::format("\nCan't find data file for symbol: {} for update.", update_file_name).c_str());
+            BOOST_ASSERT_MSG(source_format_ == SourceFormat::e_csv,
+                             "\nJSON files are not yet supported for updating symbol data.");
+            AddPriceDataToExistingChartCSV(new_chart, update_file_name);
+            charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
+        }
+        catch (const Json::Exception &e)
+        {
+            spdlog::error(std::format("Unable to process JSON data from file: {} because: {}.", existing_data_file_name,
+                                      e.what()));
         }
         catch (const std::exception &e)
         {
-            spdlog::error(std::format("Unable to retrieve data for symbol: {} from DB because: {}.", symbol, e.what()));
+            spdlog::error(std::format("Unable to update data for chart: {} from file because: {}.",
+                                      new_chart.MakeChartFileName(interval_i_, ""), e.what()));
         }
     }
-    return {total_symbols_processed, total_charts_processed, total_charts_updated};
 }
 
-void PF_LoaderApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, const fs::path &update_file_name) const
+void PF_UpdaterApp::Run_UpdateFromDB()
+{
+    PF_DB pf_db{db_params_};
+
+    const auto *dt_format = interval_ == Interval::e_eod ? "%F" : "%F %T%z";
+    auto db_data = pf_db.GetPriceDataForSymbolsInList(symbol_list_, begin_date_, end_date_, price_fld_name_, dt_format);
+
+    auto data_for_symbol = vws::chunk_by([](const auto &a, const auto &b) { return a.symbol_ == b.symbol_; });
+
+    for (const auto &symbol_rng : db_data | data_for_symbol)
+    {
+        const auto &symbol = symbol_rng[0].symbol_;
+        std::vector<std::string> the_symbol{symbol};
+
+        auto params = vws::cartesian_product(the_symbol, box_size_list_, reversal_boxes_list_, scale_list_);
+
+        for (const auto &val : params)
+        {
+            PF_Chart new_chart;
+            try
+            {
+                if (chart_data_source_ == Source::e_file)
+                {
+                    fs::path existing_data_file_name =
+                        input_chart_directory_ / MakeChartNameFromParams(val, interval_i_, "json");
+                    if (fs::exists(existing_data_file_name))
+                    {
+                        new_chart = LoadAndParsePriceDataJSON(existing_data_file_name);
+                        if (max_columns_for_graph_ != 0)
+                        {
+                            new_chart.SetMaxGraphicColumns(max_columns_for_graph_);
+                        }
+                    }
+                }
+                else
+                {
+                    new_chart = PF_Chart::LoadChartFromChartsDB(PF_DB{db_params_}, val, interval_i_);
+                }
+                if (new_chart.empty())
+                {
+                    auto atr = use_ATR_ ? ComputeATRForChartFromDB(symbol) : 0;
+                    if (use_ATR_)
+                    {
+                        new_chart = PF_Chart{atr, val, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    }
+                    else
+                    {
+                        new_chart = PF_Chart{val, atr, max_columns_for_graph_ < 1 ? -1 : max_columns_for_graph_};
+                    }
+                }
+
+                rng::for_each(symbol_rng, [&new_chart](const auto &row) { new_chart.AddValue(row.close_, row.date_); });
+
+                charts_.emplace_back(std::make_pair(symbol, std::move(new_chart)));
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::error(std::format("Unable to update data for chart: {} from DB because: {}.",
+                                          new_chart.MakeChartFileName(interval_i_, ""), e.what()));
+            }
+        }
+    }
+}
+
+void PF_UpdaterApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, const fs::path &update_file_name) const
 {
     const std::string file_content = LoadDataFileForUse(update_file_name);
 
@@ -604,15 +570,15 @@ void PF_LoaderApp::AddPriceDataToExistingChartCSV(PF_Chart &new_chart, const fs:
         });
 }
 
-PF_Chart PF_LoaderApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
+PF_Chart PF_UpdaterApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_name)
 {
     PF_Chart new_chart;
     PF_Chart::LoadChartFromJSONPF_ChartFile(new_chart, symbol_file_name);
     return new_chart;
 }
 
-std::optional<int> PF_LoaderApp::FindColumnIndex(std::string_view header, std::string_view column_name,
-                                                  std::string_view delim)
+std::optional<int> PF_UpdaterApp::FindColumnIndex(std::string_view header, std::string_view column_name,
+                                                   std::string_view delim)
 {
     auto fields = rng_split_string<std::string_view>(header, delim) | rng::to<std::vector>();
     auto do_compare([&column_name](const auto &field_name) {
@@ -631,7 +597,7 @@ std::optional<int> PF_LoaderApp::FindColumnIndex(std::string_view header, std::s
     return {};
 }
 
-Decimal PF_LoaderApp::ComputeATRForChart(const std::string &symbol) const
+Decimal PF_UpdaterApp::ComputeATRForChart(const std::string &symbol) const
 {
     std::unique_ptr<RemoteDataSource> history_getter;
     if (quote_data_source_ == QuoteDataSource::e_Eodhd)
@@ -658,7 +624,7 @@ Decimal PF_LoaderApp::ComputeATRForChart(const std::string &symbol) const
     return atr;
 }
 
-Decimal PF_LoaderApp::ComputeATRForChartFromDB(const std::string &symbol) const
+Decimal PF_UpdaterApp::ComputeATRForChartFromDB(const std::string &symbol) const
 {
     PF_DB the_db{db_params_};
 
@@ -677,7 +643,7 @@ Decimal PF_LoaderApp::ComputeATRForChartFromDB(const std::string &symbol) const
     return atr;
 }
 
-void PF_LoaderApp::ShutdownAndStoreOutputInFiles()
+void PF_UpdaterApp::ShutdownAndStoreOutputInFiles()
 {
     for (const auto &[symbol, chart] : charts_)
     {
@@ -719,7 +685,7 @@ void PF_LoaderApp::ShutdownAndStoreOutputInFiles()
     }
 }
 
-void PF_LoaderApp::ShutdownAndStoreOutputInDB()
+void PF_UpdaterApp::ShutdownAndStoreOutputInDB()
 {
     int32_t chart_count = 0;
     PF_DB pf_db{db_params_};

@@ -74,9 +74,14 @@ Move to `PF_UpdaterApp : public PF_AppBase`:
 - Shares same helper methods as loader (ATR, CSV parsing, shutdown)
 `ConstructChartGraphic.cpp` compiled into each binary that needs it (loader, updater, streamer). NOT moved to library — keeps library's external deps minimal and gives per-binary control over the closed-source dependency.
 
-**Files created:** `src/common/ChartProcessor.h/.cpp`, `src/loader/PF_LoaderApp.h/.cpp`, `src/updater/PF_UpdaterApp.h/.cpp`
-**Tests affected:** 13 (load, update, DB, options tests) updated.
-**Verification:** All e2e tests green. Both binaries build independently.
+**Files created:** `src/updater/PF_UpdaterApp.h/.cpp`, `src/updater/Main.cpp`
+**Tests affected:** 1 (`LoadAndUpdate`) migrated to `PF_UpdaterApp`.
+**Verification:** pf_updater binary builds. LoadAndUpdate test fails on JSON parsing error + network timeout to Eodhd.
+
+**Issues discovered:**
+- CLI11 argv-style parsing required for token values starting with non-alphanumeric chars (e.g., `.1`)
+- `--use-ATR` must use `add_flag()` not `add_option()` to prevent consuming next token
+- `--config-dir` option and env var resolution needed in CheckArgs() for API key file lookup
 
 ### Phase 4 — Decommission monolith
 Remove `PF_CollectDataApp`. Replace `Main.cpp` with 4 separate main files. Update makefile to produce 4 targets. Remove compatibility shims.
@@ -149,5 +154,5 @@ Per phase: affected e2e tests updated to instantiate the new app class directly.
 - [x] Phase 1: Extract `pf_scanner`, migrate 1 test
 - [x] Phase 2: Extract `pf_streamer`, move WebSocket sources, migrate 9 tests
 - [x] Phase 3a: Extract `pf_loader`, migrate 1 test (SingleFileEndToEnd.VerifyCanLoadCSVDataAndSaveToChartFile)
-- [ ] Phase 3b: Extract `pf_updater`, migrate remaining load/update tests
+- [ ] Phase 3b: Extract `pf_updater`, debug LoadAndUpdate test (JSON parsing error + network timeout)
 - [ ] Phase 4: Remove monolith, 4 standalone binaries

@@ -1,7 +1,7 @@
 # Progress: PF_CollectDataApp Refactoring
 
 ## Status
-Phase 3a (pf_loader) complete. Starting Phase 3b (pf_updater).
+Phase 3b (pf_updater) in progress. Updater binary builds, CLI parsing fixed, config-dir option added. LoadAndUpdate test fails on JSON parsing error + network timeout to Eodhd.
 
 ## Completed
 - [x] 2026-07-17 — Analyzed codebase structure, identified god class (~2400 lines, ~52 members)
@@ -28,9 +28,19 @@ Phase 3a (pf_loader) complete. Starting Phase 3b (pf_updater).
 - [x] 2026-07-17 — Phase 3a: Updated e2e makefile with loader sources and VPATH
 - [x] 2026-07-17 — Phase 3a: Migrated `SingleFileEndToEnd.VerifyCanLoadCSVDataAndSaveToChartFile` to use `PF_LoaderApp`
 - [x] 2026-07-17 — Phase 3a: Verified pf_loader binary builds, all SingleFileEndToEnd tests pass (2/2), monolith tests still pass
+- [x] 2026-07-17 — Phase 3b: Created `PF_UpdaterApp` in `src/updater/`, extracted updater logic (~4 methods)
+- [x] 2026-07-17 — Phase 3b: Added `pf_updater` target to makefile_collect (WITH ChartDirector + Streamer.o for RemoteDataSource)
+- [x] 2026-07-17 — Phase 3b: Updated e2e makefile with updater sources and VPATH
+- [x] 2026-07-17 — Phase 3b: Migrated `LoadAndUpdate.VerifyUpdateWorksWhenNoPreviousChartData` to use `PF_UpdaterApp`, removed `--mode update` from tokens
+- [x] 2026-07-17 — Phase 3b: Fixed CLI11 parsing in `PF_AppBase::ParseProgramOptions` — changed from string join to argv-style char* pointer array for proper token handling
+- [x] 2026-07-17 — Phase 3b: Fixed `--use-ATR` from `add_option` to `add_flag` in both loader and updater to prevent consuming next token as value
+- [x] 2026-07-17 — Phase 3b: Removed strict `CLI::ExistingPath` check from `--output-chart-dir` (directory created in CheckArgs if missing)
+- [x] 2026-07-17 — Phase 3b: Added `--config-dir` CLI option to loader and updater for API key file resolution
+- [x] 2026-07-17 — Phase 3b: Added env var resolution (`PF_COLLECT_DATA_CONFIG_DIR`) in CheckArgs() for both loader and updater
+- [x] 2026-07-17 — Phase 3b: Updated LoadAndUpdate test tokens with `--config-dir` pointing to API key directory
 
 ## Pending
-- [ ] Phase 3: Create `ChartProcessor`, extract `pf_loader` + `pf_updater` (13 tests migrate)
+- [ ] Phase 3b: Debug LoadAndUpdate test failure — JSON parsing error (`asCString(): requires stringValue`) on existing chart files in `test_files_update_charts/`; network timeout to Eodhd for ATR data
 - [ ] Phase 4: Remove monolith, 4 standalone binaries
 
 ## Files Changed
@@ -56,6 +66,16 @@ Phase 3a (pf_loader) complete. Starting Phase 3b (pf_updater).
 - `src/streamer/Main.cpp` — standalone streamer entry point
 - `makefile_collect` — added `pf_streamer` target (with ChartDirector)
 - `../PF_Test/makefile_e2e` — added streamer sources and VPATH
+
+### Phase 3b
+- `src/updater/PF_UpdaterApp.h` — updater app header, inherits PF_AppBase
+- `src/updater/PF_UpdaterApp.cpp` — updater implementation with Run_Update, Run_UpdateFromDB, shared helpers; `--use-ATR` uses `add_flag`, `--config-dir` option, env var resolution in CheckArgs
+- `src/updater/Main.cpp` — standalone updater entry point
+- `src/loader/PF_LoaderApp.cpp` — added `--config-dir` option and env var resolution in CheckArgs
+- `src/common/PF_AppBase.cpp` — ParseProgramOptions now uses argv-style char* pointer array for CLI11 token handling
+- `makefile_collect` — added `pf_updater` target (with ChartDirector)
+- `../PF_Test/EndToEnd_Test.cpp` — LoadAndUpdate test migrated to PF_UpdaterApp, added `--config-dir` token
+- `../PF_Test/makefile_e2e` — added updater sources and VPATH
 
 ## Notes
 - Full e2e test suite takes 5-10 minutes; use targeted test filters for quick verification per phase

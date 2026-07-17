@@ -367,15 +367,98 @@ $(LOADER_OUTDIR)/Streamer.o: src/Streamer.cpp | $(LOADER_OUTDIR)
 $(LOADER_OUTFILE): $(LOADER_OBJS) ../lib_PF_Chart/libPF_Chart.a
 	$(LOADER_LINK_CMD) $(LOADER_OBJS) $(LOADER_LIB) -Wl,-E $(LOADER_RPATH)
 
+# ============================================================================
+# pf_updater target — WITH ChartDirector (for SVG graphics)
+# ============================================================================
+
+UPDATER_OUTFILE := pf_updater
+UPDATER_OUTDIR := Debug_updater
+
+UPDATER_INC := -I${HOME}/projects/PF_Project/point_figure/src \
+	-I$(GTESTDIR) \
+	-isystem$(BOOSTDIR) \
+	-I/usr/local/include/ChartDirector \
+	-I$(UTILITYDIR)/include
+
+UPDATER_LIB := -L../lib_PF_Chart \
+		-lPF_Chart \
+		-L/usr/local/lib \
+		-lspdlog \
+		-lpqxx \
+		-lpq \
+		-L/usr/local/lib/ChartDirector \
+		-lchartdir \
+		-L$(GCCDIR)/lib64 \
+		-lstdc++ \
+		-lstdc++exp \
+		-L/usr/lib \
+		-lmpdec++ \
+		-lmpdec \
+		-lcrypt \
+		-lpthread \
+		-lssl -lcrypto \
+		-ljsoncpp
+
+UPDATER_RPATH := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib/ChartDirector
+
+ifeq "$(CFG)" "Debug"
+UPDATER_CXXFLAGS := -O0 -g3 -std=c++26 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -DSHOW_STRACE -fPIC
+UPDATER_LINK_CMD := $(CPP) -g -o $(UPDATER_OUTFILE)
+endif
+
+ifeq "$(CFG)" "Release"
+UPDATER_CXXFLAGS := -O3 -std=c++26 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC
+UPDATER_LINK_CMD := $(CPP) -flto=auto -o $(UPDATER_OUTFILE)
+endif
+
+UPDATER_OBJS := $(UPDATER_OUTDIR)/updater_main.o \
+	$(UPDATER_OUTDIR)/PF_UpdaterApp.o \
+	$(UPDATER_OUTDIR)/PF_AppBase_updater.o \
+	$(UPDATER_OUTDIR)/ConstructChartGraphic.o \
+	$(UPDATER_OUTDIR)/Tiingo.o \
+	$(UPDATER_OUTDIR)/Eodhd.o \
+	$(UPDATER_OUTDIR)/Streamer.o
+
+$(UPDATER_OUTDIR):
+	mkdir -p "$(UPDATER_OUTDIR)"
+
+$(UPDATER_OUTDIR)/updater_main.o: src/updater/Main.cpp | $(UPDATER_OUTDIR)
+	$(CPP) -c -x c++ $(UPDATER_CXXFLAGS) -o $@ $(UPDATER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(UPDATER_OUTDIR)/PF_UpdaterApp.o: src/updater/PF_UpdaterApp.cpp | $(UPDATER_OUTDIR)
+	$(CPP) -c -x c++ $(UPDATER_CXXFLAGS) -o $@ $(UPDATER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(UPDATER_OUTDIR)/PF_AppBase_updater.o: src/common/PF_AppBase.cpp | $(UPDATER_OUTDIR)
+	$(CPP) -c -x c++ $(UPDATER_CXXFLAGS) -o $@ $(UPDATER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(UPDATER_OUTDIR)/ConstructChartGraphic.o: src/ConstructChartGraphic.cpp | $(UPDATER_OUTDIR)
+	$(CPP) -c -x c++ $(UPDATER_CXXFLAGS) -o $@ $(UPDATER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(UPDATER_OUTDIR)/Tiingo.o: src/Tiingo.cpp | $(UPDATER_OUTDIR)
+	$(CPP) -c -x c++ $(UPDATER_CXXFLAGS) -o $@ $(UPDATER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(UPDATER_OUTDIR)/Eodhd.o: src/Eodhd.cpp | $(UPDATER_OUTDIR)
+	$(CPP) -c -x c++ $(UPDATER_CXXFLAGS) -o $@ $(UPDATER_INC) $< -march=native -mtune=native -MMD -MP
+
+$(UPDATER_OUTDIR)/Streamer.o: src/Streamer.cpp | $(UPDATER_OUTDIR)
+	$(CPP) -c -x c++ $(UPDATER_CXXFLAGS) -o $@ $(UPDATER_INC) $< -march=native -mtune=native -MMD -MP
+
+-include $(UPDATER_OBJS:.o=.d)
+
+$(UPDATER_OUTFILE): $(UPDATER_OBJS) ../lib_PF_Chart/libPF_Chart.a
+	$(UPDATER_LINK_CMD) $(UPDATER_OBJS) $(UPDATER_LIB) -Wl,-E $(UPDATER_RPATH)
+
 clean:
 	rm -f $(OUTFILE)
 	rm -f $(SCANNER_OUTFILE)
 	rm -f $(STREAMER_OUTFILE)
 	rm -f $(LOADER_OUTFILE)
+	rm -f $(UPDATER_OUTFILE)
 	rm -f $(OBJS)
 	rm -f $(SCANNER_OBJS)
 	rm -f $(STREAMER_OBJS)
 	rm -f $(LOADER_OBJS)
+	rm -f $(UPDATER_OBJS)
 	rm -f $(OUTDIR)/*.d
 	rm -f $(OUTDIR)/*.o
 	rm -f $(SCANNER_OUTDIR)/*.d
@@ -384,3 +467,5 @@ clean:
 	rm -f $(STREAMER_OUTDIR)/*.o
 	rm -f $(LOADER_OUTDIR)/*.d
 	rm -f $(LOADER_OUTDIR)/*.o
+	rm -f $(UPDATER_OUTDIR)/*.d
+	rm -f $(UPDATER_OUTDIR)/*.o
