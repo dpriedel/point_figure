@@ -154,5 +154,5 @@ Per phase: affected e2e tests updated to instantiate the new app class directly.
 - [x] Phase 1: Extract `pf_scanner`, migrate 1 test
 - [x] Phase 2: Extract `pf_streamer`, move WebSocket sources, migrate 9 tests
 - [x] Phase 3a: Extract `pf_loader`, migrate 1 test (SingleFileEndToEnd.VerifyCanLoadCSVDataAndSaveToChartFile)
-- [ ] Phase 3b: Extract `pf_updater`, debug LoadAndUpdate test (JSON parsing error + network timeout)
+- [x] Phase 3b: Extract `pf_updater`, fix missing `--quote-port` option in loader/updater (test passes)
 - [ ] Phase 4: Remove monolith, 4 standalone binaries

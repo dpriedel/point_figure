@@ -74,5 +74,4 @@ The token-vector constructor (`PF_CollectDataApp(tokens)`) is the integration po
 - CLI11 argv-style parsing required: token values like `.1` fail when passed as string join; must use char* pointer array with proper null termination
 - `--use-ATR` must use `add_flag()` not `add_option()` to avoid consuming next token as value
 - `--config-dir` CLI option and `PF_COLLECT_DATA_CONFIG_DIR` env var resolution needed in loader/updater CheckArgs() for API key file lookup
-- LoadAndUpdate test fails with JSON parsing error (`asCString(): requires stringValue`) on existing chart files — may indicate format mismatch or missing data in test chart files
-- Network timeout to Eodhd.com during ATR computation — external service dependency blocks test completion
+- LoadAndUpdate test hang root cause: missing `--quote-port` CLI option in loader and updater. `quote_host_port_` was empty string, causing `RequestData()` to block indefinitely on DNS resolve with no port. Fix: add `--quote-port` with default `"443"` to both apps.

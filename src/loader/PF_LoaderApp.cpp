@@ -242,6 +242,9 @@ void PF_LoaderApp::SetupProgramOptions()
     app_.add_option("--quote-host", quote_host_name_, "Quote data host name.")
         ->default_val("eodhd.com");
 
+    app_.add_option("--quote-port", quote_host_port_, "Port for quotes.")
+        ->default_val("443");
+
     app_.add_option("--quote-data-source", quote_data_source_i_, "Quote data source: 'Eodhd' or 'Tiingo'.")
         ->default_val("Eodhd")
         ->check(CLI::IsMember({"Eodhd", "Tiingo"}));

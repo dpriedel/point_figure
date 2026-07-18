@@ -1,7 +1,7 @@
 # Progress: PF_CollectDataApp Refactoring
 
 ## Status
-Phase 3b (pf_updater) in progress. Updater binary builds, CLI parsing fixed, config-dir option added. LoadAndUpdate test fails on JSON parsing error + network timeout to Eodhd.
+Phase 3b (pf_updater) complete. Updater binary builds, CLI parsing fixed, `--quote-port` option added to loader and updater. LoadAndUpdate test passes.
 
 ## Completed
 - [x] 2026-07-17 — Analyzed codebase structure, identified god class (~2400 lines, ~52 members)
@@ -38,9 +38,9 @@ Phase 3b (pf_updater) in progress. Updater binary builds, CLI parsing fixed, con
 - [x] 2026-07-17 — Phase 3b: Added `--config-dir` CLI option to loader and updater for API key file resolution
 - [x] 2026-07-17 — Phase 3b: Added env var resolution (`PF_COLLECT_DATA_CONFIG_DIR`) in CheckArgs() for both loader and updater
 - [x] 2026-07-17 — Phase 3b: Updated LoadAndUpdate test tokens with `--config-dir` pointing to API key directory
+- [x] 2026-07-18 — Phase 3b: Fixed missing `--quote-port` option in loader and updater (default "443"). Root cause of LoadAndUpdate test hang: empty port string caused `RequestData` to block on DNS resolve. Test now passes in ~5.5s.
 
 ## Pending
-- [ ] Phase 3b: Debug LoadAndUpdate test failure — JSON parsing error (`asCString(): requires stringValue`) on existing chart files in `test_files_update_charts/`; network timeout to Eodhd for ATR data
 - [ ] Phase 4: Remove monolith, 4 standalone binaries
 
 ## Files Changed
