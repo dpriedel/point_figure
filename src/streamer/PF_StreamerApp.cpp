@@ -138,8 +138,22 @@ void PF_StreamerApp::SetupProgramOptions()
     // Flags
     auto atr_or_minmax = app_.add_option_group("atr", "Specify 'use-ATR' for ATR-based box size.");
     atr_or_minmax->add_flag("--use-ATR", use_ATR_, "Compute ATR and use to compute box size.");
+    atr_or_minmax->add_flag("--use-MinMax", use_min_max_, "Use MinMax-based box size calculation.");
 
     app_.add_flag("--resume", resume_mode_, "Resume streaming from saved data files.");
+
+    // Compatibility options (accepted but ignored for streamer)
+    app_.add_option("--new-data-source", new_data_source_i_, "Data source (ignored for streamer).");
+    app_.add_option("--new-data-dir", new_data_input_directory_, "Data directory (ignored for streamer).");
+    app_.add_option("--source-format", source_format_i_, "Source format (ignored for streamer).");
+    app_.add_option("--destination", destination_i_, "Destination (ignored for streamer).");
+    app_.add_option("--exchange-list", exchange_list_, "Exchange list (ignored for streamer).")
+        ->delimiter(',')
+        ->transform([](std::string s) {
+            std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+            return s;
+        });
+    app_.add_option("--interval", interval_i_, "Interval (ignored for streamer).");
 
     // Logging options
     app_.add_option("--log-path", log_file_path_name_, "Path name for log file.");
@@ -149,9 +163,9 @@ void PF_StreamerApp::SetupProgramOptions()
 
     // Final validation
     app_.callback([&]() {
-        if (box_size_list_.empty())
+        if (!use_min_max_ && box_size_i_list_.empty())
         {
-            throw CLI::ValidationError("Box size must be specified.");
+            throw CLI::ValidationError("Box size must be specified or --use-MinMax must be used.");
         }
         if (reversal_boxes_list_.empty())
         {

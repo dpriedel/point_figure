@@ -284,12 +284,23 @@ std::vector<StockDataRecord> PF_DB::RetrieveMostRecentStockDataRecordsFromDB(std
 
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-    std::string get_records_cmd = std::format(
-        "SELECT date, symbol, split_adj_open, split_adj_high, split_adj_low, split_adj_close FROM {} WHERE symbol = {} "
-        "AND date <= {} ORDER BY date DESC LIMIT {}",
-        db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date),
-        how_many // need an extra row for the algorithm
-    );
+    std::string get_records_cmd;
+    if (begin_date.empty())
+    {
+        get_records_cmd = std::format(
+            "SELECT date, symbol, split_adj_open, split_adj_high, split_adj_low, split_adj_close FROM {} WHERE symbol = {} "
+            "ORDER BY date DESC LIMIT {}",
+            db_params_.stock_db_data_source_, c.quote(symbol), how_many);
+    }
+    else
+    {
+        get_records_cmd = std::format(
+            "SELECT date, symbol, split_adj_open, split_adj_high, split_adj_low, split_adj_close FROM {} WHERE symbol = {} "
+            "AND date <= {} ORDER BY date DESC LIMIT {}",
+            db_params_.stock_db_data_source_, c.quote(symbol), c.quote(begin_date),
+            how_many // need an extra row for the algorithm
+        );
+    }
     std::vector<StockDataRecord> records;
     try
     {
@@ -439,10 +450,21 @@ decimal::Decimal PF_DB::ComputePriceRangeForSymbolFromDB(std::string_view symbol
     PF_DB the_db{db_params_};
     pqxx::connection c{std::format("dbname={} user={}", db_params_.db_name_, db_params_.user_name_)};
 
-    std::string get_price_range_cmd =
-        std::format("SELECT (MAX(split_adj_close) - MIN(split_adj_close)) AS range FROM {} "
-                    "WHERE date BETWEEN {} AND {} AND symbol = {}",
-                    db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(end_date), c.quote(symbol));
+    std::string get_price_range_cmd;
+    if (end_date.empty())
+    {
+        get_price_range_cmd =
+            std::format("SELECT (MAX(split_adj_close) - MIN(split_adj_close)) AS range FROM {} "
+                        "WHERE date >= {} AND symbol = {}",
+                        db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(symbol));
+    }
+    else
+    {
+        get_price_range_cmd =
+            std::format("SELECT (MAX(split_adj_close) - MIN(split_adj_close)) AS range FROM {} "
+                        "WHERE date BETWEEN {} AND {} AND symbol = {}",
+                        db_params_.stock_db_data_source_, c.quote(begin_date), c.quote(end_date), c.quote(symbol));
+    }
 
     c.close();
 

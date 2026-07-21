@@ -33,8 +33,6 @@ endif
 
 #	common definitions
 
-OUTFILE := PF_CollectData
-
 CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
 	-isystem$(BOOSTDIR) \
@@ -42,23 +40,6 @@ CFG_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(UTILITYDIR)/include # \
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib/ChartDirector
-
-# SDIR1 := .
-# SRCS1 := $(SDIR1)/Main.cpp
-
-SDIR2 := ./src
-SRCS2 := $(SDIR2)/Main.cpp \
-		$(SDIR2)/PF_CollectDataApp.cpp \
-		$(SDIR2)/common/PF_AppBase.cpp \
-		$(SDIR2)/ConstructChartGraphic.cpp \
-		$(SDIR2)/Tiingo.cpp \
-		$(SDIR2)/Eodhd.cpp \
-		$(SDIR2)/Streamer.cpp 
-
-
-SRCS := $(SRCS2)
-
-VPATH := $(SDIR2) $(SDIR2)/common
 
 CFG_LIB := -L../lib_PF_Chart \
 		-lPF_Chart \
@@ -80,58 +61,6 @@ CFG_LIB := -L../lib_PF_Chart \
 		-ljsoncpp  # \
 		# -L$(BOOSTDIR)/lib \
 		# -lboost_program_options-mt-x64 
-
-# OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
-OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
-
-OBJS=$(OBJS2)
-
-DEPS=$(OBJS:.o=.d)
-
-#
-# Configuration: Debug
-#
-ifeq "$(CFG)" "Debug"
-
-OUTDIR=Debug_collect
-
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++26 -D_DEBUG -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -DSHOW_STRACE -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
-CCOMPILE=$(GCC) -c  -O0  -g3 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
-
-LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
-
-endif #	DEBUG configuration
-
-#
-# Configuration: Release
-#
-ifeq "$(CFG)" "Release"
-
-OUTDIR=Release
-
-COMPILE=$(CPP) -c  -x c++  -O3 -std=c++26 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -DUSE_OS_TZDB -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
-CCOMPILE=$(GCC) -c  -O3 -flto  -fPIC -o $@ $(CFG_INC) $< -march=native -mtune=native -MMD -MP
-
-LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
-
-endif #	RELEASE configuration
-
-# Build rules
-all: $(OUTFILE)
-
-$(OUTDIR)/%.o : %.cpp
-	$(COMPILE)
-
-$(OUTDIR)/%.o : %.c
-	$(CCOMPILE)
-
-$(OUTFILE): $(OUTDIR) $(OBJS2) $(OBJS4) ../lib_PF_Chart/libPF_Chart.a
-	$(LINK)
-
--include $(DEPS)
-
-$(OUTDIR):
-	mkdir -p "$(OUTDIR)"
 
 # Rebuild this project
 rebuild: cleanall all
@@ -184,7 +113,7 @@ SCANNER_OBJS := $(SCANNER_OUTDIR)/scanner_main.o \
 	$(SCANNER_OUTDIR)/PF_ScannerApp.o \
 	$(SCANNER_OUTDIR)/PF_AppBase_scanner.o
 
-all: $(OUTFILE) $(SCANNER_OUTFILE)
+all: $(SCANNER_OUTFILE)
 
 $(SCANNER_OUTDIR):
 	mkdir -p "$(SCANNER_OUTDIR)"
@@ -255,7 +184,7 @@ STREAMER_OBJS := $(STREAMER_OUTDIR)/streamer_main.o \
 	$(STREAMER_OUTDIR)/Eodhd.o \
 	$(STREAMER_OUTDIR)/Streamer.o
 
-all: $(OUTFILE) $(SCANNER_OUTFILE) $(STREAMER_OUTFILE) $(LOADER_OUTFILE)
+all: $(SCANNER_OUTFILE) $(STREAMER_OUTFILE) $(LOADER_OUTFILE)
 
 $(STREAMER_OUTDIR):
 	mkdir -p "$(STREAMER_OUTDIR)"
@@ -449,18 +378,14 @@ $(UPDATER_OUTFILE): $(UPDATER_OBJS) ../lib_PF_Chart/libPF_Chart.a
 	$(UPDATER_LINK_CMD) $(UPDATER_OBJS) $(UPDATER_LIB) -Wl,-E $(UPDATER_RPATH)
 
 clean:
-	rm -f $(OUTFILE)
 	rm -f $(SCANNER_OUTFILE)
 	rm -f $(STREAMER_OUTFILE)
 	rm -f $(LOADER_OUTFILE)
 	rm -f $(UPDATER_OUTFILE)
-	rm -f $(OBJS)
 	rm -f $(SCANNER_OBJS)
 	rm -f $(STREAMER_OBJS)
 	rm -f $(LOADER_OBJS)
 	rm -f $(UPDATER_OBJS)
-	rm -f $(OUTDIR)/*.d
-	rm -f $(OUTDIR)/*.o
 	rm -f $(SCANNER_OUTDIR)/*.d
 	rm -f $(SCANNER_OUTDIR)/*.o
 	rm -f $(STREAMER_OUTDIR)/*.d

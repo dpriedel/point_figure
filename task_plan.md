@@ -83,11 +83,17 @@ Move to `PF_UpdaterApp : public PF_AppBase`:
 - `--use-ATR` must use `add_flag()` not `add_option()` to prevent consuming next token
 - `--config-dir` option and env var resolution needed in CheckArgs() for API key file lookup
 
-### Phase 4 — Decommission monolith
-Remove `PF_CollectDataApp`. Replace `Main.cpp` with 4 separate main files. Update makefile to produce 4 targets. Remove compatibility shims.
+### Phase 4 — Decommission monolith (DONE)
+Removed `PF_CollectDataApp.h/.cpp` and `src/Main.cpp` via `git rm`. Updated `makefile_collect` and `makefile_e2e` to remove monolith targets. All ~44 e2e tests migrated to individual app classes.
+
+**Key changes:**
+- Removed all `--mode load/update` options from test tokens (individual apps have implicit mode)
+- Added CLI compatibility options: `--use-MinMax`, `--exchange-list`, `-r` (reversal short option), `--chart-data-source`
+- Fixed empty `end_date` handling in DB queries (`PointAndFigureDB.cpp`)
+- Added `--config-dir` to all streaming test tokens for API key resolution
 
 **Tests affected:** All tests now exercise individual programs directly.
-**Verification:** Full test suite green on all 4 binaries.
+**Verification:** All 12 non-streaming tests pass (ProgramOptions, SingleFileEndToEnd, Database). Streaming tests require market hours (9:30 AM - 4:00 PM ET).
 
 ## Build System Evolution
 
@@ -155,4 +161,4 @@ Per phase: affected e2e tests updated to instantiate the new app class directly.
 - [x] Phase 2: Extract `pf_streamer`, move WebSocket sources, migrate 9 tests
 - [x] Phase 3a: Extract `pf_loader`, migrate 1 test (SingleFileEndToEnd.VerifyCanLoadCSVDataAndSaveToChartFile)
 - [x] Phase 3b: Extract `pf_updater`, fix missing `--quote-port` option in loader/updater (test passes)
-- [ ] Phase 4: Remove monolith, 4 standalone binaries
+- [x] Phase 4: Remove monolith source files, migrate all e2e tests, update makefiles (all non-streaming tests pass; streaming tests require market hours)

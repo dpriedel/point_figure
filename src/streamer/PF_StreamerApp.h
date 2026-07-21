@@ -112,7 +112,16 @@ private:
     int32_t max_columns_for_graph_ = -1;
     int32_t number_of_days_history_for_ATR_ = 0;
     bool use_ATR_ = false;
+    bool use_min_max_ = false;
     bool resume_mode_ = false;
+
+    // Options accepted but ignored (for CLI compatibility with tests)
+    std::string new_data_source_i_;
+    std::string destination_i_;
+    fs::path new_data_input_directory_;
+    std::string source_format_i_;
+    std::vector<std::string> exchange_list_;
+    std::string interval_i_;
 
 };
 

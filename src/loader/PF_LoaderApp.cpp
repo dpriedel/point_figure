@@ -216,8 +216,7 @@ void PF_LoaderApp::SetupProgramOptions()
         ->required()
         ->check(CLI::IsMember({"file", "database"}));
 
-    app_.add_option("--output-chart-dir", output_chart_directory_, "Directory for output chart JSON files.")
-        ->check(CLI::ExistingPath);
+    app_.add_option("--output-chart-dir", output_chart_directory_, "Directory for output chart JSON files.");
 
     app_.add_option("--chart-data-dir", input_chart_directory_, "Directory with existing chart data (for update mode).");
 
@@ -228,7 +227,7 @@ void PF_LoaderApp::SetupProgramOptions()
     app_.add_option("--boxsize", box_size_i_list_, "Box size value. Repeat for multiple values.")
         ->required();
 
-    app_.add_option("--reversal", reversal_boxes_list_, "Reversal boxes count. Repeat for multiple values.")
+    app_.add_option("-r,--reversal", reversal_boxes_list_, "Reversal boxes count. Repeat for multiple values.")
         ->required();
 
     // Graphics and ATR options
@@ -269,6 +268,25 @@ void PF_LoaderApp::SetupProgramOptions()
     app_.add_option("--show-trend-lines", trend_lines_, "Show trend lines: 'no', 'data', or 'angle'.")
         ->default_val("no")
         ->check(CLI::IsMember({"no", "data", "angle"}));
+
+    // MinMax option
+
+    app_.add_flag("--use-MinMax", use_min_max_, "Use MinMax-based box size calculation.");
+
+    // Exchange list option
+
+    app_.add_option("--exchange-list", exchange_list_, "Symbols from specified exchange(s).")
+        ->delimiter(',')
+        ->transform([](std::string s) {
+            std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+            return s;
+        });
+
+    // Chart data source option (for compatibility with monolith)
+
+    app_.add_option("--chart-data-source", chart_data_source_, "Chart data source: 'file' or 'database'.")
+        ->default_val("file")
+        ->check(CLI::IsMember({"file", "database"}));
 }
 
 bool PF_LoaderApp::CheckArgs()
@@ -281,7 +299,16 @@ bool PF_LoaderApp::CheckArgs()
         PF_CollectDataConfigDir_ = env_var == nullptr ? "" : env_var;
     }
 
-    boxsize_source_ = (use_ATR_ ? BoxsizeSource::e_from_ATR : BoxsizeSource::e_from_args);
+    boxsize_source_ = (use_min_max_ ? BoxsizeSource::e_from_MinMax
+                    : use_ATR_        ? BoxsizeSource::e_from_ATR
+                                      : BoxsizeSource::e_from_args);
+
+    // MinMax requires specific symbols (can't compute for ALL)
+    if (use_min_max_ && symbol_list_i_ == "ALL")
+    {
+        spdlog::error("--use-MinMax cannot be used with --symbol-list ALL.");
+        return false;
+    }
 
     new_data_source_ = new_data_source_i_ == "file"       ? Source::e_file
                         : new_data_source_i_ == "database" ? Source::e_DB
@@ -304,8 +331,8 @@ bool PF_LoaderApp::CheckArgs()
         symbol_list_.clear();
     }
 
-    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty(),
-                     "\nMust provide either 1 or more '-s' values or 'symbol-list' set to 'ALL'.");
+    BOOST_ASSERT_MSG(!symbol_list_.empty() || !symbol_list_i_.empty() || !exchange_list_.empty(),
+                     "\nMust provide either 1 or more '-s' values, 'symbol-list', or 'exchange-list'.");
 
     if (new_data_source_ == Source::e_file)
     {
@@ -465,9 +492,35 @@ std::tuple<int, int, int> PF_LoaderApp::Run_LoadFromDB()
 
         auto exchange_list = pf_db.ListExchanges();
 
-        auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" || xchng == "INDX" || xchng == "US"; };
-        const auto [first, last] = rng::remove_if(exchange_list, dont_use);
-        exchange_list.erase(first, last);
+        if (!exchange_list_.empty())
+        {
+            rng::sort(exchange_list_);
+            const auto [first1, last1] = rng::unique(exchange_list_);
+            exchange_list_.erase(first1, last1);
+
+            PF_DB pf_db_check{db_params_};
+            auto exchanges = pf_db_check.ListExchanges();
+            spdlog::debug("available exchanges: {}\n", exchanges);
+
+            rng::for_each(exchange_list_, [&exchanges](const auto &xchng) {
+                BOOST_ASSERT_MSG(
+                    std::find_if(exchanges.begin(), exchanges.end(), [&xchng](const auto &e) { return e == xchng; }) !=
+                        exchanges.end(),
+                    std::format("Exchange '{}' not found in database.", xchng).c_str());
+            });
+
+            auto keep = [&](const auto &xchng) {
+                return std::find(exchange_list_.begin(), exchange_list_.end(), xchng) != exchange_list_.end();
+            };
+            const auto [first2, last2] = rng::remove_if(exchange_list, [keep](const auto &x) { return !keep(x); });
+            exchange_list.erase(first2, last2);
+        }
+        else
+        {
+            auto dont_use = [](const auto &xchng) { return xchng == "NMFQS" || xchng == "INDX" || xchng == "US"; };
+            const auto [first3, last3] = rng::remove_if(exchange_list, dont_use);
+            exchange_list.erase(first3, last3);
+        }
         spdlog::debug("exchanges for load: {}\n", exchange_list);
 
         for (const auto &xchng : exchange_list)

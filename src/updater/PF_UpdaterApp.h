@@ -166,6 +166,8 @@ private:
     int32_t max_columns_for_graph_ = -1;
     int32_t number_of_days_history_for_ATR_ = 0;
     bool use_ATR_ = false;
+    bool use_min_max_ = false;
+    std::vector<std::string> exchange_list_;
 };
 
 #endif

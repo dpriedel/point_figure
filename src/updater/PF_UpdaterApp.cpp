@@ -229,7 +229,7 @@ void PF_UpdaterApp::SetupProgramOptions()
     app_.add_option("--boxsize", box_size_i_list_, "Box size value. Repeat for multiple values.")
         ->required();
 
-    app_.add_option("--reversal", reversal_boxes_list_, "Reversal boxes count. Repeat for multiple values.")
+    app_.add_option("-r,--reversal", reversal_boxes_list_, "Reversal boxes count. Repeat for multiple values.")
         ->required();
 
     // Graphics and ATR options
@@ -270,6 +270,19 @@ void PF_UpdaterApp::SetupProgramOptions()
     app_.add_option("--show-trend-lines", trend_lines_, "Show trend lines: 'no', 'data', or 'angle'.")
         ->default_val("no")
         ->check(CLI::IsMember({"no", "data", "angle"}));
+
+    // MinMax option
+
+    app_.add_flag("--use-MinMax", use_min_max_, "Use MinMax-based box size calculation.");
+
+    // Exchange list option
+
+    app_.add_option("--exchange-list", exchange_list_, "Symbols from specified exchange(s).")
+        ->delimiter(',')
+        ->transform([](std::string s) {
+            std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+            return s;
+        });
 }
 
 bool PF_UpdaterApp::CheckArgs()
@@ -282,7 +295,13 @@ bool PF_UpdaterApp::CheckArgs()
         PF_CollectDataConfigDir_ = env_var == nullptr ? "" : env_var;
     }
 
-    boxsize_source_ = (use_ATR_ ? BoxsizeSource::e_from_ATR : BoxsizeSource::e_from_args);
+    if (use_min_max_)
+    {
+        spdlog::error("--use-MinMax is not supported for update mode.");
+        return false;
+    }
+
+    boxsize_source_ = BoxsizeSource::e_from_args;
 
     new_data_source_ = new_data_source_i_ == "file"       ? Source::e_file
                         : new_data_source_i_ == "database" ? Source::e_DB
