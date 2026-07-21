@@ -1,7 +1,7 @@
 # Progress: PF_CollectDataApp Refactoring
 
 ## Status
-Phase 3b (pf_updater) complete. Updater binary builds, CLI parsing fixed, `--quote-port` option added to loader and updater. LoadAndUpdate test passes.
+Phase 3b (pf_updater) complete. Streaming test crashes fixed. All non-streaming tests pass. Streaming tests require market hours (9:30 AM - 4:00 PM ET).
 
 ## Completed
 - [x] 2026-07-17 — Analyzed codebase structure, identified god class (~2400 lines, ~52 members)
@@ -39,9 +39,12 @@ Phase 3b (pf_updater) complete. Updater binary builds, CLI parsing fixed, `--quo
 - [x] 2026-07-17 — Phase 3b: Added env var resolution (`PF_COLLECT_DATA_CONFIG_DIR`) in CheckArgs() for both loader and updater
 - [x] 2026-07-17 — Phase 3b: Updated LoadAndUpdate test tokens with `--config-dir` pointing to API key directory
 - [x] 2026-07-18 — Phase 3b: Fixed missing `--quote-port` option in loader and updater (default "443"). Root cause of LoadAndUpdate test hang: empty port string caused `RequestData` to block on DNS resolve. Test now passes in ~5.5s.
+- [x] 2026-07-21 — Streaming test crash fixes: Added `--symbol-list` CLI option to PF_StreamerApp, temp logger in PF_AppBase constructors for parse error visibility, bounds check on Eodhd ToB response, deleted copy/move operators on PF_StreamerApp
 
 ## Pending
 - [ ] Phase 4: Remove monolith, 4 standalone binaries
+
+
 
 ## Files Changed
 ### Phase 0
@@ -76,6 +79,13 @@ Phase 3b (pf_updater) complete. Updater binary builds, CLI parsing fixed, `--quo
 - `makefile_collect` — added `pf_updater` target (with ChartDirector)
 - `../PF_Test/EndToEnd_Test.cpp` — LoadAndUpdate test migrated to PF_UpdaterApp, added `--config-dir` token
 - `../PF_Test/makefile_e2e` — added updater sources and VPATH
+
+### Streaming Test Crash Fixes (2026-07-21)
+- `src/common/PF_AppBase.h` — added `#include <spdlog/sinks/stdout_color_sinks.h>` for temp logger
+- `src/common/PF_AppBase.cpp` — temp stdout logger in both constructors (before CLI parsing)
+- `src/streamer/PF_StreamerApp.h` — added `symbol_list_i_` member, deleted copy/move/assignment operators
+- `src/streamer/PF_StreamerApp.cpp` — added `--symbol-list` CLI option and comma-separated parsing logic
+- `src/Eodhd.cpp` — bounds check on ToB response rows vector before accessing `rows[1]`
 
 ## Notes
 - Full e2e test suite takes 5-10 minutes; use targeted test filters for quick verification per phase

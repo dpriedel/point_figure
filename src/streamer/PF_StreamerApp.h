@@ -20,6 +20,12 @@ public:
     PF_StreamerApp(int argc, char *argv[]);
     explicit PF_StreamerApp(const std::vector<std::string> &tokens);
 
+    PF_StreamerApp() = delete;
+    PF_StreamerApp(const PF_StreamerApp &) = delete;
+    PF_StreamerApp(PF_StreamerApp &&) = delete;
+    PF_StreamerApp &operator=(const PF_StreamerApp &) = delete;
+    PF_StreamerApp &operator=(PF_StreamerApp &&) = delete;
+
     bool Startup();
     void Run();
     void Shutdown();
@@ -89,6 +95,7 @@ private:
         e_csv
     };
 
+    std::string symbol_list_i_;
     std::string quote_data_source_i_;
     std::string streaming_data_source_i_;
     std::string quotes_api_key_;

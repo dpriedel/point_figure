@@ -311,6 +311,11 @@ RemoteDataSource::TopOfBookList Eodhd::GetTopOfBookAndLastClose()
         const auto tob_data = RequestData(request_string);
 
         const auto rows = split_string<std::string_view>(tob_data, "\n");
+        if (rows.size() < 2)
+        {
+            spdlog::warn(std::format("No ToB data for symbol: {} (response has {} rows).", symbol, rows.size()));
+            continue;
+        }
         const auto fields = split_string<std::string_view>(rows[1], ",");
 
         // a few checks to try to catch any changes in response format

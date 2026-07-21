@@ -60,6 +60,8 @@ void PF_StreamerApp::SetupProgramOptions()
         ->expected(1, -1)
         ->check(CLI::NonexistentPath);
 
+    app_.add_option("--symbol-list", symbol_list_i_, "Comma-separated list of symbols to stream.");
+
     // Chart parameters
     app_.add_option("-b,--boxsize", box_size_i_list_, "Box size for chart.")
         ->expected(1, -1)
@@ -264,6 +266,16 @@ bool PF_StreamerApp::Startup()
             {
                 fs::create_directories(output_graphs_directory_);
             }
+        }
+
+        // Parse symbol-list if provided
+        if (!symbol_list_i_.empty() && symbol_list_i_ != "ALL")
+        {
+            rng::for_each(split_string<std::string>(symbol_list_i_, ","),
+                          [this](const auto sym) { symbol_list_.push_back(sym); });
+            rng::sort(symbol_list_);
+            const auto [first, last] = rng::unique(symbol_list_);
+            symbol_list_.erase(first, last);
         }
 
         // Uppercase symbols

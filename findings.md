@@ -75,3 +75,9 @@ The token-vector constructor (`PF_CollectDataApp(tokens)`) is the integration po
 - `--use-ATR` must use `add_flag()` not `add_option()` to avoid consuming next token as value
 - `--config-dir` CLI option and `PF_COLLECT_DATA_CONFIG_DIR` env var resolution needed in loader/updater CheckArgs() for API key file lookup
 - LoadAndUpdate test hang root cause: missing `--quote-port` CLI option in loader and updater. `quote_host_port_` was empty string, causing `RequestData()` to block indefinitely on DNS resolve with no port. Fix: add `--quote-port` with default `"443"` to both apps.
+
+### Streaming Test Crash Fixes (2026-07-21)
+- StreamEodhdData and ResumeModeTests crashed silently on startup — three bugs found:
+  1. Missing `--symbol-list` CLI option on PF_StreamerApp (all resume tests use it). CLI11 threw ParseError before logging was configured → silent crash.
+  2. No temp logger in PF_AppBase constructors — parse errors produced no visible output. Fix: stdout_color_mt temp logger in both constructors, replaced by ConfigureLogging().
+  3. Vector OOB in Eodhd::GetTopOfBookAndLastClose (line 314) — `rows[1]` when ToB response has only header row (market closed). Fix: bounds check before access.

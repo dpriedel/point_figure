@@ -24,11 +24,17 @@ bool PF_AppBase::had_signal_ = false;
 PF_AppBase::PF_AppBase(int argc, char *argv[]) : argc_{argc}, argv_{argv}
 {
     original_logger_ = spdlog::default_logger();
+    auto tempLogger = spdlog::stdout_color_mt("temp_logger");
+    spdlog::set_default_logger(tempLogger);
+    spdlog::set_level(spdlog::level::info);
 }
 
 PF_AppBase::PF_AppBase(const std::vector<std::string> &tokens) : tokens_{tokens}
 {
     original_logger_ = spdlog::default_logger();
+    auto tempLogger = spdlog::stdout_color_mt("temp_logger");
+    spdlog::set_default_logger(tempLogger);
+    spdlog::set_level(spdlog::level::info);
 }
 
 PF_AppBase::~PF_AppBase()

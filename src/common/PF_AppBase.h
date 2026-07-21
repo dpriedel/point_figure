@@ -10,6 +10,7 @@
 using namespace std::chrono_literals;
 
 #include <CLI/CLI.hpp>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 #include "PointAndFigureDB.h"
