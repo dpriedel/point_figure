@@ -43,6 +43,7 @@ PF_AppBase::~PF_AppBase()
     {
         spdlog::drop("PF_Collect_logger");
     }
+    spdlog::drop("temp_logger");
     if (original_logger_)
     {
         spdlog::set_default_logger(original_logger_);
