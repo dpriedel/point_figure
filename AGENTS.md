@@ -26,6 +26,11 @@
 
 - ../lib_PF_Chart/libPF_Chart.a.
 
+If you change any of the files in the ../common_utilities/ directories you will need to rebuild the libPF_Chart library.
+The makefile for that library is in ../lib_PF_Chart/makefile_lib.
+
+The command to use is: pushd && cd ../lib_PF_Chart && make -f makefile_lib CFG=Release clean && make -f makefile_lib CFG=Release -j10 && popd
+
 ## Test Drivers
 
 - The test drivers are in ../PF_Test/.
