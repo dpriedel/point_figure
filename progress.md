@@ -46,6 +46,11 @@ All phases complete. All tests pass. Streaming tests require market hours (9:30 
 ## Pending
 _(none)_
 
+## Bugs Fixed
+- [x] 2026-07-22 — makefile_collect: `ifndef "CFG"` had quotes around CFG, always defaulting to Debug. Fixed to `ifndef CFG`.
+- [x] 2026-07-22 — makefile_collect: all `*_OUTDIR` were hardcoded to `Debug_*`. Added conditional for Release.
+- [x] 2026-07-22 — makefile_collect: `all:` target was before LOADER/UPDATER variable defs, so `:=` expanded them as empty. Moved to end of file. Added `.PHONY`.
+
 
 
 ## Files Changed

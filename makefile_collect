@@ -27,7 +27,7 @@ CPP := $(GCCDIR)/bin/g++
 GCC := $(GCCDIR)/bin/gcc
 
 # If no configuration is specified, "Debug" will be used
-ifndef "CFG"
+ifndef CFG
 	CFG := Debug
 endif
 
@@ -73,7 +73,11 @@ cleanall: clean
 # ============================================================================
 
 SCANNER_OUTFILE := pf_scanner
+ifeq "$(CFG)" "Debug"
 SCANNER_OUTDIR := Debug_scanner
+else
+SCANNER_OUTDIR := Release_scanner
+endif
 
 SCANNER_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
@@ -113,7 +117,7 @@ SCANNER_OBJS := $(SCANNER_OUTDIR)/scanner_main.o \
 	$(SCANNER_OUTDIR)/PF_ScannerApp.o \
 	$(SCANNER_OUTDIR)/PF_AppBase_scanner.o
 
-all: $(SCANNER_OUTFILE)
+.PHONY: all clean rebuild cleanall
 
 $(SCANNER_OUTDIR):
 	mkdir -p "$(SCANNER_OUTDIR)"
@@ -137,7 +141,11 @@ $(SCANNER_OUTFILE): $(SCANNER_OBJS) ../lib_PF_Chart/libPF_Chart.a
 # ============================================================================
 
 STREAMER_OUTFILE := pf_streamer
+ifeq "$(CFG)" "Debug"
 STREAMER_OUTDIR := Debug_streamer
+else
+STREAMER_OUTDIR := Release_streamer
+endif
 
 STREAMER_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
@@ -184,8 +192,6 @@ STREAMER_OBJS := $(STREAMER_OUTDIR)/streamer_main.o \
 	$(STREAMER_OUTDIR)/Eodhd.o \
 	$(STREAMER_OUTDIR)/Streamer.o
 
-all: $(SCANNER_OUTFILE) $(STREAMER_OUTFILE) $(LOADER_OUTFILE)
-
 $(STREAMER_OUTDIR):
 	mkdir -p "$(STREAMER_OUTDIR)"
 
@@ -220,7 +226,11 @@ $(STREAMER_OUTFILE): $(STREAMER_OBJS) ../lib_PF_Chart/libPF_Chart.a
 # ============================================================================
 
 LOADER_OUTFILE := pf_loader
+ifeq "$(CFG)" "Debug"
 LOADER_OUTDIR := Debug_loader
+else
+LOADER_OUTDIR := Release_loader
+endif
 
 LOADER_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
@@ -301,7 +311,11 @@ $(LOADER_OUTFILE): $(LOADER_OBJS) ../lib_PF_Chart/libPF_Chart.a
 # ============================================================================
 
 UPDATER_OUTFILE := pf_updater
+ifeq "$(CFG)" "Debug"
 UPDATER_OUTDIR := Debug_updater
+else
+UPDATER_OUTDIR := Release_updater
+endif
 
 UPDATER_INC := -I${HOME}/projects/PF_Project/point_figure/src \
 	-I$(GTESTDIR) \
@@ -376,6 +390,8 @@ $(UPDATER_OUTDIR)/Streamer.o: src/Streamer.cpp | $(UPDATER_OUTDIR)
 
 $(UPDATER_OUTFILE): $(UPDATER_OBJS) ../lib_PF_Chart/libPF_Chart.a
 	$(UPDATER_LINK_CMD) $(UPDATER_OBJS) $(UPDATER_LIB) -Wl,-E $(UPDATER_RPATH)
+
+all: $(SCANNER_OUTFILE) $(STREAMER_OUTFILE) $(LOADER_OUTFILE) $(UPDATER_OUTFILE)
 
 clean:
 	rm -f $(SCANNER_OUTFILE)
