@@ -68,6 +68,22 @@ rebuild: cleanall all
 # Clean this project and all dependencies
 cleanall: clean
 
+help:
+	@echo "Targets:"
+	@echo "  all              — build all 4 programs"
+	@echo "  pf_scanner       — build scanner only"
+	@echo "  pf_streamer      — build streamer only"
+	@echo "  pf_loader        — build loader only"
+	@echo "  pf_updater       — build updater only"
+	@echo "  clean            — clean all programs"
+	@echo "  clean_scanner    — clean scanner only"
+	@echo "  clean_streamer   — clean streamer only"
+	@echo "  clean_loader     — clean loader only"
+	@echo "  clean_updater    — clean updater only"
+	@echo "  rebuild          — clean + build all"
+	@echo ""
+	@echo "Usage: make -f makefile_collect CFG=Release <target>"
+
 # ============================================================================
 # pf_scanner target — NO ChartDirector dependency
 # ============================================================================
@@ -117,7 +133,7 @@ SCANNER_OBJS := $(SCANNER_OUTDIR)/scanner_main.o \
 	$(SCANNER_OUTDIR)/PF_ScannerApp.o \
 	$(SCANNER_OUTDIR)/PF_AppBase_scanner.o
 
-.PHONY: all clean rebuild cleanall clean_scanner clean_streamer clean_loader clean_updater
+.PHONY: all clean rebuild cleanall clean_scanner clean_streamer clean_loader clean_updater help
 
 $(SCANNER_OUTDIR):
 	mkdir -p "$(SCANNER_OUTDIR)"
