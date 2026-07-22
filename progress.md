@@ -95,6 +95,9 @@ _(none)_
 - `src/streamer/PF_StreamerApp.cpp` — added `--symbol-list` CLI option and comma-separated parsing logic
 - `src/Eodhd.cpp` — bounds check on ToB response rows vector before accessing `rows[1]`
 
+### Minor Fixes (2026-07-22)
+- `src/streamer/PF_StreamerApp.cpp` — pf_streamer now shows help output when run without arguments (matching other 3 programs)
+
 ## Notes
 - Full e2e test suite takes 5-10 minutes; use targeted test filters for quick verification per phase
 - Streaming and resume tests excluded from quick checks (require external services or long timeouts)
