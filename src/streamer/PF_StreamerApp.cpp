@@ -164,16 +164,21 @@ void PF_StreamerApp::SetupProgramOptions()
         ->check(CLI::IsMember({"none", "error", "information", "debug"}));
 
     // Final validation
-    app_.callback([&]() {
-        if (!use_min_max_ && box_size_i_list_.empty())
+    app_.callback([this]() {
+        if (argc_ > 1)
         {
-            throw CLI::ValidationError("Box size must be specified or --use-MinMax must be used.");
-        }
-        if (reversal_boxes_list_.empty())
-        {
-            throw CLI::ValidationError("Reversal boxes must be provided.");
+            if (!use_min_max_ && box_size_i_list_.empty())
+            {
+                throw CLI::ValidationError("Box size must be specified or --use-MinMax must be used.");
+            }
+            if (reversal_boxes_list_.empty())
+            {
+                throw CLI::ValidationError("Reversal boxes must be provided.");
+            }
         }
     });
+
+    app_.failure_message(CLI::FailureMessage::help);
 }
 
 bool PF_StreamerApp::Startup()
@@ -184,6 +189,11 @@ bool PF_StreamerApp::Startup()
     bool result{true};
     try
     {
+        if (tokens_.empty() && argc_ <= 1)
+        {
+            std::cout << app_.help();
+            return false;
+        }
         ParseProgramOptions(tokens_);
         ConfigureLogging();
 
