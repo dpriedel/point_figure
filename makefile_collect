@@ -117,7 +117,7 @@ SCANNER_OBJS := $(SCANNER_OUTDIR)/scanner_main.o \
 	$(SCANNER_OUTDIR)/PF_ScannerApp.o \
 	$(SCANNER_OUTDIR)/PF_AppBase_scanner.o
 
-.PHONY: all clean rebuild cleanall
+.PHONY: all clean rebuild cleanall clean_scanner clean_streamer clean_loader clean_updater
 
 $(SCANNER_OUTDIR):
 	mkdir -p "$(SCANNER_OUTDIR)"
@@ -408,5 +408,29 @@ clean:
 	rm -f $(STREAMER_OUTDIR)/*.o
 	rm -f $(LOADER_OUTDIR)/*.d
 	rm -f $(LOADER_OUTDIR)/*.o
+	rm -f $(UPDATER_OUTDIR)/*.d
+	rm -f $(UPDATER_OUTDIR)/*.o
+
+clean_scanner:
+	rm -f $(SCANNER_OUTFILE)
+	rm -f $(SCANNER_OBJS)
+	rm -f $(SCANNER_OUTDIR)/*.d
+	rm -f $(SCANNER_OUTDIR)/*.o
+
+clean_streamer:
+	rm -f $(STREAMER_OUTFILE)
+	rm -f $(STREAMER_OBJS)
+	rm -f $(STREAMER_OUTDIR)/*.d
+	rm -f $(STREAMER_OUTDIR)/*.o
+
+clean_loader:
+	rm -f $(LOADER_OUTFILE)
+	rm -f $(LOADER_OBJS)
+	rm -f $(LOADER_OUTDIR)/*.d
+	rm -f $(LOADER_OUTDIR)/*.o
+
+clean_updater:
+	rm -f $(UPDATER_OUTFILE)
+	rm -f $(UPDATER_OBJS)
 	rm -f $(UPDATER_OUTDIR)/*.d
 	rm -f $(UPDATER_OUTDIR)/*.o
