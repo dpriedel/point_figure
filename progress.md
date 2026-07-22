@@ -1,7 +1,7 @@
 # Progress: PF_CollectDataApp Refactoring
 
 ## Status
-Phase 3b (pf_updater) complete. Streaming test crashes fixed. All non-streaming tests pass. Streaming tests require market hours (9:30 AM - 4:00 PM ET).
+All phases complete. All tests pass. Streaming tests require market hours (9:30 AM - 4:00 PM ET).
 
 ## Completed
 - [x] 2026-07-17 — Analyzed codebase structure, identified god class (~2400 lines, ~52 members)
@@ -41,9 +41,10 @@ Phase 3b (pf_updater) complete. Streaming test crashes fixed. All non-streaming 
 - [x] 2026-07-18 — Phase 3b: Fixed missing `--quote-port` option in loader and updater (default "443"). Root cause of LoadAndUpdate test hang: empty port string caused `RequestData` to block on DNS resolve. Test now passes in ~5.5s.
 - [x] 2026-07-21 — Streaming test crash fixes: Added `--symbol-list` CLI option to PF_StreamerApp, temp logger in PF_AppBase constructors for parse error visibility, bounds check on Eodhd ToB response, deleted copy/move operators on PF_StreamerApp
 - [x] 2026-07-21 — Fixed temp_logger leak causing 8 test failures: added `spdlog::drop("temp_logger")` in destructor so each app instance cleans up its temp logger
+- [x] 2026-07-22 — Phase 4: Decommissioned monolith. Removed `PF_CollectDataApp.h/.cpp` and `src/Main.cpp`. Updated makefiles to remove monolith targets. All ~44 e2e tests migrated to individual app classes. All tests pass.
 
 ## Pending
-- [ ] Phase 4: Remove monolith, 4 standalone binaries
+_(none)_
 
 
 
