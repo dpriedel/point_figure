@@ -1,13 +1,13 @@
 
 # this is just a test file
 tutorial.cpp
-Debug/*
+Debug*/**
 makefile_x86_64
-Debug_e2e/**
-Debug_collect/**
+# Debug_e2e/**
+# Debug_collect/**
 decimal_test/**
-Debug_test/**
-Release/**
+# Debug_test/**
+Release*/**
 
 src/tags
 tags
@@ -17,6 +17,13 @@ PF_CollectData
 DDecimal_test
 EndToEnd_Test
 p_f_collect
+
+# new executables after refactoring
+
+pf_loader
+pf_scanner
+pf_streamer
+pf_updater
 
 # files we're not actually using now 
 ExtractData.py
