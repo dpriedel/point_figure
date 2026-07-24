@@ -30,15 +30,13 @@ using namespace std::string_view_literals;
 //  Description:  Load mode — builds charts from file or database source
 // =====================================================================================
 
-PF_LoaderApp::PF_LoaderApp(int argc, char *argv[])
-    : PF_AppBase{argc, argv}
+PF_LoaderApp::PF_LoaderApp(int argc, char *argv[]) : PF_AppBase{argc, argv}
 {
     app_.description("Point & Figure loader: builds charts from files or database.");
     SetupProgramOptions();
 }
 
-PF_LoaderApp::PF_LoaderApp(const std::vector<std::string> &tokens)
-    : PF_AppBase{tokens}
+PF_LoaderApp::PF_LoaderApp(const std::vector<std::string> &tokens) : PF_AppBase{tokens}
 {
     app_.description("Point & Figure loader: builds charts from files or database.");
     SetupProgramOptions();
@@ -48,7 +46,7 @@ bool PF_LoaderApp::Startup()
 {
     constexpr const char *time_fmt = "\n\n*** Begin run {:%a, %b %d, %Y at %I:%M:%S %p %Z}  ***\n";
     spdlog::info(std::format("\n\n*** Starting run {} ***\n",
-                              std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
+                             std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
     bool result{true};
     try
     {
@@ -96,7 +94,7 @@ void PF_LoaderApp::Shutdown()
     }
 
     spdlog::info(std::format("\n\n*** End run {}  ***\n",
-                              std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
+                             std::chrono::current_zone()->to_local(std::chrono::system_clock::now())));
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
@@ -136,11 +134,9 @@ void PF_LoaderApp::SetupProgramOptions()
 
     // DB connection parameters
 
-    app_.add_option("--db-host", db_params_.host_name_, "Database host name.")
-        ->default_val("localhost");
+    app_.add_option("--db-host", db_params_.host_name_, "Database host name.")->default_val("localhost");
 
-    app_.add_option("--db-port", db_params_.port_number_, "Database port number.")
-        ->default_val(5432);
+    app_.add_option("--db-port", db_params_.port_number_, "Database port number.")->default_val(5432);
 
     app_.add_option("--db-user", db_params_.user_name_, "Database user name.");
 
@@ -155,8 +151,7 @@ void PF_LoaderApp::SetupProgramOptions()
 
     // Logging
 
-    app_.add_option("--log-path", log_file_path_name_, "Path to log file.")
-        ->default_val("");
+    app_.add_option("--log-path", log_file_path_name_, "Path to log file.")->default_val("");
 
     app_.add_option("--logging-level", logging_level_, "Logging level: 'none', 'error', 'information', 'debug'.")
         ->default_val("information")
@@ -175,8 +170,7 @@ void PF_LoaderApp::SetupProgramOptions()
             return s;
         });
 
-    symbols_source_group->add_option("--symbol-list", symbol_list_i_,
-                                     "Comma-separated list of symbols or 'ALL'.")
+    symbols_source_group->add_option("--symbol-list", symbol_list_i_, "Comma-separated list of symbols or 'ALL'.")
         ->transform([](std::string s) {
             std::transform(s.begin(), s.end(), s.begin(), ::toupper);
             return s;
@@ -218,14 +212,14 @@ void PF_LoaderApp::SetupProgramOptions()
 
     app_.add_option("--output-chart-dir", output_chart_directory_, "Directory for output chart JSON files.");
 
-    app_.add_option("--chart-data-dir", input_chart_directory_, "Directory with existing chart data (for update mode).");
+    app_.add_option("--chart-data-dir", input_chart_directory_,
+                    "Directory with existing chart data (for update mode).");
 
     app_.add_option("--output-graph-dir", output_graphs_directory_, "Directory for output graph files.");
 
     // Box size and reversal
 
-    app_.add_option("--boxsize", box_size_i_list_, "Box size value. Repeat for multiple values.")
-        ->required();
+    app_.add_option("-b,--boxsize", box_size_i_list_, "Box size value. Repeat for multiple values.")->required();
 
     app_.add_option("-r,--reversal", reversal_boxes_list_, "Reversal boxes count. Repeat for multiple values.")
         ->required();
@@ -238,11 +232,9 @@ void PF_LoaderApp::SetupProgramOptions()
 
     app_.add_flag("--use-ATR", use_ATR_, "Use ATR-based box size calculation.");
 
-    app_.add_option("--quote-host", quote_host_name_, "Quote data host name.")
-        ->default_val("eodhd.com");
+    app_.add_option("--quote-host", quote_host_name_, "Quote data host name.")->default_val("eodhd.com");
 
-    app_.add_option("--quote-port", quote_host_port_, "Port for quotes.")
-        ->default_val("443");
+    app_.add_option("--quote-port", quote_host_port_, "Port for quotes.")->default_val("443");
 
     app_.add_option("--quote-data-source", quote_data_source_i_, "Quote data source: 'Eodhd' or 'Tiingo'.")
         ->default_val("Eodhd")
@@ -252,16 +244,15 @@ void PF_LoaderApp::SetupProgramOptions()
 
     app_.add_option("--config-dir", PF_CollectDataConfigDir_, "Path to config directory.");
 
-    app_.add_option("--max-graphic-cols", max_columns_for_graph_, "Maximum columns for graphic output. -1 for unlimited.")
+    app_.add_option("--max-graphic-cols", max_columns_for_graph_,
+                    "Maximum columns for graphic output. -1 for unlimited.")
         ->default_val(-1);
 
     // Date options (for DB source)
 
-    app_.add_option("--begin-date", begin_date_, "Start date for extracting data from database.")
-        ->check(check_date);
+    app_.add_option("--begin-date", begin_date_, "Start date for extracting data from database.")->check(check_date);
 
-    app_.add_option("--end-date", end_date_, "Stop date for extracting data from database.")
-        ->check(check_date);
+    app_.add_option("--end-date", end_date_, "Stop date for extracting data from database.")->check(check_date);
 
     // Trend lines option
 
@@ -300,8 +291,8 @@ bool PF_LoaderApp::CheckArgs()
     }
 
     boxsize_source_ = (use_min_max_ ? BoxsizeSource::e_from_MinMax
-                    : use_ATR_        ? BoxsizeSource::e_from_ATR
-                                      : BoxsizeSource::e_from_args);
+                       : use_ATR_   ? BoxsizeSource::e_from_ATR
+                                    : BoxsizeSource::e_from_args);
 
     // MinMax requires specific symbols (can't compute for ALL)
     if (use_min_max_ && symbol_list_i_ == "ALL")
@@ -311,8 +302,8 @@ bool PF_LoaderApp::CheckArgs()
     }
 
     new_data_source_ = new_data_source_i_ == "file"       ? Source::e_file
-                        : new_data_source_i_ == "database" ? Source::e_DB
-                                                           : Source::e_unknown;
+                       : new_data_source_i_ == "database" ? Source::e_DB
+                                                          : Source::e_unknown;
 
     destination_ = destination_i_ == "file" ? Destination::e_file : Destination::e_DB;
 
@@ -407,12 +398,12 @@ bool PF_LoaderApp::CheckArgs()
     BOOST_ASSERT_MSG(max_columns_for_graph_ >= -1, "\nmax-graphic-cols must be >= -1.");
 
     const std::map<std::string, Interval> possible_intervals = {{"eod", Interval::e_eod},   {"live", Interval::e_live},
-                                                                 {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5},
-                                                                 {"min1", Interval::e_min1}, {"min5", Interval::e_min5}};
+                                                                {"sec1", Interval::e_sec1}, {"sec5", Interval::e_sec5},
+                                                                {"min1", Interval::e_min1}, {"min5", Interval::e_min5}};
     auto which_interval = possible_intervals.find(interval_i_);
-    BOOST_ASSERT_MSG(which_interval != possible_intervals.end(),
-                     std::format("\nInterval must be: 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i_)
-                         .c_str());
+    BOOST_ASSERT_MSG(
+        which_interval != possible_intervals.end(),
+        std::format("\nInterval must be: 'eod', 'live', 'sec1', 'sec5', 'min1', 'min5': {}", interval_i_).c_str());
     interval_ = which_interval->second;
 
     if (scale_i_list_.empty())
@@ -437,7 +428,7 @@ bool PF_LoaderApp::CheckArgs()
     auto params = vws::cartesian_product(symbol_list_, box_size_list_, reversal_boxes_list_, scale_list_);
     rng::for_each(params, [](const auto &x) {
         std::cout << std::format("{}\t{}\t{}\t{}\n", std::get<0>(x), std::get<1>(x).format("f"), std::get<2>(x),
-                                  std::get<3>(x));
+                                 std::get<3>(x));
     });
     std::cout << std::endl;
 
@@ -503,10 +494,9 @@ std::tuple<int, int, int> PF_LoaderApp::Run_LoadFromDB()
             spdlog::debug("available exchanges: {}\n", exchanges);
 
             rng::for_each(exchange_list_, [&exchanges](const auto &xchng) {
-                BOOST_ASSERT_MSG(
-                    std::find_if(exchanges.begin(), exchanges.end(), [&xchng](const auto &e) { return e == xchng; }) !=
-                        exchanges.end(),
-                    std::format("Exchange '{}' not found in database.", xchng).c_str());
+                BOOST_ASSERT_MSG(std::find_if(exchanges.begin(), exchanges.end(),
+                                              [&xchng](const auto &e) { return e == xchng; }) != exchanges.end(),
+                                 std::format("Exchange '{}' not found in database.", xchng).c_str());
             });
 
             auto keep = [&](const auto &xchng) {
@@ -526,7 +516,7 @@ std::tuple<int, int, int> PF_LoaderApp::Run_LoadFromDB()
         for (const auto &xchng : exchange_list)
         {
             spdlog::info(std::format("Building charts for symbols on xchng: {} with minimum dollar volume >= {}.",
-                                      xchng, min_dollar_volume_));
+                                     xchng, min_dollar_volume_));
 
             auto symbol_list = pf_db.ListSymbolsOnExchange(xchng, min_dollar_volume_);
             const auto counts = ProcessSymbolsFromDB(symbol_list);
@@ -534,8 +524,8 @@ std::tuple<int, int, int> PF_LoaderApp::Run_LoadFromDB()
             total_charts_processed += std::get<1>(counts);
             total_charts_updated += std::get<2>(counts);
             spdlog::info(std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts built: "
-                                      "{}.",
-                                      xchng, std::get<0>(counts), std::get<1>(counts), std::get<2>(counts)));
+                                     "{}.",
+                                     xchng, std::get<0>(counts), std::get<1>(counts), std::get<2>(counts)));
         }
     }
     else
@@ -547,8 +537,8 @@ std::tuple<int, int, int> PF_LoaderApp::Run_LoadFromDB()
     }
 
     spdlog::info(std::format("Total symbols: {}. Total charts generated: {}. Total charts built: "
-                              "{}.",
-                              total_symbols_processed, total_charts_processed, total_charts_updated));
+                             "{}.",
+                             total_symbols_processed, total_charts_processed, total_charts_updated));
 
     return {total_symbols_processed, total_charts_processed, total_charts_updated};
 }
@@ -590,7 +580,7 @@ std::tuple<int, int, int> PF_LoaderApp::ProcessSymbolsFromDB(const std::vector<s
 
             const auto closing_prices =
                 pf_db.RunSQLQueryUsingStream<DateCloseRecord, std::string_view, std::string_view>(get_symbol_prices_cmd,
-                                                                                                   Row2Closing);
+                                                                                                  Row2Closing);
 
             auto atr_or_range = use_ATR_       ? ComputeATRForChartFromDB(symbol)
                                 : use_min_max_ ? pf_db.ComputePriceRangeForSymbolFromDB(symbol, begin_date_, end_date_)
@@ -668,7 +658,7 @@ PF_Chart PF_LoaderApp::LoadAndParsePriceDataJSON(const fs::path &symbol_file_nam
 }
 
 std::optional<int> PF_LoaderApp::FindColumnIndex(std::string_view header, std::string_view column_name,
-                                                  std::string_view delim)
+                                                 std::string_view delim)
 {
     auto fields = rng_split_string<std::string_view>(header, delim) | rng::to<std::vector>();
     auto do_compare([&column_name](const auto &field_name) {
@@ -693,12 +683,12 @@ Decimal PF_LoaderApp::ComputeATRForChart(const std::string &symbol) const
     if (quote_data_source_ == QuoteDataSource::e_Eodhd)
     {
         history_getter = std::make_unique<Eodhd>(Eodhd::Host{quote_host_name_}, Eodhd::Port{quote_host_port_},
-                                                  Eodhd::APIKey{quotes_api_key_}, Eodhd::Prefix{});
+                                                 Eodhd::APIKey{quotes_api_key_}, Eodhd::Prefix{});
     }
     else
     {
         history_getter = std::make_unique<Tiingo>(Tiingo::Host{quote_host_name_}, Tiingo::Port{quote_host_port_},
-                                                   Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{});
+                                                  Tiingo::APIKey{quotes_api_key_}, Tiingo::Prefix{});
     }
 
     std::chrono::year_month_day today{--floor<std::chrono::days>(std::chrono::system_clock::now())};
@@ -707,7 +697,7 @@ Decimal PF_LoaderApp::ComputeATRForChart(const std::string &symbol) const
     rng::copy(MakeHolidayList(--(today.year())), std::back_inserter(holidays));
 
     const auto history = history_getter->GetMostRecentTickerData(symbol, today, number_of_days_history_for_ATR_ + 1,
-                                                                  UseAdjusted::e_Yes, &holidays);
+                                                                 UseAdjusted::e_Yes, &holidays);
 
     auto atr = ComputeATR(symbol, history, number_of_days_history_for_ATR_);
 
@@ -751,8 +741,9 @@ void PF_LoaderApp::ShutdownAndStoreOutputInFiles()
                 fs::path graph_file_path =
                     output_graphs_directory_ /
                     (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "svg"));
-                ConstructCDPFChartGraphicAndWriteToFile(
-                    chart, graph_file_path, StreamedPrices{}, trend_lines_, interval_ != Interval::e_eod ? X_AxisFormat::e_show_time : X_AxisFormat::e_show_date);
+                ConstructCDPFChartGraphicAndWriteToFile(chart, graph_file_path, StreamedPrices{}, trend_lines_,
+                                                        interval_ != Interval::e_eod ? X_AxisFormat::e_show_time
+                                                                                     : X_AxisFormat::e_show_date);
             }
             else
             {
@@ -760,8 +751,8 @@ void PF_LoaderApp::ShutdownAndStoreOutputInFiles()
                     output_graphs_directory_ /
                     (chart.MakeChartFileName((new_data_source_ == Source::e_streaming ? "" : interval_i_), "csv"));
                 chart.ConvertChartToTableAndWriteToFile(graph_file_path, interval_ != Interval::e_eod
-                                                                              ? X_AxisFormat::e_show_time
-                                                                              : X_AxisFormat::e_show_date);
+                                                                             ? X_AxisFormat::e_show_time
+                                                                             : X_AxisFormat::e_show_date);
             }
         }
         catch (const std::exception &e)
@@ -788,8 +779,9 @@ void PF_LoaderApp::ShutdownAndStoreOutputInDB()
             if (graphics_format_ == GraphicsFormat::e_svg)
             {
                 fs::path graph_file_path = output_graphs_directory_ / (chart.MakeChartFileName(interval_i_, "svg"));
-                ConstructCDPFChartGraphicAndWriteToFile(
-                    chart, graph_file_path, StreamedPrices{}, trend_lines_, interval_ != Interval::e_eod ? X_AxisFormat::e_show_time : X_AxisFormat::e_show_date);
+                ConstructCDPFChartGraphicAndWriteToFile(chart, graph_file_path, StreamedPrices{}, trend_lines_,
+                                                        interval_ != Interval::e_eod ? X_AxisFormat::e_show_time
+                                                                                     : X_AxisFormat::e_show_date);
             }
             chart.StoreChartInChartsDB(pf_db, interval_i_,
                                        interval_ != Interval::e_eod ? X_AxisFormat::e_show_time
