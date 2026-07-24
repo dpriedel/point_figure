@@ -23,7 +23,7 @@
 #include <vector>
 
 namespace rng = std::ranges;
-namespace fs  = std::filesystem;
+namespace fs = std::filesystem;
 namespace vws = std::ranges::views;
 
 #include <boost/assert.hpp>
@@ -39,15 +39,13 @@ namespace vws = std::ranges::views;
 //  Description:  application specific stuff for streaming mode
 // =====================================================================================
 
-PF_StreamerApp::PF_StreamerApp(int argc, char *argv[])
-    : PF_AppBase{argc, argv}
+PF_StreamerApp::PF_StreamerApp(int argc, char *argv[]) : PF_AppBase{argc, argv}
 {
     app_.description("Point & Figure streaming charts: real-time chart updates during market hours.");
     SetupProgramOptions();
 }
 
-PF_StreamerApp::PF_StreamerApp(const std::vector<std::string> &tokens)
-    : PF_AppBase{tokens}
+PF_StreamerApp::PF_StreamerApp(const std::vector<std::string> &tokens) : PF_AppBase{tokens}
 {
     app_.description("Point & Figure streaming charts: real-time chart updates during market hours.");
     SetupProgramOptions();
@@ -56,9 +54,7 @@ PF_StreamerApp::PF_StreamerApp(const std::vector<std::string> &tokens)
 void PF_StreamerApp::SetupProgramOptions()
 {
     // Symbol options
-    app_.add_option("-s,--symbol", symbol_list_, "Symbol to stream.")
-        ->expected(1, -1)
-        ->check(CLI::NonexistentPath);
+    app_.add_option("-s,--symbol", symbol_list_, "Symbol to stream.")->expected(1, -1)->check(CLI::NonexistentPath);
 
     app_.add_option("--symbol-list", symbol_list_i_, "Comma-separated list of symbols to stream.");
 
@@ -93,22 +89,17 @@ void PF_StreamerApp::SetupProgramOptions()
 
     // Streaming Options
     app_.add_option("--streaming-host", streaming_host_name_, "Web site to stream from.");
-    app_.add_option("--streaming-port", streaming_host_port_, "Port for streaming.")
-        ->default_val("443");
+    app_.add_option("--streaming-port", streaming_host_port_, "Port for streaming.")->default_val("443");
 
     // Quote/ATR Options
     app_.add_option("--quote-host", quote_host_name_, "Web site to download ATR history from.");
-    app_.add_option("--quote-port", quote_host_port_, "Port for quotes.")
-        ->default_val("443");
+    app_.add_option("--quote-port", quote_host_port_, "Port for quotes.")->default_val("443");
 
-    app_.add_option("--price-fld-name", price_fld_name_, "Price field name.")
-        ->default_val("close");
+    app_.add_option("--price-fld-name", price_fld_name_, "Price field name.")->default_val("close");
 
     // Database Options (for DB destination)
-    app_.add_option("--db-host", db_params_.host_name_, "Database host.")
-        ->default_val("localhost");
-    app_.add_option("--db-port", db_params_.port_number_, "Database port.")
-        ->default_val(5432);
+    app_.add_option("--db-host", db_params_.host_name_, "Database host.")->default_val("localhost");
+    app_.add_option("--db-port", db_params_.port_number_, "Database port.")->default_val(5432);
     app_.add_option("--db-user", db_params_.user_name_, "Database user name.");
     app_.add_option("--db-name", db_params_.db_name_, "Database name.");
     app_.add_option("--db-mode", db_params_.PF_db_mode_, "'test' or 'live' schema.")
@@ -198,7 +189,8 @@ bool PF_StreamerApp::Startup()
         ConfigureLogging();
 
         // Parse box sizes
-        rng::for_each(box_size_i_list_, [this](const auto &b) { this->box_size_list_.emplace_back(decimal::Decimal{b}); });
+        rng::for_each(box_size_i_list_,
+                      [this](const auto &b) { this->box_size_list_.emplace_back(decimal::Decimal{b}); });
 
         // Parse scales
         if (scale_i_list_.empty())
@@ -206,9 +198,8 @@ bool PF_StreamerApp::Startup()
             scale_i_list_.emplace_back("linear");
         }
         rng::for_each(scale_i_list_, [](const auto &scale) {
-            BOOST_ASSERT_MSG(
-                scale == "linear" || scale == "percent",
-                std::format("\nChart scale must be: 'linear' or 'percent': {}", scale).c_str());
+            BOOST_ASSERT_MSG(scale == "linear" || scale == "percent",
+                             std::format("\nChart scale must be: 'linear' or 'percent': {}", scale).c_str());
         });
         rng::for_each(scale_i_list_, [this](const auto &scale_i) {
             this->scale_list_.emplace_back(scale_i == "linear" ? BoxScale::e_Linear : BoxScale::e_Percent);
@@ -220,7 +211,8 @@ bool PF_StreamerApp::Startup()
         // Parse quote data source
         if (!quote_data_source_i_.empty())
         {
-            quote_data_source_ = quote_data_source_i_ == "Tiingo" ? QuoteDataSource::e_Tiingo : QuoteDataSource::e_Eodhd;
+            quote_data_source_ =
+                quote_data_source_i_ == "Tiingo" ? QuoteDataSource::e_Tiingo : QuoteDataSource::e_Eodhd;
         }
 
         // Parse streaming data source
@@ -236,8 +228,7 @@ bool PF_StreamerApp::Startup()
                          "\nMust provide 'streaming-data-source'.");
 
         // Read streaming API key
-        BOOST_ASSERT_MSG(!streaming_host_api_key_.empty(),
-                         "Must specify a streaming source API key file.");
+        BOOST_ASSERT_MSG(!streaming_host_api_key_.empty(), "Must specify a streaming source API key file.");
         BOOST_ASSERT_MSG(
             fs::exists(PF_CollectDataConfigDir_ / streaming_host_api_key_),
             std::format("\nCan't find streaming source api key file: {}", streaming_host_api_key_).c_str());
@@ -249,9 +240,9 @@ bool PF_StreamerApp::Startup()
         if (use_ATR_)
         {
             BOOST_ASSERT_MSG(!quote_host_api_key_.empty(), "Must specify a quote source API key file for ATR.");
-            BOOST_ASSERT_MSG(fs::exists(PF_CollectDataConfigDir_ / quote_host_api_key_),
-                             std::format("\nCan't find ATR quotes source api key file: {}", quote_host_api_key_)
-                                 .c_str());
+            BOOST_ASSERT_MSG(
+                fs::exists(PF_CollectDataConfigDir_ / quote_host_api_key_),
+                std::format("\nCan't find ATR quotes source api key file: {}", quote_host_api_key_).c_str());
 
             std::ifstream quotes_key_file(PF_CollectDataConfigDir_ / quote_host_api_key_);
             quotes_key_file >> quotes_api_key_;
@@ -298,7 +289,6 @@ bool PF_StreamerApp::Startup()
                                      std::get<3>(x));
         });
         std::cout << std::endl;
-
     }
     catch (const std::exception &e)
     {
@@ -337,9 +327,8 @@ void PF_StreamerApp::Shutdown()
             if (graphics_format_ == GraphicsFormat::e_svg)
             {
                 fs::path graph_file_path = output_graphs_directory_ / chart.MakeChartFileName("", "svg");
-                ConstructCDPFChartGraphicAndWriteToFile(
-                    chart, graph_file_path, streamed_prices_[chart.GetSymbol()], trend_lines_,
-                    X_AxisFormat::e_show_time);
+                ConstructCDPFChartGraphicAndWriteToFile(chart, graph_file_path, streamed_prices_[chart.GetSymbol()],
+                                                        trend_lines_, X_AxisFormat::e_show_time);
             }
             else
             {
@@ -350,7 +339,7 @@ void PF_StreamerApp::Shutdown()
         catch (const std::exception &e)
         {
             spdlog::error(std::format("Problem in shutdown: {} for chart: {}.\nTrying to complete shutdown.", e.what(),
-                                       chart.MakeChartFileName("", "")));
+                                      chart.MakeChartFileName("", "")));
         }
     }
 
@@ -372,8 +361,8 @@ void PF_StreamerApp::Run_Streaming()
 
     auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(),
                                                          floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-    auto market_status = GetUS_MarketStatus(
-        std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
+    auto market_status =
+        GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
     if (market_status != US_MarketStatus::e_NotOpenYet && market_status != US_MarketStatus::e_OpenForTrading)
     {
@@ -453,8 +442,8 @@ void PF_StreamerApp::PrimeChartsForStreaming()
 
     auto current_local_time = std::chrono::zoned_seconds(std::chrono::current_zone(),
                                                          floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-    auto market_status = GetUS_MarketStatus(
-        std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
+    auto market_status =
+        GetUS_MarketStatus(std::string_view{std::chrono::current_zone()->name()}, current_local_time.get_local_time());
 
     std::unique_ptr<RemoteDataSource> history_getter;
     if (quote_data_source_ == QuoteDataSource::e_Eodhd)
@@ -493,9 +482,9 @@ void PF_StreamerApp::PrimeChartsForStreaming()
             }
             catch (const std::exception &e)
             {
-                spdlog::error(std::format(
-                    "Problem initializing streamed summary with streaming data for symbol: {} because: {}", symbol,
-                    e.what()));
+                spdlog::error(
+                    std::format("Problem initializing streamed summary with streaming data for symbol: {} because: {}",
+                                symbol, e.what()));
             }
         }
     }
@@ -504,8 +493,8 @@ void PF_StreamerApp::PrimeChartsForStreaming()
         history_getter->UseSymbols(symbol_list_);
         auto history = history_getter->GetTopOfBookAndLastClose();
 
-        const auto close_time_stamp =
-            std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
+        const auto close_time_stamp = std::chrono::clock_cast<std::chrono::utc_clock>(
+            GetUS_MarketOpenTime(today).get_sys_time() - std::chrono::seconds{60});
         const auto open_time_stamp =
             std::chrono::clock_cast<std::chrono::utc_clock>(GetUS_MarketOpenTime(today).get_sys_time());
 
@@ -526,9 +515,9 @@ void PF_StreamerApp::PrimeChartsForStreaming()
                     }
                     catch (const std::exception &e)
                     {
-                        spdlog::error(std::format(
-                            "Problem initializing PF_Chart with streaming data for symbol: {} because: {}", h.symbol_,
-                            e.what()));
+                        spdlog::error(
+                            std::format("Problem initializing PF_Chart with streaming data for symbol: {} because: {}",
+                                        h.symbol_, e.what()));
                     }
                 });
         }
@@ -550,9 +539,9 @@ void PF_StreamerApp::PrimeChartsForStreaming()
             }
             catch (const std::exception &e)
             {
-                spdlog::error(std::format(
-                    "Problem initializing streamed summary with streaming data for symbol: {} because: {}", h.symbol_,
-                    e.what()));
+                spdlog::error(
+                    std::format("Problem initializing streamed summary with streaming data for symbol: {} because: {}",
+                                h.symbol_, e.what()));
             }
         }
     }
@@ -567,8 +556,8 @@ void PF_StreamerApp::CollectStreamingData()
     had_signal_ = false;
 
     auto today = std::chrono::year_month_day{floor<std::chrono::days>(std::chrono::system_clock::now())};
-    auto local_market_close = std::chrono::zoned_seconds(
-        std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
+    auto local_market_close =
+        std::chrono::zoned_seconds(std::chrono::current_zone(), GetUS_MarketCloseTime(today).get_sys_time() + 2min);
 
     RemoteDataSource::StreamerContext streamer_context;
     std::vector<RemoteDataSource::ProcessorContext> processor_contexts(symbol_list_.size());
@@ -586,9 +575,9 @@ void PF_StreamerApp::CollectStreamingData()
         processor_threads.emplace_back(&PF_StreamerApp::ProcessUpdatesForSymbol, this, std::ref(context));
     }
 
-    auto parsing_task = std::async(std::launch::async, &PF_StreamerApp::StreamedDataParser, this,
-                                   std::ref(streamer_context), std::ref(processor_contexts),
-                                   std::ref(symbol_to_context_map));
+    auto parsing_task =
+        std::async(std::launch::async, &PF_StreamerApp::StreamedDataParser, this, std::ref(streamer_context),
+                   std::ref(processor_contexts), std::ref(symbol_to_context_map));
 
     auto timer_task = std::async(std::launch::async, &PF_AppBase::WaitForTimer, local_market_close);
 
@@ -596,14 +585,15 @@ void PF_StreamerApp::CollectStreamingData()
     {
         if (streaming_data_source_ == StreamingSource::e_Eodhd)
         {
-            PF_streamer_ = std::make_unique<Eodhd>(Eodhd::Host{streaming_host_name_}, Eodhd::Port{streaming_host_port_},
-                                                   Eodhd::APIKey{streaming_api_key_},
-                                                   Eodhd::Prefix{std::string("/ws/us?api_token=") + streaming_api_key_});
+            PF_streamer_ = std::make_unique<Eodhd>(
+                Eodhd::Host{streaming_host_name_}, Eodhd::Port{streaming_host_port_}, Eodhd::APIKey{streaming_api_key_},
+                Eodhd::Prefix{std::string("/ws/us?api_token=") + streaming_api_key_});
         }
         else
         {
-            PF_streamer_ = std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{streaming_host_port_},
-                                                    Tiingo::APIKey{streaming_api_key_}, Tiingo::Prefix{"/iex"});
+            PF_streamer_ =
+                std::make_unique<Tiingo>(Tiingo::Host{streaming_host_name_}, Tiingo::Port{streaming_host_port_},
+                                         Tiingo::APIKey{streaming_api_key_}, Tiingo::Prefix{"/iex"});
         }
 
         PF_streamer_->UseSymbols(symbol_list_);
@@ -771,7 +761,8 @@ void PF_StreamerApp::Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data 
     PF_SignalType new_signal{PF_SignalType::e_unknown};
 
     rng::for_each(
-        charts_ | vws::filter([&update](const auto &symbol_and_chart) { return symbol_and_chart.first == update.ticker_; }),
+        charts_ |
+            vws::filter([&update](const auto &symbol_and_chart) { return symbol_and_chart.first == update.ticker_; }),
         [this, &need_to_update_graph, &update, &new_signal](auto &symbol_and_chart) {
             try
             {
@@ -819,8 +810,8 @@ void PF_StreamerApp::Do_ProcessUpdatesForSymbol(const RemoteDataSource::PF_Data 
         }
         catch (std::exception &e)
         {
-            spdlog::error(std::string("Problem creating graphic for updated streamed value: ") + chart->GetChartBaseName() +
-                          " " + e.what());
+            spdlog::error(std::string("Problem creating graphic for updated streamed value: ") +
+                          chart->GetChartBaseName() + " " + e.what());
         }
     }
 

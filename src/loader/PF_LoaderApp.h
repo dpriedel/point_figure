@@ -3,7 +3,6 @@
 
 #include <chrono>
 #include <filesystem>
-#include <memory>
 #include <optional>
 #include <string>
 #include <tuple>
@@ -12,12 +11,11 @@
 
 #include <decimal.hh>
 
-#include "common/PF_AppBase.h"
 #include "Eodhd.h"
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
-#include "utilities.h"
+#include "common/PF_AppBase.h"
 
 namespace fs = std::filesystem;
 
@@ -33,7 +31,10 @@ public:
     PF_LoaderApp(const PF_LoaderApp &) = delete;
     PF_LoaderApp(PF_LoaderApp &&) = delete;
 
-    [[nodiscard]] const PF_Charts &GetCharts() const { return charts_; }
+    [[nodiscard]] const PF_Charts &GetCharts() const
+    {
+        return charts_;
+    }
 
     bool Startup();
     std::tuple<int, int, int> Run();

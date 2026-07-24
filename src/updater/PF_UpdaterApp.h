@@ -12,11 +12,11 @@
 
 #include <decimal.hh>
 
-#include "common/PF_AppBase.h"
 #include "Eodhd.h"
 #include "PF_Chart.h"
 #include "PointAndFigureDB.h"
 #include "Tiingo.h"
+#include "common/PF_AppBase.h"
 #include "utilities.h"
 
 namespace fs = std::filesystem;
@@ -33,7 +33,10 @@ public:
     PF_UpdaterApp(const PF_UpdaterApp &) = delete;
     PF_UpdaterApp(PF_UpdaterApp &&) = delete;
 
-    [[nodiscard]] const PF_Charts &GetCharts() const { return charts_; }
+    [[nodiscard]] const PF_Charts &GetCharts() const
+    {
+        return charts_;
+    }
 
     bool Startup();
     std::tuple<int, int, int> Run();

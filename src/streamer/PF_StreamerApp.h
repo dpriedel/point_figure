@@ -7,9 +7,9 @@
 
 using namespace std::chrono_literals;
 
-#include "common/PF_AppBase.h"
 #include "PF_Chart.h"
 #include "Streamer.h"
+#include "common/PF_AppBase.h"
 #include "utilities.h"
 
 class PF_StreamerApp : public PF_AppBase
@@ -129,7 +129,6 @@ private:
     std::string source_format_i_;
     std::vector<std::string> exchange_list_;
     std::string interval_i_;
-
 };
 
 #endif

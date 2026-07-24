@@ -22,15 +22,13 @@ namespace vws = std::ranges::views;
 //  Description:  Daily scan - updates charts and computes trend statistics
 // =====================================================================================
 
-PF_ScannerApp::PF_ScannerApp(int argc, char *argv[])
-    : PF_AppBase{argc, argv}
+PF_ScannerApp::PF_ScannerApp(int argc, char *argv[]) : PF_AppBase{argc, argv}
 {
     app_.description("Point & Figure daily scanner: updates charts and reports trend statistics.");
     SetupProgramOptions();
 }
 
-PF_ScannerApp::PF_ScannerApp(const std::vector<std::string> &tokens)
-    : PF_AppBase{tokens}
+PF_ScannerApp::PF_ScannerApp(const std::vector<std::string> &tokens) : PF_AppBase{tokens}
 {
     app_.description("Point & Figure daily scanner: updates charts and reports trend statistics.");
     SetupProgramOptions();
@@ -108,11 +106,9 @@ void PF_ScannerApp::SetupProgramOptions()
 
     // DB connection parameters
 
-    app_.add_option("--db-host", db_params_.host_name_, "Database host name.")
-        ->default_val("localhost");
+    app_.add_option("--db-host", db_params_.host_name_, "Database host name.")->default_val("localhost");
 
-    app_.add_option("--db-port", db_params_.port_number_, "Database port number.")
-        ->default_val(5432);
+    app_.add_option("--db-port", db_params_.port_number_, "Database port number.")->default_val(5432);
 
     app_.add_option("--db-user", db_params_.user_name_, "Database user name.");
 
@@ -127,8 +123,7 @@ void PF_ScannerApp::SetupProgramOptions()
 
     // Logging
 
-    app_.add_option("--log-path", log_file_path_name_, "Path to log file.")
-        ->default_val("");
+    app_.add_option("--log-path", log_file_path_name_, "Path to log file.")->default_val("");
 
     app_.add_option("--logging-level", logging_level_, "Logging level: 'none', 'error', 'information', 'debug'.")
         ->default_val("information")
@@ -152,8 +147,7 @@ void PF_ScannerApp::SetupProgramOptions()
         ->required()
         ->check(check_date);
 
-    app_.add_option("--end-date", end_date_, "Stop date for extracting data from database.")
-        ->check(check_date);
+    app_.add_option("--end-date", end_date_, "Stop date for extracting data from database.")->check(check_date);
 
     app_.add_option("--price-fld-name", price_fld_name_, "Data field to use for price value.")
         ->default_val("split_adj_close");
@@ -182,10 +176,9 @@ bool PF_ScannerApp::CheckArgs()
         spdlog::debug("available exchanges: {}\n", exchanges);
 
         rng::for_each(exchange_list_, [&exchanges](const auto &xchng) {
-            BOOST_ASSERT_MSG(
-                std::find_if(exchanges.begin(), exchanges.end(), [&xchng](const auto &e) { return e == xchng; }) !=
-                    exchanges.end(),
-                std::format("Exchange '{}' not found in database.", xchng).c_str());
+            BOOST_ASSERT_MSG(std::find_if(exchanges.begin(), exchanges.end(),
+                                          [&xchng](const auto &e) { return e == xchng; }) != exchanges.end(),
+                             std::format("Exchange '{}' not found in database.", xchng).c_str());
         });
     }
 
@@ -276,7 +269,8 @@ std::tuple<int, int, int> PF_ScannerApp::Run_DailyScan()
         total_charts_updated += exchange_charts_updated;
         spdlog::info(std::format("Exchange: {}. Symbols: {}. Charts scanned: {}. Charts updated: "
                                  "{}.",
-                                 xchng, exchange_symbols_processed, exchange_charts_processed, exchange_charts_updated));
+                                 xchng, exchange_symbols_processed, exchange_charts_processed,
+                                 exchange_charts_updated));
 
         pf_db.UpdateLastCheckedDateInChartsDB(xchng, end_date_);
     }
